@@ -6,6 +6,7 @@
 
 (defvar *debug-on* nil "True while the debug screen (F3) is shown.")
 (defvar *debug-label* nil)
+(defvar *dev-started* nil "True once the dev polygon has opened the debug screen and moved the wagon to the first booth.")
 (defvar *poi* 0 "The index of the place last jumped to (PageUp/PageDown while the debug screen is open).")
 
 (defun init-dev ()
@@ -40,7 +41,7 @@ Only the driver moves the wagon."
 (defun debug-text ()
   (let* ((tw (town-at *dist*)) (place (ignore-errors (walk-place)))
          (near (first (sort (copy-list (places-of-interest)) #'< :key (lambda (p) (abs (- (car p) *dist*)))))))
-    (cl:format nil "F3 — debug~:[~; · DEV POLYGON~]   PageUp/PageDown — jump between places
+    (cl:format nil "F3 or ` — debug~:[~; · DEV POLYGON~]   PageUp/PageDown — jump between places
 fps ~d · lang ~a · view ~a~@[ · mini-game ~a~]
 path ~,1f m · ~a · speed ~,1f · dir ~a · lane ~,1f~@[ · autopilot → ~a~] · turns ahead ~d
 town: ~a · nearest: ~a
@@ -65,7 +66,7 @@ mods: ~:[none~;~:*~{~a~^, ~}~] · stories ~d"
     (let ((layer (gdext:make-object "CanvasLayer")) (bg (gdext:make-object "ColorRect")))
       (node-add-child *root* layer) (node-add-child layer bg)
       (godot:object-set layer "layer" 20)
-      (godot:object-set bg "position" (vector2 4 4)) (godot:object-set bg "size" (vector2 400 106))
+      (godot:object-set bg "position" (vector2 4 4)) (godot:object-set bg "size" (vector2 420 124))
       (godot:object-set bg "color" (color 0 0 0 .62))
       (setf *debug-label* (hud-label bg "" 5 3 7 '(.75 1.0 .75)))
       (setf (getf (symbol-plist '*debug-label*) :bg) bg)))
@@ -74,10 +75,15 @@ mods: ~:[none~;~:*~{~a~^, ~}~] · stories ~d"
 (defun debug-key (k)
   "Handle the debug key K.
 Return T when the key was ours."
-  (cond ((= k (1+ +key-f2+)) (toggle-debug) t)                       ; F3
+  (cond ((or (= k (1+ +key-f2+)) (= k 96)) (toggle-debug) t)          ; F3, or the backquote key where the browser keeps F3 for itself
         ((and *debug-on* (= k 4194324)) (jump-place 1) t)            ; PageDown
         ((and *debug-on* (= k 4194323)) (jump-place -1) t)))         ; PageUp
 
 (defun step-debug ()
+  ;; the dev polygon greets you where the booths are: the debug screen is open and the wagon stands at the first one
+  (when (and *dev* (not *dev-started*) (> *time* 1.0) (not *lobby-open*))
+    (setf *dev-started* t)
+    (unless *debug-on* (toggle-debug))
+    (unless (net-guest-p) (setf *poi* -1) (jump-place 1)))
   (when (and *debug-on* *debug-label*)
     (godot:object-set *debug-label* "text" (or (ignore-errors (debug-text)) "debug: could not build the text"))))
