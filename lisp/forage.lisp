@@ -55,20 +55,25 @@
      (dotimes (i 7) (shape g :ball '(.045 6 4) (if (evenp i) "#c8382c" "#d8a030") (+ .9 (* .8 (cos (* i .9)))) (+ 1.75 (* .3 (sin (* i 1.7)))) (* .8 (sin (* i .9))) :shadow nil))
      (dotimes (i 3) (shape g :ball '(.045 6 4) "#c8382c" (* .12 (cos (* i 2.1))) 1.08 (* .12 (sin (* i 2.1))) :shadow nil))
      (dotimes (i 3) (shape g :ball '(.04 6 4) "#b8862c" (+ .6 (* .25 i)) .04 (- (* .3 i) .3) :shadow nil)))   ; windfalls
+    (:nut
+     (shape g :ball '(.7 8 6) "#4a6a38" 0 .9 0 :scale '(1 1.1 1))                                    ; a hazel bush
+     (dotimes (i 4) (shape g :cyl '(.02 .03 1.0 5) "#4a3424" (* .15 (cos (* i 1.6))) .5 (* .15 (sin (* i 1.6))) :rot (list (* .2 (sin i)) 0 (* .2 (cos i)))))
+     (dotimes (i 6) (shape g :ball '(.03 6 4) "#8a5a34" (* .55 (cos (* i 1.1))) (+ .75 (* .2 (sin (* i 2.3)))) (* .55 (sin (* i 1.1))) :shadow nil)))
     (:herb
      (dotimes (i 9)
        (let ((x (* .5 (cos (* i 2.4)) (/ i 9.0))) (z (* .5 (sin (* i 2.4)) (/ i 9.0))))
          (shape g :box '(.012 .28 .012) "#5a7a3a" x .14 z :rot (list (* .1 (sin i)) 0 (* .1 (cos i))) :shadow nil)
          (shape g :ball '(.025 5 3) (nth (mod i 3) '("#9a6ab8" "#e8d060" "#f0ece0")) x .29 z :shadow nil))))))
 
-(defun plant-height (kind) "Return the height at which the plant of KIND is picked." (if (eq kind :apple) 1.1 .12))
+(defun plant-height (kind) "Return the height at which the plant of KIND is picked." (case kind (:apple 1.1) (:nut .8) (t .12)))
 
 (defun forage-label (kind)
   (ecase kind
     ((:mushroom :toadstool) "E — сорвать гриб")
     (:berry "E — набрать клюквы")
     (:apple "E — сорвать яблоки")
-    (:herb "E — нарвать трав")))
+    (:herb "E — нарвать трав")
+    (:nut "E — набрать орехов")))
 
 (defun forage-text (kind)
   (ecase kind
@@ -76,7 +81,8 @@
     (:toadstool "Грибы в лапах. Красные, в белую точку… точно съедобные?")
     (:berry "Клюква в лапах. На сковородке из неё выйдет варенье")
     (:apple "Яблоки в лапах. С хлебом на сковородке — шарлотка, в чайник с водой — компот")
-    (:herb "Травы в лапах. В чайник с водой — будет травяной чай: бодрит")))
+    (:herb "Травы в лапах. В чайник с водой — будет травяной чай: бодрит")
+    (:nut "Орехи в лапах. С мёдом на сковородке — козинаки")))
 
 (defun forget-old-plants ()
   "Drop from the list of picked finds the plants of days gone by: they have grown again anyway."

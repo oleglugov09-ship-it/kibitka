@@ -153,7 +153,7 @@ The sky stays over the wagon, turns with the day cycle and fades towards dawn an
 
 ;;; ------------------------------------------------------------------ spyglass
 
-(defparameter *spyglass-at* '(-.98 1.78 2.76) "The position of the spyglass, which hangs on the back wall above the map.")
+(defparameter *spyglass-at* '(.85 1.78 2.76) "The position of the spyglass, which hangs on the back wall by the door, above the light switch.")
 (defvar *spyglass-node* nil)
 
 (defun show-spyglass () (when *spyglass-node* (object-set *spyglass-node* "visible" (and *spyglass* (not (eq *tool* :spyglass))))))

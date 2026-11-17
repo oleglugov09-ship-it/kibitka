@@ -45,9 +45,14 @@ uniform sampler2D screen : hint_screen_texture, filter_nearest;
 uniform float levels = 20.0;
 uniform float sat = 0.74;
 uniform float gain = 0.94;
+uniform float trip = 0.0;                                     // мухоморный отвар: картинка плывёт, цвета уходят по кругу
 const float B[16] = float[](0.0, 8.0, 2.0, 10.0, 12.0, 4.0, 14.0, 6.0, 3.0, 11.0, 1.0, 9.0, 15.0, 7.0, 13.0, 5.0);
 void fragment() {
-  vec3 c = texture(screen, SCREEN_UV).rgb;
+  vec2 uv = SCREEN_UV + vec2(sin(SCREEN_UV.y * 14.0 + TIME * 2.3), cos(SCREEN_UV.x * 11.0 + TIME * 1.7)) * 0.012 * trip;
+  vec3 c = texture(screen, uv).rgb;
+  float turn = sin(TIME * 0.6) * 2.6 * trip;
+  vec3 axis = vec3(0.57735);
+  c = c * cos(turn) + cross(axis, c) * sin(turn) + axis * dot(axis, c) * (1.0 - cos(turn));
   float g = dot(c, vec3(0.299, 0.587, 0.114));
   c = mix(vec3(g), c, sat) * gain;
   c = mix(c, c * vec3(0.94, 0.98, 1.06), 1.0 - g);          // тени холоднее
@@ -161,6 +166,8 @@ At a fork one can thus see where the other road goes. At most two new ribbons ar
 (defvar *wheel-spin* 0.0)
 (defvar *headlight* nil "The headlight, which shines in the dark.")
 (defvar *lamps* '() "The lenses of the headlights and tail lights.")
+(defvar *beams* '() "The two spotlights of the headlights.")
+(defvar *beam-cones* '() "The faint cones of light in front of the headlights.")
 (defparameter *wheel-r* .45)   ; the top of the wheel (0.9 m) is below the wagon floor (0.95), otherwise it sticks inside
 
 (defun truck-wheel (c x z)
@@ -201,6 +208,24 @@ It has a frame, wheels, a cab with a hood, headlights and crates on the cab roof
       (push (shape c :box '(.22 .16 .06) "#a02020" (* sx 1.25) (+ f .25) (+ *half-length* .1) :emit "#ff2010" :energy 1.2 :shadow nil)
             *lamps*))
     (setf *headlight* (light c "#ffe2a8" 0.0 22.0 0 (+ f 1.2) (- zf 7.5)))
+    ;; two beams from the lenses: they reach far down the road and pick out signs and walls, and in the dark
+    ;; each is seen as a faint cone
+    (setf *beams*
+          (loop for sx in '(-1 1)
+                collect (let ((spot (gdext:make-object "SpotLight3D")))
+                          (object-set spot "light_color" (hex "#ffe6b4"))
+                          (object-set spot "light_energy" 0.0)
+                          (object-set spot "spot_range" 46.0)
+                          (object-set spot "spot_angle" 26.0)
+                          (object-set spot "shadow_enabled" nil)
+                          (node-add-child c spot)
+                          (node-3d-set-position spot (v3 (* sx .92) (+ f .55) (- zf 3.6)))
+                          (node-3d-set-rotation spot (v3 -.07 (* sx -.03) 0))
+                          spot))
+          *beam-cones*
+          (loop for sx in '(-1 1)
+                collect (shape c :cone '(1.5 9.0 10) "#ffe6b4" (* sx .92) (+ f .45) (- zf 3.6 4.5) :rot (list (/ pi 2) 0 0)
+                               :alpha .045 :unshaded t :shadow nil)))
     ;; crates on the cab roof: we carry things in crates
     (loop for (bx bz w) in '((-.55 -.75 .9) (.6 -1.0 .8) (.5 -.3 .6))
           do (shape c :box (list w .45 .6) "#8a6440" bx (+ f 2.49) (+ zf bz))
@@ -224,7 +249,10 @@ It has a frame, wheels, a cab with a hood, headlights and crates on the cab roof
   (incf *wheel-spin* (/ (* *speed* delta) *wheel-r*))
   (dolist (w *wheels*) (node-3d-set-rotation w (v3 (- *wheel-spin*) 0 0)))
   (when *headlight*
-    (object-set *headlight* "light_energy" (* 3.0 (- 1 (daylight *day-t*))))))
+    (object-set *headlight* "light_energy" (* 1.2 (- 1 (daylight *day-t*)))))
+  (let ((dark (- 1 (min 1.0 (* 2.5 (daylight *day-t*))))))                ; the headlights come on at dusk
+    (dolist (spot *beams*) (object-set spot "light_energy" (* 7.0 dark)))
+    (dolist (cone *beam-cones*) (object-set cone "visible" (> dark .4)))))
 
 ;;; The roadside: poles with wires, bus stops, panel blocks
 

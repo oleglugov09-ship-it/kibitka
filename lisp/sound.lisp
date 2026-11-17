@@ -8,7 +8,7 @@
 
 (in-package #:kiosk-trip)
 
-(defparameter *step-every* .6 "The distance in meters walked between two footstep sounds.")
+(defparameter *step-every* .48 "The distance in meters walked between two footstep sounds: a cat's stride is short.")
 (defparameter *walls-bus* "_Стены" "The name of the hidden bus through which the wagon walls muffle the street.")
 
 (defparameter *outside-noise* nil "Whether to play the constant street noise.")
@@ -129,7 +129,11 @@ Also load the discs from project/discs/ and make the hint."
     (let ((rnd (gdext:make-object "AudioStreamRandomizer")))
       (loop for i from 1 to 4 do (object-call rnd "add_stream" -1 (wav-stream (sound-path (format nil "step-~a" i))) 1.0))
       (object-set rnd "random_pitch" 1.15)
-      (add :steps (player root rnd :db -6.0 :bus "Кибитка" :play nil)))
+      (add :steps (player root rnd :db 0.0 :bus "Кибитка" :play nil)))
+    (let ((rnd (gdext:make-object "AudioStreamRandomizer")))               ; outdoors the ground crunches instead
+      (loop for i from 1 to 4 do (object-call rnd "add_stream" -1 (wav-stream (sound-path (format nil "gravel-~a" i))) 1.0))
+      (object-set rnd "random_pitch" 1.2)
+      (add :gravel (player root rnd :db -3.0 :bus "Master" :play nil)))
     (let ((rnd (gdext:make-object "AudioStreamRandomizer")))
       (loop for i from 1 to 6 do (object-call rnd "add_stream" -1 (wav-stream (sound-path (format nil "bird-~a" i))) 1.0))
       (object-set rnd "random_pitch" 1.08)
@@ -155,8 +159,8 @@ Also load the discs from project/discs/ and make the hint."
       (let ((rain (wx :rain)))
         (object-set (audio :rain) "volume_db" (if (< rain .02) -80.0 (+ -8 (* 20 (log rain 10))))))
       (let ((w (audio :wheels)) (sp (abs *speed*)))
-        (object-set w "volume_db" (if (or *meta* (< sp .1)) -80.0 (+ -16 (* 6 (min 1 (/ sp 7))))))
-        (object-set w "pitch_scale" (max .3 (min 2.0 (/ sp 7.0))))))
+        (object-set w "volume_db" (if (or *meta* (< sp .1)) -80.0 (+ -24 (* 7 (min 1 (/ sp 7))))))   ; an engine hum is kept low: it never stops
+        (object-set w "pitch_scale" (max .7 (min 1.5 (+ .7 (* .09 sp)))))))
     ;; birds: one at a time, out of step, by day and without rain or snow
     (when (<= (decf *bird-timer* delta) 0)
       (setf *bird-timer* (+ (first *bird-gap*) (random (float (- (second *bird-gap*) (first *bird-gap*))))))
@@ -164,13 +168,14 @@ Also load the discs from project/discs/ and make the hint."
         (let ((b (audio :birds)))
           (object-set b "volume_db" (- -14.0 (random 12.0)))   ; nearer and farther
           (object-call b "play"))))
-    ;; footsteps on the planks
+    ;; footsteps: a knock on the planks inside, a crunch on the ground outside
     (let ((p *pos*))
       (when (and *last-pos* (not *seat*))
-        (incf *walked* (sqrt (+ (expt (- (vector3-x p) (vector3-x *last-pos*)) 2) (expt (- (vector3-z p) (vector3-z *last-pos*)) 2))))
+        (let ((moved (sqrt (+ (expt (- (vector3-x p) (vector3-x *last-pos*)) 2) (expt (- (vector3-z p) (vector3-z *last-pos*)) 2)))))
+          (when (< moved 1.0) (incf *walked* moved)))                        ; a jump across the wagon is not a walk
         (when (> *walked* *step-every*)
           (setf *walked* 0.0)
-          (object-call (audio :steps) "play")))
+          (object-call (audio (if (and (not *meta*) (outdoors-p (vector3-x p) (vector3-z p))) :gravel :steps)) "play")))
       (setf *last-pos* p))
     (step-hint delta)
     (step-notes delta)))

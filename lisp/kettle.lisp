@@ -82,6 +82,11 @@
                 (list :wall (pan-model c (+ sx nx) (+ f ny) (+ sz nz) :hanging t)
                       :stove (pan-model c sx (+ f *stove-top*) sz)
                       :lid lid))))))
+  (let ((knife (group c 0 0 0)))                                             ; the knife of the cutting board
+    (shape knife :box '(.03 .004 .18) "#b8bcc0" 0 0 -.05 :metal .7 :rough .3 :shadow nil)
+    (shape knife :box '(.03 .015 .1) "#3a2a1e" 0 .004 .09 :shadow nil)
+    (setf *chop-nodes* (list :knife knife :item nil :slices '())))
+  (show-chop)
   (show-kettle))
 
 ;;; ------------------------------------------------------------------ what E does
@@ -156,12 +161,93 @@
            (say (if *pan-on* "Сковородка на печке: клади на неё рыбу, хлеб, клюкву или тушёнку — пожарится"
                     "Сковородка висит на гвозде")))))
 
+;;; The cutting board. Cutting is done by paw: E lays what we carry on the board, every further E is one
+;;; stroke of the knife and one more slice, and after *CHOPS* strokes the cut good is back in the paws. Cut,
+;;; it looks cut (slices on a little board, BUILD-CUT in goods.lisp) and cooks faster.
+
+(defparameter *chops* 5 "The number of knife strokes it takes to cut a good.")
+(defvar *chop* nil "What lies on the board being cut: (good . strokes done), or NIL.")
+(defvar *chop-nodes* nil "The nodes of the cutting, a plist: :knife :item :slices.")
+(defvar *chop-dip* 0.0 "The seconds left of the knife's stroke.")
+
+(defun board-point ()
+  "Return where the middle of the board is: x, height above the floor, z."
+  (list (- (first *washstand-at*) .02) (+ *washstand-top* .045) (- (second *washstand-at*) .6)))
+
+(defun show-chop ()
+  "Show on the board what is being cut and as many slices as there were strokes."
+  (destructuring-bind (&key knife item slices) *chop-nodes*
+    (declare (ignore knife))
+    (when item (node-queue-free item))
+    (dolist (s slices) (node-queue-free s))
+    (setf (getf *chop-nodes* :item) nil (getf *chop-nodes* :slices) '())
+    (when *chop*
+      (destructuring-bind (x y z) (board-point)
+        (let ((whole (build-item *cart* (car *chop*) x y (+ z .06) 0)))
+          (node-3d-set-scale whole (v3 (- 1.0 (* .15 (cdr *chop*))) 1 1))          ; what is left to cut gets shorter
+          (setf (getf *chop-nodes* :item) whole
+                (getf *chop-nodes* :slices)
+                (loop for i below (cdr *chop*)
+                      collect (shape *cart* :box '(.018 .07 .1) (second (assoc (car *chop*) *cut-rgb*))
+                                     (+ x -.1 (* i .03)) (+ *floor* y .04) (- z .12) :rot (list 0 0 -.35) :shadow nil))))))))
+
 (defun use-board ()
-  "Answer E on the cutting board: cut what we carry, so that it cooks faster."
-  (cond ((null *carry*) (say "Разделочная доска. С продуктом в лапах — нарезать: приготовится вдвое быстрее"))
-        ((or (cdr *carry*) (not (stove-recipe-p (car *carry*)))) (say "Это резать незачем: режут то, что идёт на сковородку"))
+  "Answer E on the cutting board: lay the good down, then one stroke of the knife per press."
+  (cond (*chop*
+         (incf (cdr *chop*))
+         (setf *chop-dip* .18)
+         (when (audio :steps) (object-call (audio :steps) "play"))                 ; a knock on the board
+         (cond ((< (cdr *chop*) *chops*) (show-chop))
+               (*carry* (decf (cdr *chop*)) (say "Лапы заняты: освободи их и забери нарезанное"))
+               (t (let ((kind (car *chop*)))
+                    (setf *chop* nil)
+                    (show-chop)
+                    (setf *carry* (cons kind nil) *carry-from* nil *carry-cut* t)
+                    (show-carry)
+                    (say "Нарезано. На сковородке приготовится вдвое быстрее")))))
+        ((null *carry*) (say "Разделочная доска. Принеси продукт и режь: E — удар ножа"))
+        ((or (cdr *carry*) (not (cuttable-p (car *carry*)))) (say "Это не режут: режут рыбу, хлеб, грибы, яблоки, тушёнку"))
         (*carry-cut* (say "Уже нарезано"))
-        (t (setf *carry-cut* t) (say "Нарезал. На сковородке приготовится вдвое быстрее"))))
+        (t (setf *chop* (cons (car *carry*) 0) *carry* nil *carry-from* nil)
+           (show-carry) (show-chop) (save-interior)
+           (say (format nil "На доске. Режь: E — удар ножа, всего ~d" *chops*)))))
+
+(defun board-label ()
+  (cond (*chop* (format nil "E — резать: ~d из ~d" (cdr *chop*) *chops*))
+        ((and *carry* (null (cdr *carry*)) (cuttable-p (car *carry*)) (not *carry-cut*)) "E — положить на доску и резать")
+        (t "Разделочная доска")))
+
+(defun step-chop (delta)
+  "Move the knife: it rests by the board and comes down with every stroke."
+  (let ((knife (getf *chop-nodes* :knife)))
+    (when knife
+      (setf *chop-dip* (max 0.0 (- *chop-dip* delta)))
+      (destructuring-bind (x y z) (board-point)
+        (let ((k (/ *chop-dip* .18)))
+          (if *chop*
+              (progn (node-3d-set-position knife (v3 (+ x -.1 (* .03 (cdr *chop*))) (+ *floor* y .1 (* -.07 k)) (- z .02)))
+                     (node-3d-set-rotation knife (v3 (* .5 (- 1 k)) 0 0)))
+              (progn (node-3d-set-position knife (v3 (+ x .13) (+ *floor* y .012) z))
+                     (node-3d-set-rotation knife (v3 0 0 0)))))))))
+
+;;; The toadstool brew. Whoever drinks it sees the wagon swim for a minute: the picture sways, the colours
+;;; go round (the film shader in doroga.lisp has a knob for it) and the gnomes on their shelves dance.
+
+(defparameter *trip-time* 60.0 "The number of seconds the toadstool brew lasts.")
+(defvar *trip-until* 0.0 "The time until which the toadstool brew is at work.")
+(defvar *trip-now* 0.0 "The strength of the brew as the picture shows it now, 0..1.")
+
+(defun step-trippy ()
+  "Sway the picture and the gnomes while the toadstool brew is at work; put everything back afterwards."
+  (let* ((left (- *trip-until* *time*))
+         (k (cond ((<= left 0) 0.0) (t (min 1.0 (/ left 6.0) (/ (- *trip-time* left -0.01) 3.0))))))   ; it comes on in three seconds and fades in six
+    (when (or (plusp k) (plusp *trip-now*))
+      (setf *trip-now* k)
+      (when *grade* (object-call *grade* "set_shader_parameter" "trip" k))
+      (loop for (i . node) in *trophies*
+            do (destructuring-bind (x y z yaw) (trophy-spot i)
+                 (node-3d-set-position node (v3 x (+ *floor* y (* k .05 (abs (sin (+ (* *time* 5.0) i))))) z))
+                 (node-3d-set-rotation node (v3 0 (+ yaw (* k .6 (sin (+ (* *time* 3.0) (* i 1.7))))) (* k .2 (sin (+ (* *time* 4.0) i))))))))))
 
 (defun kettle-usables ()
   "Return the things to press for the kettle and the frying pan."
@@ -182,10 +268,7 @@
                      #'use-washstand nil 2.6 .3)
              (destructuring-bind (rx ry rz) *kettle-ring*
                (usable (+ sx rx) (+ ry .1) (+ sz rz) #'ring-label #'use-ring nil 2.6 .2))
-             (usable (- (first *washstand-at*) .02) (+ *washstand-top* .06) (- (second *washstand-at*) .6)
-                     (lambda () (if (and *carry* (null (cdr *carry*)) (stove-recipe-p (car *carry*)) (not *carry-cut*))
-                                    "E — нарезать: приготовится вдвое быстрее" "Разделочная доска"))
-                     #'use-board nil 2.6 .22)
+             (destructuring-bind (x y z) (board-point) (usable x (+ y .02) z #'board-label #'use-board nil 2.6 .24))
              (if *pan-on*
                  (usable (+ sx .3) (+ *stove-top* .05) sz (lambda () "E — повесить сковородку на гвоздь") #'toggle-pan nil 2.6 .1)
                  (destructuring-bind (nx ny nz) *pan-nail*
@@ -201,6 +284,8 @@ Everyone counts the heat for their own hint; the driver alone decides that it ha
       (setf *kettle-water* nil *kettle-heat* 0.0 *kettle-tea* *kettle-cups*)
       (show-kettle)
       (say-all (format nil "Чайник закипел: готов ~a. Неси на стол и разливай по стаканам" (brew-name)))))
+  (step-chop delta)
+  (step-trippy)
   (let ((steam (getf *kettle-nodes* :steam)))
     (when (and steam (eq *kettle-at* :stove) (plusp *kettle-tea*))
       (node-3d-set-position steam (v3 (+ .19 (* .015 (sin (* *time* 3.0)))) (+ .2 (* .03 (mod (* *time* .8) 1.0))) 0)))))

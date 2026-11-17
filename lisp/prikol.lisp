@@ -295,11 +295,46 @@ a lit room, a counter, shelves with the goods of this booth (its :SHELF colours)
       (node-3d-set-rotation cat (v3 0 (- (/ pi 2)) 0))
       (make-cat cat (+ 3 (* 5 index))))))
 
+(defun booth-yard (g index)
+  "Build under G what stands around booth INDEX: an awning, price cards, a boardwalk, an urn, a lamp post,
+crates by the wall; flower boxes or shutters, a notice board, a bicycle and something on the roof, which
+differ from booth to booth so that no two yards are alike."
+  (let ((paint (nth (mod index 4) '("#a3262c" "#3f6f73" "#c9a13a" "#2c4a7a"))))
+    (dotimes (i 6)                                                                       ; a striped awning over the window
+      (shape g :box '(.9 .04 .42) (if (evenp i) "#e8e0d0" paint) 8.6 2.52 (- (* i .42) 1.05) :rot '(0 0 .35) :shadow nil))
+    (shape g :box '(.01 .01 1.9) "#3a2a1e" 8.98 2.22 0 :shadow nil)                       ; price cards on a string
+    (dotimes (i 5) (shape g :box '(.01 .14 .18) "#f0ece0" 8.97 2.12 (- (* i .4) .8) :rot (list (* .08 (- (mod i 3) 1)) 0 0) :shadow nil))
+    (shape g :box '(1.2 .04 2.6) "#8a6440" 8.2 .12 0 :shadow nil)                         ; a boardwalk to the window
+    (shape g :cyl '(.2 .15 .5 8) "#4c4e52" 8.55 .35 2.0)                                  ; an urn
+    (if (evenp index)
+        (dolist (s '(-1 1))                                                              ; flower boxes under the window
+          (shape g :box '(.22 .16 .8) "#6a3a2e" 8.9 1.0 (* s 1.65))
+          (dotimes (i 4) (shape g :ball '(.07 5 4) (nth (mod (+ i index) 3) '("#c8382c" "#e8d060" "#f0ece0")) 8.9 1.14 (+ (* s 1.65) (* .2 (- i 1.5))) :shadow nil)))
+        (progn (dolist (s '(-1 1)) (shape g :box '(.05 1.2 .5) paint 8.98 1.7 (* s 1.3) :shadow nil))     ; shutters
+               (shape g :box '(.05 .8 .6) "#5a3e26" 8.97 1.7 -1.95 :shadow nil)                       ; a notice board with papers
+               (loop for (y z) in '((1.85 -2.05) (1.8 -1.82) (1.55 -1.95))
+                     do (shape g :box '(.01 .2 .16) "#f0ece0" 8.94 y z :rot (list (* .1 (- z -1.95) 8) 0 0) :shadow nil))))
+    (shape g :box '(.7 .5 .7) "#8a6440" 10.2 .35 2.75) (shape g :box '(.6 .45 .6) "#7a5a3a" 10.25 .82 2.75 :rot '(0 .3 0))   ; crates and a barrel by the wall
+    (shape g :cyl '(.3 .3 .8 10) "#5a4636" 11.2 .5 2.8)
+    (shape g :cyl '(.05 .07 3.6 6) "#34363a" 8.4 1.9 -2.9)                                ; a lamp post
+    (shape g :box '(.7 .05 .05) "#34363a" 8.1 3.65 -2.9 :shadow nil)
+    (shape g :ball '(.13 8 5) "#ffe8b0" 7.8 3.55 -2.9 :emit "#ffc070" :energy 2.5 :shadow nil)
+    (when (= (mod index 4) 1)                                                            ; somebody's bicycle
+      (dolist (x '(10.2 11.1)) (shape g :cyl '(.3 .3 .04 12) "#2a2c30" x .4 -2.72 :rot (list (/ pi 2) 0 0)))
+      (shape g :box '(.9 .04 .04) paint 10.65 .62 -2.72 :rot '(0 0 .15)) (shape g :box '(.04 .5 .04) paint 10.45 .7 -2.72)
+      (shape g :box '(.22 .05 .1) "#3a2a1e" 10.45 .96 -2.72) (shape g :box '(.04 .45 .04) "#8a8e92" 11.05 .75 -2.72 :rot '(0 0 -.25)))
+    (case (mod index 3)                                                                  ; on the roof
+      (0 (shape g :cyl '(.1 .1 .9 8) "#2a2c30" 12.0 3.5 1.2) (chimney-smoke g 12.0 4.0 1.2 :size .6 :amount 6 :life 4.0))
+      (1 (shape g :cyl '(.02 .02 1.6 4) "#8a8e92" 12.2 3.9 -1.4)
+         (dolist (y '(4.3 4.55)) (shape g :box '(.02 .02 .7) "#8a8e92" 12.2 y -1.4 :shadow nil)))
+      (2 (dotimes (i 9) (let ((col (nth (mod i 5) *fairy*))) (shape g :ball '(.06 5 4) col 8.72 3.02 (- (* i .5) 2.0) :emit col :energy 2.0 :shadow nil)))))))
+
 (defun build-gimmick (d index title rgb)
   (let ((g (apply #'group *world* (road-pos d 3.2 -.35))))
     (node-3d-set-rotation g (v3 0 (- (road-frame d)) 0))
     (shape g :box '(9.0 .1 10.0) "#5a5a58" 7.5 .05 0 :shadow nil)
     (booth-shell g index rgb)
+    (booth-yard g index)
     (shape g :box '(4.6 .25 5.2) "#4c4e52" 11.0 2.95 0 :rot '(0 0 -.06))
     (shape g :box '(.6 .08 1.8) "#8a6440" 8.7 1.05 0)
     (shape g :box '(.2 .7 4.4) "#2a2c30" 8.9 3.5 0 :shadow nil)

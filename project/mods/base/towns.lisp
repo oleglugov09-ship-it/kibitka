@@ -9,7 +9,7 @@
       '((:milk "молоко" 5) (:fish "рыбу" 7) (:bread "хлеб" 4) (:coal "уголь" 9) (:tools "инструмент" 12) (:books "книги" 10)
     (:cans "тушёнку" 8) (:water "минеральную воду" 5) (:honey "мёд" 9) (:berry "клюкву" 6)
     ;; what is not made anywhere but grows by the bus stops (*forage* below)
-    (:mushroom "грибы" 8) (:apple "яблоки" 6) (:herb "травы" 5) (:toadstool "грибы" 1)))
+    (:mushroom "грибы" 8) (:apple "яблоки" 6) (:herb "травы" 5) (:toadstool "грибы" 1) (:nut "орехи" 9)))
 
 ;;; The trade of each town by town number: (what is made here) (what is short here).
 (setf *town-trade*
@@ -18,9 +18,9 @@
     ((:tools) (:milk :fish :bread :mushroom))  ; Krasny Kut: factories
     ((:books) (:milk :honey :water :mushroom)) ; Leninsk: colleges and a printing house
     ((:milk :honey) (:tools :cans :books))     ; Beryozovka: a village
-    ((:fish) (:milk :water :coal))             ; Pervomaysk: the port
+    ((:fish) (:milk :water :coal :nut))        ; Pervomaysk: the port
     ((:bread) (:fish :honey :berry))           ; Oktyabrsky: the bakery plant by the town council
-    ((:berry) (:bread :cans :tools :coal))     ; Dalny: cranberries from the swamps, everything else is brought in
+    ((:berry) (:bread :cans :tools :coal :nut)) ; Dalny: cranberries from the swamps, everything else is brought in
     ((:coal) (:milk :bread :cans :herb))       ; Gornyak: coal mines
     ((:water) (:fish :berry :books :apple))    ; Svetly: a resort
     ((:bread) (:coal :tools :water :apple))    ; Uzlovaya: the station bakery
@@ -32,11 +32,14 @@
 (setf *recipes*
       '((:milk :blin "блины") (:fish :fried "жареную рыбу") (:berry :jam "варенье") (:bread :toast "гренки") (:cans :stew "горячую тушёнку")
         (:mushroom :shroomfry "жареные грибы") (:mushroom :creamfry "грибы в сметане" :milk)
-        (:apple :charlotte "шарлотку" :bread) (:apple :jam "варенье")
+        (:apple :charlotte "шарлотку" :bread) (:apple :bakedapple "печёные яблоки" :honey) (:apple :jam "варенье")
+        (:bread :sandwich "бутерброды" :fish) (:berry :berrypie "пирог с клюквой" :bread) (:cans :soup "суп" :water)
+        (:nut :brittle "козинаки" :honey)
         (:mushroom :dried "сушёные грибы" nil :line)))
 
 ;;; What goes into the kettle with the water: entries of (good brew-key name-of-the-drink).
-(setf *brews* '((:apple :compote "компот") (:herb :herbal "травяной чай")))
+(setf *brews* '((:apple :compote "компот") (:herb :herbal "травяной чай") (:berry :mors "клюквенный морс")
+                (:toadstool :trip "мухоморный отвар")))
 
 ;;; What grows by the bus stops: entries of (good where seasons weathers count-a-day).
 (setf *forage*
@@ -44,4 +47,5 @@
         (:toadstool (:pine :birch) (:summer :autumn) (:rain :fog :cloudy) 1)
         (:berry (:marsh) (:summer :autumn) nil 2)
         (:apple (:village) (:summer :autumn) nil 2)
-        (:herb (:meadow :steppe) (:spring :summer) nil 2)))
+        (:herb (:meadow :steppe) (:spring :summer) nil 2)
+        (:nut (:pine :birch) (:autumn) nil 2)))

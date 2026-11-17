@@ -99,9 +99,34 @@ That is the good sought or a dish made from it (blini will do for milk)."
              (say-all (format nil "Рынок. ~a~:[~;. Гудок: смена идёт с завода!~]" (market-note (third place)) (rush-p (third place))))))
           ((> *speed* 2.0) (setf *market-told* nil)))))
 
+(defparameter *cut-rgb* '((:fish "#d89a8a") (:bread "#e8c080") (:mushroom "#d8c8a8") (:toadstool "#d8c8a8") (:apple "#f0e8c0") (:cans "#9a5a34"))
+  "What can be cut on the board, and the colour of its slices: entries of (good colour).")
+
+(defun cuttable-p (kind) (and (assoc kind *cut-rgb*) t))
+
+(defun build-cut (g kind)
+  "Build the good KIND cut up: a row of slices on a small board."
+  (let ((rgb (second (assoc kind *cut-rgb*))))
+    (shape g :box '(.2 .012 .14) "#c8a060" 0 .006 0)
+    (dotimes (i 6) (shape g :box '(.018 .07 .1) rgb (- (* i .03) .075) .05 0 :rot (list 0 0 -.35) :shadow nil))))
+
 (defun build-good (g kind)
   "Build the good KIND as a thing in G: it stands on a shelf, is carried in paws, goes on the windowsill."
   (ecase kind
+    (:nut (shape g :cone '(.07 .1 6) "#d8d2c0" 0 .05 0 :rot (list pi 0 0))                 ; nuts in a paper cone
+          (dotimes (i 5) (shape g :ball '(.022 6 4) "#8a5a34" (* .03 (cos (* i 1.3))) .115 (* .03 (sin (* i 1.3))) :shadow nil)))
+    (:sandwich (shape g :cyl '(.1 .1 .012 12) "#e4e0d4" 0 .006 0)
+               (dolist (x '(-.045 .045))
+                 (shape g :box '(.07 .02 .1) "#c8843c" x .024 0) (shape g :box '(.06 .012 .09) "#d89a8a" x .04 0 :shadow nil)))
+    (:berrypie (shape g :cyl '(.1 .1 .012 12) "#e4e0d4" 0 .006 0)
+               (shape g :cyl '(.085 .09 .04 12) "#d8a040" 0 .032 0)
+               (shape g :cyl '(.065 .065 .012 10) "#a3202c" 0 .054 0 :shadow nil))
+    (:soup (shape g :cyl '(.09 .07 .08 12) "#d8d2c0" 0 .04 0)
+           (shape g :cyl '(.082 .082 .012 12) "#c8782c" 0 .08 0 :shadow nil)
+           (shape g :box '(.012 .012 .12) "#b0b4b8" .05 .1 .02 :rot '(.5 0 0) :metal .6 :shadow nil))
+    (:bakedapple (shape g :cyl '(.1 .1 .012 12) "#e4e0d4" 0 .006 0)
+                 (dolist (x '(-.04 .04)) (shape g :ball '(.04 7 5) "#c8843c" x .05 0) (shape g :ball '(.016 5 3) "#d89a20" x .09 0 :shadow nil)))
+    (:brittle (dotimes (i 3) (shape g :box '(.16 .02 .05) "#8a5a34" 0 (+ .012 (* i .022)) (* .01 (- i 1)) :rot (list 0 (* .2 (- i 1)) 0))))
     ((:mushroom :toadstool)                                                             ; a handful in a paper cone
      (shape g :cone '(.07 .1 6) "#d8d2c0" 0 .05 0 :rot (list pi 0 0))
      (loop for (x z) in '((-.03 .0) (.03 .02) (.0 -.03))
@@ -161,5 +186,7 @@ That is the good sought or a dish made from it (blini will do for milk)."
                         (:mushroom "грибы" (.16 .17 .16)) (:toadstool "грибы" (.16 .17 .16)) (:apple "яблоки" (.18 .12 .18)) (:herb "травы" (.1 .18 .06))
                         (:shroomfry "жареные грибы" (.22 .06 .22)) (:creamfry "грибы в сметане" (.2 .1 .2)) (:charlotte "шарлотка" (.22 .08 .22))
                         (:dried "сушёные грибы" (.08 .17 .08))
+                        (:nut "орехи" (.16 .14 .16)) (:sandwich "бутерброды" (.22 .06 .22)) (:berrypie "пирог с клюквой" (.22 .08 .22))
+                        (:soup "суп" (.2 .12 .2)) (:bakedapple "печёные яблоки" (.22 .1 .22)) (:brittle "козинаки" (.18 .08 .08))
                         (:fried "жареная рыба" (.22 .08 .22)) (:jam "варенье" (.12 .17 .12))
                         (:toast "гренки" (.22 .08 .22)) (:stew "горячая тушёнка" (.2 .12 .2)))))

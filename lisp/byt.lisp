@@ -184,6 +184,8 @@ As many are placed as there are players.")
   (case *kettle-brew*
     (:compote (setf *warm* (min 1.0 (+ *warm* .3))) (say "Компот. Сладко и тепло"))
     (:herbal (setf *warm* (min 1.0 (+ *warm* .15)) *boost-until* (+ *time* *water-time*)) (say "Травяной чай. Бодрит: пять минут бегаешь быстрее"))
+    (:mors (setf *warm* (min 1.0 (+ *warm* .2)) *boost-until* (+ *time* (/ *water-time* 2))) (say "Клюквенный морс. Кисло и бодро"))
+    (:trip (setf *trip-until* (+ *time* *trip-time*)) (say "Мухоморный отвар… Стены дышат. Гномики, кажется, машут"))
     (t (setf *warm* (min 1.0 (+ *warm* .15))) (say "Чай. Теплее"))))
 
 (defun eat-bagel ()
@@ -419,9 +421,7 @@ enamel basin and a water tank on the wall, and a cutting board with a knife on i
     (shape g :cyl '(.1 .09 .22 12) "#d8d2c0" .2 (+ top .34) .3 :rough .4)                         ; the tank on the wall
     (shape g :cyl '(.105 .105 .02 12) "#b8b2a0" .2 (+ top .46) .3 :shadow nil)
     (shape g :cyl '(.012 .012 .07 6) "#8a8e92" .2 (+ top .2) .3 :metal .6 :rough .4 :shadow nil)  ; the push rod: lift it and water runs
-    (shape g :box '(.34 .025 .5) "#d8b880" -.02 (+ top .032) -.3 :shadow nil)                     ; the cutting board
-    (shape g :box '(.03 .004 .18) "#b8bcc0" -.02 (+ top .048) -.38 :metal .7 :rough .3 :shadow nil) ; the knife
-    (shape g :box '(.03 .015 .1) "#3a2a1e" -.02 (+ top .052) -.24 :shadow nil)))
+    (shape g :box '(.34 .025 .5) "#d8b880" -.02 (+ top .032) -.3 :shadow nil)))                   ; the cutting board; its knife chops (kettle.lisp)
 
 ;;; Interaction points. Everything that can be pressed has a position and a size (RADIUS); what fires is what the
 ;;; gaze rests on: we compute how far the gaze ray missed the middle of the thing in fractions of its size, and

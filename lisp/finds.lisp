@@ -72,7 +72,7 @@ Each place has its own set, the same for all players."
     (let ((g (group *world* px py pz)))
       (node-3d-set-rotation g (v3 0 (* 6 (vr x d)) 0))
       (case kind
-        ((:mushroom :toadstool :berry :apple :herb) (build-plant g kind))
+        ((:mushroom :toadstool :berry :apple :herb :nut) (build-plant g kind))
         (:bottle (shape g :cyl '(.035 .04 .2 8) "#3a7a4a" 0 .1 0 :rough .2 :alpha .8)
                  (shape g :cyl '(.014 .03 .08 6) "#3a7a4a" 0 .24 0 :rough .2 :alpha .8))
         (:paper (shape g :box '(.3 .16 .22) "#d8d2c0" 0 .08 0)
@@ -116,7 +116,7 @@ The action is shared: once one player picks it up, it is gone for everyone."
 (defshared take-spyglass :spyglass ()
   (cond (*spyglass* (say "Столик астронома"))
         (t (setf *spyglass* t) (save-finds) (show-spyglass)
-           (say-all "Подзорная труба! Висит в кибитке над картой — E по ней, и смотри на звёзды"))))
+           (say-all "Подзорная труба! Висит в кибитке у двери, над выключателем — E по ней, и смотри на звёзды"))))
 
 (defshared sell-finds :sell ()
   (cond ((zerop (+ *bottles* *papers*)) (say "Сдавать нечего: бутылки и макулатура лежат у остановок и заправок"))

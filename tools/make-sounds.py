@@ -110,31 +110,43 @@ def water(sec=12):
     return loopify(band * gurgle)
 
 def wheels(sec=4.0):
+    """Make the truck on the road: an engine that hums evenly and tyres that hiss. No beats in it: a wagon
+    that knocks once a second sounds like a train. The game changes the pitch with the speed."""
     tt = t(sec)
-    rumble = lowpass_fast(rng.normal(0, 1, len(tt)), .008, 2)
-    rumble /= np.abs(rumble).max()
-    rumble *= 1 + .3 * np.sin(2 * np.pi * tt * 2)
-    out = rumble * .6
-    for beat in np.arange(0, sec, 1.0):                      # the rim joint — a dull thud
-        s = int(beat * RATE); n = int(.12 * RATE)
-        k = np.arange(n) / RATE
-        thump = np.sin(2 * np.pi * 95 * k) * np.exp(-k * 35) + rng.normal(0, .3, n) * np.exp(-k * 80)
-        out[s:s + n] += thump * .9
-    s = int(2.3 * RATE); n = int(.45 * RATE)                  # a creak once per turn of the wheel
-    k = np.arange(n) / RATE
-    f = 210 + 25 * np.sin(2 * np.pi * 7 * k)
-    saw = ((np.cumsum(f / RATE)) % 1) * 2 - 1
-    out[s:s + n] += lowpass_fast(saw, .3) * np.sin(np.linspace(0, np.pi, n)) * .12
-    return out
+    base = 46.0                                               # the firing of the engine; four whole wobbles fit the loop
+    wobble = 1 + .012 * np.sin(2 * np.pi * tt * 1.0) + .008 * np.sin(2 * np.pi * tt * 2.75)
+    phase = 2 * np.pi * np.cumsum(base * wobble) / RATE
+    engine = sum(np.sin(phase * h) / h ** 1.15 for h in (1, 2, 3, 4, 5, 6, 8))
+    engine *= 1 + .12 * np.sin(phase * .5)                    # the uneven idle of an old truck
+    # the noise is made half a second longer and folded into a loop; the engine needs no folding: a whole
+    # number of its turns fits into SEC, so it meets itself exactly
+    more = t(sec + .5)
+    tyres = loopify(lowpass_fast(rng.normal(0, 1, len(more)), .05, 2), .5)[: len(tt)]
+    rattle = loopify(lowpass_fast(rng.normal(0, 1, len(more)), .3), .5)[: len(tt)] * (.5 + .5 * np.sin(2 * np.pi * tt * 3.25)) ** 4   # a loose panel, softly
+    return engine / np.abs(engine).max() * .7 + tyres / np.abs(tyres).max() * .35 + rattle / np.abs(rattle).max() * .05
 
 def step(seed):
+    """Make a footstep on planks: a knock that small speakers can play (the body of it is at 250–500 Hz,
+    a thud below 120 Hz alone is not heard on a laptop), a short click of claws and now and then a creak."""
     r = np.random.default_rng(seed)
     n = int(.22 * RATE); k = np.arange(n) / RATE
     f = r.uniform(80, 120)
-    thud = np.sin(2 * np.pi * f * k) * np.exp(-k * 28)
-    knock = lowpass_fast(r.normal(0, 1, n), .5) * np.exp(-k * 90) * .5
-    creak = np.sin(2 * np.pi * r.uniform(500, 700) * k * (1 + k)) * np.exp(-k * 18) * r.uniform(0, .08)
-    return thud + knock + creak
+    thud = np.sin(2 * np.pi * f * k) * np.exp(-k * 28) * .6
+    wood = np.sin(2 * np.pi * r.uniform(260, 480) * k) * np.exp(-k * 55)
+    knock = lowpass_fast(r.normal(0, 1, n), .5) * np.exp(-k * 90) * .7
+    click = r.normal(0, 1, n) * np.exp(-k * 320) * .35
+    creak = np.sin(2 * np.pi * r.uniform(500, 700) * k * (1 + k)) * np.exp(-k * 18) * r.uniform(0, .1)
+    return thud + wood + knock + click + creak
+
+def gravel(seed):
+    """Make a footstep on the ground: two short crunches of grit, heel and toe."""
+    r = np.random.default_rng(100 + seed)
+    n = int(.26 * RATE); k = np.arange(n) / RATE
+    grit = r.normal(0, 1, n) - lowpass_fast(r.normal(0, 1, n), .08)          # noise without its low end
+    grit = lowpass_fast(grit, .6)
+    gap = r.uniform(.06, .1)
+    shape = np.exp(-k * 60) + .7 * np.exp(-np.maximum(k - gap, 0) * 70) * (k > gap)
+    return grit * shape + np.sin(2 * np.pi * r.uniform(110, 150) * k) * np.exp(-k * 40) * .25
 
 # ---------- placeholder discs ----------
 
@@ -179,14 +191,21 @@ def disc(seed, root, bpm, bars=16):
             put(lowpass_fast(r.normal(0, 1, n), .4) * np.exp(-np.arange(n) / RATE * 150) * .02, t0 + i * beat / 2)
     return out[: int(total * RATE)]
 
+def footsteps_and_wheels():
+    save(ROOT / "sounds" / "wheels.wav", wheels(), .8)
+    for i in range(4):
+        save(ROOT / "sounds" / f"step-{i + 1}.wav", step(i), .9)
+        save(ROOT / "sounds" / f"gravel-{i + 1}.wav", gravel(i), .8)
+
 if __name__ == "__main__":
+    import sys
+    if sys.argv[1:] == ["steps"]:                             # only the footsteps and the truck
+        footsteps_and_wheels(); sys.exit()
     save(ROOT / "sounds" / "outside.wav", outside(), .7)
     for i in range(1, 7):
         save(ROOT / "sounds" / f"bird-{i}.wav", bird(i, 50 + i), .6)
     save(ROOT / "sounds" / "rain.wav", rain(), .6)
     save(ROOT / "sounds" / "water.wav", water(), .6)
-    save(ROOT / "sounds" / "wheels.wav", wheels(), .8)
-    for i in range(4):
-        save(ROOT / "sounds" / f"step-{i + 1}.wav", step(i), .8)
+    footsteps_and_wheels()
     for i, (root, bpm) in enumerate([(60, 96), (67, 112), (62, 80)]):
         save(ROOT / "discs" / f"placeholder-{i + 1}.wav", disc(40 + i, root, bpm), .5)

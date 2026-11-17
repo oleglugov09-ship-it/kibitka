@@ -95,7 +95,7 @@ PLACE is the rounded path coordinate of the stay.")
   (when *carry-node* (node-queue-free *carry-node*) (setf *carry-node* nil))
   (when (and *carry* *camera*)
     (let ((g (group *camera* .22 -.3 -.5)))
-      (node-3d-set-scale (build-item g (car *carry*) 0 (- *floor*) 0 0 (cdr *carry*))
+      (node-3d-set-scale (build-item g (car *carry*) 0 (- *floor*) 0 (if *carry-cut* 2 0) (cdr *carry*))
                          (if (cdr *carry*) (v3 .45 .45 .45) (v3 1 1 1)))
       (setf *carry-node* g))))
 

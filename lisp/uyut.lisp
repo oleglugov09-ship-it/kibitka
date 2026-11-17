@@ -335,7 +335,10 @@ among them makes one job, :RUINED, of everything on the stove."
 
 (defun cook-time (job)
   "Return the number of seconds the JOB takes: less under the lid, less again when everything was cut on the board."
-  (* *cook-time* (if *lid* .5 1) (if (every (lambda (spec) (eql (fifth spec) 2)) (rest job)) *cut-factor* 1)))
+  (* *cook-time* (if *lid* .5 1)
+     (if (and (some (lambda (spec) (cuttable-p (first spec))) (rest job))              ; whatever can be cut was cut
+              (every (lambda (spec) (or (eql (fifth spec) 2) (not (cuttable-p (first spec))))) (rest job)))
+         *cut-factor* 1)))
 
 (defun step-cook (delta)
   "Advance the cooking by DELTA seconds; the driver computes it.

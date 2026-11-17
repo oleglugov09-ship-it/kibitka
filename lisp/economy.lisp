@@ -54,7 +54,8 @@ bakes only blini: nothing else fits on its round lid.")
 (defparameter *quest-money* '((:honor . 15) (:feast . 60)) "The rubles that come with a town council paper, by the paper.")
 (defvar *brews* '()
   "What can be put into the kettle with the water: entries of (good brew-key name-of-the-drink).
-The brew keys the core knows are :COMPOTE (warms twice as well as tea) and :HERBAL (warms and peps you up).")
+The brew keys the core knows are :COMPOTE (warms twice as well as tea), :HERBAL and :MORS (warm and pep you up)
+and :TRIP (the toadstool brew: the wagon swims for a minute).")
 (defvar *forage* '()
   "What grows by the bus stops: entries of (good where seasons weathers count).
 WHERE is a list of vegetation kinds of the land (:pine :birch :meadow :autumn :rocky :steppe :marsh) and
