@@ -397,7 +397,12 @@ A dish costs more."
   (cond (*mosquito* (incf *swat-seq*) (end-mosquito "Хлоп! Тишина"))
         (t (say "Мухобойка. Комаров пока нет"))))
 
+(defparameter *mosquito-on* nil
+  "Whether the mosquito of the swamp is in the game. It is switched off until its mechanic is made better;
+the code, the fly swatter and the sounds stay, so switching it back on is this one flag.")
+
 (defun start-mosquito ()
+  (unless *mosquito-on* (return-from start-mosquito nil))
   (setf *mosquito* 1.0 *swamp-time* 0.0)
   (when (un :mosquito) (object-set (un :mosquito) "visible" t))
   (when (un :mosquito-player) (object-call (un :mosquito-player) "play"))
@@ -407,6 +412,9 @@ A dish costs more."
 (defun step-mosquito (delta)
   "Advance the mosquito by DELTA seconds.
 In the swamp a mosquito flies into the wagon: it whines, circles around the head and bites until swatted."
+  (unless *mosquito-on*
+    (when *mosquito* (end-mosquito nil))
+    (return-from step-mosquito nil))
   (let ((swamp (and (in-swamp-p *dist*) (not *meta*))))
     (setf *swamp-time* (if swamp (+ *swamp-time* delta) 0.0))
     (cond (*mosquito*
@@ -541,7 +549,7 @@ In the swamp a mosquito flies into the wagon: it whines, circles around the head
    (when *swatter*
      (list (usable (first *swatter-at*) (second *swatter-at*) (third *swatter-at*)
                    (lambda () (if *mosquito* "E — прихлопнуть комара" "Мухобойка: комаров пока нет")) #'swat)))
-   (when (and *at-station* (in-swamp-p *dist*) (not *swatter*))
+   (when (and *mosquito-on* *at-station* (in-swamp-p *dist*) (not *swatter*))
      (flet ((label () (format nil "E — купить мухобойку за ~d р." *swatter-price*)))
        (list (usable (+ *half-width* .02) 1.55 .75 #'label #'buy-swatter)        ; from the wagon window
              ;; and where the 'FLY SWATTERS' sign is at the gas station: get out, walk up, buy
