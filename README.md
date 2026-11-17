@@ -62,6 +62,7 @@ passes messages between the host and the guests.
 |---|---|
 | `lisp/` | the game: one file per subsystem (the Russian README lists them all) |
 | `lisp/en.lisp` | English text: Russian string from the code → English |
+| `project/mods/` | mods shipped with the game — the town stories live here; see [MODDING.md](MODDING.md) |
 | `project/` | Godot project, menu add-ons |
 | `tools/` | texture, sound and document generators; tests |
 | `relay/` | room server (Cloudflare Worker) |

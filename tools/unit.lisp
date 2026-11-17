@@ -25,6 +25,9 @@
 (dolist (f '("delo" "tverd" "random" "economy" "land" "karta" "razmetka" "goods" "istorii" "places" "prikol" "bumagi"))
   (load (merge-pathnames (concatenate 'string f ".lisp") cl-user::*here*)))
 
+;; the stories live in a mod: the core ships none
+(load (merge-pathnames "../project/mods/stories/mod.lisp" cl-user::*here*))
+
 (defvar *checks* 0) (defvar *fails* '())
 (defmacro check (what test)
   `(progn (incf *checks*) (unless (ignore-errors ,test) (push ,what *fails*) (format t "  ПРОВАЛ ~a~%" ,what))))

@@ -47,7 +47,8 @@ town: ~a · nearest: ~a
 cat: x ~,2f z ~,2f · eye ~,2f · carrying ~a · standing on ~a
 day-t ~,0f (light ~,2f) · ~a · ~a · fuel ~,2f · money ~d
 net: ~a~@[ · room ~a~] · peers ~d
-scenes built ~d of ~d · land chunks ~d · solid cells ~d"
+scenes built ~d of ~d · land chunks ~d · solid cells ~d
+mods: ~:[none~;~:*~{~a~^, ~}~] · stories ~d"
                *dev* (round (object-call (gdext:singleton "Engine") "get_frames_per_second")) *lang* *view*
                (and *play* (getf *play* :kind))
                *dist* (if (ring-d-p *dist*) "ring" "spoke through the Crossroads") *speed* *dir* *lane-now* (cdr *auto*) (length *way*)
@@ -55,7 +56,8 @@ scenes built ~d of ~d · land chunks ~d · solid cells ~d"
                (vector3-x *pos*) (vector3-z *pos*) *eye-now* (or (car *carry*) "—") (or (first place) "—")
                *day-t* (daylight *day-t*) *season* *weather* *fuel* *money*
                (or *net-role* "solo") *net-room* (length *net-peers*)
-               (count-if #'scene-node *scenes*) (length *scenes*) (length *chunks*) (hash-table-count *solid-grid*))))
+               (count-if #'scene-node *scenes*) (length *scenes*) (length *chunks*) (hash-table-count *solid-grid*)
+               (mapcar (lambda (m) (if (eq (third m) :ok) (first m) (cl:format nil "~a FAILED" (first m)))) *mods*) (length *stories*))))
 
 (defun toggle-debug ()
   (setf *debug-on* (not *debug-on*))
@@ -63,7 +65,7 @@ scenes built ~d of ~d · land chunks ~d · solid cells ~d"
     (let ((layer (gdext:make-object "CanvasLayer")) (bg (gdext:make-object "ColorRect")))
       (node-add-child *root* layer) (node-add-child layer bg)
       (godot:object-set layer "layer" 20)
-      (godot:object-set bg "position" (vector2 4 4)) (godot:object-set bg "size" (vector2 400 96))
+      (godot:object-set bg "position" (vector2 4 4)) (godot:object-set bg "size" (vector2 400 106))
       (godot:object-set bg "color" (color 0 0 0 .62))
       (setf *debug-label* (hud-label bg "" 5 3 7 '(.75 1.0 .75)))
       (setf (getf (symbol-plist '*debug-label*) :bg) bg)))

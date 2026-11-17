@@ -45,8 +45,9 @@ def strings(src):
     return out
 have=set(strings(open('lisp/en.lisp',encoding='utf-8').read())) | {s for s in []}
 EN=open('lisp/en.lisp',encoding='utf-8').read()
+EN+=''.join(open(f,encoding='utf-8').read() for f in glob.glob('project/mods/*/mod.lisp'))   # mods carry their own English
 n=0
-for f in sorted(glob.glob('lisp/*.lisp')):
+for f in sorted(glob.glob('lisp/*.lisp'))+sorted(glob.glob('project/mods/*/mod.lisp')):
     if f.endswith(('live.lisp','en.lisp')): continue
     for s in dict.fromkeys(strings(open(f,encoding='utf-8').read())):
         q='"'+s.replace('\\','\\\\').replace('"','\\"')+'"'

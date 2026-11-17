@@ -18,6 +18,12 @@
 Anything missing from the table (and any non-string) is returned as is."
   (if (and (eq *lang* :en) (stringp text)) (or (gethash text *en*) text) text))
 
+(defun translate (&rest pairs)
+  "Add English text: PAIRS alternate a Russian string from the code and its English translation.
+Return the number of pairs. Mods call this for their own strings."
+  (loop for (ru en) on pairs by #'cddr do (setf (gethash ru *en*) en))
+  (floor (length pairs) 2))
+
 (defun tr-arg (arg)
   "Translate the template argument ARG.
 A string is translated; in a list (an enumeration of goods or towns) every element is."
