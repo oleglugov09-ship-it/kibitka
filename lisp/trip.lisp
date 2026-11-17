@@ -195,7 +195,7 @@ That is the body, the truck under it, everything bolted on inside, the things an
     (step-check delta)
     (step-gnomes)
     (unless (net-guest-p) (step-stories))
-    (step-play delta)
+    (step-play delta) (step-act delta)
     (unless (net-guest-p) (step-glut delta))
     (step-stars)
     (step-aurora)

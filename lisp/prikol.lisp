@@ -136,6 +136,30 @@ Return T if a train ride was pending (GO-TO-TOWN then does nothing itself)."
 
 ;;; ------------------------------------------------------------------ booths
 
+(defvar *tir-plates* '()
+  "The plates of the shooting range, as built with its booth: entries of (node x y z swing speed alive).")
+(defvar *pond* nil "The water of the fishing booth: the node of its surface, as built with the booth.")
+
+(defun build-range (g)
+  "Build the shooting alley beside booth group G: a firing counter, a backboard and five plates."
+  (shape g :box '(1.8 1.0 .5) "#8a6440" 7.5 .5 -4.2)
+  (shape g :box '(6.6 3.0 .2) "#4a3a2c" 7.5 1.5 -13.4)
+  (dolist (y '(1.02 1.72)) (shape g :box '(6.6 .05 .12) "#2a2c30" 7.5 y -13.25 :shadow nil))
+  (setf *tir-plates*
+        (loop for i below 5
+              collect (let ((x (+ 5.3 (* 1.1 i))) (y (if (evenp i) 1.35 2.05)))
+                        (list (shape g :cyl '(.3 .3 .05 14) (if (evenp i) "#e8e0d0" "#e0b040") x y -13.2 :rot (list (/ pi 2) 0 0) :shadow nil)
+                              x y -13.2 .45 (+ .9 (* .35 i)) t)))))
+
+(defun build-pond (g)
+  "Build the fishing pond beside booth group G: the water, a short pier and reeds."
+  (setf *pond* (shape g :cyl '(4.0 4.0 .05 24) "#3f7f9a" 9.0 .07 -9.5 :shadow nil :rough .15 :metal .3))
+  (shape g :cyl '(4.3 4.3 .04 24) "#6a6a52" 9.0 .04 -9.5 :shadow nil)
+  (shape g :box '(1.3 .1 2.6) "#8a6440" 9.0 .32 -5.6)
+  (dolist (x '(8.5 9.5)) (shape g :cyl '(.06 .06 .5 6) "#5a4636" x .15 -6.8))
+  (loop for (x z) in '((5.6 -8.2) (5.9 -10.9) (12.2 -8.0) (12.4 -11.2) (9.4 -13.2))
+        do (shape g :cyl '(.02 .03 1.1 5) "#5a7a3a" x .55 z :shadow nil)))
+
 (defun build-gimmick (d index title rgb)
   (let ((g (apply #'group *world* (road-pos d 3.2 -.35))))
     (node-3d-set-rotation g (v3 0 (- (road-frame d)) 0))
@@ -147,8 +171,8 @@ Return T if a train ride was pending (GO-TO-TOWN then does nothing itself)."
     (sign g title 8.78 3.5 0 :h (if (> (length title) 14) .3 .45) :rgb "#f0ece0")
     (flood g 7.5 3.0 0 :range 14.0)
     (case index                                                        ; every booth has its own landmark
-      (0 (beam-between g '(7.0 1.0 -2.6) '(5.0 3.4 -2.6) :thick .04 :rgb "#3a2a1e") (shape g :box '(.5 .5 .5) "#55708a" 7.2 .25 -2.4))
-      (1 (dolist (z '(2.6 3.4 4.2)) (shape g :cyl '(.3 .3 .04 12) "#e8e0d0" 12.8 1.6 z :rot (list 0 0 (/ pi 2))) (shape g :cyl '(.1 .1 .05 8) "#a3262c" 12.76 1.6 z :rot (list 0 0 (/ pi 2)) :shadow nil)))
+      (0 (build-pond g) (beam-between g '(7.0 1.0 -2.6) '(5.0 3.4 -2.6) :thick .04 :rgb "#3a2a1e") (shape g :box '(.5 .5 .5) "#55708a" 7.2 .25 -2.4))
+      (1 (build-range g) (dolist (z '(2.6 3.4 4.2)) (shape g :cyl '(.3 .3 .04 12) "#e8e0d0" 12.8 1.6 z :rot (list 0 0 (/ pi 2))) (shape g :cyl '(.1 .1 .05 8) "#a3262c" 12.76 1.6 z :rot (list 0 0 (/ pi 2)) :shadow nil)))
       (3 (dotimes (i 4) (shape g :box '(.5 .5 .7) (nth i '("#6a3a2e" "#2c4a7a" "#3c5a48" "#c9a13a")) 7.2 (+ .25 (* i .5)) 3.2 :rot (list 0 (* i .2) 0))))
       (4 (let ((s (group g 7.0 0 3.0))) (node-3d-set-scale s (v3 .55 .55 .55)) (mark-cow s 0 0 1.2 "#e8e4d8")) (shape g :box '(.1 .9 3.0) "#6a5038" 5.4 .45 3.0))
       (8 (dolist (z '(-3.4 -4.6)) (shape g :box '(.3 5.0 .3) "#5a4636" 11.0 2.5 z)) (shape g :box '(.4 .4 1.8) "#5a4636" 11.0 5.0 -4.0) (shape g :box '(1.4 1.8 1.0) "#3a3a40" 11.0 .9 -4.0))
@@ -173,6 +197,7 @@ They go in a row, every 22 m, from the start of the first town, past gas station
         do (let* ((tw (nth (or town i) *towns*)) (i i) (title title) (rgb rgb)
                   (d (or (pop slots) (+ (town-start tw) (* f (- (town-end tw) (town-start tw)))))))
              (push (list d i) *gimmicks*)
+             (when (member i '(0 1)) (push (list (- d 11.0) (+ d 17.0)) *bare*))   ; the pond and the shooting alley need open ground
              (push (make-scene :d0 (- d 10) :d1 (+ d 10) :build (lambda () (build-gimmick d i title rgb))) *scenes*))))
 
 (defun prikol-usables ()

@@ -35,7 +35,9 @@ Reading, SETF, INCF and DECF all work on the names. Do not rebind a slot name in
   (if *actor* (peer-send *actor* (list :play kind)) (start-play kind)))
 
 (defun start-play (kind)
-  "Open the screen of game KIND locally."
+  "Open the screen of game KIND locally.
+The shooting range and fishing have no screen: they are played in the world (activities.lisp)."
+  (when (and (member kind '(:tir :fish)) (null *play*) (null *act*)) (return-from start-play (start-act kind)))
   (when (and *play-ui* (member kind '(:tir :fish :mine :goat)) (null *play*))
     (let ((bg (getf *play-ui* :bg)))
       (dolist (c (coerce (object-call bg "get_children") 'list)) (node-queue-free c)))

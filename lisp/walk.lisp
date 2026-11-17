@@ -317,6 +317,7 @@ The meta room and waiting at the bus stop are not remembered."
              (cond ((/= (input-get-mouse-mode) 2) (input-set-mouse-mode 2))
                    ((and *build* (= button 1)) (place-item))    ; build mode: place a thing
                    ((and *build* (= button 2)) (remove-item))   ; build mode: remove a thing
+                   ((and *act* (= button 1)))                    ; a booth activity is on: the click is its own (activities.lisp)
                    ((and *tool-up* (= button 1))                 ; the camera is at the eye — click
                     (when (eq *tool* :camera) (press-camera)))
                    ((= button 1) (hand-thing))))))   ; LMB on the stove, the record player or a crate

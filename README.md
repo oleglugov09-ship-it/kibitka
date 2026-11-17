@@ -29,6 +29,21 @@ The game speaks English and Russian (switch in the lobby, `F2`, or in the pause 
 - **Step outside.** Markets, a shooting range, fishing, a mine, an observatory in the mountains —
   and a gnome hidden in every special place.
 
+## Activities
+
+Things to do at the booths happen in the world itself, with your own paws — no pop-up screens.
+
+| Shooting range: take the rifle, hit the plates | Fishing: swing, cast, wait for the bite, reel in |
+|---|---|
+| ![Shooting the plates at the range](site/media/activities/shooting-range.gif) | ![Casting the float into the pond](site/media/activities/fishing.gif) |
+
+| | | |
+|---|---|---|
+| ![Buying a cooktop](site/media/activities/stove-shop.gif) | ![Books for waste paper at the library](site/media/activities/library.gif) | ![The view from the lighthouse](site/media/activities/lighthouse.gif) |
+| ![A stamp that doubles parcel pay](site/media/activities/stamps.gif) | ![Mineral water](site/media/activities/mineral-water.gif) | ![Loading the wagon onto a flatcar](site/media/activities/flatcar.gif) |
+
+The mine and the goat are still played on a flat screen and are next in line to move into the world.
+
 ## References
 
 Games this one looks up to (no affiliation with any of them):
