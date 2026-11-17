@@ -101,7 +101,7 @@ Return the node."
       ((:fish :bread :coal :tools :books :cans :water :honey :berry :fried :jam :toast :stew
         :mushroom :toadstool :apple :herb :shroomfry :creamfry :charlotte :dried
         :nut :sandwich :berrypie :soup :bakedapple :brittle)
-       (if (and (eql spin 2) (cuttable-p kind)) (build-cut g kind) (build-good g kind)))    ; cut on the board: slices   ; the towns' goods - goods.lisp
+       (if (and (eql spin 2) (cut-look kind)) (build-cut g kind) (build-good g kind)))    ; cut on the board: slices   ; the towns' goods - goods.lisp
       (:blin
        (shape g :cyl '(.1 .1 .012 12) "#e4e0d4" 0 .006 0)
        (dotimes (i 5) (shape g :cyl (list (- .08 (* i .003)) .08 .014 10) (if (evenp i) "#d8a040" "#c88a30") (* .004 (- i 2)) (+ .02 (* i .014)) 0 :shadow nil))

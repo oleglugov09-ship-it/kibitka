@@ -358,7 +358,9 @@ What stands on the hot stove turns into dishes (STOVE-JOBS); each job has its ow
             (let ((left (remove-if (lambda (spec) (member spec others :test #'equal)) (mapcar #'car *items*))))
               (set-items (if (eq dish :ruined)
                              (remove first-raw left :test #'equal)
-                             (substitute (list dish (second first-raw) (third first-raw) (fourth first-raw) 0) first-raw left :test #'equal))))
+                             ;; a dish from a cut good stays cut: it is put down turned half round, like the good was
+                             (substitute (list dish (second first-raw) (third first-raw) (fourth first-raw) (if (eql (fifth first-raw) 2) 2 0))
+                                         first-raw left :test #'equal))))
             (setf *cook* (remove c *cook*))
             (save-interior)
             (log-event :cooked :dish dish :dist (round *dist*))

@@ -102,13 +102,21 @@ That is the good sought or a dish made from it (blini will do for milk)."
 (defparameter *cut-rgb* '((:fish "#d89a8a") (:bread "#e8c080") (:mushroom "#d8c8a8") (:toadstool "#d8c8a8") (:apple "#f0e8c0") (:cans "#9a5a34"))
   "What can be cut on the board, and the colour of its slices: entries of (good colour).")
 
+(defparameter *cut-dish-rgb* '((:fried "#b8782c"))
+  "The dishes that keep the look of slices when cooked from a cut good, and the colour of the slices: (dish colour).")
+
 (defun cuttable-p (kind) (and (assoc kind *cut-rgb*) t))
 
+(defun cut-look (kind)
+  "Return the colour of the slices if a thing of KIND, put down as cut, is shown as slices; else NIL."
+  (second (or (assoc kind *cut-rgb*) (assoc kind *cut-dish-rgb*))))
+
 (defun build-cut (g kind)
-  "Build the good KIND cut up: a row of slices on a small board."
-  (let ((rgb (second (assoc kind *cut-rgb*))))
-    (shape g :box '(.2 .012 .14) "#c8a060" 0 .006 0)
-    (dotimes (i 6) (shape g :box '(.018 .07 .1) rgb (- (* i .03) .075) .05 0 :rot (list 0 0 -.35) :shadow nil))))
+  "Build the good KIND cut up: a row of slices, raw ones on a small board, cooked ones on a plate."
+  (if (assoc kind *cut-dish-rgb*)
+      (shape g :cyl '(.11 .11 .012 12) "#e4e0d4" 0 .006 0)
+      (shape g :box '(.2 .012 .14) "#c8a060" 0 .006 0))
+  (dotimes (i 6) (shape g :box '(.018 .07 .1) (cut-look kind) (- (* i .03) .075) .05 0 :rot (list 0 0 -.35) :shadow nil)))
 
 (defun build-good (g kind)
   "Build the good KIND as a thing in G: it stands on a shelf, is carried in paws, goes on the windowsill."
