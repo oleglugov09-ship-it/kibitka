@@ -57,15 +57,16 @@ They hold things whether the door is open or shut; putting things in asks for an
       (and (< (abs (- x fx)) half) (< (abs (- z fz)) half)
            (find-if (lambda (level) (< (abs (- level top)) .04)) *fridge-shelves*)))))
 
-(defun fridge-slot (x z level)
-  "Return the free place on the fridge shelf LEVEL nearest to (X Z), as (X Z), or NIL if the shelf is full.
-A shelf has four places, two by two, like a section of the rack in small."
+(defun fridge-slot (x z level kind)
+  "Return the free place on the fridge shelf LEVEL nearest to (X Z) for a thing of KIND, as (X Z), or NIL if the shelf is full.
+A shelf has four places, two by two, like a section of the rack in small; things that stack go on their own kind."
   (destructuring-bind (fx fz) *fridge-at*
     (flet ((taken-p (place)
-             (some (lambda (it) (destructuring-bind (kind ix iy iz &rest more) (car it)
-                                  (declare (ignore kind more))
-                                  (and (< (abs (- iy level)) .1) (< (abs (- ix (first place))) .16) (< (abs (- iz (second place))) .16))))
-                   *items*)))
+             (and (not (stack-room-p kind (first place) (second place) level))
+                  (some (lambda (it) (destructuring-bind (ikind ix iy iz &rest more) (car it)
+                                       (declare (ignore ikind more))
+                                       (and (< -.05 (- iy level) .45) (< (abs (- ix (first place))) .16) (< (abs (- iz (second place))) .16))))
+                        *items*))))
       (first (sort (remove-if #'taken-p (loop for dx in '(-.11 .11) append (loop for dz in '(-.11 .11) collect (list (+ fx dx) (+ fz dz)))))
                    #'< :key (lambda (place) (+ (expt (- (first place) x) 2) (expt (- (second place) z) 2))))))))
 

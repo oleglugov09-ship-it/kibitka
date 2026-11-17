@@ -50,6 +50,8 @@ A dish is wanted wherever its raw good is wanted, but at twice the price. Withou
 bakes only blini: nothing else fits on its round lid.")
 (defparameter *lid-price* 25 "The price of the cast-iron lid for the frying pan, sold at the hardware shop in Krasny Kut.")
 (defparameter *perishable* '(:milk :fish :mushroom) "The goods that go bad overnight unless they are in the fridge (fridge.lisp).")
+(defparameter *stackable* '((:cans 3) (:books 4) (:bread 3))
+  "The goods with flat tops that stand on one another in one place of a shelf: entries of (good how-many-high).")
 (defparameter *cut-factor* .5 "The share of the cooking time left when everything in the dish was cut on the board first.")
 (defparameter *quest-money* '((:honor . 15) (:feast . 60)) "The rubles that come with a town council paper, by the paper.")
 (defvar *brews* '()
