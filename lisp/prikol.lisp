@@ -232,13 +232,16 @@ They go in a row from the start of the first town, past gas stations and the mar
 These are the things the booth is about: the pier, the firing counter, the goat, the lighthouse, the pit head.")
 
 (defun prikol-usables ()
-  "Return the things to press at the booth we are standing by: its window and its landmark."
-  (let ((place (walk-place)))
-    (when (and place (eq (first place) :gimmick))
-      (let* ((i (third place)) (d (second place)) (spot (assoc i *gimmick-spots*)))
-        (flet ((press (x at up) (road-usable x at up (lambda () (gimmick-label i)) (lambda () (gimmick-use i)) 4.5 1.2)))
-          (cons (press 11.9 d 1.3)
-                (when spot (list (press (second spot) (+ d (third spot)) (fourth spot))))))))))
+  "Return the things to press at every booth within walking distance of the wagon: its window and its landmark.
+Each booth answers for itself, whichever of them the wagon stopped closest to: on foot one walks from
+booth to booth, and a gas station next door does not switch them off."
+  (when (< *speed* .4)
+    (loop for (d i) in *gimmicks*
+          when (< (abs (- d *dist*)) 80.0)
+            append (let ((i i) (d d) (spot (assoc i *gimmick-spots*)))
+                     (flet ((press (x at up) (road-usable x at up (lambda () (gimmick-label i)) (lambda () (gimmick-use i)) 4.5 1.2)))
+                       (cons (press 11.9 d 1.3)
+                             (when spot (list (press (second spot) (+ d (third spot)) (fourth spot))))))))))
 
 (defun step-prikol ()
   (when (and *wait* (> *time* (job-until *wait*)))                    ; the wait is over: fish, coal
