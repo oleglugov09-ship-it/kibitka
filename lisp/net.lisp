@@ -701,17 +701,19 @@ it but walks there smoothly, hopping as it goes."
                  (far (> (+ (* dx dx) (* dz dz)) 4.0))                       ; sat or jumped: no dragging across the wagon
                  (nx (if far x (+ (getf st :x) (* k dx)))) (nz (if far z (+ (getf st :z) (* k dz))))
                  (moving (> (sqrt (+ (* dx dx) (* dz dz))) .06))
-                 (y (max -.6 (min 0.0 (- eye *eye*))))                       ; sat down: lower by the eye height difference
+                 (lying (or (< eye .8) (> eye (+ *eye* .25))))               ; on a bunk: the eyes are just above a mattress
+                 (y (if lying (- eye .12) (max -.6 (min 0.0 (- eye *eye*)))))  ; sat down: lower by the eye height difference
                  (hop (+ (getf st :hop) (* k (- (if moving 1.0 0.0) (getf st :hop))))))
             (setf (getf (rest a) :x) nx (getf (rest a) :z) nz (getf (rest a) :hop) hop
-                  (getf (rest a) :yaw) (turn-toward (getf st :yaw) yaw k)
+                  (getf (rest a) :yaw) (turn-toward (getf st :yaw) (if lying pi yaw) k)
                   (getf (rest a) :y) (+ (getf st :y) (* k (- y (getf st :y)))))
             ;; got out at a gas station: the cat stands on the ground, not at floor height
             (node-3d-set-position (getf st :group) (v3 nx (+ (if (outdoors-p nx nz) (ground-rise nx nz) *floor*) (getf (rest a) :y)) nz))
             (node-3d-set-rotation (getf st :group) (v3 0 (+ (getf (rest a) :yaw) pi) 0))
             ;; walking is a hop with a slight forward lean
-            (node-3d-set-position (getf st :cat) (v3 0 (* hop .09 (abs (sin (* *time* 11.0)))) 0))
-            (node-3d-set-rotation (getf st :cat) (v3 (* hop .08) 0 0))
+            ;; lying: the cat is on its back along the bunk, its head where the player's eyes are
+            (node-3d-set-position (getf st :cat) (if lying (v3 0 .2 *eye*) (v3 0 (* hop .09 (abs (sin (* *time* 11.0)))) 0)))
+            (node-3d-set-rotation (getf st :cat) (if lying (v3 (- (/ pi 2)) 0 0) (v3 (* hop .08) 0 0)))
             ;; the head is separate from the body: it floats and sways, and lags behind the hop when walking
             (node-3d-set-position (getf st :head)
                                   (v3 0 (+ *cat-head-y* (* .012 (sin (* *time* 2.3))) (* hop .04 (abs (sin (- (* *time* 11.0) .9))))) 0))

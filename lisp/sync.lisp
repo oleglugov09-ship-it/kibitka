@@ -81,7 +81,7 @@
 (defun all-abed-p ()
   "Return true when everyone in the wagon is lying or sitting.
 The driver is on the bunk, the guests are on any seat (their eyes are lower than when standing)."
-  (every (lambda (p) (or (getf p :wait) (not (getf p :placed)) (< (or (getf p :eye) 9.0) (- *eye* .1)))) *net-peers*))
+  (every (lambda (p) (or (getf p :wait) (not (getf p :placed)) (let ((eye (or (getf p :eye) *eye*))) (or (< eye (- *eye* .1)) (> eye (+ *eye* .25)))))) *net-peers*))
 
 ;;; ------------------------------------------------------------------ words
 

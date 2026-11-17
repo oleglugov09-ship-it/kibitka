@@ -61,13 +61,31 @@ Each entry is (x z width depth height)."
 (defvar *fold-k* 0.0 "The fold position: 0 is stowed against the wall, 1 is folded down.")
 (defvar *fold-nodes* '() "The hinges of the fold-down shelf: entries (node stowed-angle).")
 
+(defparameter *bunk-z* -1.25 "The z of the middle of the two bunks: they are by the rug wall, next to the rack.")
+(defparameter *top-bunk* 1.4 "The height of the upper bunk above the floor.")
+
+(defun make-top-bunk (c)
+  "Build the upper bunk under C: a fixed shelf above the fold-down one, with a short ladder at its foot."
+  (let* ((f *floor*) (g (group c (- .48 *half-width*) (+ f *top-bunk*) *bunk-z*)))
+    (shape g :box '(.72 .06 1.9) "#5a3e26" 0 0 0)
+    (shape g :box '(.68 .1 1.84) "#3f5f73" 0 .08 0 :shadow nil)                  ; mattress
+    (shape g :box '(.5 .09 .34) "#e8e0d0" 0 .17 -.72 :shadow nil)                ; pillow
+    (shape g :box '(.66 .03 1.0) "#a8843c" 0 .145 .38 :shadow nil)               ; blanket
+    (shape g :box '(.03 .12 1.9) "#3a2a1a" .36 .09 0)                            ; a rail so nobody rolls off
+    (dolist (sz '(-.9 .9))                                                       ; brackets to the wall
+      (shape g :box '(.6 .04 .04) "#34363a" -.04 -.2 sz :rot (list 0 0 .5) :metal .5 :rough .5))
+    (dolist (sx '(.12 .34))                                                      ; the ladder at the foot
+      (shape g :box '(.035 1.4 .035) "#5a3e26" sx -.7 .98))
+    (dolist (y '(-1.1 -.75 -.4 -.05)) (shape g :box '(.26 .03 .035) "#8a6440" .23 y .98))))
+
 (defun make-fold (c)
   "Build the fold-down bunk shelf under C on the wall with the rug, as on a train.
-Raised, it is pressed to the wall; folded down, it is a bed."
+Raised, it is pressed to the wall; folded down, it is a bed. Above it is the fixed upper bunk."
   (setf *fold-nodes* '())
+  (make-top-bunk c)
   ;; the hinge is 30 cm from the wall: the raised shelf stands on edge in front of the rug, mattress to the wall
   ;; (otherwise it would sink into the wall itself), underside to the room; folded down, it reaches the wall
-  (let* ((x (- .3 *half-width*)) (f *floor*) (h (group c x (+ f .5) 0)))
+  (let* ((x (- .3 *half-width*)) (f *floor*) (h (group c x (+ f .5) *bunk-z*)))
     (shape h :box '(.72 .06 1.9) "#5a3e26" .18 0 0)
     (shape h :box '(.68 .1 1.84) "#7a3a34" .18 .08 0 :shadow nil)                ; mattress
     (shape h :box '(.5 .09 .34) "#e8e0d0" .18 .17 -.72 :shadow nil)              ; pillow
@@ -90,12 +108,12 @@ Raised, it is pressed to the wall; folded down, it is a bed."
 ;;; The tea table: it stands in the shelf's place while the shelf is raised. One stool per player in the wagon.
 ;;; On the table are a samovar (E pours a cup of tea), cups (E drinks, you get warmer) and bagels (E eats one).
 
-(defparameter *table-at* '(-.82 0.0) "The x and z of the middle of the table.")
+(defparameter *table-at* '(-.82 -1.25) "The x and z of the middle of the table: where the lower bunk is.")
 (defparameter *table-top* .5 "The height of the tabletop above the floor.")
-(defparameter *stools* '((-.82 -.82 3.1416) (-.82 .82 0.0) (-.18 -.3 1.5708) (-.18 .3 1.5708))
+(defparameter *stools* '((-.82 -2.07 3.1416) (-.82 -.43 0.0) (-.18 -1.55 1.5708) (-.18 -.95 1.5708))
   "The stools: entries (x z facing-of-the-sitter).
 As many are placed as there are players.")
-(defparameter *cup-spots* '((-.82 -.36) (-.82 .36) (-.56 -.3) (-.56 .3)) "The spots on the table where a cup goes, one by each stool.")
+(defparameter *cup-spots* '((-.82 -1.61) (-.82 -.89) (-.56 -1.55) (-.56 -.95)) "The spots on the table where a cup goes, one by each stool.")
 (defvar *table* nil "The table node with everything on it.")
 (defvar *stool-nodes* '())
 (defvar *cup-nodes* '())
@@ -190,7 +208,7 @@ As many are placed as there are players.")
 The bunk shelf is handled separately (FIXTURE-USABLES)."
   (unless *seat*
     (loop for seat in (seats-here)
-          unless (eq (first seat) :fold)
+          unless (member (first seat) '(:fold :top))
             collect (let ((seat seat))
                       (destructuring-bind (what x z yaw eye) seat
                         (declare (ignore what))
@@ -199,23 +217,28 @@ The bunk shelf is handled separately (FIXTURE-USABLES)."
                                 nil 2.6 .3))))))
 
 (defun fold-seats ()
-  "Return the seats given by the fold-down shelf and the table.
-With the shelf folded down it is one seat on the shelf; otherwise the stools at the table."
-  (cond (*fold-down* (list (list :fold (- .45 *half-width*) 0.0 -1.57 .98)))   ; on the folded-down shelf you sit facing the window
-        (t (loop for (x z yaw) in *stools* for i below *stools-shown*          ; the shelf is raised: stools at the table
-                 collect (list :stool x z yaw .86)))))
+  "Return the places given by the bunks and the table.
+On a bunk one lies, head on the pillow, looking up: the eyes are just above the mattress. The upper bunk
+is always there; the lower one when it is folded down, otherwise there are the stools at the table."
+  (cons (list :top (- .48 *half-width*) (- *bunk-z* .45) 3.1416 (+ *top-bunk* .25))
+        (cond (*fold-down* (list (list :fold (- .48 *half-width*) (- *bunk-z* .45) 3.1416 .75)))
+              (t (loop for (x z yaw) in *stools* for i below *stools-shown*    ; the shelf is raised: stools at the table
+                       collect (list :stool x z yaw .86))))))
 
 (defun toggle-fold ()
   (setf *fold-down* (not *fold-down*))
   (when (and (not *fold-down*) *seat* (eq (first *seat*) :fold)) (setf *seat* nil))
   (refresh-seats)
-  (say (if *fold-down* "Полка откинута · E по ней — сесть" "Полка поднята")))
+  (say (if *fold-down* "Полка откинута · E по ней — лечь" "Полка поднята")))
 
-(defun sit-on-bunk ()
-  (if (and *seat* (eq (first *seat*) :fold))
+(defun lie-on-bunk (kind)
+  "Lie down on the bunk KIND (:FOLD is the lower one, :TOP the upper), or get up if we lie there."
+  (if (and *seat* (eq (first *seat*) kind))
       (setf *seat* nil)
-      (let ((seat (first (fold-seats))))
-        (when seat (setf *seat* seat *pos* (v3 (second seat) 0 (third seat)) *yaw* (fourth seat) *pitch* -.05)))))
+      (let ((seat (assoc kind (fold-seats))))
+        (when seat (setf *seat* seat *pos* (v3 (second seat) 0 (third seat)) *yaw* (fourth seat) *pitch* .55)))))
+
+(defun sit-on-bunk () (lie-on-bunk :fold))
 
 ;;; The window: two sliding panes. Slide them apart and windowsills rise on both sides: the inner one
 ;;; (we put things on it) and the outer one (whoever came to the window puts things on it).
@@ -288,7 +311,7 @@ With the shelf folded down it is one seat on the shelf; otherwise the stools at 
 
 ;;; The stove, planks, warmth
 
-(defparameter *stove-at* '(-1.08 -1.5) "The x and z of the stove.")
+(defparameter *stove-at* '(-1.18 2.35) "The x and z of the stove: in the corner to the right of the door.")
 (defvar *planks* 6 "The number of planks in stock.")
 (defvar *fire* 0.0 "The number of seconds the fire will still burn.")
 (defvar *warm* .7 "The warmth in the wagon, 0..1.")
@@ -299,16 +322,19 @@ With the shelf folded down it is one seat on the shelf; otherwise the stools at 
 (defun make-stove (c)
   (destructuring-bind (x z) *stove-at*
     (let ((g (group c x *floor* z)) (iron "#1e1e22"))
-      (dolist (a '(0.0 2.1 4.2)) (shape g :box '(.05 .26 .05) iron (* .2 (cos a)) .13 (* .2 (sin a))))
-      (shape g :cyl '(.26 .26 .62 12) iron 0 .57 0 :metal .4 :rough .7)
-      (shape g :cyl '(.28 .28 .04 12) "#2a2a30" 0 .9 0 :metal .4 :rough .6)
-      (shape g :box '(.04 .22 .2) "#2a2a30" .27 .5 0)
-      (setf *stove-glow* (shape g :box '(.045 .1 .14) "#ff8030" .275 .5 0 :emit "#ff6010" :energy 3.0 :shadow nil))
-      (shape g :cyl '(.07 .07 3.3 8) iron 0 2.55 0 :metal .4 :rough .7)           ; the pipe through the roof to the outside
-      (shape g :box '(.36 .04 .36) "#3a3a40" 0 2.72 0 :metal .5 :rough .6)        ; the flashing on the roof
-      (shape g :cyl '(.2 .02 .14 8) iron 0 4.3 0 :metal .4 :rough .7)             ; the rain cap
-      (shape g :cyl '(.02 .02 .12 4) iron .06 4.2 0) (shape g :cyl '(.02 .02 .12 4) iron -.06 4.2 0)
-      (loop for i below 3 do (shape g :box '(.9 .04 .14) "#8a6440" .75 (+ .03 (* i .045)) (- (* i .05) .05) :rot (list 0 (* i .12) 0)))   ; the woodpile
+      ;; a box stove with a wide flat top, so a frying pan fits; the pipe leaves from the back corner
+      (dolist (sx '(-.24 .24)) (dolist (sz '(-.2 .2)) (shape g :box '(.05 .26 .05) iron sx .13 sz)))
+      (shape g :box '(.56 .62 .48) iron 0 .57 0 :metal .4 :rough .7)
+      (shape g :box '(.64 .04 .54) "#2a2a30" 0 .9 0 :metal .4 :rough .6)
+      (shape g :box '(.04 .22 .2) "#2a2a30" .29 .5 0)
+      (setf *stove-glow* (shape g :box '(.045 .1 .14) "#ff8030" .295 .5 0 :emit "#ff6010" :energy 3.0 :shadow nil))
+      (shape g :cyl '(.07 .07 3.3 8) iron -.2 2.55 .17 :metal .4 :rough .7)       ; the pipe through the roof to the outside
+      (shape g :box '(.36 .04 .36) "#3a3a40" -.2 2.72 .17 :metal .5 :rough .6)    ; the flashing on the roof
+      (shape g :cyl '(.2 .02 .14 8) iron -.2 4.3 .17 :metal .4 :rough .7)         ; the rain cap
+      (shape g :cyl '(.02 .02 .12 4) iron -.14 4.2 .17) (shape g :cyl '(.02 .02 .12 4) iron -.26 4.2 .17)
+      ;; a cast-iron frying pan on a nail on the back wall, to the right of the stove
+      (shape g :cyl '(.14 .14 .03 14) iron .28 1.5 .385 :rot (list (/ pi 2) 0 0) :metal .4 :rough .7)
+      (shape g :box '(.035 .2 .02) iron .28 1.26 .385 :metal .4 :rough .7)
       (setf *stove-light* (light g "#ff7030" 0.0 4.5 .4 .6 0)))))
 
 (defun looking-at (x y z &optional (reach 2.6) (cone .33))
@@ -339,7 +365,7 @@ The stove is shared."
 ;;; lever, the curtain cord, the ladder. Everything that used to hang on separate keys.
 
 (defparameter *switch-at* '(.9 1.35 2.78) "The light switch by the door: x, height above the floor, z.")
-(defparameter *map-at* '(-.98 1.3 2.76) "The position of the map on the back wall: x, height above the floor, z.")
+(defparameter *map-at* '(1.45 1.3 -1.77) "The position of the map on the window wall, to the left of the window: x, height above the floor, z.")
 
 (defun make-controls (c)
   (let ((f *floor*))
@@ -352,12 +378,30 @@ The stove is shared."
       (dotimes (i 6) (shape g :box '(.032 .006 .04) "#34363a" -.002 (+ .06 (* i .08)) .03 :shadow nil))
       (shape g :ball '(.03 8 5) "#c02a22" -.02 .03 -.02 :shadow nil)
       (setf *thermo* (shape g :box '(.034 1.0 .022) "#c02a22" -.02 .05 -.02 :shadow nil)))
-    ;; the map on the wall to the left of the door
+    ;; the map on the window wall, between the rack and the window
     (destructuring-bind (x y z) *map-at*
-      (shape c :box '(.9 .62 .03) "#5a3e26" x (+ f y) z)
-      (shape c :box '(.84 .56 .03) "#d8d0b8" x (+ f y) (- z .012) :shadow nil)
-      (loop for i below 6 do (shape c :ball '(.022 6 4) "#a3262c" (+ x -.32 (* i .128)) (+ f y (* .12 (sin (* i 1.9)))) (- z .03) :shadow nil))
-      (shape c :box '(.7 .012 .01) "#6a5640" x (+ f y) (- z .03) :rot '(0 0 .12) :shadow nil))))
+      (shape c :box '(.03 .62 .8) "#5a3e26" x (+ f y) z)
+      (shape c :box '(.03 .56 .74) "#d8d0b8" (- x .012) (+ f y) z :shadow nil)
+      (loop for i below 6 do (shape c :ball '(.022 6 4) "#a3262c" (- x .03) (+ f y (* .12 (sin (* i 1.9)))) (+ z -.28 (* i .112)) :shadow nil))
+      (shape c :box '(.01 .012 .62) "#6a5640" (- x .03) (+ f y) z :rot '(.12 0 0) :shadow nil))))
+
+(defun make-washstand (c)
+  "Build the washstand under C in the corner between the window and the door: a worktop with an enamel
+basin and a water tank on the wall, and a cutting board with a knife on its left half."
+  (let* ((f *floor*) (g (group c (- *half-width* .31) f 2.02)))
+    (shape g :box '(.46 .04 1.16) "#8a6440" 0 .62 0)                                       ; the worktop
+    (shape g :box '(.42 .6 .56) "#5f7f7a" 0 .3 .28)                                        ; the cupboard under the basin
+    (shape g :box '(.02 .5 .5) "#4f6f6a" -.215 .3 .28 :shadow nil)
+    (shape g :ball '(.02 6 4) "#d8a840" -.235 .36 .1 :metal .6 :rough .4 :shadow nil)
+    (dolist (sx '(-.19 .19)) (shape g :box '(.04 .6 .04) "#5a3e26" sx .3 -.54))                ; legs under the board half
+    (shape g :cyl '(.19 .15 .09 14) "#e8e4d8" 0 .685 .28 :rough .3)                         ; the basin
+    (shape g :cyl '(.165 .165 .01 14) "#8ab0c4" 0 .728 .28 :rough .1 :shadow nil)           ; water in it
+    (shape g :cyl '(.09 .08 .2 12) "#d8d2c0" .14 .87 .28 :rough .4)                         ; the tank on the wall
+    (shape g :cyl '(.095 .095 .02 12) "#b8b2a0" .14 .98 .28 :shadow nil)
+    (shape g :cyl '(.012 .012 .07 6) "#8a8e92" .14 .745 .28 :metal .6 :rough .4 :shadow nil) ; the push rod: lift it and water runs
+    (shape g :box '(.28 .025 .4) "#d8b880" -.02 .652 -.3 :shadow nil)                       ; the cutting board
+    (shape g :box '(.03 .004 .16) "#b8bcc0" -.02 .668 -.36 :metal .7 :rough .3 :shadow nil)  ; the knife
+    (shape g :box '(.03 .015 .09) "#3a2a1e" -.02 .672 -.235 :shadow nil)))
 
 ;;; Interaction points. Everything that can be pressed has a position and a size (RADIUS); what fires is what the
 ;;; gaze rests on: we compute how far the gaze ray missed the middle of the thing in fractions of its size, and
@@ -393,17 +437,21 @@ These are the map, the stove, the light switch, the ladder, the window and the b
            (usable 1.5 1.5 .9 #'window-label #'toggle-window nil 2.6 .5)
            ;; the bunk shelf: raised, E on it folds it down; folded down, E on it seats you,
            ;; E on the yellow handles on the edge or on the wall above it raises it
-           (when *fold-down* (usable (- .85 *half-width*) .5 -.7 (lambda () "E — поднять полку") #'toggle-fold))
-           (when *fold-down* (usable (- .85 *half-width*) .5 .7 (lambda () "E — поднять полку") #'toggle-fold))
+           (when *fold-down* (usable (- .85 *half-width*) .5 (- *bunk-z* .7) (lambda () "E — поднять полку") #'toggle-fold))
+           (when *fold-down* (usable (- .85 *half-width*) .5 (+ *bunk-z* .7) (lambda () "E — поднять полку") #'toggle-fold))
            (if *fold-down*
-               (usable (- .5 *half-width*) .62 0.0
-                       (lambda () (if (and *seat* (eq (first *seat*) :fold)) "E — встать" "E — сесть на полку")) #'sit-on-bunk)
-               (usable (- .32 *half-width*) .8 0.0 (lambda () "E — откинуть полку") #'toggle-fold))
+               (usable (- .5 *half-width*) .62 *bunk-z*
+                       (lambda () (if (and *seat* (eq (first *seat*) :fold)) "E — встать" "E — лечь на полку")) #'sit-on-bunk)
+               (usable (- .32 *half-width*) .8 *bunk-z* (lambda () "E — откинуть полку") #'toggle-fold))
            ;; raised, the shelf stands on edge and its golden handles are up at chest height: E on either folds it down
-           (unless *fold-down* (usable (- .31 *half-width*) 1.05 -.7 (lambda () "E — откинуть полку") #'toggle-fold nil 2.6 .16))
-           (unless *fold-down* (usable (- .31 *half-width*) 1.05 .7 (lambda () "E — откинуть полку") #'toggle-fold nil 2.6 .16))
-           (usable (- .1 *half-width*) 1.6 0.0
-                   (lambda () (if *fold-down* "E — поднять полку" "E — откинуть полку")) #'toggle-fold))))
+           (unless *fold-down* (usable (- .31 *half-width*) 1.05 (- *bunk-z* .7) (lambda () "E — откинуть полку") #'toggle-fold nil 2.6 .16))
+           (unless *fold-down* (usable (- .31 *half-width*) 1.05 (+ *bunk-z* .7) (lambda () "E — откинуть полку") #'toggle-fold nil 2.6 .16))
+           (usable (- .1 *half-width*) 1.05 *bunk-z*
+                   (lambda () (if *fold-down* "E — поднять полку" "E — откинуть полку")) #'toggle-fold)
+           ;; the upper bunk: E on its mattress
+           (usable (- .5 *half-width*) (+ *top-bunk* .15) *bunk-z*
+                   (lambda () (if (and *seat* (eq (first *seat*) :top)) "E — слезть" "E — лечь на верхнюю полку"))
+                   (lambda () (lie-on-bunk :top)) nil 2.6 .3))))
 
 (defun usables ()
   "Return everything that can be pressed right now.
@@ -683,4 +731,4 @@ the map."
 
 (defun make-byt (cart)
   "Build everything bolted down into the freshly assembled wagon CART."
-  (make-shelf cart) (make-racks cart) (make-fold cart) (make-table cart) (make-stove cart) (make-frost cart) (make-controls cart) (make-window cart))
+  (make-shelf cart) (make-racks cart) (make-fold cart) (make-table cart) (make-stove cart) (make-frost cart) (make-controls cart) (make-washstand cart) (make-window cart))

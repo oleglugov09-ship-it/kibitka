@@ -21,7 +21,7 @@
 (defvar *docs-open* nil)
 (defvar *docs-panel* nil)
 (defvar *officer* nil "The police officer at the window.")
-(defparameter *folder-at* '(-.98 .88 2.76) "The position of the folder, which hangs on the back wall under the map.")
+(defparameter *folder-at* '(1.45 .78 -1.77) "The position of the folder, which hangs under the map to the left of the window.")
 
 (defun save-papers () (unless (net-guest-p) (put-save :papers (list *licenses* *fines* *quest*))))
 (defun load-papers ()
@@ -115,9 +115,9 @@ Each paper is its own card; a missing one is an empty slot with a dotted outline
 (defun make-folder (c)
   (destructuring-bind (x y z) *folder-at*
     (let ((g (group c x (+ *floor* y) z)))
-      (shape g :box '(.26 .34 .03) "#6a3a2e" 0 0 0)
-      (shape g :box '(.2 .05 .034) "#e8e0d0" 0 .08 0 :shadow nil)
-      (shape g :box '(.02 .36 .036) "#3a2a1e" -.12 0 0 :shadow nil))))
+      (shape g :box '(.03 .34 .26) "#6a3a2e" 0 0 0)
+      (shape g :box '(.034 .05 .2) "#e8e0d0" 0 .08 0 :shadow nil)
+      (shape g :box '(.036 .36 .02) "#3a2a1e" 0 0 -.12 :shadow nil))))
 
 ;;; ------------------------------------------------------------------ the police
 

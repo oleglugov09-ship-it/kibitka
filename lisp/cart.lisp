@@ -121,12 +121,16 @@ Its width follows the picture. Return the mesh instance, or NIL when the picture
     (let ((w0 (+ (- x) .08)))
       (flet ((layer (n) (+ w0 (* n .012))))
         (shape c :box (list .01 (- wh .1) (- (* 2 z) .2)) (kc :inside) (layer .5) (+ f (/ wh 2)) 0 :shadow nil)
-        (unless (wall-carpet c (layer 2.5) (+ f 1.25) 0 1.54)        ; no picture: the plain carpet, as before
+        ;; hung low, so the photo cards above it stay in sight; without the picture, the plain carpet as before
+        (unless (wall-carpet c (layer 2.5) (+ f 1.02) 0 1.54)
           (shape c :box '(.01 1.7 2.6) (kc :carpet) (layer 1.5) (+ f 1.25) 0)
           (shape c :box '(.01 1.5 2.4) (kc :carpet2) (layer 2.5) (+ f 1.25) 0)
           (shape c :box '(.01 1.36 2.26) (kc :carpet) (layer 3.5) (+ f 1.25) 0))))
     ;; the lamp, the light, the fairy lights
-    (push (shape c :ball '(.16 12 8) "#ffe8b0" 0 (+ f wh .25) 0 :emit "#ffc070" :energy 3 :shadow nil) *glow*)
+    (shape c :cyl '(.008 .008 .7 4) "#2a2a2e" 0 (+ f wh .7) 0 :shadow nil)                        ; the cord from the roof
+    (shape c :cyl '(.07 .27 .2 14) "#c8643a" 0 (+ f wh .26) 0 :shadow nil)                        ; a cloth shade
+    (shape c :cyl '(.28 .28 .03 14) "#e0b050" 0 (+ f wh .165) 0 :shadow nil)                      ; its trim
+    (push (shape c :ball '(.09 10 6) "#ffe8b0" 0 (+ f wh .11) 0 :emit "#ffc070" :energy 3 :shadow nil) *glow*)
     (push (light c "#ffb070" 3.5 8 0 (+ f wh .1) 0) *glow*)
     (push (light c "#ff8060" 1.2 4 -.6 (+ f 1.4) -.2) *glow*)
     (dolist (sx '(-1 1))

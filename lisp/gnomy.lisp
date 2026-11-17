@@ -74,10 +74,8 @@ Return the group node."
 
 (defun trophy-spot (i)
   "Return the spot of gnome I on the shelf as (x height-above-floor z rotation).
-Towns take the three shelves to the left of the entrance, special places the shelf on the right."
-  (if (< i 12)
-      (list (- .15 *half-width*) (nth (floor i 4) '(.75 1.2 1.65)) (+ 1.6 (* .3 (mod i 4))) (- (/ pi 2)))
-      (list (- *half-width* .15) 1.85 (+ 1.55 (* .2 (- i 12))) (/ pi 2))))
+The gnomes stand on two shelves above the door, nine to a shelf, facing the room."
+  (list (+ -1.0 (* .25 (mod i 9))) (if (< i 9) 2.07 2.47) (- *half-length* .2) 0.0))
 
 (defun show-trophies ()
   (loop for (i . node) in *trophies* do (object-set node "visible" (gnome-found-p i))))
@@ -85,12 +83,10 @@ Towns take the three shelves to the left of the entrance, special places the she
 (defun make-trophies (c)
   "Build the trophy shelves by the entrance under C and all eighteen figures on them.
 Figures not yet found are hidden."
-  (let ((f *floor*) (x (- *half-width* .13)))
-    (dolist (h '(.75 1.2 1.65))
-      (shape c :box '(.22 .03 1.3) "#8a6440" (- x) (+ f h -.015) 2.05)
-      (dolist (z '(1.45 2.65)) (shape c :box '(.2 .12 .03) "#5a3e26" (- x) (+ f h -.09) z)))
-    (shape c :box '(.22 .03 1.3) "#8a6440" x (+ f 1.835) 2.05)
-    (dolist (z '(1.45 2.65)) (shape c :box '(.2 .12 .03) "#5a3e26" x (+ f 1.76) z))
+  (let ((f *floor*) (z (- *half-length* .2)))
+    (dolist (h '(2.07 2.47))
+      (shape c :box '(2.3 .03 .22) "#8a6440" 0 (+ f h -.015) z)
+      (dolist (x '(-1.1 0.0 1.1)) (shape c :box '(.03 .12 .2) "#5a3e26" x (+ f h -.09) z)))
     (setf *trophies*
           (loop for (i) in *gnome-plan*
                 collect (destructuring-bind (tx ty tz yaw) (trophy-spot i)
@@ -148,7 +144,7 @@ is nearby."
                        (declare (ignore yaw))
                        (usable x (+ y .12) z (lambda () (format nil "Гномик-~a · ~a" (string-downcase (gnome-name i)) (gnome-home i)))
                                (lambda () (say (format nil "Найдено гномиков: ~d из ~d" (gnome-count) (length *gnome-plan*))))
-                               nil 1.6))))))
+                               nil 2.6))))))
 
 (defun gnome-lines (from to)
   "Return the gnome list lines for numbers FROM through TO.

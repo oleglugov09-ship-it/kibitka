@@ -18,7 +18,7 @@
 (defvar *swatter* nil "True once the fly swatter is bought (it is sold only at the gas station by the swamp).")
 (defvar *mosquito* nil "The mosquito in the wagon: how many seconds it has been here, or NIL.")
 (defvar *swamp-time* 0.0 "The number of seconds we have been driving through the swamp.")
-(defparameter *swatter-at* '(1.44 1.4 -1.78))
+(defparameter *swatter-at* '(1.44 1.5 2.62))
 (defvar *photos* '() "The photo cards on the wall as (slot caption) lists, newest first.")
 (defvar *snapped* '() "The landmarks already photographed, as their path coordinates.")
 (defparameter *photo-slots* 12)
@@ -312,7 +312,7 @@ Each time it is about something different."
   "Return where things are put to cook, as (x z width depth height).
 The stove lid is one spot; with the cooktop there are three."
   (destructuring-bind (sx sz) *stove-at*
-    (if *hob* (list (+ sx .2) sz .9 .5 (+ *stove-top* .04)) (list sx sz .5 .5 *stove-top*))))
+    (if *hob* (list (+ sx .16) sz .86 .5 (+ *stove-top* .04)) (list sx sz .6 .5 *stove-top*))))
 
 (defun raw-on-stove ()
   "Return the records of the items that stand on the stove and can be cooked.
@@ -405,7 +405,7 @@ In the swamp a mosquito flies into the wagon: it whines, circles around the head
 ;;; ------------------------------------------------------------------ sleep
 
 (defun step-sleep (delta)
-  (let ((abed (and *seat* (eq (first *seat*) :fold) (not (net-guest-p)))) (day (daylight *day-t*)))
+  (let ((abed (and *seat* (member (first *seat*) '(:fold :top)) (not (net-guest-p)))) (day (daylight *day-t*)))
     (cond (*sleep*
            (when (or (not abed) (> day .7) (not (all-abed-p)))
              (setf *time-scale* (first *sleep*) *sleep* nil *doze* 0.0)
@@ -443,12 +443,12 @@ In the swamp a mosquito flies into the wagon: it whines, circles around the head
         (push (list mi mat) cards)))
     ;; the cooktop on the stove: a cast-iron plate with two burners, visible once bought (SHOW-HOB)
     (destructuring-bind (sx sz) *stove-at*
-      (let ((hob (group c (+ sx .2) (+ f *stove-top*) sz)))
-        (shape hob :box '(.92 .04 .52) "#26262a" 0 .02 0 :metal .5 :rough .6)
+      (let ((hob (group c (+ sx .16) (+ f *stove-top*) sz)))
+        (shape hob :box '(.88 .04 .52) "#26262a" 0 .02 0 :metal .5 :rough .6)
         (dolist (dx '(-.22 .22))
           (shape hob :cyl '(.11 .11 .012 12) "#3a3a40" dx .046 0 :metal .5 :rough .5 :shadow nil)
           (shape hob :cyl '(.06 .06 .014 10) "#5a2a1e" dx .047 0 :emit "#ff5020" :energy .8 :shadow nil))
-        (shape hob :box '(.05 .3 .05) "#26262a" .42 -.15 .2) (shape hob :box '(.05 .3 .05) "#26262a" .42 -.15 -.2)   ; the legs of the overhang
+        (shape hob :box '(.05 .3 .05) "#26262a" .4 -.15 .2) (shape hob :box '(.05 .3 .05) "#26262a" .4 -.15 -.2)   ; the legs of the overhang
         (setf (getf *uyut* :hob) hob)))
     ;; pennants above the window (right wall)
     (dotimes (i 12)
