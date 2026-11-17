@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="en" data-lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kibitka — a cozy co-op road trip</title>
+<meta name="description" content="Cats drive a house-truck through twelve towns: parcels, trade through the window, a warm stove. Play solo or with friends in the browser.">
+<meta property="og:title" content="Kibitka — a cozy co-op road trip">
+<meta property="og:description" content="Cats drive a house-truck through twelve towns. Play solo or with friends in the browser.">
+<meta property="og:image" content="media/road.png">
+<link rel="icon" href="play/index.icon.png">
+<style>
+:root{--bg:#efe6d0;--card:#f8f2e2;--ink:#2a2622;--soft:#6a6052;--green:#2f4a3c;--red:#b3262b;--gold:#c9a13a;--line:#d8ccb0}
+@media (prefers-color-scheme:dark){:root{--bg:#1c211e;--card:#262d28;--ink:#efe6d0;--soft:#a9a08c;--green:#7fb597;--red:#e0605f;--gold:#d9b452;--line:#3a443d}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:17px/1.55 Georgia,"Times New Roman",serif}
+.wrap{max-width:960px;margin:0 auto;padding:0 16px}
+header{display:flex;justify-content:space-between;align-items:center;padding:18px 0}
+.logo{font:700 22px/1 "Trebuchet MS",Verdana,sans-serif;letter-spacing:.14em;color:var(--green)}
+.lang button{font:14px "Trebuchet MS",Verdana,sans-serif;background:none;border:1px solid var(--line);color:var(--soft);padding:5px 10px;border-radius:4px;cursor:pointer}
+h1{font:700 clamp(30px,6vw,52px)/1.08 "Trebuchet MS",Verdana,sans-serif;margin:18px 0 12px;max-width:17ch}
+h2{font:700 26px/1.2 "Trebuchet MS",Verdana,sans-serif;margin:56px 0 18px;color:var(--green)}
+.lead{font-size:20px;max-width:56ch;color:var(--soft);margin:0 0 24px}
+.cta{display:flex;flex-wrap:wrap;gap:12px;margin-bottom:10px}
+.btn{font:700 17px "Trebuchet MS",Verdana,sans-serif;text-decoration:none;padding:13px 24px;border-radius:6px;border:2px solid var(--red)}
+.btn.main{background:var(--red);color:#fff8ea}
+.btn.ghost{color:var(--red)}
+.note{font-size:14px;color:var(--soft);margin:8px 0 26px}
+.hero img{width:100%;height:auto;display:block;border-radius:8px;border:3px solid var(--green);image-rendering:pixelated;aspect-ratio:16/9;background:#000}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px}
+.card{background:var(--card);border:1px solid var(--line);border-top:4px solid var(--gold);border-radius:6px;padding:16px 18px}
+.card h3{font:700 18px "Trebuchet MS",Verdana,sans-serif;margin:0 0 6px}
+.card p{margin:0;color:var(--soft);font-size:16px}
+.shots{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,400px),1fr));gap:12px}
+.shots img{width:100%;height:auto;display:block;border-radius:6px;border:1px solid var(--line);image-rendering:pixelated}
+.keys{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:16px}
+td{padding:7px 10px;border-bottom:1px solid var(--line)}
+td:first-child{white-space:nowrap;font:700 15px "Trebuchet MS",Verdana,sans-serif;color:var(--green)}
+footer{margin:64px 0 32px;padding-top:18px;border-top:1px solid var(--line);font-size:15px;color:var(--soft)}
+a{color:var(--red)}
+[data-lang=en] [lang=ru],[data-lang=ru] [lang=en]{display:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <div class="logo">KIBITKA</div>
+  <div class="lang"><button id="lang" type="button">Русский</button></div>
+</header>
+
+<main>
+<h1><span lang="en">A cozy co-op road trip in a house on wheels</span><span lang="ru">Уютная дорога вдвоём в доме на колёсах</span></h1>
+<p class="lead">
+  <span lang="en">Cats drive a house-truck through twelve towns: deliver parcels, trade through the window, keep the stove warm and the samovar hot. Alone or with friends — right in the browser.</span>
+  <span lang="ru">Коты едут в доме-грузовике через двенадцать городов: возят посылки, торгуют через окно, топят буржуйку и пьют чай. Одному или с друзьями — прямо в браузере.</span>
+</p>
+<div class="cta">
+  <a class="btn main" href="play/"><span lang="en">Play in the browser</span><span lang="ru">Играть в браузере</span></a>
+  <a class="btn ghost" href="https://github.com/oleglugov09-ship-it/kibitka"><span lang="en">Source on GitHub</span><span lang="ru">Исходники на GitHub</span></a>
+</div>
+<p class="note">
+  <span lang="en">Free, no sign-up. Needs a desktop browser with keyboard and mouse; the first load is about 25 MB. English and Russian.</span>
+  <span lang="ru">Бесплатно, без регистрации. Нужен браузер на компьютере, клавиатура и мышь; первая загрузка — около 25 МБ. Русский и английский.</span>
+</p>
+<div class="hero"><img src="media/kibitka.gif" width="480" height="270" alt="Kibitka: the wagon on the road, inside the wagon, a town, the road at night"></div>
+
+<h2><span lang="en">What you do</span><span lang="ru">Чем заняться</span></h2>
+<div class="grid">
+  <div class="card"><h3><span lang="en">Ride together</span><span lang="ru">Ехать вместе</span></h3>
+    <p><span lang="en">One player opens a lobby, friends join by a four-letter room code. Everyone shares the wagon and the wallet.</span><span lang="ru">Один открывает лобби, друзья заходят по коду из четырёх букв. Кибитка и кошелёк общие.</span></p></div>
+  <div class="card"><h3><span lang="en">Trade through the window</span><span lang="ru">Торговать через окно</span></h3>
+    <p><span lang="en">Every town makes something and lacks something. Buy cheap, carry it down the road, ring the bell and sell.</span><span lang="ru">В каждом городе что-то делают и чего-то не хватает. Купи дёшево, довези, позвони в колокольчик и продай.</span></p></div>
+  <div class="card"><h3><span lang="en">Parcels with stories</span><span lang="ru">Посылки с историями</span></h3>
+    <p><span lang="en">A jar of jam for a student son, a lamp for a lighthouse: deliver a parcel and hear what happened next.</span><span lang="ru">Варенье сыну-студенту, лампа для маяка: довези посылку и узнай, чем кончилось.</span></p></div>
+  <div class="card"><h3><span lang="en">A home that lives</span><span lang="ru">Обжитой дом</span></h3>
+    <p><span lang="en">Feed the stove, fry pancakes, roll dice at the tea table, play guitar at a bus stop, sleep till morning on the shelf.</span><span lang="ru">Топи буржуйку, пеки блины, бросай кости за чаем, играй на гитаре на остановке, спи на полке до утра.</span></p></div>
+  <div class="card"><h3><span lang="en">Step outside</span><span lang="ru">Выйти наружу</span></h3>
+    <p><span lang="en">Markets, a shooting range, fishing, a mine, an observatory in the mountains — and a gnome hidden in every special place.</span><span lang="ru">Рынки, тир, рыбалка, шахта, обсерватория в горах — и гномик в каждом особом месте.</span></p></div>
+  <div class="card"><h3><span lang="en">Written in Common Lisp</span><span lang="ru">Написано на Common Lisp</span></h3>
+    <p><span lang="en">Godot draws, Lisp decides. The game can be changed from a REPL while friends are playing — for all of them at once.</span><span lang="ru">Godot рисует, Lisp решает. Игру можно менять из REPL, пока друзья играют, — сразу у всех.</span></p></div>
+</div>
+
+<h2><span lang="en">Screenshots</span><span lang="ru">Скриншоты</span></h2>
+<div class="shots">
+  <img src="media/road.png" width="1280" height="720" loading="lazy" alt="The wagon on an autumn road">
+  <img src="media/inside.png" width="1280" height="720" loading="lazy" alt="Inside: carpet, stove and shelves">
+  <img src="media/town.png" width="1280" height="720" loading="lazy" alt="Driving into a town">
+  <img src="media/night.png" width="1280" height="720" loading="lazy" alt="The road at night">
+  <img src="media/map.png" width="1280" height="720" loading="lazy" alt="The map of twelve towns">
+</div>
+
+<h2><span lang="en">Keys</span><span lang="ru">Клавиши</span></h2>
+<div class="keys"><table>
+  <tr><td>W A S D · Shift · Space</td><td><span lang="en">walk, run, jump</span><span lang="ru">ходить, бежать, прыгать</span></td></tr>
+  <tr><td>M</td><td><span lang="en">map: pick a town, the truck drives itself</span><span lang="ru">карта: выбери город, грузовик едет сам</span></td></tr>
+  <tr><td><span lang="en">Left mouse</span><span lang="ru">ЛКМ</span></td><td><span lang="en">paws: take things and put them down</span><span lang="ru">лапы: взять и поставить вещь</span></td></tr>
+  <tr><td>E</td><td><span lang="en">everything else: window, bell, door, stove, sit</span><span lang="ru">всё остальное: окно, колокольчик, дверь, печка, сесть</span></td></tr>
+  <tr><td>V · F · G</td><td><span lang="en">outside view, flashlight, guide book</span><span lang="ru">вид снаружи, фонарик, путеводитель</span></td></tr>
+  <tr><td>F2 · Tab · Esc</td><td><span lang="en">lobby and language, who is aboard, pause and settings</span><span lang="ru">лобби и язык, кто в кибитке, пауза и настройки</span></td></tr>
+</table></div>
+</main>
+
+<footer>
+  <span lang="en">Kibitka is a hobby project in development. Code under the MIT licence: <a href="https://github.com/oleglugov09-ship-it/kibitka">github.com/oleglugov09-ship-it/kibitka</a>.</span>
+  <span lang="ru">«Кибитка» — любительский проект в разработке. Код под лицензией MIT: <a href="https://github.com/oleglugov09-ship-it/kibitka">github.com/oleglugov09-ship-it/kibitka</a>.</span>
+</footer>
+</div>
+<script>
+(function(){
+  var root=document.documentElement,b=document.getElementById('lang'),saved=null;
+  try{saved=localStorage.getItem('lang')}catch(e){}
+  function set(l){root.setAttribute('data-lang',l);root.lang=l;b.textContent=l==='en'?'Русский':'English';
+    document.title=l==='en'?'Kibitka — a cozy co-op road trip':'Кибитка — уютная дорога вдвоём'}
+  set(saved||((navigator.language||'en').toLowerCase().indexOf('ru')===0?'ru':'en'));
+  b.onclick=function(){var l=root.getAttribute('data-lang')==='en'?'ru':'en';set(l);try{localStorage.setItem('lang',l)}catch(e){}};
+})();
+</script>
+</body>
+</html>

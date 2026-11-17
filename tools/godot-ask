@@ -1,0 +1,194 @@
+#!/usr/bin/env python3
+"""Change the running game (kiosk-trip) with a phrase.
+
+    tools/godot-ask "сделай закат и поедем быстрее"
+    tools/godot-ask --model openrouter/google/gemini-3-flash-preview "гирлянды пусть будут только тёплые"
+    tools/godot-ask x --form '(live:state)'      # no model, the form directly
+
+The game must be built with `make live` and running as debug (`godot --path project`).
+
+The phrase, the description of the live API and the current (live:state) go to the model through
+Autolith (ACP). The model replies with exactly one Lisp form; the form is evaluated in the game through
+Slynk (the port is in project/.slynk-port), and the reply and the new state are printed.
+
+The model does not edit files: Autolith runs with --immutable --permissions ask in an empty directory,
+and this client declines every permission request, so the model is left with the reply text only.
+Exit code: 0 — the form was evaluated, 1 — an error in the form or the model, 3 — no game.
+"""
+import argparse
+import json
+import os
+import re
+import subprocess
+import sys
+import tempfile
+import threading
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from slynk_client import Slynk  # noqa: E402
+
+DEFAULT_MODEL = os.environ.get("ASK_MODEL", "openrouter/inception/mercury-2.5")
+
+API = """\
+The game is Kibitka in Godot, whose conductor is
+Common Lisp (ECL inside Godot): a cozy wagon (kibitka) rolls along an endless
+road; the landscape is three independent layers along the path (relief: plain,
+hills, mountains, canyon; water: none, river, lake; vegetation: pine, meadow,
+autumn, birch, rocky), with a Minecraft-like day (20 min). You change the
+running game by writing ONE Common Lisp form, evaluated in the image (package
+CL-USER). Use the LIVE package:
+
+  (live:state)              ; plist: :dist :speed :seed :scene :day-t :daylight :props :pos :yaw ...
+  (live:pace 12)            ; wagon speed, m/s
+  (live:time-of-day :sunset); or :dawn :day :noon :night :midnight, or seconds from dawn
+  (live:time-scale 20)      ; days go 20x faster
+  (live:new-trip)           ; a new landscape from scratch (optional seed)
+  (live:regen)              ; rebuild ground and roadside things with current parameters
+  (live:rebuild-cart)       ; rebuild the wagon after changing its parameters
+  (live:curtains t)         ; close curtains (nil — open)
+  (live:look -1.57 0.0)     ; yaw/pitch: -1.57 looks out of the big window, 0 forward
+  (live:skip 500)           ; ride 500 m ahead at once
+  (live:eval-on-main (lambda () ...))  ; anything else, on Godot's main thread
+
+Parameters in package KIOSK-TRIP can be set with SETF and then (live:regen) or
+(live:rebuild-cart): *amp* (plist relief kind -> height), *grass* (plist veg ->
+"#rrggbb"), *veg-props* (veg -> roadside kinds), *layers*, *blend*, *river-y*,
+*water-y*, *speed*, *kc* (wagon colors), *fairy* (garland colors), *sky-keys*,
+*eye*, *walk-speed*. Functions such as HEIGHT-AT, BUILD-PROP, GROUND-COLOR can
+be redefined with DEFUN in package KIOSK-TRIP.
+
+Several steps: wrap them in (progn ...).
+"""
+
+
+def ask_model(prompt, model, timeout):
+    """Return the model's reply text via autolith acp, with no tools at all."""
+    autolith = os.environ.get("AUTOLITH_BIN", os.path.expanduser("~/.local/bin/autolith"))
+    cwd = tempfile.mkdtemp(prefix="godot-ask-")
+    child = subprocess.Popen([autolith, "acp", "--permissions", "ask"],
+                             cwd=cwd, env={**os.environ, "AUTOLITH_MODEL": model},
+                             stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                             stderr=subprocess.DEVNULL, text=True, bufsize=1)
+    timer = threading.Timer(timeout, child.kill)
+    timer.start()
+
+    def send(message):
+        child.stdin.write(json.dumps({"jsonrpc": "2.0", **message}) + "\n")
+        child.stdin.flush()
+
+    text, refused = [], 0
+    try:
+        send({"id": 1, "method": "initialize", "params": {"protocolVersion": 1, "clientCapabilities": {}}})
+        for line in child.stdout:
+            try:
+                message = json.loads(line)
+            except ValueError:
+                continue
+            method = message.get("method")
+            if method and "id" in message:
+                # A request from the agent to the client (tool permission, files):
+                # always refused
+                refused += 1
+                if method == "session/request_permission":
+                    send({"id": message["id"], "result": {"outcome": {"outcome": "cancelled"}}})
+                else:
+                    send({"id": message["id"], "error": {"code": -32601, "message": "not allowed"}})
+            elif method == "session/update":
+                update = message["params"].get("update", {})
+                if update.get("sessionUpdate") == "agent_message_chunk":
+                    text.append(update.get("content", {}).get("text", ""))
+            elif message.get("id") == 1:
+                send({"id": 2, "method": "session/new", "params": {"cwd": cwd, "mcpServers": []}})
+            elif message.get("id") == 2:
+                session = (message.get("result") or {}).get("sessionId")
+                if not session:
+                    raise RuntimeError(f"session/new: {json.dumps(message)[:300]}")
+                send({"id": 3, "method": "session/prompt",
+                      "params": {"sessionId": session, "prompt": [{"type": "text", "text": prompt}]}})
+            elif message.get("id") == 3:
+                if message.get("error"):
+                    raise RuntimeError(f"session/prompt: {json.dumps(message['error'])[:300]}")
+                break
+        else:
+            raise RuntimeError(f"autolith завершился без ответа (таймаут {timeout} с?)")
+    finally:
+        timer.cancel()
+        child.kill()
+    if refused:
+        print(f"[отклонено запросов инструментов: {refused}]", file=sys.stderr)
+    return "".join(text)
+
+
+def first_form(text):
+    """Return the first Lisp form in the model's reply (without ``` fences)."""
+    text = re.sub(r"```[a-z]*", "", text)
+    start = text.find("(")
+    if start < 0:
+        raise ValueError(f"в ответе модели нет формы: {text.strip()[:200]}")
+    depth, in_string, escape = 0, False, False
+    for i in range(start, len(text)):
+        c = text[i]
+        if in_string:
+            escape = c == "\\" and not escape
+            if c == '"' and not escape:
+                in_string = False
+            continue
+        if c == '"':
+            in_string = True
+        elif c == ";":
+            # a comment up to the end of the line
+            end = text.find("\n", i)
+            if end < 0:
+                break
+            continue
+        elif c == "(":
+            depth += 1
+        elif c == ")":
+            depth -= 1
+            if depth == 0:
+                return text[start:i + 1]
+    raise ValueError(f"незакрытая форма в ответе модели: {text[start:start + 200]}")
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument("phrase", nargs="+")
+    parser.add_argument("--model", default=DEFAULT_MODEL)
+    parser.add_argument("--timeout", type=float, default=120)
+    parser.add_argument("--form", help="не спрашивать модель, вычислить эту форму")
+    args = parser.parse_args()
+    phrase = " ".join(args.phrase)
+
+    try:
+        slynk = Slynk()
+    except OSError as error:
+        print(f"игра не отвечает по Slynk: {error}", file=sys.stderr)
+        return 3
+    ok, _, before = slynk.eval("(live:state)")
+    print(f"до:    {before}")
+
+    if args.form:
+        form = args.form
+    else:
+        prompt = (f"{API}\nCurrent (live:state):\n{before}\n\nRequest: {phrase}\n\n"
+                  "Answer with exactly one Common Lisp form and nothing else: "
+                  "no prose, no code fences. Do not use any tools.")
+        try:
+            form = first_form(ask_model(prompt, args.model, args.timeout))
+        except (RuntimeError, ValueError) as error:
+            print(f"модель: {error}", file=sys.stderr)
+            return 1
+    print(f"форма: {form}")
+
+    ok, output, value = slynk.eval(form)
+    if output:
+        print(f"вывод: {output.rstrip()}")
+    print(f"{'ответ' if ok else 'ОШИБКА'}: {value}")
+    _, _, after = slynk.eval("(live:state)")
+    print(f"после: {after}")
+    slynk.close()
+    return 0 if ok else 1
+
+
+if __name__ == "__main__":
+    sys.exit(main())

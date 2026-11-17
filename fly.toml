@@ -1,0 +1,18 @@
+# The wagon's browser build on Fly. The machine goes to sleep when nobody is playing and wakes
+# on the first request — we pay only for the time someone is loading the page.
+app = "kibitka-web"
+primary_region = "fra"
+
+[build]
+  dockerfile = "deploy/Dockerfile"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  min_machines_running = 0
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "256mb"

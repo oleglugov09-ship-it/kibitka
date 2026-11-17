@@ -1,0 +1,13 @@
+build/
+*.log
+project/.godot/
+project/bin/
+project/.slynk-port
+tools/__pycache__/
+project/textures/
+project/sounds/
+project/discs/
+build-web/
+export/
+project/bin/libgdecl.wasm
+project/.slynk-port-*

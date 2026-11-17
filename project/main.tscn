@@ -1,0 +1,14 @@
+[gd_scene format=3 uid="uid://cuvnhmekhmsch"]
+
+[ext_resource type="PackedScene" uid="uid://cjke6crjg14a0" path="res://addons/maaacks_menus_template/base/nodes/config/start_up/start_up.tscn" id="1_startup"]
+[ext_resource type="Script" uid="uid://cyh0d64pfygbl" path="res://addons/maaacks_menus_template/base/nodes/utilities/pause_menu_controller.gd" id="2_pausectl"]
+[ext_resource type="PackedScene" path="res://scenes/pause_menu.tscn" id="3_pause"]
+
+[node name="Trip" type="TripRoot" unique_id=343129208]
+process_mode = 3
+
+[node name="StartUp" parent="." unique_id=38836867 instance=ExtResource("1_startup")]
+
+[node name="PauseMenuController" type="Node" parent="." unique_id=1823703237]
+script = ExtResource("2_pausectl")
+pause_menu_packed = ExtResource("3_pause")

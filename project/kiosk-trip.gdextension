@@ -1,0 +1,9 @@
+[configuration]
+
+entry_symbol = "gdecl_library_init"
+compatibility_minimum = "4.4"
+
+[libraries]
+
+linux.x86_64 = "res://bin/libgdecl.so"
+web.wasm32 = "res://bin/libgdecl.wasm"

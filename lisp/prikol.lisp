@@ -1,0 +1,202 @@
+;;;; Town gimmicks: every town has one thing to do that exists nowhere else. By the road stands a booth
+;;;; with a sign (*GIMMICK-PLAN*); stop next to it and the ladder comes down, walk up to the window and press E.
+;;;; The collection point in Krasny Kut and the airmail in Dalny have their own files (finds.lisp, dalny.lisp);
+;;;; the factory whistle of Krasny Kut is in goods.lisp (RUSH-P) and here (customers come up by themselves).
+;;;; The driver keeps count of money and things: to a guest the booth answers that the driver does this.
+
+(in-package #:kiosk-trip)
+
+(defparameter *gimmick-plan*
+  '((0 .16 "РЫБАЛКА" "#3f6f73") (1 .26 "ТИР" "#3c4638") (2 .66 "ХОЗТОВАРЫ: ПЛИТЫ" "#5a5a5e") (3 .42 "БИБЛИОТЕКА" "#6a3a2e") (4 .50 "КОЗА МАНЬКА" "#6a5038")
+    (5 .24 "МАЯК" "#a3262c") (6 .42 "ПЕЧАТИ: ОКНО № 3" "#8a8070") (8 .37 "ШАХТА: КЛЕТЬ" "#3a3838")
+    (9 .34 "МИНЕРАЛЬНАЯ ВОДА" "#3f6f73") (10 .35 "ПОГРУЗКА НА ПЛАТФОРМУ" "#7a5a50") (11 .33 "ПЛОТНИК" "#8a6440")
+    (12 .455 "ГОРСОВЕТ: ЗАДАНИЯ" "#b8ac94" 6) (13 .49 "МИЛИЦИЯ: УЧАСТОК" "#2c4a7a" 6))
+  "The booths, each a list (number, fraction of the town length, sign, colour [, town number]).
+The town number is given only when it differs from the booth number.")
+
+(defvar *gimmicks* '() "The places where the booths stand, each a list (path-coordinate town-number).")
+(defvar *stamp* nil "The town council stamp: with it parcels pay double.")
+(defvar *badge* nil "The 'Sharpshooter' badge.")
+(defvar *boost-until* 0.0 "The time until which the mineral water keeps us brisk.")
+(defstruct job "An activity that involves waiting (fishing, the mine)." until done actor carry)
+(defvar *wait* nil "The activity going on right now, as a JOB.
+It holds when it ends, what to do then, who is busy (a guest, or NIL for us) and what they carry
+in their paws.")
+(defvar *rail-ticket* nil "True when the wagon stands on the flatcar: the next town picked on the map is reached by train.")
+(defvar *rush-told* nil)
+(defvar *rush-bell* 0.0)
+
+(defun save-prikol () (unless (net-guest-p) (put-save :prikol (list (and *stamp* t) (and *badge* t) *gimmick-spent* (and *hob* t)))))
+(defun load-prikol ()
+  (let ((f (get-save :prikol)))
+    (when (and (listp f) (<= 2 (length f) 4))
+      (setf *stamp* (and (first f) t) *badge* (and (second f) t) *hob* (and (fourth f) t)
+            *gimmick-spent* (and (listp (third f)) (every #'consp (third f)) (third f))))))
+(defstate :prikol
+  :clear (lambda () (setf *stamp* nil *badge* nil *hob* nil *boost-until* 0.0 *gimmick-spent* '() *wait* nil *rail-ticket* nil))
+  :load #'load-prikol :save #'save-prikol :show (lambda () (show-hob)))
+
+(defun boost-factor () (if (< *time* *boost-until*) *water-boost* 1.0))
+
+(defun pay (sum)
+  "Pay SUM roubles.
+Return NIL and show a hint if there is not enough money."
+  (cond ((< *money* sum) (say (format nil "Нужно ~d р., а у нас ~d" sum *money*)) nil)
+        (t (decf *money* sum) t)))
+
+(defun give-good (kind text)
+  "Put a good of KIND into the hands (if they are free) and say TEXT.
+Return true if the good was given."
+  (cond (*carry* (say "Руки заняты — сначала поставь то, что несёшь, на полку") nil)
+        (t (setf *carry* (cons kind nil) *carry-from* nil)
+           (show-carry) (save-interior)
+           (say text) t)))
+
+(defun start-wait (seconds text done)
+  (if *wait* (say "Погоди, ещё не закончил")
+      (progn (setf *wait* (make-job :until (+ *time* seconds) :done done :actor *actor* :carry *carry*) *pending* t)
+             (say text))))
+
+;;; ------------------------------------------------------------------ what each booth does
+
+(defun gimmick-label (i)
+  (case i
+    (0 "E — порыбачить с мостков")
+    (1 (format nil "E — тир: пять выстрелов за ~d р. Целиться самому" *range-price*))
+    (2 (if *hob* "Плита у вас уже стоит. Готовьте на здоровье"
+           (format nil "E — купить плиту на буржуйку за ~d р.: жарить рыбу, варить варенье, греть тушёнку" *hob-price*)))
+    (3 (format nil "E — обменять ~d связки макулатуры на книги · у тебя ~d" *book-papers* *papers*))
+    (4 "E — подоить козу Маньку")
+    (5 "E — подняться на маяк: что почём в ближайших городах")
+    (6 (if *stamp* "Печать уже стоит: за посылки платят вдвое" (format nil "E — получить печать за ~d р.: посылки вдвое дороже" *stamp-price*)))
+    (8 "E — спуститься в шахту за углём")
+    (9 (format nil "E — стакан минеральной воды за ~d р.: бодрит" *water-price*))
+    (10 (format nil "E — погрузить кибитку на платформу: до любого города, ~,1f р. за километр" *rail-per-km*))
+    (11 (format nil "E — ~d досок за ~d р." (first *carpenter-deal*) (second *carpenter-deal*)))
+    (12 (quest-label))
+    (13 (if *fines* (format nil "E — оплатить штрафы: ~d р." (reduce #'+ *fines*)) "Участок: штрафов за вами нет"))
+    (t "Будка")))
+
+(defvar *gimmick-spent* '() "The record of free takings, each a pair (booth-number . day): when the free thing was last taken.")
+
+(defun today () "Return the number of the current game day." (floor *day-t* *day-len*))
+
+(defun spent-p (i)
+  "Return true, with a hint, if the free thing at booth I has already been taken today.
+The goat, the fishing and the mine each give theirs once per day cycle."
+  (when (eql (cdr (assoc i *gimmick-spent*)) (today))
+    (say "Здесь на сегодня всё. Приходи завтра")
+    t))
+
+(defun spend (i) (setf *gimmick-spent* (cons (cons i (today)) (remove i *gimmick-spent* :key #'car))) (save-prikol))
+
+(defun rail-fare (tw)
+  "Return the price of carrying the wagon by train to town TW, by the length of the way."
+  (max *rail-min* (round (* *rail-per-km* (/ (plan-way (town-stop-d tw)) 1000)))))
+
+(defshared gimmick-use :gimmick (i)
+  (when (and (member i '(0 4 8)) (spent-p i)) (return-from gimmick-use nil))
+  (case i
+    (0 (if *carry* (say "Руки заняты — удочку не взять") (begin-play :fish)))        ; the games are in igry.lisp
+    (2 (cond (*hob* (say "Плита уже стоит"))
+             ((pay *hob-price*) (setf *hob* t) (save-prikol) (show-hob) (log-event :hob :money *money*)
+              (say-all "Купили плиту! Она на буржуйке: ставь на неё рыбу, клюкву, хлеб или тушёнку — приготовится"))))
+    (1 (when (pay *range-price*) (begin-play :tir)))
+    (3 (cond ((< *papers* *book-papers*) (say (format nil "Нужно ~d связки макулатуры — она лежит у остановок и заправок" *book-papers*)))
+             (*carry* (say "Руки заняты — книги не взять"))
+             (t (decf *papers* *book-papers*) (save-finds)
+                (give-good :books (nth (random 4) '("Выдали стопку книг: «Два капитана» сверху" "Выдали книги: фантастика, зачитанная до дыр"
+                                                    "Выдали книги: том энциклопедии и сказки" "Выдали книги: стихи и справочник грибника"))))))
+    (4 (if *carry* (say "Руки заняты — ведро не взять") (begin-play :goat)))
+    (5 (let* ((here (trade-town))                                ; the two nearest towns by road, in either direction
+              (near (sort (loop for tw in *towns* unless (= (town-index tw) here)
+                                collect (cons (or (plan-way (town-stop-d tw)) 1e9) (town-index tw)))
+                          #'< :key #'car)))
+         (say (format nil "С маяка видно далеко. ~{~a~^ · ~}"
+                      (loop for (nil . i) in (subseq near 0 2) collect (market-note i))))))
+    (6 (cond (*stamp* (say "Печать уже стоит"))
+             ((pay *stamp-price*) (setf *stamp* t) (save-prikol) (log-event :stamp)
+              (say "Справка с круглой печатью! Теперь за посылки платят вдвое"))))
+    (8 (if *carry* (say "Руки заняты — уголь не унести") (begin-play :mine)))
+    (9 (when (pay *water-price*) (setf *boost-until* (+ *time* *water-time*)) (say "Нарзан! В нос шибает. Пять минут бегаешь быстрее")))
+    (10 (cond (*actor* (say "На платформу кибитку ставит водитель: маршрут — его дело"))
+              (t (setf *rail-ticket* t) (open-map)
+                 (say "Кибитка на платформе. Выбери город на карте — поезд довезёт; чем дальше, тем дороже"))))
+    (12 (use-quests))
+    (13 (pay-fines))
+    (11 (when (pay (second *carpenter-deal*)) (incf *planks* (first *carpenter-deal*))
+          (say (format nil "Плотник отсыпал ~d досок. В печку: ~d" (first *carpenter-deal*) *planks*))))))
+
+(defun rail-ride (tw)
+  "Travel by train to town TW: instantly, for money.
+Return T if a train ride was pending (GO-TO-TOWN then does nothing itself)."
+  (when *rail-ticket*
+    (setf *rail-ticket* nil)
+    (when (pay (rail-fare tw))
+      (log-event :rail :town (town-index tw) :money *money*)
+      (relocate (- (town-stop-d tw) 40.0))
+      (say (format nil "Поезд довёз до города ~a. Съезжаем с платформы" (town-title tw))))
+    t))
+
+;;; ------------------------------------------------------------------ booths
+
+(defun build-gimmick (d index title rgb)
+  (let ((g (apply #'group *world* (road-pos d 3.2 -.35))))
+    (node-3d-set-rotation g (v3 0 (- (road-frame d)) 0))
+    (shape g :box '(9.0 .1 10.0) "#5a5a58" 7.5 .05 0 :shadow nil)
+    (shape g :box '(4.0 2.8 4.6) rgb 11.0 1.4 0) (shape g :box '(4.6 .25 5.2) "#4c4e52" 11.0 2.95 0 :rot '(0 0 -.06))
+    (shape g :box '(.14 1.0 1.6) "#e8c070" 8.95 1.6 0 :emit "#ffc060" :energy 1.0 :shadow nil)
+    (shape g :box '(.6 .08 1.8) "#8a6440" 8.7 1.05 0)
+    (shape g :box '(.2 .7 4.4) "#2a2c30" 8.9 3.5 0 :shadow nil)
+    (sign g title 8.78 3.5 0 :h (if (> (length title) 14) .3 .45) :rgb "#f0ece0")
+    (flood g 7.5 3.0 0 :range 14.0)
+    (case index                                                        ; every booth has its own landmark
+      (0 (beam-between g '(7.0 1.0 -2.6) '(5.0 3.4 -2.6) :thick .04 :rgb "#3a2a1e") (shape g :box '(.5 .5 .5) "#55708a" 7.2 .25 -2.4))
+      (1 (dolist (z '(2.6 3.4 4.2)) (shape g :cyl '(.3 .3 .04 12) "#e8e0d0" 12.8 1.6 z :rot (list 0 0 (/ pi 2))) (shape g :cyl '(.1 .1 .05 8) "#a3262c" 12.76 1.6 z :rot (list 0 0 (/ pi 2)) :shadow nil)))
+      (3 (dotimes (i 4) (shape g :box '(.5 .5 .7) (nth i '("#6a3a2e" "#2c4a7a" "#3c5a48" "#c9a13a")) 7.2 (+ .25 (* i .5)) 3.2 :rot (list 0 (* i .2) 0))))
+      (4 (let ((s (group g 7.0 0 3.0))) (node-3d-set-scale s (v3 .55 .55 .55)) (mark-cow s 0 0 1.2 "#e8e4d8")) (shape g :box '(.1 .9 3.0) "#6a5038" 5.4 .45 3.0))
+      (8 (dolist (z '(-3.4 -4.6)) (shape g :box '(.3 5.0 .3) "#5a4636" 11.0 2.5 z)) (shape g :box '(.4 .4 1.8) "#5a4636" 11.0 5.0 -4.0) (shape g :box '(1.4 1.8 1.0) "#3a3a40" 11.0 .9 -4.0))
+      (9 (shape g :cyl '(.5 .6 1.0 10) "#e8e4d8" 7.2 .5 -2.6) (shape g :cyl '(.06 .06 .5 6) "#7ab0c8" 7.2 1.2 -2.6 :alpha .6))
+      (10 (shape g :box '(3.2 .9 12.0) "#4a4e52" 16.0 .45 0) (dolist (x '(15.2 16.8)) (shape g :box '(.1 .14 13.0) "#8a8e92" x .05 0 :metal .6)))
+      (11 (dotimes (i 6) (shape g :box '(2.4 .06 .22) "#c8a060" 7.2 (+ .04 (* i .065)) (+ 2.4 (* .03 i)))) (shape g :box '(1.6 .8 .7) "#8a6440" 7.2 .4 -2.6)))
+    g))
+
+(defun dev-slots ()
+  "Return the testing-ground slots for the booths.
+They go in a row, every 40 m, from the start of the first town, past gas stations and the market."
+  (loop for tw in *towns*
+        append (loop for d from (+ (town-start tw) 60.0) below (- (town-end tw) 60.0) by 40.0
+                     unless (some (lambda (busy) (< (abs (- busy d)) 45.0)) (cons (town-stop-d tw) (town-stations tw)))
+                       collect d)))
+
+(defun plan-gimmicks ()
+  "Place the booths according to the plan; called from PLAN-PLACES."
+  (setf *gimmicks* '())
+  (loop with slots = (and *dev* (dev-slots))
+        for (i f title rgb town) in *gimmick-plan*
+        do (let* ((tw (nth (or town i) *towns*)) (i i) (title title) (rgb rgb)
+                  (d (or (pop slots) (+ (town-start tw) (* f (- (town-end tw) (town-start tw)))))))
+             (push (list d i) *gimmicks*)
+             (push (make-scene :d0 (- d 10) :d1 (+ d 10) :build (lambda () (build-gimmick d i title rgb))) *scenes*))))
+
+(defun prikol-usables ()
+  (let ((place (walk-place)))
+    (when (and place (eq (first place) :gimmick))
+      (let ((i (third place)))
+        (list (road-usable 11.9 (second place) 1.3 (lambda () (gimmick-label i)) (lambda () (gimmick-use i)) 3.2 .7))))))
+
+(defun step-prikol ()
+  (when (and *wait* (> *time* (job-until *wait*)))                    ; the wait is over: fish, coal
+    (let ((job *wait*))
+      (setf *wait* nil)
+      (if (job-actor job)                                                ; the guest was busy: the catch is theirs
+          (run-as (job-actor job) (job-carry job) (job-done job))
+          (funcall (job-done job)))))
+  ;; the whistle in Krasny Kut: at the market customers come up by themselves, without the bell
+  (unless (net-guest-p)
+    (let ((place (place-here)))
+      (cond ((and place (eq (first place) :market) (rush-p (third place)))
+             (unless *rush-told* (setf *rush-told* t) (say-all "Гудок! Смена идёт с завода — покупатели подходят сами и платят щедрее"))
+             (when (and (null *client*) (> *window-k* .9) (> (- *time* *rush-bell*) 7.0))
+               (setf *rush-bell* *time*) (ring-bell)))
+            (t (setf *rush-told* nil))))))

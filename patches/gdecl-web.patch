@@ -1,0 +1,102 @@
+diff --git a/lisp/callback/gd-extension-callback.lisp b/lisp/callback/gd-extension-callback.lisp
+index 7ea1b7a..34a1982 100644
+--- a/lisp/callback/gd-extension-callback.lisp
++++ b/lisp/callback/gd-extension-callback.lisp
+@@ -52,6 +52,30 @@ static __thread int gdecl_lisp_thread = 0;
+ /* False once DEINITIALIZE has run */
+ static int gdecl_lisp_running = 1;
+ 
++#if defined(ECL_THREADS) && defined(ECL_WINDOWS_THREADS)
++/* Windows: a fiber-local slot, whose callback releases the threads that
++   imported themselves when they exit (ECL has its own pthread types there) */
++static DWORD gdecl_imported_thread_key = FLS_OUT_OF_INDEXES;
++static INIT_ONCE gdecl_imported_thread_key_once = INIT_ONCE_STATIC_INIT;
++
++static void WINAPI gdecl_release_imported_thread(void *value)
++{
++    if (value && __atomic_load_n(&gdecl_lisp_running, __ATOMIC_ACQUIRE))
++        ecl_release_current_thread();
++}
++
++static BOOL CALLBACK gdecl_make_imported_thread_key(PINIT_ONCE once, void *parameter, void **context)
++{
++    gdecl_imported_thread_key = FlsAlloc(gdecl_release_imported_thread);
++    return TRUE;
++}
++
++static void gdecl_mark_imported_thread(void)
++{
++    InitOnceExecuteOnce(&gdecl_imported_thread_key_once, gdecl_make_imported_thread_key, NULL, NULL);
++    FlsSetValue(gdecl_imported_thread_key, (void *)1);
++}
++#elif defined(ECL_THREADS)
+ /* Set in the threads that imported themselves, so that its destructor releases
+    them when they exit */
+ static pthread_key_t gdecl_imported_thread_key;
+@@ -68,6 +92,13 @@ static void gdecl_make_imported_thread_key(void)
+     pthread_key_create(&gdecl_imported_thread_key, gdecl_release_imported_thread);
+ }
+ 
++static void gdecl_mark_imported_thread(void)
++{
++    pthread_once(&gdecl_imported_thread_key_once, gdecl_make_imported_thread_key);
++    pthread_setspecific(gdecl_imported_thread_key, (void *)1);
++}
++#endif
++
+ /* Whether the calling thread can run Lisp: imports it into ECL the first time.
+    The callbacks of other files call it through a pointer (ENTER-LISP-ADDRESS),
+    as ASDF compiles each file into a library of its own */
+@@ -77,12 +108,14 @@ static int gdecl_enter_lisp(void)
+         return 0;
+     if (gdecl_lisp_thread)
+         return 1;
++#ifdef ECL_THREADS
+     if (ecl_process_env_unsafe() == NULL) {
+         if (!ecl_import_current_thread(ECL_NIL, ECL_NIL))
+             return 0;
+-        pthread_once(&gdecl_imported_thread_key_once, gdecl_make_imported_thread_key);
+-        pthread_setspecific(gdecl_imported_thread_key, (void *)1);
++        gdecl_mark_imported_thread();
+     }
++#endif
++    /* Without threads (ECL for the web) there's only the thread ECL booted in */
+     gdecl_lisp_thread = 1;
+     return 1;
+ }")
+@@ -114,9 +147,16 @@ gives that function's address. If the thread can't, the C function returns
+          (c-return-type (c-type-name return-type))
+          (c-argument-types (mapcar (lambda (argument) (c-type-name (second argument)))
+                                    arguments))
++         ;; The C function's own parameters are what Godot passes. gdecl
++         ;; takes pointers as :UINT64-T addresses, but Godot passes pointers:
++         ;; the same on 64-bit, while on wasm32 a pointer is 32 bits and a
++         ;; call with the wrong signature traps. So they're uintptr_t here,
++         ;; widened to uint64_t in the call to the Lisp callback.
+          (parameters (loop for type in c-argument-types
+                            for i from 0
+-                           collect (format nil "~a a~d" type i)))
++                           collect (format nil "~a a~d"
++                                           (if (string= type "uint64_t") "uintptr_t" type)
++                                           i)))
+          (call (format nil "((~a (*)(~{~a~^, ~}))~a)(~{a~d~^, ~})"
+                        c-return-type (or c-argument-types '("void")) target
+                        (loop for i below (length arguments) collect i))))
+diff --git a/lisp/ffi/gd-extension-ffi.lisp b/lisp/ffi/gd-extension-ffi.lisp
+index c3fed0e..bfe8be9 100644
+--- a/lisp/ffi/gd-extension-ffi.lisp
++++ b/lisp/ffi/gd-extension-ffi.lisp
+@@ -23,9 +23,11 @@
+ ;; GDExtensionClassLibraryPtr, passed to Godot when registering classes
+ (defvar *class-library* nil)
+ 
++;; Called with C-INLINE rather than SI:CALL-CFUN, which needs ECL's dynamic FFI
++;; (libffi), missing from ECL for the web
+ (defun get-proc-address (name)
+-  (ffi:with-cstring (c-name name)
+-    (si:call-cfun *get-proc-address* :pointer-void '(:cstring) (list c-name))))
++  (ffi:c-inline (*get-proc-address* (coerce name 'base-string)) (:pointer-void :cstring) :pointer-void
++                "((void *(*)(const char *))#0)(#1)" :one-liner t))
+ 
+ ;;;
+ ;;; Enums
