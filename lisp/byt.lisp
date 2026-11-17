@@ -344,8 +344,8 @@ a wing with a ring for the kettle, and planks that stick out of the firebox whil
       (dolist (sx '(-.2 .2)) (shape g :box (list .05 legs .05) iron sx (/ legs 2) -.66))
       (shape g :box (list .5 body .46) iron 0 mid -.47 :metal .4 :rough .7)
       (shape g :box '(.58 .04 .5) "#2a2a30" 0 (- top .02) -.49 :metal .4 :rough .6)
-      (shape g :cyl '(.12 .12 .012 12) "#3a3a40" 0 (+ top .004) -.49 :metal .5 :rough .5 :shadow nil)
-      (shape g :cyl '(.07 .07 .014 10) "#5a2a1e" 0 (+ top .005) -.49 :emit "#ff5020" :energy .8 :shadow nil)
+      (shape g :cyl '(.12 .12 .016 12) "#3a3a40" 0 (+ top .006) -.49 :metal .5 :rough .5 :shadow nil)
+      (shape g :cyl '(.07 .07 .02 10) "#5a2a1e" 0 (+ top .012) -.49 :emit "#ff5020" :energy .8 :shadow nil)   ; 12 mm above the ring under it
       (setf *stove-light* (light g "#ff7030" 0.0 4.5 .4 mid 0)))))
 
 (defun show-fire ()
@@ -414,7 +414,7 @@ enamel basin and a water tank on the wall, and a cutting board with a knife on i
     (shape g :ball '(.02 6 4) "#d8a840" -.295 (+ (/ top 2) .06) .12 :metal .6 :rough .4 :shadow nil)
     (dolist (sx '(-.25 .25)) (shape g :box (list .04 (- top .02) .04) "#5a3e26" sx (/ (- top .02) 2) -.61))    ; legs under the board half
     (shape g :cyl '(.24 .19 .11 14) "#e8e4d8" 0 (+ top .075) .3 :rough .3)                        ; the basin
-    (shape g :cyl '(.21 .21 .01 14) "#8ab0c4" 0 (+ top .125) .3 :rough .1 :shadow nil)            ; water in it
+    (shape g :cyl '(.2 .2 .012 14) "#8ab0c4" 0 (+ top .136) .3 :rough .1 :shadow nil)             ; water in it: a centimetre proud of the rim, or the two flicker
     (shape g :cyl '(.1 .09 .22 12) "#d8d2c0" .2 (+ top .34) .3 :rough .4)                         ; the tank on the wall
     (shape g :cyl '(.105 .105 .02 12) "#b8b2a0" .2 (+ top .46) .3 :shadow nil)
     (shape g :cyl '(.012 .012 .07 6) "#8a8e92" .2 (+ top .2) .3 :metal .6 :rough .4 :shadow nil)  ; the push rod: lift it and water runs

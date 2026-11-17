@@ -16,7 +16,7 @@
 
 (defparameter *boil-time* 20.0 "The number of seconds the kettle takes to boil on a burning stove.")
 (defparameter *kettle-cups* 4 "The number of cups of tea in one boiled kettle.")
-(defparameter *kettle-ring* '(0.0 .78 -.49) "The ring for the kettle, relative to the stove: x, height above the floor, z.")
+(defparameter *kettle-ring* '(0.0 .795 -.49) "The ring for the kettle, relative to the stove: x, height above the floor, z.")
 (defparameter *pan-nail* '(.28 1.5 .385) "The nail the frying pan hangs on, relative to the stove: x, height above the floor, z.")
 
 (defvar *kettle-at* :table "Where the kettle is: :TABLE, :STOVE, :PAW (in our paw) or :AWAY (in another cat's paw).")
@@ -45,7 +45,7 @@
     (cond (hanging (shape g :cyl '(.16 .16 .03 14) iron 0 0 0 :rot (list (/ pi 2) 0 0) :metal .4 :rough .7)
                    (shape g :box '(.035 .22 .02) iron 0 -.26 0 :metal .4 :rough .7))
           (t (shape g :cyl '(.19 .17 .035 14) iron 0 .018 0 :metal .4 :rough .7)
-             (shape g :cyl '(.17 .17 .004 14) "#2c2c32" 0 .037 0 :metal .3 :rough .5 :shadow nil)
+             (shape g :cyl '(.17 .17 .012 14) "#2c2c32" 0 .04 0 :metal .3 :rough .5 :shadow nil)        ; a centimetre proud of the pan under it
              (shape g :box '(.24 .02 .035) iron .3 .03 0 :metal .4 :rough .7)))
     g))
 
