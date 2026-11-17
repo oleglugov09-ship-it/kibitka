@@ -29,6 +29,17 @@ The game speaks English and Russian (switch in the lobby, `F2`, or in the pause 
 - **Step outside.** Markets, a shooting range, fishing, a mine, an observatory in the mountains —
   and a gnome hidden in every special place.
 
+## References
+
+Games this one looks up to (no affiliation with any of them):
+
+- **Outbound** — a home on wheels that you live in and share with friends.
+- **Easy Delivery Co.** — small deliveries in a small truck.
+- **Papers, Please** — documents, stamps and inspections.
+- **Slow Roads** — unhurried driving with nowhere to be.
+- **Cozy Caravan** — a caravan that trades at markets along the way.
+- **ШХД: ЗИМА (It's Winter)** and the other ШХД games — the mood of post-Soviet panel-block towns.
+
 ## Keys
 
 | Key | What it does |
