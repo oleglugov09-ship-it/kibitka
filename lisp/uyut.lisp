@@ -295,37 +295,74 @@ Each time it is about something different."
   (destructuring-bind (sx sz) *stove-at*
     (list sx sz .6 .5 *stove-top*)))
 
+(defun stove-recipe-p (kind)
+  "Return true if KIND takes part in a recipe cooked on the stove: as the raw good or as what goes with it."
+  (some (lambda (r) (destructuring-bind (raw dish name &optional with hearth) r
+                      (declare (ignore dish name))
+                      (and (null hearth) (or (eq kind raw) (eq kind with)))))
+        *recipes*))
+
+(defun single-dish (kind)
+  "Return the dish that KIND alone turns into on the stove, or NIL."
+  (second (find-if (lambda (r) (and (eq (first r) kind) (null (fourth r)) (null (fifth r)))) *recipes*)))
+
 (defun raw-on-stove ()
   "Return the records of the items that stand on the stove and can be cooked.
-Without the frying pan on the stove (kettle.lisp) that is only milk."
+Without the frying pan on the stove (kettle.lisp) that is only milk. A toadstool counts: it ruins the lot."
   (destructuring-bind (cx cz w d top) (stove-surface)
-    (remove-if-not (lambda (spec) (and (dish-of (first spec)) (null (sixth spec))
+    (remove-if-not (lambda (spec) (and (or (stove-recipe-p (first spec)) (eq (first spec) :toadstool)) (null (sixth spec))
                                        (or *pan-on* (eq (first spec) :milk))
                                        (< (abs (- (second spec) cx)) (+ (/ w 2) .03)) (< (abs (- (fourth spec) cz)) (+ (/ d 2) .03))
                                        (< (abs (- (third spec) top)) .08)))
                    (mapcar #'car *items*))))
 
+(defun stove-jobs ()
+  "Return what the stove cooks right now: entries of (dish item-record ...).
+Recipes of two ingredients come first and take a pair each; whatever is left cooks alone. A toadstool
+among them makes one job, :RUINED, of everything on the stove."
+  (let ((raws (raw-on-stove)) (jobs '()))
+    (when (find :toadstool raws :key #'first) (return-from stove-jobs (list (cons :ruined raws))))
+    (dolist (r *recipes*)
+      (destructuring-bind (raw dish name &optional with hearth) r
+        (declare (ignore name))
+        (when (and with (null hearth))
+          (loop (let ((a (find raw raws :key #'first)) (b (find with raws :key #'first)))
+                  (unless (and a b) (return))
+                  (push (list dish a b) jobs)
+                  (setf raws (remove a (remove b raws))))))))
+    (dolist (raw raws (nreverse jobs))
+      (let ((dish (single-dish (first raw)))) (when dish (push (list dish raw) jobs))))))
+
+(defun cook-time (job)
+  "Return the number of seconds the JOB takes: less under the lid, less again when everything was cut on the board."
+  (* *cook-time* (if *lid* .5 1) (if (every (lambda (spec) (eql (fifth spec) 2)) (rest job)) *cut-factor* 1)))
+
 (defun step-cook (delta)
   "Advance the cooking by DELTA seconds; the driver computes it.
-Raw goods on the hot stove turn into a dish (*RECIPES*); each has its own countdown."
-  (let ((raws (raw-on-stove)))
-    (setf *cook* (remove-if-not (lambda (c) (member (car c) raws :test #'equal)) *cook*))
-    (dolist (raw raws)
-      (unless (assoc raw *cook* :test #'equal)
-        (push (cons raw (if (and *lid* *pan-on*) (/ *cook-time* 2) *cook-time*)) *cook*)   ; under the lid it is twice as fast
-        (say-all (if (> *fire* 0)
-                     (format nil "Готовим ~a: полминуты на огне" (good-name (dish-of (first raw))))
-                     "Печка холодная — подбрось доску, и будет готовиться"))))
+What stands on the hot stove turns into dishes (STOVE-JOBS); each job has its own countdown."
+  (let ((jobs (stove-jobs)))
+    (setf *cook* (remove-if-not (lambda (c) (member (car c) jobs :test #'equal)) *cook*))
+    (dolist (job jobs)
+      (unless (assoc job *cook* :test #'equal)
+        (push (cons job (cook-time job)) *cook*)
+        (say-all (cond ((<= *fire* 0) "Печка холодная — подбрось доску, и будет готовиться")
+                       ((eq (first job) :ruined) "Жарим… Пахнет как-то странно")
+                       (t (format nil "Готовим ~a" (good-name (first job))))))))
     (when (> *fire* 0)
       (dolist (c (copy-list *cook*))
         (when (<= (decf (cdr c) delta) 0)
-          (let* ((raw (car c)) (dish (dish-of (first raw))))
-            (set-items (substitute (list dish (second raw) (third raw) (fourth raw) 0) raw (mapcar #'car *items*) :test #'equal))
+          (destructuring-bind (dish first-raw &rest others) (car c)
+            (let ((left (remove-if (lambda (spec) (member spec others :test #'equal)) (mapcar #'car *items*))))
+              (set-items (if (eq dish :ruined)
+                             (remove first-raw left :test #'equal)
+                             (substitute (list dish (second first-raw) (third first-raw) (fourth first-raw) 0) first-raw left :test #'equal))))
             (setf *cook* (remove c *cook*))
             (save-interior)
             (log-event :cooked :dish dish :dist (round *dist*))
-            (say-all (format nil "Готово: ~a. Там, где ищут сырьё, за блюдо дадут вдвое больше"
-                             (second (assoc dish *kinds*))))))))))
+            (say-all (if (eq dish :ruined)
+                         "Мухомор на сковородке! Всё пришлось выбросить. Красный в белую точку — не брать"
+                         (format nil "Готово: ~a. Там, где ищут сырьё, за блюдо дадут вдвое больше"
+                                 (second (assoc dish *kinds*)))))))))))
 
 (defun good-price (kind price)
   "Return how much a buyer pays for the good KIND when paying PRICE for the raw good.

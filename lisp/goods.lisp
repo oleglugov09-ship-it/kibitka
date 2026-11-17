@@ -56,7 +56,8 @@ A seller's price is low (the good is made here), a buyer's is high (the good is 
   "Record a deal: SIDE :sold means we sold GOOD in this town, :bought means we bought it."
   (let* ((key (list (trade-town (and *client* (getf *client* :town))) (raw-of good) side))
          (cell (or (assoc key *glut* :test #'equal) (first (push (cons key 0.0) *glut*)))))
-    (incf (cdr cell) 1.0)))
+    (incf (cdr cell) 1.0)
+    (when (and (eq side :sold) (dish-p good)) (note-quest :cook))))             ; the town council's dinner quest counts dishes sold
 
 (defun step-glut (delta)
   (dolist (c *glut*) (setf (cdr c) (max 0.0 (- (cdr c) (/ delta *glut-rest*)))))
@@ -101,6 +102,27 @@ That is the good sought or a dish made from it (blini will do for milk)."
 (defun build-good (g kind)
   "Build the good KIND as a thing in G: it stands on a shelf, is carried in paws, goes on the windowsill."
   (ecase kind
+    ((:mushroom :toadstool)                                                             ; a handful in a paper cone
+     (shape g :cone '(.07 .1 6) "#d8d2c0" 0 .05 0 :rot (list pi 0 0))
+     (loop for (x z) in '((-.03 .0) (.03 .02) (.0 -.03))
+           do (shape g :cyl '(.012 .015 .06 6) "#e8e0d0" x .11 z :shadow nil)
+              (shape g :ball '(.035 7 4) (if (eq kind :toadstool) "#c02a22" "#8a5a34") x .145 z :scale '(1 .6 1) :shadow nil)
+              (when (eq kind :toadstool) (shape g :ball '(.008 4 3) "#f0ece0" (+ x .012) .162 z :shadow nil))))
+    (:apple (shape g :cyl '(.09 .07 .06 8) "#8a6440" 0 .03 0)                             ; a small basket of apples
+            (loop for i below 4 do (shape g :ball '(.035 7 5) (if (evenp i) "#c8382c" "#d8a030") (* .04 (cos (* i 1.6))) .08 (* .04 (sin (* i 1.6))) :shadow nil)))
+    (:herb (dotimes (i 5) (shape g :box '(.008 .16 .008) "#5a7a3a" (* .012 (- i 2)) .08 0 :rot (list 0 0 (* .12 (- i 2))) :shadow nil))   ; a bunch tied with string
+           (shape g :box '(.05 .012 .02) "#d8d2c0" 0 .05 0 :shadow nil)
+           (dotimes (i 3) (shape g :ball '(.014 5 3) "#9a6ab8" (* .02 (- i 1)) .165 0 :shadow nil)))
+    (:shroomfry (shape g :cyl '(.1 .1 .012 12) "#e4e0d4" 0 .006 0)                        ; a plate of fried mushrooms
+                (dotimes (i 6) (shape g :ball '(.022 5 4) "#7a4a2c" (* .05 (cos i)) .028 (* .05 (sin i)) :scale '(1 .5 1) :shadow nil)))
+    (:creamfry (shape g :cyl '(.09 .07 .08 12) "#d8d2c0" 0 .04 0)                         ; a bowl: mushrooms in sour cream
+               (shape g :cyl '(.082 .082 .012 12) "#f0e8d8" 0 .078 0 :shadow nil)
+               (dotimes (i 4) (shape g :ball '(.016 5 4) "#7a4a2c" (* .035 (cos (* i 1.6))) .088 (* .035 (sin (* i 1.6))) :shadow nil)))
+    (:charlotte (shape g :cyl '(.1 .1 .012 12) "#e4e0d4" 0 .006 0)                        ; an apple pie
+                (shape g :cyl '(.085 .09 .05 12) "#d8a040" 0 .037 0)
+                (dotimes (i 5) (shape g :box '(.03 .006 .012) "#f0d8a0" (* .04 (cos (* i 1.25))) .064 (* .04 (sin (* i 1.25))) :shadow nil)))
+    (:dried (shape g :box '(.004 .16 .004) "#d8d2c0" 0 .08 0 :shadow nil)                  ; dried mushrooms on a string
+            (dotimes (i 5) (shape g :ball '(.026 6 4) "#6a4a34" 0 (+ .025 (* i .03)) 0 :scale '(1 .45 1) :shadow nil)))
     (:fried (shape g :cyl '(.1 .1 .012 12) "#e4e0d4" 0 .006 0)                          ; a plate with a browned fish on it
             (shape g :ball '(.085 8 5) "#b8782c" 0 .04 0 :scale '(.6 .4 1.3))
             (shape g :cone '(.05 .08 4) "#9a6424" 0 .04 .14 :rot (list (/ pi 2) 0 0) :scale '(.3 1 1)))
@@ -136,5 +158,8 @@ That is the good sought or a dish made from it (blini will do for milk)."
                         (:books "книги" (.18 .12 .24)) (:cans "тушёнка" (.2 .1 .1)) (:water "минеральная вода" (.1 .27 .1))
                         (:honey "мёд" (.15 .16 .15)) (:berry "клюква" (.18 .14 .18))
                         ;; dishes off the cooktop (uyut.lisp): blini are listed in interior.lisp
+                        (:mushroom "грибы" (.16 .17 .16)) (:toadstool "грибы" (.16 .17 .16)) (:apple "яблоки" (.18 .12 .18)) (:herb "травы" (.1 .18 .06))
+                        (:shroomfry "жареные грибы" (.22 .06 .22)) (:creamfry "грибы в сметане" (.2 .1 .2)) (:charlotte "шарлотка" (.22 .08 .22))
+                        (:dried "сушёные грибы" (.08 .17 .08))
                         (:fried "жареная рыба" (.22 .08 .22)) (:jam "варенье" (.12 .17 .12))
                         (:toast "гренки" (.22 .08 .22)) (:stew "горячая тушёнка" (.2 .12 .2)))))

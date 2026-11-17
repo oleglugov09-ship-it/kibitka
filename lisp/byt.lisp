@@ -50,7 +50,7 @@ Each entry is (x z width depth height)."
             (destructuring-bind (z0 z1) *rack-z*                                       ; overhead racks
               (loop for sx in '(-1 1) collect (list (* sx (- *half-width* .2)) (/ (+ z0 z1) 2) .36 (- z1 z0) *rack-top*)))
             (list (stove-surface))                                                 ; the stove top: cooking happens here (uyut.lisp)
-            (fridge-surfaces)                                                      ; the shelves of the open fridge (fridge.lisp)
+            (fridge-surfaces) (list (dryer-surface))                               ; the fridge shelves and the dryer above the stove (fridge.lisp)
             ;; with the window slid open there is one shared windowsill: through the opening, from our edge to the
             ;; outer one. Both we and the customer put things on the same board, each as far as they can reach
             (when (> *window-k* .9)
@@ -179,9 +179,12 @@ As many are placed as there are players.")
           (t (say "Стаканы полные — пейте") nil))))
 
 (defun drink-tea (cup)
+  "Drink the glass CUP: what it does depends on what was brewed in the kettle (kettle.lisp)."
   (object-set cup "visible" nil)
-  (setf *warm* (min 1.0 (+ *warm* .15)))
-  (say "Чай. Теплее"))
+  (case *kettle-brew*
+    (:compote (setf *warm* (min 1.0 (+ *warm* .3))) (say "Компот. Сладко и тепло"))
+    (:herbal (setf *warm* (min 1.0 (+ *warm* .15)) *boost-until* (+ *time* *water-time*)) (say "Травяной чай. Бодрит: пять минут бегаешь быстрее"))
+    (t (setf *warm* (min 1.0 (+ *warm* .15))) (say "Чай. Теплее"))))
 
 (defun eat-bagel ()
   (let ((b (find-if (lambda (n) (object-get n "visible")) *bagel-nodes*)))

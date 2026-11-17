@@ -49,7 +49,17 @@
 A dish is wanted wherever its raw good is wanted, but at twice the price. Without the cooktop the stove
 bakes only blini: nothing else fits on its round lid.")
 (defparameter *lid-price* 25 "The price of the cast-iron lid for the frying pan, sold at the hardware shop in Krasny Kut.")
-(defparameter *perishable* '(:milk :fish) "The goods that go bad overnight unless they are in the fridge (fridge.lisp).")
+(defparameter *perishable* '(:milk :fish :mushroom) "The goods that go bad overnight unless they are in the fridge (fridge.lisp).")
+(defparameter *cut-factor* .5 "The share of the cooking time left when everything in the dish was cut on the board first.")
+(defparameter *quest-money* '((:honor . 15) (:feast . 60)) "The rubles that come with a town council paper, by the paper.")
+(defvar *brews* '()
+  "What can be put into the kettle with the water: entries of (good brew-key name-of-the-drink).
+The brew keys the core knows are :COMPOTE (warms twice as well as tea) and :HERBAL (warms and peps you up).")
+(defvar *forage* '()
+  "What grows by the bus stops: entries of (good where seasons weathers count).
+WHERE is a list of vegetation kinds of the land (:pine :birch :meadow :autumn :rocky :steppe :marsh) and
+may include :VILLAGE for the stops of a village town. SEASONS is a list of seasons; WEATHERS is a list
+of weathers or NIL for any; COUNT is how many grow at one stop a day.")
 (defparameter *blin-factor* 2 "The factor by which blini cost more than milk...")
 (defparameter *blin-bonus* 3 "...and the number of rubles added on top.")
 (defparameter *swatter-price* 6 "The price of the fly swatter at the gas station by the swamp.")
@@ -89,8 +99,8 @@ bakes only blini: nothing else fits on its round lid.")
 (defparameter *fine-ignore* 3 "The fine for not showing the papers.")
 
 ;;; Father's debt (debt.lisp)
-(defparameter *debt-total* 300 "The number of rubles father left us owing.")
-(defparameter *debt-chunk* 25 "The most rubles one payment at the savings bank takes: the rest stays for fuel.")
+(defparameter *debt-total* 10000 "The number of rubles father left us owing.")
+(defparameter *debt-chunk* 500 "The most rubles one payment at the savings bank takes: the rest stays for fuel.")
 
 ;;; Market glut, parcels, the train (logic changes of 16.11.2026)
 (defparameter *glut-step* .12 "The price shift for each recent deal in the same good in the same town.")

@@ -23,6 +23,7 @@
 (defvar *kettle-water* nil "True when there is cold water in the kettle.")
 (defvar *kettle-heat* 0.0 "The number of seconds the water has been heated.")
 (defvar *kettle-tea* 0 "The number of cups of tea left in the kettle.")
+(defvar *kettle-brew* nil "What was put into the water: NIL for plain tea, or a brew key from *BREWS* (:COMPOTE, :HERBAL).")
 (defvar *kettle-nodes* nil "The kettle's nodes, a plist: :table :stove :paw :steam.")
 (defvar *pan-on* nil "True when the frying pan is on the stove.")
 (defvar *pan-nodes* nil "The frying pan's nodes, a plist: :wall :stove :lid.")
@@ -90,20 +91,39 @@
   (show-kettle)
   (say text))
 
+(defun brew-of (kind) "Return the *BREWS* entry for the good KIND, or NIL." (assoc kind *brews*))
+
+(defun brew-name ()
+  "Return the name of what is in the kettle."
+  (or (third (find *kettle-brew* *brews* :key #'second)) "чай"))
+
+(defun can-brew-p ()
+  "Return true if what we carry can go into the kettle now: it has cold water and nothing in it yet."
+  (and *carry* (brew-of (car *carry*)) *kettle-water* (null *kettle-brew*) (member *kettle-at* '(:table :stove))))
+
+(defun add-brew ()
+  "Put the good from the paws into the kettle."
+  (let ((entry (brew-of (car *carry*))))
+    (setf *kettle-brew* (second entry) *carry* nil *carry-from* nil)
+    (show-carry) (save-interior)
+    (say (format nil "В чайник: будет ~a. Теперь на огонь" (third entry)))))
+
 (defun use-table-kettle ()
   "Answer E on the kettle's place on the table: pour a cup, take the kettle, or put it back."
-  (cond ((eq *kettle-at* :away) (say "Чайник у кого-то в лапе"))
+  (cond ((can-brew-p) (add-brew))
+        ((eq *kettle-at* :away) (say "Чайник у кого-то в лапе"))
         ((eq *kettle-at* :paw) (move-kettle :table (if (plusp *kettle-tea*) "Чайник на столе. E по нему — налить чаю" "Чайник на столе")))
         ((plusp *kettle-tea*) (when (pour-tea) (decf *kettle-tea*)))
         (t (move-kettle :paw "Чайник в лапе"))))
 
 (defun use-washstand ()
   (cond ((not (eq *kettle-at* :paw)) (say "Умылся. Свежо"))
-        (t (setf *kettle-water* t *kettle-heat* 0.0 *kettle-tea* 0)
+        (t (setf *kettle-water* t *kettle-heat* 0.0 *kettle-tea* 0 *kettle-brew* nil)
            (say "Набрал воды. Теперь на печку: справа на ней конфорка для чайника"))))
 
 (defun use-ring ()
   "Answer E on the ring of the stove: put the kettle on it or take it off."
+  (when (can-brew-p) (return-from use-ring (add-brew)))
   (case *kettle-at*
     (:paw (move-kettle :stove (cond ((plusp *kettle-tea*) "Чайник на печке")
                                     ((not *kettle-water*) "В чайнике пусто. Набери воды в умывальнике и вскипяти на печке")
@@ -112,6 +132,7 @@
     (:stove (move-kettle :paw "Чайник в лапе"))))
 
 (defun ring-label ()
+  (when (can-brew-p) (return-from ring-label (format nil "E — положить ~a в чайник" (good-name (car *carry*)))))
   (case *kettle-at*
     (:paw "E — поставить чайник на печку")
     (:stove (cond ((plusp *kettle-tea*) "E — снять чайник: чай готов")
@@ -135,6 +156,13 @@
            (say (if *pan-on* "Сковородка на печке: клади на неё рыбу, хлеб, клюкву или тушёнку — пожарится"
                     "Сковородка висит на гвозде")))))
 
+(defun use-board ()
+  "Answer E on the cutting board: cut what we carry, so that it cooks faster."
+  (cond ((null *carry*) (say "Разделочная доска. С продуктом в лапах — нарезать: приготовится вдвое быстрее"))
+        ((or (cdr *carry*) (not (stove-recipe-p (car *carry*)))) (say "Это резать незачем: режут то, что идёт на сковородку"))
+        (*carry-cut* (say "Уже нарезано"))
+        (t (setf *carry-cut* t) (say "Нарезал. На сковородке приготовится вдвое быстрее"))))
+
 (defun kettle-usables ()
   "Return the things to press for the kettle and the frying pan."
   (destructuring-bind (sx sz) *stove-at*
@@ -142,9 +170,10 @@
             (list
              (when (and (table-shown-p) (member *kettle-at* '(:table :paw :away)))
                (usable (- (first *table-at*) .16) (+ *table-top* .14) (second *table-at*)
-                       (lambda () (cond ((eq *kettle-at* :away) "Чайник у кого-то в лапе")
+                       (lambda () (cond ((can-brew-p) (format nil "E — положить ~a в чайник" (good-name (car *carry*))))
+                                        ((eq *kettle-at* :away) "Чайник у кого-то в лапе")
                                         ((eq *kettle-at* :paw) "E — поставить чайник на стол")
-                                        ((plusp *kettle-tea*) (format nil "E — налить чаю · осталось стаканов: ~d" *kettle-tea*))
+                                        ((plusp *kettle-tea*) (format nil "E — налить: ~a · осталось стаканов: ~d" (brew-name) *kettle-tea*))
                                         (*kettle-water* "E — взять чайник: вода в нём холодная")
                                         (t "E — взять чайник: он пустой")))
                        #'use-table-kettle nil 2.6 .16))
@@ -153,6 +182,10 @@
                      #'use-washstand nil 2.6 .3)
              (destructuring-bind (rx ry rz) *kettle-ring*
                (usable (+ sx rx) (+ ry .1) (+ sz rz) #'ring-label #'use-ring nil 2.6 .2))
+             (usable (- (first *washstand-at*) .02) (+ *washstand-top* .06) (- (second *washstand-at*) .6)
+                     (lambda () (if (and *carry* (null (cdr *carry*)) (stove-recipe-p (car *carry*)) (not *carry-cut*))
+                                    "E — нарезать: приготовится вдвое быстрее" "Разделочная доска"))
+                     #'use-board nil 2.6 .22)
              (if *pan-on*
                  (usable (+ sx .3) (+ *stove-top* .05) sz (lambda () "E — повесить сковородку на гвоздь") #'toggle-pan nil 2.6 .1)
                  (destructuring-bind (nx ny nz) *pan-nail*
@@ -167,7 +200,7 @@ Everyone counts the heat for their own hint; the driver alone decides that it ha
     (when (and (>= (incf *kettle-heat* delta) *boil-time*) (not (net-guest-p)))
       (setf *kettle-water* nil *kettle-heat* 0.0 *kettle-tea* *kettle-cups*)
       (show-kettle)
-      (say-all "Чайник закипел! Заварили прямо в нём. Неси на стол и разливай по стаканам")))
+      (say-all (format nil "Чайник закипел: готов ~a. Неси на стол и разливай по стаканам" (brew-name)))))
   (let ((steam (getf *kettle-nodes* :steam)))
     (when (and steam (eq *kettle-at* :stove) (plusp *kettle-tea*))
       (node-3d-set-position steam (v3 (+ .19 (* .015 (sin (* *time* 3.0)))) (+ .2 (* .03 (mod (* *time* .8) 1.0))) 0)))))
@@ -175,16 +208,17 @@ Everyone counts the heat for their own hint; the driver alone decides that it ha
 ;;; ------------------------------------------------------------------ shared over the network
 
 (defcommon :kettle
-  :value (list (if (eq *kettle-at* :away) :paw *kettle-at*) (and *kettle-water* t) *kettle-tea*)
-  :spec '((:member :table :stove :paw) (:member t nil) integer)
+  :value (list (if (eq *kettle-at* :away) :paw *kettle-at*) (and *kettle-water* t) *kettle-tea* *kettle-brew*)
+  :spec '((:member :table :stove :paw) (:member t nil) integer symbol)
   :accept (lambda (state)
-            (destructuring-bind (at water tea) state
+            (destructuring-bind (at water tea brew) state
               ;; 'in a paw' means ours if we hold it and somebody else's otherwise
               (let ((at (cond ((not (eq at :paw)) at) ((eq *kettle-at* :paw) :paw) (t :away)))
                     (tea (max 0 (min *kettle-cups* tea))))
-                (unless (and (eq at *kettle-at*) (eq water (and *kettle-water* t)) (= tea *kettle-tea*))
+                (unless (and (eq at *kettle-at*) (eq water (and *kettle-water* t)) (= tea *kettle-tea*) (eq brew *kettle-brew*))
                   (when (or (not (eq at *kettle-at*)) (and water (not *kettle-water*))) (setf *kettle-heat* 0.0))
-                  (setf *kettle-at* at *kettle-water* water *kettle-tea* tea)
+                  (setf *kettle-at* at *kettle-water* water *kettle-tea* tea
+                        *kettle-brew* (and (find brew *brews* :key #'second) brew))
                   (show-kettle))))))
 
 (defcommon :pan :value (and *pan-on* t) :spec '(:member t nil)

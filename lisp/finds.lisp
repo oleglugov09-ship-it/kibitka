@@ -64,13 +64,15 @@ The kind is one of :station, :stop, :observatory, :depot, :airmail or :gimmick."
   "Return what lies by the place at path coordinate D: entries (kind number x offset-along).
 Each place has its own set, the same for all players."
   (append (loop for i below (floor (* 3.6 (vr d 51))) collect (list :bottle i (+ 5.4 (* 3.0 (vr d (+ 60 i)))) (- (* 5.0 (vr i (+ d 3))) 2.5)))
-          (loop for i below (floor (* 2.4 (vr d 52))) collect (list :paper i (+ 5.6 (* 2.6 (vr d (+ 70 i)))) (- (* 5.0 (vr (+ i 7) d)) 2.5)))))
+          (loop for i below (floor (* 2.4 (vr d 52))) collect (list :paper i (+ 5.6 (* 2.6 (vr d (+ 70 i)))) (- (* 5.0 (vr (+ i 7) d)) 2.5)))
+          (forage-spots d)))                                              ; what grows here today (forage.lisp)
 
 (defun build-find (kind x d)
   (destructuring-bind (px py pz) (side-point x d 0.02)
     (let ((g (group *world* px py pz)))
       (node-3d-set-rotation g (v3 0 (* 6 (vr x d)) 0))
-      (ecase kind
+      (case kind
+        ((:mushroom :toadstool :berry :apple :herb) (build-plant g kind))
         (:bottle (shape g :cyl '(.035 .04 .2 8) "#3a7a4a" 0 .1 0 :rough .2 :alpha .8)
                  (shape g :cyl '(.014 .03 .08 6) "#3a7a4a" 0 .24 0 :rough .2 :alpha .8))
         (:paper (shape g :box '(.3 .16 .22) "#d8d2c0" 0 .08 0)
@@ -97,7 +99,14 @@ Each place has its own set, the same for all players."
   "Pick up a find: the place D (an integer), its KIND and its number I.
 The action is shared: once one player picks it up, it is gone for everyone."
   (let ((id (list (round d) kind i)))
-    (cond ((or (member id *picked* :test #'equal) (not (member kind '(:bottle :paper)))) (say "Это уже подобрали"))
+    (cond ((member id *picked* :test #'equal) (say "Это уже подобрали"))
+          ((forage-p kind)                                               ; a plant: the good goes into the paws
+           (when (give-good kind (forage-text kind))
+             (push id *picked*)
+             (forget-old-plants)
+             (save-finds)
+             (log-event :foraged :kind kind :dist (round *dist*))))
+          ((not (member kind '(:bottle :paper))) (say "Это уже подобрали"))
           (t (push id *picked*)
              (if (eq kind :bottle) (incf *bottles*) (incf *papers*))
              (save-finds)
@@ -173,8 +182,10 @@ It has a booth with a window, crates of bottles, bales of paper and scales. Retu
      (loop for f in *find-nodes*
            unless (eq (second (first f)) :none)
              collect (let ((f f))
-                       (road-usable (third f) (fourth f) .12
-                                    (lambda () (if (eq (second (first f)) :bottle) "E — подобрать бутылку" "E — подобрать макулатуру"))
+                       (road-usable (third f) (fourth f) (plant-height (second (first f)))
+                                    (lambda () (case (second (first f))
+                                                 (:bottle "E — подобрать бутылку") (:paper "E — подобрать макулатуру")
+                                                 (t (forage-label (second (first f))))))
                                     (lambda () (pick-find (round (first (first f))) (second (first f)) (third (first f)))))))
      (when (and place (eq (first place) :observatory))
        (let ((d (second place)))

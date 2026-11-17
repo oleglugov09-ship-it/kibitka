@@ -13,11 +13,16 @@
 (defvar *story-stage* :intro
   "Where the story stands: :INTRO (cards not seen yet), :OWING, :FREE (paid, not left yet) or :DONE.")
 
-(defun save-debt () (unless (net-guest-p) (put-save :debt (list *debt* *story-stage*))))
+(defun save-debt () (unless (net-guest-p) (put-save :debt (list *debt* *story-stage* *debt-total*))))
 (defun load-debt ()
+  "Read the debt from the save. If the whole debt has been changed since, what was paid still counts."
   (let ((f (get-save :debt)))
-    (when (and (fits f '(integer (:member :intro :owing :free :done))) (<= 0 (first f) 1000000))
-      (setf *debt* (first f) *story-stage* (second f)))))
+    (when (and (fits f '(integer (:member :intro :owing :free :done) &optional integer)) (<= 0 (first f) 10000000))
+      (destructuring-bind (left stage &optional (total 300)) f               ; saves without the total are from the 300-ruble days
+        (setf *story-stage* stage
+              *debt* (if (and (/= total *debt-total*) (member stage '(:intro :owing)))
+                         (max 0 (- *debt-total* (- total left)))
+                         left))))))
 (defstate :debt
   :clear (lambda () (setf *debt* *debt-total* *story-stage* :intro))
   :load #'load-debt :save #'save-debt)

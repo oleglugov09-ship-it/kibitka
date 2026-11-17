@@ -33,7 +33,8 @@
         (shape hinge :box '(.02 .22 .03) "#b0b4b8" .05 (* h .62) (- w .06) :metal .7 :rough .3 :shadow nil)
         (shape hinge :box '(.006 .05 .2) "#3f6f73" .042 (* h .86) half :shadow nil)        ; the name plate
         (setf *fridge-door* hinge)
-        (apply-fridge)))))
+        (apply-fridge))))
+  (make-dryer c))
 
 (defun in-fridge-p (spec)
   "Return true if the item record SPEC stands inside the fridge."
@@ -43,11 +44,52 @@
            (< (third spec) (- (second *fridge-size*) .05))))))
 
 (defun fridge-surfaces ()
-  "Return the shelves of the fridge as (x z width depth height) entries; none while the door is shut."
-  (when *fridge-open*
-    (destructuring-bind (fx fz) *fridge-at*
-      (let ((inner (- (first *fridge-size*) .1)))
-        (loop for top in *fridge-shelves* collect (list fx fz inner inner top))))))
+  "Return the shelves of the fridge as (x z width depth height) entries.
+They hold things whether the door is open or shut; putting things in asks for an open door (PUT-SPOT)."
+  (destructuring-bind (fx fz) *fridge-at*
+    (let ((inner (- (first *fridge-size*) .1)))
+      (loop for top in *fridge-shelves* collect (list fx fz inner inner top)))))
+
+(defun fridge-shelf (x z top)
+  "Return the height of the fridge shelf that the point (X Z TOP) lies on, or NIL."
+  (destructuring-bind (fx fz) *fridge-at*
+    (let ((half (/ (first *fridge-size*) 2)))
+      (and (< (abs (- x fx)) half) (< (abs (- z fz)) half)
+           (find-if (lambda (level) (< (abs (- level top)) .04)) *fridge-shelves*)))))
+
+(defun fridge-slot (x z level)
+  "Return the free place on the fridge shelf LEVEL nearest to (X Z), as (X Z), or NIL if the shelf is full.
+A shelf has four places, two by two, like a section of the rack in small."
+  (destructuring-bind (fx fz) *fridge-at*
+    (flet ((taken-p (place)
+             (some (lambda (it) (destructuring-bind (kind ix iy iz &rest more) (car it)
+                                  (declare (ignore kind more))
+                                  (and (< (abs (- iy level)) .1) (< (abs (- ix (first place))) .16) (< (abs (- iz (second place))) .16))))
+                   *items*)))
+      (first (sort (remove-if #'taken-p (loop for dx in '(-.11 .11) append (loop for dz in '(-.11 .11) collect (list (+ fx dx) (+ fz dz)))))
+                   #'< :key (lambda (place) (+ (expt (- (first place) x) 2) (expt (- (second place) z) 2))))))))
+
+;;; The dryer: a slatted shelf on brackets above the stove. Mushrooms left on it overnight do not go bad:
+;;; by the morning they are dried, keep for ever and sell as a dish.
+
+(defparameter *dryer-top* 1.72 "The height of the dryer above the floor.")
+
+(defun dryer-surface ()
+  "Return the dryer as (x z width depth height)."
+  (destructuring-bind (sx sz) *stove-at*
+    (list (- sx .02) (- sz .49) .5 .7 *dryer-top*)))
+
+(defun on-dryer-p (spec)
+  (destructuring-bind (cx cz w d top) (dryer-surface)
+    (and (< (abs (- (second spec) cx)) (/ w 2)) (< (abs (- (fourth spec) cz)) (/ d 2)) (< (abs (- (third spec) top)) .1))))
+
+(defun make-dryer (c)
+  (destructuring-bind (cx cz w d top) (dryer-surface)
+    (let ((g (group c cx (+ *floor* top) cz)))
+      (dolist (dx '(-.2 -.1 0.0 .1 .2)) (shape g :box (list .025 .02 d) "#8a6440" dx -.01 0 :shadow nil))
+      (dolist (dz (list (- .03 (/ d 2)) (- (/ d 2) .03)))
+        (shape g :box (list w .02 .03) "#5a3e26" 0 -.03 dz :shadow nil)
+        (shape g :box '(.03 .2 .03) "#34363a" (- .02 (/ w 2)) -.13 dz :rot (list 0 0 -.5) :metal .5 :rough .5 :shadow nil)))))
 
 (defun toggle-fridge ()
   (setf *fridge-open* (not *fridge-open*))
@@ -62,19 +104,25 @@
                 (usable (+ fx half .04) y fz (lambda () "E — открыть холодильник") #'toggle-fridge nil 2.6 .3))))))
 
 (defun step-spoil ()
-  "At every dawn throw away the milk and fish that stood outside the fridge; the driver counts."
+  "At every dawn throw away what goes bad and stood outside the fridge; the driver counts.
+Mushrooms on the dryer are dried instead."
   (unless (net-guest-p)
     (let ((day (today)))
       (cond ((or (null *spoil-day*) (< day *spoil-day*)) (setf *spoil-day* day))      ; the first look, or the clock was turned back
             ((> day *spoil-day*)
              (setf *spoil-day* day)
-             (let ((bad (remove-if-not (lambda (spec) (and (member (first spec) *perishable*) (not (in-fridge-p spec))))
-                                       (mapcar #'car *items*))))
+             (let* ((dry (remove-if-not (lambda (spec) (and (eq (first spec) :mushroom) (on-dryer-p spec))) (mapcar #'car *items*)))
+                    (bad (remove-if-not (lambda (spec) (and (member (first spec) *perishable*) (not (in-fridge-p spec)) (not (on-dryer-p spec))))
+                                        (mapcar #'car *items*))))
+               (when dry
+                 (set-items (mapcar (lambda (spec) (if (member spec dry :test #'equal) (list* :dried (rest spec)) spec)) (mapcar #'car *items*)))
+                 (save-interior)
+                 (say-all "Грибы на сушилке высохли: теперь не испортятся"))
                (when bad
                  (set-items (remove-if (lambda (spec) (member spec bad :test #'equal)) (mapcar #'car *items*)))
                  (save-interior)
                  (log-event :spoiled :n (length bad) :dist (round *dist*))
-                 (say-all (format nil "За ночь испортилось: ~d шт. Молоко и рыбу на ночь убирай в холодильник — он у стены с ковром"
+                 (say-all (format nil "За ночь испортилось: ~d шт. Молоко, рыбу и грибы на ночь убирай в холодильник — он у стены с ковром"
                                   (length bad))))))))))
 
 (defcommon :fridge :value (and *fridge-open* t) :spec '(:member t nil)

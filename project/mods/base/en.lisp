@@ -285,7 +285,7 @@ On the way: a bridge over a gorge, a tunnel, a mountain switchback, a swamp. In 
 
 Купить и тут же продать нельзя: товар надо везти. Возишь одно и то же в один город — цена там падает, потом отходит.
 
-Готовка: молоко на горячей буржуйке через полминуты становится блинами. На сковородке (висит у печки, E — поставить) рецептов больше: рыба — жареная рыба, клюква — варенье, хлеб — гренки, тушёнка — горячая тушёнка. Крышка из хозтоваров в Красном Куте жарит вдвое быстрее. Молоко и рыба вне холодильника к утру портятся. Блюдо берут там же, где ищут сырьё, но вдвое дороже."
+Готовка: молоко на горячей буржуйке через полминуты становится блинами. На сковородке (висит у печки, E — поставить) рецептов больше: рыба — жареная рыба, клюква — варенье, хлеб — гренки, тушёнка — горячая тушёнка. Крышка из хозтоваров в Красном Куте жарит вдвое быстрее. Молоко, рыба и грибы вне холодильника к утру портятся. Разделочная доска у умывальника: нарежь — приготовится вдвое быстрее. Два продукта на сковородке сразу дают своё блюдо: яблоки с хлебом — шарлотку, грибы с молоком — грибы в сметане. Яблоки или травы в чайник с водой — компот или травяной чай. У остановок растёт своё: грибы в лесу в сырую погоду (красные в белую точку — мухоморы, не бери), клюква на болоте, яблоки у Берёзовки, травы в поле; зимой ничего не растёт. Грибы на сушилке над печкой за ночь высыхают и уже не портятся. Блюдо берут там же, где ищут сырьё, но вдвое дороже."
   "At the market in the middle of a town (the «MARKET» sign) and at bus stops where cats are waiting: slide the window open and ring the bell — a customer will come to the window.
 
 A seller puts local goods on the windowsill — cheap. LMB — buy.
@@ -294,7 +294,7 @@ A buyer wants what the town is short of — and pays well. Put the goods on the 
 
 You can't buy and sell on the spot: goods have to travel. Keep hauling the same thing to one town and the price there drops, then recovers.
 
-Cooking: milk on a hot stove turns into pancakes in half a minute. On the frying pan (it hangs by the stove, E puts it on) there are more recipes: fish — fried fish, cranberries — jam, bread — toast, canned stew — hot stew. The lid from the hardware store in Krasny Kut fries twice as fast. Milk and fish left outside the fridge spoil by morning. A dish sells where they want the raw goods, but for twice the price."
+Cooking: milk on a hot stove turns into pancakes in half a minute. On the frying pan (it hangs by the stove, E puts it on) there are more recipes: fish — fried fish, cranberries — jam, bread — toast, canned stew — hot stew. The lid from the hardware store in Krasny Kut fries twice as fast. Milk, fish and mushrooms left outside the fridge spoil by morning. The cutting board by the washstand: cut it and it cooks twice as fast. Two goods on the pan at once make a dish of their own: apples with bread — an apple pie, mushrooms with milk — mushrooms in sour cream. Apples or herbs in the kettle with the water make compote or herbal tea. Things grow by the bus stops: mushrooms in a wood in damp weather (red with white dots are toadstools, leave them), cranberries on the marsh, apples by Beryozovka, herbs in a meadow; in winter nothing grows. Mushrooms on the dryer above the stove dry overnight and no longer spoil. A dish sells where they want the raw goods, but for twice the price."
  "ЧТО ГДЕ ДЕЛАЮТ И ИЩУТ"
   "WHO MAKES AND WANTS WHAT"
  "ПОСЫЛКИ"
@@ -469,8 +469,8 @@ In the folder: G — this booklet, A and D or arrows — turn pages."
   "The train reached Zarechny before dawn. Nobody on the platform: father did not come to meet you."
  "На складе, где он держал кибитку, к двери приколота записка: «Малыш. Дела пошли плохо. Долг записал на тебя — так вышло. Я уехал за границу. Кибитка твоя. Не держи зла»."
   "At the depot where he kept the wagon, a note is pinned to the door: «Kid. Things went badly. I put the debt in your name — it just came to that. I have gone abroad. The wagon is yours. Don't think ill of me»."
- "Долг — триста рублей. Сберкасса в Заречном принимает его частями."
-  "The debt is three hundred rubles. The savings bank in Zarechny takes it in parts."
+ "Долг — десять тысяч рублей. Сберкасса в Заречном принимает его частями."
+  "The debt is ten thousand rubles. The savings bank in Zarechny takes it in parts."
  "Кибитка на ходу. Двенадцать городов по кольцу: вози посылки, торгуй через окно. Выплатишь долг — купишь билет и поедешь за отцом."
   "The wagon runs. Twelve towns around the ring: carry parcels, trade through the window. Pay off the debt, buy the ticket and go after father."
  "Долг выплачен."
@@ -507,4 +507,30 @@ In the folder: G — this booklet, A and D or arrows — turn pages."
   "Made with Godot and Common Lisp"
  "Конец"
   "The End"
+ "грибы"
+  "mushrooms"
+ "яблоки"
+  "apples"
+ "травы"
+  "herbs"
+ "жареные грибы"
+  "fried mushrooms"
+ "грибы в сметане"
+  "mushrooms in sour cream"
+ "шарлотку"
+  "an apple pie"
+ "шарлотка"
+  "apple pie"
+ "сушёные грибы"
+  "dried mushrooms"
+ "компот"
+  "compote"
+ "травяной чай"
+  "herbal tea"
+ "Званый обед"
+  "A dinner party"
+ "продать пять готовых блюд"
+  "sell five cooked dishes"
+ "благодарность горсовета и 60 р."
+  "the town council's thanks and 60 rub."
  )

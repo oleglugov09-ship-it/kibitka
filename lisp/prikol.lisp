@@ -45,7 +45,7 @@ Return NIL and show a hint if there is not enough money."
   "Put a good of KIND into the hands (if they are free) and say TEXT.
 Return true if the good was given."
   (cond (*carry* (say "Руки заняты — сначала поставь то, что несёшь, на полку") nil)
-        (t (setf *carry* (cons kind nil) *carry-from* nil)
+        (t (setf *carry* (cons kind nil) *carry-from* nil *carry-cut* nil)
            (show-carry) (save-interior)
            (say text) t)))
 

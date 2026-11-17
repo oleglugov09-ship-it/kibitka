@@ -87,7 +87,10 @@ PLACE is the rounded path coordinate of the stay.")
       (format nil "посылку в ~a~@[ (от: ~a)~]" (town-name (parcel-town (cdr carry))) (parcel-from (cdr carry)))
       (good-name (car carry))))
 
+(defvar *carry-cut* nil "True when the good in the paws was cut on the board: it will cook faster (it is put down turned half round).")
+
 (defun show-carry ()
+  (unless *carry* (setf *carry-cut* nil))
   (when *actor* (return-from show-carry nil))          ; an action on behalf of a guest: nothing changes in our own paws
   (when *carry-node* (node-queue-free *carry-node*) (setf *carry-node* nil))
   (when (and *carry* *camera*)
@@ -179,7 +182,12 @@ Return NIL for the floor or the top of an item."
   "Return why what is in hand cannot be put at SPOT: text for the player, or NIL if it can."
   (when (fourth spot)
     (return-from spot-problem
-      (if (eq (fourth spot) :full) "На этом этаже стеллажа мест нет: в секции восемь товаров или две посылки" "На стеллаже вещи стоят в один ряд — выбери свободное место")))
+      (case (fourth spot)
+        (:full "На этом этаже стеллажа мест нет: в секции восемь товаров или две посылки")
+        (:fridge-shut "Холодильник закрыт: E по дверце")
+        (:fridge-big "В холодильник влезают только продукты")
+        (:fridge-full "На этой полке холодильника мест нет: по четыре на полку")
+        (t "На стеллаже вещи стоят в один ряд — выбери свободное место"))))
   (destructuring-bind (x z top) spot
     (multiple-value-bind (w h d) (item-size (car *carry*) 0)
       (declare (ignore h))
@@ -190,6 +198,7 @@ Return NIL for the floor or the top of an item."
                           (getf *client* :stall)))
                "Тут лежит товар клиента — поставь рядом")
               ((and (< z -2.2) (shelf-level top)) nil)                ; the rack: the place has already been chosen by slots
+              ((fridge-shelf x z top) nil)                            ; the fridge: likewise
               ((some (lambda (it)                                   ; no putting one item inside another
                        (destructuring-bind (kind ix iy iz spin &rest more) (car it)
                          (declare (ignore more))
@@ -209,6 +218,12 @@ Return NIL for the floor or the top of an item."
          (raw (cond (a (list (snap (first a)) (snap (second a)) (third a)))
                     (t (shelf-spot)))))
     (cond ((null raw) nil)
+          ((fridge-shelf (first raw) (second raw) (third raw))        ; the fridge: the nearest free place of the shelf
+           (let ((level (fridge-shelf (first raw) (second raw) (third raw))))
+             (cond ((not *fridge-open*) (append raw (list :fridge-shut)))
+                   ((not (good-p (car *carry*))) (append raw (list :fridge-big)))
+                   (t (let ((place (fridge-slot (first raw) (second raw) level)))
+                        (if place (list (first place) (second place) level) (append raw (list :fridge-full))))))))
           ((< (second raw) -2.2)                                   ; the rack: the item goes to the nearest free slot of the level
            (let ((level (shelf-level (third raw))))
              (cond ((null level) (append raw (list :stack)))
@@ -223,7 +238,7 @@ Return T if something was done."
          (let* ((spot (put-spot)) (problem (and spot (spot-problem spot))))
            (cond (problem (say problem))
                  (spot
-                  (let ((spec (append (list (car *carry*) (float (first spot) 1.0) (float (third spot) 1.0) (float (second spot) 1.0) 0)
+                  (let ((spec (append (list (car *carry*) (float (first spot) 1.0) (float (third spot) 1.0) (float (second spot) 1.0) (if *carry-cut* 2 0))
                                       (when (cdr *carry*) (list (cdr *carry*))))))
                     (let ((node (apply #'build-item *cart* spec)))
                       (push (cons spec node) *items*)
@@ -237,7 +252,8 @@ Return T if something was done."
              (when it
                (fly (cdr it) (hand-point) :dur .2 :free t)                           ; from its place into hand
                (setf *items* (remove it *items*) *carry* (cons (first (car it)) (sixth (car it))) *carry-from* (car it)
-                     *took* (car it))
+                     *took* (car it)
+                     *carry-cut* (and (good-p (first (car it))) (eql (fifth (car it)) 2)))
                (show-carry) (settle-items) (refresh-seats) (save-interior)
                t)))))
 

@@ -216,7 +216,7 @@ and ask for a licence. Travelling light, we are never stopped."
          (cond (*fines* (say "Горсовет: сначала оплатите штрафы в участке — он рядом"))
                (t (let ((q (assoc (car *quest*) *quests*)))
                     (push (second q) *licenses*) (setf *quest* nil)
-                    (when (eq (second q) :honor) (incf *money* 15))
+                    (incf *money* (or (cdr (assoc (second q) *quest-money*)) 0))
                     (save-papers) (log-event :license :kind (second q))
                     (say-all (format nil (line :chairman-gives) (sixth q)))))))
         (*quest* (say (quest-label)))
