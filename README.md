@@ -91,3 +91,7 @@ toolchain paths are set at the top of the `Makefile` and `web/build.sh`.
 ## Licence
 
 MIT — see [LICENSE](LICENSE). The Godot add-ons in `project/addons/` keep their own MIT licences.
+
+The carpet on the wagon wall is a pixelated photograph of a Tatar silk blanket of the early 20th century
+(State Museum of Fine Arts of the Republic of Tatarstan): [Tatar blanket (2024-01-12) 01.jpg](https://commons.wikimedia.org/wiki/File:Tatar_blanket_(2024-01-12)_01.jpg)
+by Vyacheslav Kirillin, CC BY-SA 4.0; the pixelated picture is under the same licence.
