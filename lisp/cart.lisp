@@ -120,7 +120,7 @@ Its width follows the picture. Return the mesh instance, or NIL when the picture
       (flet ((layer (n) (+ w0 (* n .012))))
         (shape c :box (list .01 (- wh .1) (- (* 2 z) .2)) (kc :inside) (layer .5) (+ f (/ wh 2)) 0 :shadow nil)
         ;; behind the bunks, hung low so the photo cards above it stay in sight; without the picture, the plain carpet as before
-        (unless (wall-carpet c (layer 2.5) (+ f 1.02) -1.2 1.54)
+        (unless (wall-carpet c (layer 2.5) (+ f 1.0) -1.2 1.7)
           (shape c :box '(.01 1.7 2.6) (kc :carpet) (layer 1.5) (+ f 1.25) 0)
           (shape c :box '(.01 1.5 2.4) (kc :carpet2) (layer 2.5) (+ f 1.25) 0)
           (shape c :box '(.01 1.36 2.26) (kc :carpet) (layer 3.5) (+ f 1.25) 0))))

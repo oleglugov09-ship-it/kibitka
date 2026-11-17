@@ -73,7 +73,7 @@
       (setf *kettle-nodes*
             (list :table (and *table* (kettle-model *table* (- (first *table-at*) .16) (+ *table-top* .035) (second *table-at*)))
                   :stove stove :steam steam
-                  :paw (and *camera* (kettle-model *camera* .24 -.3 -.5)))
+                  :paw (and *camera* (kettle-model *camera* .18 -.27 -.42)))
             *pan-nodes*
             (destructuring-bind (nx ny nz) *pan-nail*
               (let ((lid (group c (+ sx nx) (+ f ny .36) (+ sz nz))))                ; the lid on its own nail, above the pan

@@ -1304,4 +1304,8 @@ otherwise the world and messages drift apart."
   "E — pick nuts"
 "Орехи в лапах. С мёдом на сковородке — козинаки"
   "Nuts in your paws. With honey on the pan — nut brittle"
+"E — раздвинуть шторы"
+  "E — draw the curtains back"
+"E — задёрнуть шторы"
+  "E — draw the curtains"
 ) by #'cddr do (setf (gethash ru *en*) en))

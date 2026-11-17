@@ -15,7 +15,13 @@
 (defvar *look-buttons* '() "The profile buttons, as a list of (KIND NUMBER BUTTON) entries.")
 (defvar *look-doll* nil "The fitting cat shown in front of the camera.")
 
-(defun my-look () (+ *outfit* (* 10 (1+ *fur*)) (case *torch* (:beam 100) (:chin 200) (t 0))))        ; hundreds: torch, as a beam or under the chin (uyut.lisp)
+(defun my-hold ()
+  "Return the number of what we hold in our paws, for the look: 0 for nothing (see LOOK-HOLD)."
+  (cond ((eq *kettle-at* :paw) 99)
+        (*carry* (1+ (or (position (car *carry*) *kinds* :key #'first) -1)))
+        (t 0)))
+
+(defun my-look () (+ *outfit* (* 10 (1+ *fur*)) (case *torch* (:beam 100) (:chin 200) (t 0)) (* 1000 (my-hold))))        ; hundreds: torch, as a beam or under the chin (uyut.lisp)
 
 (defun load-look ()
   (let ((form (get-save :look)))

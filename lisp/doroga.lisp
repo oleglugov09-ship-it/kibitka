@@ -362,10 +362,16 @@ OUTFIT is 0 for a coat of color COAT and a scarf, 1 for a sheepskin coat and an 
       (t (shape g :cyl '(.15 .3 .92 10) coat 0 .46 0) (scarf)))))
 
 ;;; A player's look is one number: units - the clothing set, tens - the fur, hundreds - the flashlight (0 - none,
-;;; 1 - beam forward, 2 - upright under the muzzle). MY-LOOK (look.lisp) assembles it, these three take it apart.
-(defun look-ok-p (look) (and (integerp look) (<= 0 look 299)))
-(defun look-torch (look) (floor look 100))
+;;; 1 - beam forward, 2 - upright under the muzzle), thousands - what the cat holds in its paws (0 - nothing,
+;;; 99 - the kettle, otherwise the place of the thing in *KINDS* plus one). MY-LOOK (look.lisp) assembles it,
+;;; these take it apart.
+(defun look-ok-p (look) (and (integerp look) (<= 0 look 99299)))
+(defun look-torch (look) (mod (floor look 100) 10))
 (defun look-clothes (look) (mod look 100))
+(defun look-hold (look)
+  "Return the kind of thing the cat with LOOK holds: a kind from *KINDS*, :KETTLE or NIL."
+  (let ((n (floor look 1000)))
+    (cond ((= n 99) :kettle) ((plusp n) (first (nth (1- n) *kinds*))))))
 
 (defun make-cat (parent index &optional (look 0))
   "Build a cat under the node PARENT; INDEX picks the fur and the coat.

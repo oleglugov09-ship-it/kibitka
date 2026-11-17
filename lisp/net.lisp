@@ -691,6 +691,12 @@ it but walks there smoothly, hopping as it goes."
             (let* ((g (group *cart* 0 *floor* 0)) (made (make-cat g id look)) (cat (first made)) (k (/ *eye* *cat-eye-y*)))
               (node-3d-set-scale cat (v3 k k k))
               (sign g name 0 (+ *eye* .6) 0 :h .09 :yaw 0.0)
+              (let ((kind (look-hold look)))                                 ; what the cat holds: in front of its chest
+                (when kind
+                  (let ((paws (group cat .16 .62 .34)))
+                    (if (eq kind :kettle)
+                        (kettle-model paws 0 0 0)
+                        (node-3d-set-scale (build-item paws kind 0 (- *floor*) 0 0) (if (member kind '(:box :crate)) (v3 .45 .45 .45) (v3 1 1 1)))))))
               (case (look-torch look)                                        ; flashlight: the cat faces +z
                 (1 (torch-model (second made) .2 -.08 .3 :yaw pi))          ; beam forward
                 (2 (torch-model (second made) 0 -.42 .3 :yaw pi :chin t)))   ; upright under the muzzle: spooky face

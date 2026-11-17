@@ -94,9 +94,11 @@ PLACE is the rounded path coordinate of the stay.")
   (when *actor* (return-from show-carry nil))          ; an action on behalf of a guest: nothing changes in our own paws
   (when *carry-node* (node-queue-free *carry-node*) (setf *carry-node* nil))
   (when (and *carry* *camera*)
-    (let ((g (group *camera* .22 -.3 -.5)))
+    (let ((g (group *camera* .17 -.24 -.4)))                               ; low on the right, well inside the view
       (node-3d-set-scale (build-item g (car *carry*) 0 (- *floor*) 0 (if *carry-cut* 2 0) (cdr *carry*))
                          (if (cdr *carry*) (v3 .45 .45 .45) (v3 1 1 1)))
+      (dolist (sx '(-.07 .07))                                              ; our own paws under it
+        (shape g :ball '(.04 6 4) (nth (mod *fur* (length *cat-furs*)) *cat-furs*) sx -.02 .05 :scale '(1 .7 1.5) :shadow nil))
       (setf *carry-node* g))))
 
 (defun portable-p (it)
