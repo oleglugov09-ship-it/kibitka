@@ -115,9 +115,13 @@ It is a full-height slab bearing the ornament of the town nearest to D, with a s
   (shape g :box '(.1 1.0 3.6) "#d8d4c4" 1.0 1.6 0))
 
 (defun stop-shell-sea (g d)
-  "Build the seashell stop in G: a fan of slabs spreading up from the ground."
-  (loop for i below 9 for a = (* (- i 4) .2)
-        do (shape g :box '(.14 3.3 .62) (if (evenp i) (stop-rgb d) "#d8d4c4") (+ 1.0 (* .5 (- 1 (cos a)))) 1.6 (* 2.6 (sin a)) :rot (list (* a 1.0) 0 -.28))))
+  "Build the seashell stop in G: a flat fan of ribs spreading from one point at the foot of the back wall,
+with a short canopy in front of it."
+  (loop for i below 9 for a = (* (- i 4) .2)                       ; every rib starts at the hinge and leans by A
+        do (shape g :box '(.12 3.2 .62) (if (evenp i) (stop-rgb d) "#d8d4c4")
+                  (+ 1.0 (* .03 (mod i 2))) (* 1.6 (cos a)) (* 1.6 (sin a)) :rot (list a 0 0)))
+  (shape g :cyl '(.5 .5 .3 12) "#85857f" 1.0 .25 0 :rot (list 0 0 (/ pi 2)))
+  (shape g :box '(1.9 .14 3.6) "#6e6e6a" .1 2.6 0 :rot '(0 0 -.12)))
 
 (defun stop-tower (g d)
   "Build the clock tower stop in G: a narrow tower next to a flat canopy."
