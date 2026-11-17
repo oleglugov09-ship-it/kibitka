@@ -123,15 +123,15 @@ A shelf is scanned lengthwise: the rack along x, the upper shelves and windowsil
                        do (when (free-p x cz top) (return-from shelf-spot (list x cz top))))))))
 
 ;;; The rack. A level has three sections between the uprights. A big thing (a parcel, a crate) takes one of the
-;;; two places of a section; goods are small and stand six to a section, in three columns and two rows. Both
+;;; two places of a section; goods are small and stand eight to a section, in four columns and two rows. Both
 ;;; kinds share a shelf: a place is free when nothing standing on the level reaches into it.
 
 (defparameter *shelf-slots-x* '(-1.18 -.71 -.24 .24 .71 1.18)
   "The places for big things on one level of the rack: three sections, two places in each.")
 (defparameter *shelf-sections* '(-.945 0.0 .945) "The middles of the three sections of the rack.")
-(defparameter *small-slots* '((-.31 0.0 .31) (-.13 .13))
-  "The places for goods within a section: the offsets across it and the offsets in depth, 3 × 2 = 6.")
-(defparameter *small-half* '(.14 .12) "The half-width and half-depth a good is counted to take, whatever its real size.")
+(defparameter *small-slots* '((-.33 -.11 .11 .33) (-.13 .13))
+  "The places for goods within a section: the offsets across it and the offsets in depth, 4 × 2 = 8.")
+(defparameter *small-half* '(.1 .12) "The half-width and half-depth a good is counted to take, whatever its real size.")
 (defparameter *shelf-levels* '(0.0 .55 1.1 1.65) "The levels of the rack: the floor under it and three shelves.")
 
 (defun shelf-level (top) (find-if (lambda (lv) (< (abs (- lv top)) .06)) *shelf-levels*))
@@ -178,7 +178,7 @@ Return NIL for the floor or the top of an item."
   "Return why what is in hand cannot be put at SPOT: text for the player, or NIL if it can."
   (when (fourth spot)
     (return-from spot-problem
-      (if (eq (fourth spot) :full) "На этом этаже стеллажа мест нет: в секции шесть товаров или две посылки" "На стеллаже вещи стоят в один ряд — выбери свободное место")))
+      (if (eq (fourth spot) :full) "На этом этаже стеллажа мест нет: в секции восемь товаров или две посылки" "На стеллаже вещи стоят в один ряд — выбери свободное место")))
   (destructuring-bind (x z top) spot
     (multiple-value-bind (w h d) (item-size (car *carry*) 0)
       (declare (ignore h))

@@ -106,7 +106,7 @@ Raised, it is pressed to the wall; folded down, it is a bed. Above it is the fix
         (when up (reset-table))))))
 
 ;;; The tea table: it stands in the shelf's place while the shelf is raised. One stool per player in the wagon.
-;;; On the table are a samovar (E pours a cup of tea), cups (E drinks, you get warmer) and bagels (E eats one).
+;;; On the table are the kettle (kettle.lisp: E pours a cup of tea once it has boiled), cups (E drinks, you get warmer) and bagels (E eats one).
 
 (defparameter *table-at* '(-.82 -1.25) "The x and z of the middle of the table: where the lower bunk is.")
 (defparameter *table-top* .5 "The height of the tabletop above the floor.")
@@ -126,13 +126,6 @@ As many are placed as there are players.")
     (shape g :box '(.62 .05 1.0) "#8a6440" tx top tz)
     (shape g :box '(.58 .012 .96) "#e8e0d0" tx (+ top .03) tz :shadow nil)                 ; tablecloth
     (dolist (sx '(-.26 .26)) (dolist (sz '(-.44 .44)) (shape g :box '(.05 .5 .05) "#5a3e26" (+ tx sx) (/ top 2) (+ tz sz))))
-    ;; the samovar by the wall
-    (let ((sv (group g (- tx .16) (+ top .035) tz)))
-      (shape sv :cyl '(.09 .08 .06 12) "#d8a040" 0 .03 0 :metal .85 :rough .3)
-      (shape sv :cyl '(.12 .09 .13 12) "#d8a040" 0 .125 0 :metal .85 :rough .3)
-      (shape sv :cyl '(.11 .13 .13 12) "#d8a040" 0 .255 0 :metal .85 :rough .3)
-      (shape sv :cyl '(.05 .1 .08 12) "#d8a040" 0 .36 0 :metal .85 :rough .3)
-      (shape sv :box '(.1 .02 .02) "#d8a040" .15 .16 0 :metal .85 :rough .3 :rot (list 0 0 -.3)))
     ;; a plate of bagels
     (shape g :cyl '(.2 .16 .02 14) "#f0ede4" (+ tx .08) (+ top .045) (+ tz .0) :shadow nil)
     (setf *bagel-nodes*
@@ -144,9 +137,13 @@ As many are placed as there are players.")
     (setf *cup-nodes*
           (loop for (x z) in *cup-spots*
                 collect (let ((cup (group g x (+ top .035) z)))
-                          (shape cup :cyl '(.045 .035 .06 10) "#f0ede4" 0 .03 0)
-                          (shape cup :cyl '(.038 .038 .008 10) "#8a4a1c" 0 .056 0 :shadow nil)      ; tea
-                          (shape cup :cyl '(.065 .06 .008 10) "#f0ede4" 0 .004 0 :shadow nil)       ; saucer
+                          ;; a tea glass in a metal holder, as on a train
+                          (shape cup :cyl '(.03 .03 .085 10) "#8a4a1c" 0 .058 0 :shadow nil)                           ; tea
+                          (shape cup :cyl '(.036 .034 .11 10) "#d8e8f0" 0 .065 0 :alpha .28 :rough .1 :shadow nil)      ; the glass
+                          (shape cup :cyl '(.041 .041 .06 10) "#b0b4b8" 0 .04 0 :metal .8 :rough .35)                  ; the holder
+                          (shape cup :cyl '(.05 .052 .012 10) "#b0b4b8" 0 .006 0 :metal .8 :rough .35 :shadow nil)     ; its foot
+                          (shape cup :box '(.008 .06 .012) "#b0b4b8" .072 .045 0 :metal .8 :rough .35 :shadow nil)     ; the handle
+                          (dolist (y '(.018 .072)) (shape cup :box '(.034 .008 .012) "#b0b4b8" .057 y 0 :metal .8 :rough .35 :shadow nil))
                           (object-set cup "visible" nil)
                           cup)))
     (setf *stool-nodes*
@@ -177,8 +174,8 @@ As many are placed as there are players.")
 
 (defun pour-tea ()
   (let ((cup (find-if-not (lambda (c) (object-get c "visible")) (subseq *cup-nodes* 0 (max 1 *stools-shown*)))))
-    (cond (cup (object-set cup "visible" t) (say "Налил чашку чая"))
-          (t (say "Чашки полные — пейте")))))
+    (cond (cup (object-set cup "visible" t) (say "Налил стакан чая") t)
+          (t (say "Стаканы полные — пейте") nil))))
 
 (defun drink-tea (cup)
   (object-set cup "visible" nil)
@@ -195,7 +192,6 @@ As many are placed as there are players.")
     (let ((tx (first *table-at*)) (tz (second *table-at*)) (top *table-top*))
       (append
        (list (usable tx top tz nil nil nil 2.6 .5)                 ; the tabletop itself is a blocker: the stools are behind it
-             (usable (- tx .16) (+ top .22) tz (lambda () "E — налить чаю из самовара") #'pour-tea nil 2.6 .16)
              (usable (+ tx .08) (+ top .08) tz
                    (lambda () (if (some (lambda (n) (object-get n "visible")) *bagel-nodes*) "E — съесть сушку" "Сушки кончились"))
                    #'eat-bagel nil 2.6 .22))
@@ -332,9 +328,12 @@ is always there; the lower one when it is folded down, otherwise there are the s
       (shape g :box '(.36 .04 .36) "#3a3a40" -.2 2.72 .17 :metal .5 :rough .6)    ; the flashing on the roof
       (shape g :cyl '(.2 .02 .14 8) iron -.2 4.3 .17 :metal .4 :rough .7)         ; the rain cap
       (shape g :cyl '(.02 .02 .12 4) iron -.14 4.2 .17) (shape g :cyl '(.02 .02 .12 4) iron -.26 4.2 .17)
-      ;; a cast-iron frying pan on a nail on the back wall, to the right of the stove
-      (shape g :cyl '(.14 .14 .03 14) iron .28 1.5 .385 :rot (list (/ pi 2) 0 0) :metal .4 :rough .7)
-      (shape g :box '(.035 .2 .02) iron .28 1.26 .385 :metal .4 :rough .7)
+      ;; the wing to the right of the firebox: a ring where the kettle boils (kettle.lisp)
+      (dolist (sx '(-.2 .2)) (shape g :box '(.05 .26 .05) iron sx .13 -.66))
+      (shape g :box '(.5 .62 .46) iron 0 .57 -.47 :metal .4 :rough .7)
+      (shape g :box '(.58 .04 .5) "#2a2a30" 0 .9 -.49 :metal .4 :rough .6)
+      (shape g :cyl '(.12 .12 .012 12) "#3a3a40" 0 .924 -.49 :metal .5 :rough .5 :shadow nil)
+      (shape g :cyl '(.07 .07 .014 10) "#5a2a1e" 0 .925 -.49 :emit "#ff5020" :energy .8 :shadow nil)
       (setf *stove-light* (light g "#ff7030" 0.0 4.5 .4 .6 0)))))
 
 (defun looking-at (x y z &optional (reach 2.6) (cone .33))
@@ -385,23 +384,26 @@ The stove is shared."
       (loop for i below 6 do (shape c :ball '(.022 6 4) "#a3262c" (- x .03) (+ f y (* .12 (sin (* i 1.9)))) (+ z -.28 (* i .112)) :shadow nil))
       (shape c :box '(.01 .012 .62) "#6a5640" (- x .03) (+ f y) z :rot '(.12 0 0) :shadow nil))))
 
+(defparameter *washstand-at* '(1.18 2.27) "The x and z of the basin of the washstand.")
+(defparameter *washstand-top* .77 "The height of the washstand worktop: between a stool and the stove top.")
+
 (defun make-washstand (c)
-  "Build the washstand under C in the corner between the window and the door: a worktop with an enamel
-basin and a water tank on the wall, and a cutting board with a knife on its left half."
-  (let* ((f *floor*) (g (group c (- *half-width* .31) f 2.02)))
-    (shape g :box '(.46 .04 1.16) "#8a6440" 0 .62 0)                                       ; the worktop
-    (shape g :box '(.42 .6 .56) "#5f7f7a" 0 .3 .28)                                        ; the cupboard under the basin
-    (shape g :box '(.02 .5 .5) "#4f6f6a" -.215 .3 .28 :shadow nil)
-    (shape g :ball '(.02 6 4) "#d8a840" -.235 .36 .1 :metal .6 :rough .4 :shadow nil)
-    (dolist (sx '(-.19 .19)) (shape g :box '(.04 .6 .04) "#5a3e26" sx .3 -.54))                ; legs under the board half
-    (shape g :cyl '(.19 .15 .09 14) "#e8e4d8" 0 .685 .28 :rough .3)                         ; the basin
-    (shape g :cyl '(.165 .165 .01 14) "#8ab0c4" 0 .728 .28 :rough .1 :shadow nil)           ; water in it
-    (shape g :cyl '(.09 .08 .2 12) "#d8d2c0" .14 .87 .28 :rough .4)                         ; the tank on the wall
-    (shape g :cyl '(.095 .095 .02 12) "#b8b2a0" .14 .98 .28 :shadow nil)
-    (shape g :cyl '(.012 .012 .07 6) "#8a8e92" .14 .745 .28 :metal .6 :rough .4 :shadow nil) ; the push rod: lift it and water runs
-    (shape g :box '(.28 .025 .4) "#d8b880" -.02 .652 -.3 :shadow nil)                       ; the cutting board
-    (shape g :box '(.03 .004 .16) "#b8bcc0" -.02 .668 -.36 :metal .7 :rough .3 :shadow nil)  ; the knife
-    (shape g :box '(.03 .015 .09) "#3a2a1e" -.02 .672 -.235 :shadow nil)))
+  "Build the washstand under C in the corner between the window and the door: a long worktop with an
+enamel basin and a water tank on the wall, and a cutting board with a knife on its left half."
+  (let* ((f *floor*) (top *washstand-top*) (g (group c (first *washstand-at*) f (- (second *washstand-at*) .3))))
+    (shape g :box '(.58 .04 1.3) "#8a6440" 0 top 0)                                              ; the worktop
+    (shape g :box (list .54 (- top .02) .62) "#5f7f7a" 0 (/ (- top .02) 2) .32)                   ; the cupboard under the basin
+    (shape g :box (list .02 (- top .14) .56) "#4f6f6a" -.275 (/ top 2) .32 :shadow nil)
+    (shape g :ball '(.02 6 4) "#d8a840" -.295 (+ (/ top 2) .06) .12 :metal .6 :rough .4 :shadow nil)
+    (dolist (sx '(-.25 .25)) (shape g :box (list .04 (- top .02) .04) "#5a3e26" sx (/ (- top .02) 2) -.61))    ; legs under the board half
+    (shape g :cyl '(.24 .19 .11 14) "#e8e4d8" 0 (+ top .075) .3 :rough .3)                        ; the basin
+    (shape g :cyl '(.21 .21 .01 14) "#8ab0c4" 0 (+ top .125) .3 :rough .1 :shadow nil)            ; water in it
+    (shape g :cyl '(.1 .09 .22 12) "#d8d2c0" .2 (+ top .34) .3 :rough .4)                         ; the tank on the wall
+    (shape g :cyl '(.105 .105 .02 12) "#b8b2a0" .2 (+ top .46) .3 :shadow nil)
+    (shape g :cyl '(.012 .012 .07 6) "#8a8e92" .2 (+ top .2) .3 :metal .6 :rough .4 :shadow nil)  ; the push rod: lift it and water runs
+    (shape g :box '(.34 .025 .5) "#d8b880" -.02 (+ top .032) -.3 :shadow nil)                     ; the cutting board
+    (shape g :box '(.03 .004 .18) "#b8bcc0" -.02 (+ top .048) -.38 :metal .7 :rough .3 :shadow nil) ; the knife
+    (shape g :box '(.03 .015 .1) "#3a2a1e" -.02 (+ top .052) -.24 :shadow nil)))
 
 ;;; Interaction points. Everything that can be pressed has a position and a size (RADIUS); what fires is what the
 ;;; gaze rests on: we compute how far the gaze ray missed the middle of the thing in fractions of its size, and
@@ -457,7 +459,7 @@ These are the map, the stove, the light switch, the ladder, the window and the b
   "Return everything that can be pressed right now.
 The order matters: the first one that fits the crosshair is the one that fires."
   (unless *meta*
-    (append (trade-usables) (table-usables) (seat-usables) (uyut-usables) (stars-usables) (finds-usables) (dalny-usables) (prikol-usables) (gnome-usables) (bumagi-usables) (fixture-usables))))
+    (append (trade-usables) (kettle-usables) (table-usables) (seat-usables) (uyut-usables) (stars-usables) (finds-usables) (dalny-usables) (prikol-usables) (gnome-usables) (bumagi-usables) (fixture-usables))))
 
 (defun window-label () (if *window-open* "E — закрыть окно" "E — раздвинуть окно"))
 

@@ -32,7 +32,7 @@
 (defvar *doze* 0.0 "The number of seconds we have been sitting on the bunk at night.")
 (defvar *cook* '() "What is cooking right now: ((item-record . seconds-left) ...).")
 (defparameter *camera-at* '(1.44 1.55 1.72))
-(defparameter *radio-at* '(1.36 1.13 2.25))
+(defparameter *radio-at* '(1.36 1.45 2.25))
 (defparameter *guitar-at* '(1.22 1.35 2.74))
 (defparameter *stove-top* .92 "The height of the stove top above the floor: milk is put on it.")
 
@@ -319,7 +319,7 @@ The stove lid is one spot; with the cooktop there are three."
 Without the cooktop that is only milk."
   (destructuring-bind (cx cz w d top) (stove-surface)
     (remove-if-not (lambda (spec) (and (dish-of (first spec)) (null (sixth spec))
-                                       (or *hob* (eq (first spec) :milk))
+                                       (or *hob* *pan-on* (eq (first spec) :milk))      ; the frying pan fries anything (kettle.lisp)
                                        (< (abs (- (second spec) cx)) (+ (/ w 2) .03)) (< (abs (- (fourth spec) cz)) (+ (/ d 2) .03))
                                        (< (abs (- (third spec) top)) .08)))
                    (mapcar #'car *items*))))
