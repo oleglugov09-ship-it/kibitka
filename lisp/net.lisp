@@ -262,8 +262,9 @@ Type 1 is a connect, 2 a disconnect, 3 an incoming packet."
 (defun host-state (p)
   (list :s (getf p :id) *trip-seed* *dist* *speed* *day-t* *season* *weather* *fuel* *money* *planks* *fire*
         (switches)
-        ;; 'already left' applies only to newcomers: whoever rode with us and dropped off returns into the wagon
-        (and *departed* (not (member (getf p :name) *net-seated* :test #'equal)))
+        ;; 'already left' applies only to newcomers: whoever rode with us and dropped off returns into the wagon.
+        ;; On the dev polygon nobody waits at a bus stop: everyone lands straight in the wagon
+        (and *departed* (not *dev*) (not (member (getf p :name) *net-seated* :test #'equal)))
         *net-ver*
         (cons (append (list* 0 *net-name* (my-place)) (list (my-look)))
               (loop for q in *net-peers*
