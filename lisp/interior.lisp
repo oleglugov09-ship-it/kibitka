@@ -57,22 +57,18 @@ Return the node."
            (shape g :box (list .03 .08 (+ d .02)) dark (* sx (/ w 2)) (* h .72) 0)
            (shape g :box (list .03 .08 (+ d .02)) dark (* sx (/ w 2)) (* h .28) 0))
          (if addr                                                 ; a parcel: the address on all four sides, top and bottom -
-             (let ((name (town-name (parcel-town addr))))         ; readable however it stands and from whichever shelf you look
+             (let ((town (parcel-town addr)))                     ; the town's stamp: seen however it stands and from whichever shelf you look
                (let ((from (parcel-from addr)))                   ; a story parcel: the crate says who it is from, with a wax seal
                  (when from
                    (dolist (sz '(-1 1))
                      (sign g (format nil "от: ~a" from) 0 (* h .28) (* sz (+ (/ d 2) .012)) :h .055 :rgb "#7a2a22" :yaw (if (> sz 0) 0.0 pi)))
                    (shape g :cyl '(.04 .04 .012 8) "#a3262c" (* w .3) (+ h .008) (* d .25) :shadow nil)))
                (dolist (sz '(-1 1))
-                 (shape g :box (list (* w .8) .2 .012) "#d8d2c0" 0 (* h .55) (* sz (/ d 2)) :shadow nil)
-                 (sign g name 0 (* h .55) (* sz (+ (/ d 2) .012)) :h .11 :rgb "#22222a" :yaw (if (> sz 0) 0.0 pi)))
+                 (stamp g town 0 (* h .56) (* sz (+ (/ d 2) .012)) .24 :yaw (if (> sz 0) 0.0 pi)))
                (dolist (sx '(-1 1))
-                 (shape g :box (list .012 .2 (* d .8)) "#d8d2c0" (* sx (/ w 2)) (* h .55) 0 :shadow nil)
-                 (sign g name (* sx (+ (/ w 2) .012)) (* h .55) 0 :h .11 :rgb "#22222a" :yaw (* sx (/ pi 2))))
-               (shape g :box (list (* w .8) .012 .2) "#d8d2c0" 0 (+ h .004) 0 :shadow nil)
-               (sign g name 0 (+ h .012) 0 :h .11 :rgb "#22222a" :yaw 0.0 :pitch (- (/ pi 2)))
-               (shape g :box (list (* w .8) .012 .2) "#d8d2c0" 0 -.004 0 :shadow nil)
-               (sign g name 0 -.012 0 :h .11 :rgb "#22222a" :yaw 0.0 :pitch (/ pi 2)))
+                 (stamp g town (* sx (+ (/ w 2) .012)) (* h .56) 0 .24 :yaw (* sx (/ pi 2))))
+               (stamp g town 0 (+ h .012) 0 .24 :pitch (- (/ pi 2)))
+               (stamp g town 0 -.012 0 .24 :pitch (/ pi 2)))
              (shape g :box (list (* w .45) .12 .012) "#2a221c" 0 (* h .55) (/ d 2) :shadow nil))))
       (:mattress
        (shape g :box '(.8 .14 1.7) "#d8d2c0" 0 .07 0)

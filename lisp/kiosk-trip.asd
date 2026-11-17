@@ -20,7 +20,7 @@
                  (:file "sky")
                  (:file "en") (:file "walk")
                  (:file "door")
-                 (:file "sound") (:file "save")
+                 (:file "sound") (:file "save") (:file "stamps")
                  (:file "jukebox")
                  (:file "meta")
                  (:file "interact")
