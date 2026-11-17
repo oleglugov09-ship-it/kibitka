@@ -51,7 +51,7 @@ A guest does not write: the game is not theirs."
   "Continue from where we stopped.
 Return NIL if there is no save."
   (let ((g (get-save :game)))
-    (when (and (listp g) (<= 5 (length g) 7) (every #'realp (subseq g 0 4)) (integerp (fifth g))
+    (when (and (fits g '(real real real real integer &optional t t))
                (<= 0 (first g) 1e6) (<= 0 (third g) 1))
       (destructuring-bind (dist money fuel planks onboard &optional (dir 1) day) g
         (when (and (integerp day) (<= 0 day 100000000)) (setf *day-t* (* 10.0 day)))  ; the day cycle goes on, not restarts

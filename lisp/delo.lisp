@@ -18,6 +18,26 @@
 Anything missing from the table (and any non-string) is returned as is."
   (if (and (eq *lang* :en) (stringp text)) (or (gethash text *en*) text) text))
 
+(defun fits (x spec)
+  "Return true if X has the shape SPEC; use it on data from the network and from save files.
+SPEC is T for anything; a type name (INTEGER, REAL, STRING, KEYWORD, LIST, CONS); (:each S) for a
+list whose every element fits S; (:member A B ...) for one of the given values; (:or S ...); or a
+list of specs for a list of exactly that many elements, where &OPTIONAL makes the rest optional and
+&REST S lets any number of elements fitting S follow."
+  (cond ((eq spec t) t)
+        ((symbolp spec) (typep x spec))
+        ((eq (first spec) :each) (and (listp x) (ignore-errors (list-length x)) (every (lambda (e) (fits e (second spec))) x)))
+        ((eq (first spec) :member) (and (member x (rest spec)) t))
+        ((eq (first spec) :or) (some (lambda (s) (fits x s)) (rest spec)))
+        (t (and (listp x) (ignore-errors (list-length x))
+                (loop with optional = nil
+                      for (s . more) on spec
+                      do (cond ((eq s '&optional) (setf optional t))
+                               ((eq s '&rest) (return (every (lambda (e) (fits e (first more))) x)))
+                               ((null x) (return optional))
+                               ((not (fits (pop x) s)) (return nil)))
+                      finally (return (null x)))))))
+
 (defvar *lines* '()
   "What the named characters say: a plist of key and line. A line may be a FORMAT template.")
 

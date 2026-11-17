@@ -19,7 +19,7 @@
 
 (defun load-look ()
   (let ((form (get-save :look)))
-    (when (and (listp form) (= (length form) 2) (integerp (first form)) (integerp (second form)))
+    (when (fits form '(integer integer))
       (setf *outfit* (mod (first form) (length *outfits*)) *fur* (mod (second form) (length *fur-names*))))))
 
 (defun show-doll ()

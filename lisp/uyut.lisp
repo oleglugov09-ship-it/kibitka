@@ -110,7 +110,7 @@ Pressing the same key again switches it off."
 
 (defun load-wall ()
   (let ((form (get-save :wall)))
-    (when (and (listp form) (<= 3 (length form) 4) (integerp (first form)) (listp (second form)) (listp (third form)))
+    (when (fits form '(integer list list &optional t))
       (setf *pennants* (first form)
             *photos* (remove-if-not (lambda (p) (and (listp p) (integerp (first p)) (stringp (second p)))) (second form))
             *snapped* (remove-if-not #'realp (third form))

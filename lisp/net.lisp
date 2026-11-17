@@ -558,7 +558,7 @@ stand on the windowsill, the same as by hand."
           (unless (and (integerp you) (integerp seed) (far-p dist) (small-p speed) (far-p day-t)
                        (member season *seasons*) (keywordp weather) (small-p fuel) (integerp money) (integerp planks)
                        (small-p fire 1000) (integerp ver) (listp others) (< (length others) 20)
-                       (every (lambda (o) (and (listp o) (= (length o) 8) (integerp (first o)) (stringp (second o)) (look-ok-p (eighth o))
+                       (every (lambda (o) (and (fits o '(integer string t t t t t t)) (look-ok-p (eighth o))
                                                (small-p (third o)) (small-p (fourth o)) (small-p (fifth o)) (small-p (seventh o) 3)))
                               others))
             (return-from guest-take nil))

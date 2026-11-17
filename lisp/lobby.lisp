@@ -20,7 +20,7 @@
 (defun lobby-saved ()
   "Return (NAME ADDRESS) saved from last time."
   (let ((p (get-save :lobby)))
-    (if (and (listp p) (= (length p) 2) (every #'stringp p)) p (list "" ""))))
+    (if (fits p '(string string)) p (list "" ""))))
 
 (defun lobby-save (name address)
   (ignore-errors (put-save :lobby (list name address))))

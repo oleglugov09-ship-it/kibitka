@@ -174,6 +174,14 @@
        (let ((*glut* (list (cons (list 3 :milk :sold) 50.0)))) (>= (glut-factor :milk :buyer 3) *glut-floor*)))
 (check "насыщенный рынок всё ещё не убыточен для первой сделки" (> (* (first *buy-range*) *glut-floor*) .5))
 
+(format t "Форма данных~%")
+(check "fits: кортеж нужной длины и типов" (and (fits '(1 2.5 "a" :k) '(integer real string keyword)) (not (fits '(1 2) '(integer real string)))))
+(check "fits: не тот тип, не список, точечная пара — нет" (and (not (fits '(1 "x") '(integer integer))) (not (fits 5 '(integer))) (not (fits '(1 . 2) '(integer integer)))))
+(check "fits: необязательный хвост" (and (fits '(1 2) '(t t &optional t t)) (fits '(1 2 3 4) '(t t &optional t t)) (not (fits '(1) '(t t &optional t t))) (not (fits '(1 2 3 4 5) '(t t &optional t t)))))
+(check "fits: каждый элемент и вложенность" (and (fits '(3.0 "x" ((1 2 3) (4 5 6))) '(real string (:each (real real real)))) (fits '() '(:each integer)) (not (fits '(1 :a) '(:each integer)))))
+(check "fits: одно из значений, в том числе NIL" (and (fits '(1 nil) '((:member 1 -1) (:member nil :fire))) (not (fits '(2 nil) '((:member 1 -1) t)))))
+(check "fits: хвост любой длины" (and (fits '(1 :a :b) '(integer &rest keyword)) (not (fits '(1 :a 2) '(integer &rest keyword)))))
+
 (format t "Истории~%")
 (check "у каждой истории каждый шаг записан целиком, города настоящие"
        (every (lambda (story)

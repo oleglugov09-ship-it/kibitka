@@ -195,8 +195,7 @@ The meta room and waiting at the bus stop are not remembered."
 (defun load-place ()
   "Return to where we were last time; return T on success."
   (let ((p (get-save :place)))
-    (when (and (listp p) (= (length p) 6) (every #'realp (subseq p 0 4))
-               (member (fifth p) '(:inside :outside))
+    (when (and (fits p '(real real real real (:member :inside :outside) t))
                (or (null (sixth p)) (and (listp (sixth p)) (= (length (sixth p)) 5) (every #'realp (rest (sixth p))))))
       (destructuring-bind (x z yaw pitch view seat) p
         (setf *pos* (v3 x 0 z) *yaw* yaw *pitch* pitch *view* view *seat* seat *place-saved* p)

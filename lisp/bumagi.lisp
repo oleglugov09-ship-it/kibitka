@@ -26,7 +26,7 @@
 (defun save-papers () (unless (net-guest-p) (put-save :papers (list *licenses* *fines* *quest*))))
 (defun load-papers ()
   (let ((f (get-save :papers)))
-    (when (and (listp f) (= (length f) 3) (listp (first f)) (listp (second f)))
+    (when (fits f '(list list t))
       (setf *licenses* (remove-if-not #'keywordp (first f)) *fines* (remove-if-not #'integerp (second f))
             *quest* (and (consp (third f)) (keywordp (car (third f))) (integerp (cdr (third f))) (third f))))))
 (defstate :papers

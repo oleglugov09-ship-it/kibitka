@@ -107,10 +107,10 @@ It is said once, when there is something to ask about; otherwise return NIL."
 (defun save-stories () (unless (net-guest-p) (put-save :stories (list *story-at* *story-transit* *story-after* *news*))))
 (defun load-stories ()
   (let ((f (get-save :stories)))
-    (when (and (listp f) (= (length f) 4) (every #'listp f))
+    (when (fits f '(list list list list))
       (setf *story-at* (remove-if-not (lambda (c) (and (consp c) (assoc (car c) *stories*) (integerp (cdr c)))) (first f))
-            *story-transit* (remove-if-not (lambda (tr) (and (listp tr) (= (length tr) 3) (story-record (second tr) (third tr)))) (second f))
-            *story-after* (remove-if-not (lambda (a) (and (listp a) (= (length a) 3) (integerp (first a)))) (third f))
+            *story-transit* (remove-if-not (lambda (tr) (and (fits tr '(t t t)) (story-record (second tr) (third tr)))) (second f))
+            *story-after* (remove-if-not (lambda (a) (fits a '(integer t t))) (third f))
             *news* (remove-if-not #'stringp (fourth f))))))
 (defstate :stories
   :clear (lambda () (setf *story-at* '() *story-transit* '() *story-after* '() *news* '() *story-late* nil))

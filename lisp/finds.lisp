@@ -22,7 +22,7 @@ Such places are a gas station, a bus stop, the observatory and the recycling dep
 
 (defun load-finds ()
   (let ((f (get-save :finds)))
-    (when (and (listp f) (= (length f) 4) (integerp (first f)) (integerp (second f)) (listp (fourth f)))
+    (when (fits f '(integer integer t list))
       (setf *bottles* (first f) *papers* (second f) *spyglass* (and (third f) t) *picked* (fourth f)))))
 
 (defstate :finds
