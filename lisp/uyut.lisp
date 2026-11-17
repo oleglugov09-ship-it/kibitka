@@ -264,6 +264,9 @@ A window, building mode or the outside view lowers it."
     (when p (if on (object-call p "play") (object-call p "stop"))))
   (when (un :radio-dial) (object-set (un :radio-dial) "visible" *radio-on*)))
 
+(defvar *radio-fillers* '()
+  "The radio lines for when there is nothing to report; read in turn.")
+
 (defun radio-line ()
   "Return a radio bulletin on what is ahead.
 Each time it is about something different."
@@ -280,10 +283,7 @@ Each time it is about something different."
                  (getf '(:spring "весна" :summer "лето" :autumn "осень" :winter "зима") *season*)))
       (3 (let ((s (next-station *dist*)))
            (if s (format nil "Радио: ближайшая заправка — через ~,1f км" (/ (- s *dist*) 1000)) "Радио: заправок впереди нет")))
-      (t (nth (mod (floor *radio-n* 5) 5)
-              '("Радио: передаём концерт по заявкам водителей" "Радио: на рынках молоко берут охотно, блины — ещё охотнее"
-                "Радио: в эфире — музыка для тех, кто в пути" "Радио: кто играет на остановке сам, тому кидают щедрее"
-                "Радио: ночью дорога пустая — самое время вздремнуть"))))))
+      (t (and *radio-fillers* (nth (mod (floor *radio-n* 5) (length *radio-fillers*)) *radio-fillers*))))))
 
 (defun toggle-guitar ()
   (setf *guitar-on* (not *guitar-on*))

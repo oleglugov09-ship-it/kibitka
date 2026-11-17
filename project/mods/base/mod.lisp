@@ -11,4 +11,6 @@
 (include "gnomes.lisp")
 (include "places.lisp")
 (include "looks.lisp")
+(include "guide.lisp")
+(include "lines.lisp")
 (include "en.lisp")

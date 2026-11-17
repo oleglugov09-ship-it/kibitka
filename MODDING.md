@@ -30,6 +30,8 @@ The core in `lisp/` is logic only; what the game shows comes from two mods.
 | `gnomes.lisp` | where each gnome hides and what it is called |
 | `places.lisp` | the relief of each stretch, landmarks, diners, what the telescope shows |
 | `looks.lisp` | the outfits |
+| `guide.lisp` | the pages of the guide book, what the radio says when it has nothing to report |
+| `lines.lisp` | what the named characters say (the sergeant, the chairman) |
 | `en.lisp` | English for all of the above |
 
 Each table is declared empty in the core with a docstring that describes its shape; a mod fills it

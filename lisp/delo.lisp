@@ -18,6 +18,13 @@
 Anything missing from the table (and any non-string) is returned as is."
   (if (and (eq *lang* :en) (stringp text)) (or (gethash text *en*) text) text))
 
+(defvar *lines* '()
+  "What the named characters say: a plist of key and line. A line may be a FORMAT template.")
+
+(defun line (key)
+  "Return the line of a named character for KEY, or an empty string when no mod provides it."
+  (or (getf *lines* key) ""))
+
 (defun translate (&rest pairs)
   "Add English text: PAIRS alternate a Russian string from the code and its English translation.
 Return the number of pairs. Mods call this for their own strings."
