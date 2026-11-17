@@ -477,7 +477,7 @@ These are the map, the stove, the light switch, the ladder, the window and the b
   "Return everything that can be pressed right now.
 The order matters: the first one that fits the crosshair is the one that fires."
   (unless *meta*
-    (append (trade-usables) (kettle-usables) (fridge-usables) (curtain-usables) (table-usables) (seat-usables) (uyut-usables) (stars-usables) (finds-usables) (dalny-usables) (prikol-usables) (gnome-usables) (bumagi-usables) (fixture-usables))))
+    (append (trade-usables) (kettle-usables) (fridge-usables) (curtain-usables) (home-usables) (table-usables) (seat-usables) (uyut-usables) (stars-usables) (finds-usables) (dalny-usables) (prikol-usables) (gnome-usables) (bumagi-usables) (fixture-usables))))
 
 (defun window-label () (if *window-open* "E — закрыть окно" "E — раздвинуть окно"))
 
@@ -721,7 +721,7 @@ the map."
   ;; the stove and warmth
   (let ((winter (eq *season* :winter)))
     (when (> *fire* 0) (decf *fire* delta))
-    (setf *warm* (max 0.0 (min 1.0 (+ *warm* (* delta (cond ((> *fire* 0) .03) (winter -.012) (t .02)))))))
+    (setf *warm* (max 0.0 (min 1.0 (+ *warm* (* delta (cond ((> *fire* 0) .03) (winter (* -.012 (cooling-factor))) (t .02)))))))
     (when (and winter (< *warm* .3) (not *cold-told*))
       (setf *cold-told* t)
       (say "Холодно. Подбрось доску в буржуйку: E по печке"))

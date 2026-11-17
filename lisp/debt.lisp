@@ -52,7 +52,7 @@
       (object-set text "size" (vector2 400 200))
       (object-set text "autowrap_mode" 3)
       (object-set text "horizontal_alignment" 1) (object-set text "vertical_alignment" 1)
-      (hud-label bg "Пробел или щелчок — дальше" 250 298 8 '(.55 .55 .52))
+      (hud-label bg "Пробел или щелчок — дальше · Q — закрыть" 222 298 8 '(.55 .55 .52))
       (setf *show-ui* (list :bg bg :text text)))))
 
 (defun show-card ()
@@ -67,10 +67,11 @@
 
 (defun step-show ()
   (when *show*
-    (let ((down (or (input-is-key-pressed 32) (object-call (gdext:singleton "Input") "is_mouse_button_pressed" 1))))                ; 32 is the space bar
-      (when (and down (not *show-down*))
+    (let ((down (or (input-is-key-pressed 32) (object-call (gdext:singleton "Input") "is_mouse_button_pressed" 1)))                 ; 32 is the space bar
+          (quit (input-is-key-pressed 81)))                                                                                    ; Q shuts the lot
+      (when (or quit (and down (not *show-down*)))
         (let ((then (getf *show* :then)))
-          (if (rest (getf *show* :cards))
+          (if (and (not quit) (rest (getf *show* :cards)))
               (setf (getf *show* :cards) (rest (getf *show* :cards)))
               (setf *show* nil))
           (show-card)

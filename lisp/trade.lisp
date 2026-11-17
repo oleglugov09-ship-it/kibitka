@@ -140,7 +140,9 @@ A shelf is scanned lengthwise: the rack along x, the upper shelves and windowsil
 (defparameter *small-half* '(.1 .12) "The half-width and half-depth a good is counted to take, whatever its real size.")
 (defparameter *shelf-levels* '(0.0 .55 1.1 1.65) "The levels of the rack: the floor under it and three shelves.")
 
-(defun shelf-level (top) (find-if (lambda (lv) (< (abs (- lv top)) .06)) *shelf-levels*))
+(defun shelf-level (top)
+  "Return the level of the rack that the height TOP belongs to: the shelf itself or the top of what stands on it."
+  (find-if (lambda (lv) (< -.06 (- top lv) .5)) (reverse *shelf-levels*)))
 
 (defun shelf-half (kind spin)
   "Return the half-width and half-depth a thing of KIND takes on the rack."

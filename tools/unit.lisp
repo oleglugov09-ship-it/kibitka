@@ -18,6 +18,7 @@
 (defvar *kinds* '()) (defvar *dalny* 7) (defvar *land* nil) (defvar *time* 0.0) (defvar *dist* 0.0)
 (defvar *find-nodes* '()) (defvar *stop-ds* '()) (defvar *observatory* nil) (defvar *depot-d* nil)
 (defvar *airmail-d* nil) (defvar *plane* nil) (defvar *client* nil) (defvar *stamp* nil) (defvar *items* (quote ())) (defvar *carry* nil) (defvar *gnome-nodes* (quote ())) (defvar *gnome-told* nil)
+(defvar *calendar-notes* '()) (defvar *omens* '()) (defvar *jars* 0)
 (defvar *lid* nil) (defvar *papers* 0) (defvar *money* 0) (defvar *dev* nil)
 (defun reset-vista ()) (defun clear-land ()) (defun clear-roads ())
 (defun net-guest-p () nil) (defun put-save (key form) (declare (ignore key)) form) (defun get-save (key) (declare (ignore key)) nil)
@@ -172,7 +173,7 @@
          (every (lambda (e) (or (eq (first e) :toadstool) (member (first e) wanted) (assoc (first e) *brews*))) *forage*))
   (check "у каждого блюда из рецептов есть сырьё с ценой" (every (lambda (r) (assoc (first r) *goods*)) *recipes*))
   (check "второй продукт рецепта — тоже товар" (every (lambda (r) (or (null (fourth r)) (assoc (fourth r) *goods*))) *recipes*))
-  (check "заварки для чайника — товары" (every (lambda (b) (assoc (first b) *goods*)) *brews*))
+  (check "заварки для чайника — товары или блюда" (every (lambda (b) (or (assoc (first b) *goods*) (dish-p (first b)))) *brews*))
   (check "всё, что делают, где-то ищут" (subsetp made wanted))
   (check "город не ищет то, что сам делает" (loop for i below 12 never (intersection (town-makes i) (town-wants i))))
   (check "у каждого товара есть цена и имя" (every (lambda (k) (and (second (assoc k *goods*)) (plusp (good-base k)))) made)))
@@ -269,6 +270,8 @@
 (check "у каждой будки из плана есть заметка в путеводителе"
        (every (lambda (plan) (assoc (first plan) *gimmick-notes*)) *gimmick-plan*))
 (check "подпись будки — строка" (every (lambda (plan) (stringp (gimmick-label (first plan)))) *gimmick-plan*))
+(check "у календаря есть заметки и приметы на каждую погоду"
+       (and (> (length *calendar-notes*) 7) (every (lambda (w) (getf *omens* w)) '(:rain :fog :cloudy :clear :snow))))
 (check "у вступления и титров есть текст" (and *intro-cards* *credits* (every #'stringp *intro-cards*) (every #'stringp *credits*)))
 (check "на каждый запрещённый товар есть задание с лицензией"
        (every (lambda (r) (find (second r) *quests* :key #'second)) *restricted*))

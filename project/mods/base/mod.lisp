@@ -14,4 +14,5 @@
 (include "guide.lisp")
 (include "lines.lisp")
 (include "story.lisp")
+(include "calendar.lisp")
 (include "en.lisp")

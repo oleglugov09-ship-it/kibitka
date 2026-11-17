@@ -121,6 +121,14 @@ That is the good sought or a dish made from it (blini will do for milk)."
 (defun build-good (g kind)
   "Build the good KIND as a thing in G: it stands on a shelf, is carried in paws, goes on the windowsill."
   (ecase kind
+    (:driedapple (shape g :box '(.004 .16 .004) "#d8d2c0" 0 .08 0 :shadow nil)             ; apple rings on a string
+                 (dotimes (i 5) (shape g :cyl '(.035 .035 .012 8) "#d8b070" 0 (+ .025 (* i .03)) 0 :rot (list (* .3 (- (mod i 2) .5)) 0 0) :shadow nil)))
+    (:driedherb (dotimes (i 5) (shape g :box '(.008 .15 .008) "#7a7a4a" (* .012 (- i 2)) .075 0 :rot (list 0 0 (* .14 (- i 2))) :shadow nil))   ; a dry bunch
+                (shape g :box '(.05 .012 .02) "#d8d2c0" 0 .13 0 :shadow nil))
+    (:pickled (jar-model g 0 0 0 "#8a6a4a"))                                                ; jars closed at the crate (home.lisp)
+    (:jarcompote (jar-model g 0 0 0 "#d8a040"))
+    (:cannedfish (shape g :cyl '(.06 .06 .05 12) "#b0b4b8" 0 .025 0 :metal .7 :rough .3)     ; a flat tin
+                 (shape g :cyl '(.062 .062 .025 12) "#2c4a7a" 0 .025 0 :shadow nil))
     (:nut (shape g :cone '(.07 .1 6) "#d8d2c0" 0 .05 0 :rot (list pi 0 0))                 ; nuts in a paper cone
           (dotimes (i 5) (shape g :ball '(.022 6 4) "#8a5a34" (* .03 (cos (* i 1.3))) .115 (* .03 (sin (* i 1.3))) :shadow nil)))
     (:sandwich (shape g :cyl '(.1 .1 .012 12) "#e4e0d4" 0 .006 0)
@@ -206,6 +214,8 @@ That is the good sought or a dish made from it (blini will do for milk)."
                         (:mushroom "грибы" (.16 .17 .16)) (:toadstool "грибы" (.16 .17 .16)) (:apple "яблоки" (.18 .12 .18)) (:herb "травы" (.1 .18 .06))
                         (:shroomfry "жареные грибы" (.22 .06 .22)) (:creamfry "грибы в сметане" (.2 .1 .2)) (:charlotte "шарлотка" (.22 .08 .22))
                         (:dried "сушёные грибы" (.08 .17 .08))
+                        (:driedapple "сушёные яблоки" (.08 .17 .08)) (:driedherb "сушёные травы" (.1 .16 .06))
+                        (:pickled "солёные грибы" (.12 .16 .12)) (:jarcompote "компот в банке" (.12 .16 .12)) (:cannedfish "рыбные консервы" (.12 .05 .12))
                         (:nut "орехи" (.16 .14 .16)) (:sandwich "бутерброды" (.22 .06 .22)) (:berrypie "пирог с клюквой" (.22 .08 .22))
                         (:soup "суп" (.2 .12 .2)) (:bakedapple "печёные яблоки" (.22 .1 .22)) (:brittle "козинаки" (.18 .08 .08))
                         (:fried "жареная рыба" (.22 .08 .22)) (:jam "варенье" (.12 .17 .12))

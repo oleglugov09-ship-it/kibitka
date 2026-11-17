@@ -372,7 +372,8 @@ What stands on the hot stove turns into dishes (STOVE-JOBS); each job has its ow
 (defun good-price (kind price)
   "Return how much a buyer pays for the good KIND when paying PRICE for the raw good.
 A dish costs more."
-  (if (dish-p kind) (+ (* *blin-factor* price) *blin-bonus*) price))
+  (let ((price (if (dish-p kind) (+ (* *blin-factor* price) *blin-bonus*) price)))
+    (if (and (eq *season* :winter) (preserved-p kind)) (round (* *winter-bonus* price)) price)))  ; what was put by for the winter
 
 (defun good-p (kind) (or (and (dish-p kind) t) (and (assoc kind *goods*) t)))
 

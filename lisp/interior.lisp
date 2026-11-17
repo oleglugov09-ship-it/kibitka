@@ -100,7 +100,7 @@ Return the node."
        (shape g :box '(.03 .04 .03) "#d8d2c0" .03 .2 0 :shadow nil))
       ((:fish :bread :coal :tools :books :cans :water :honey :berry :fried :jam :toast :stew
         :mushroom :toadstool :apple :herb :shroomfry :creamfry :charlotte :dried
-        :nut :sandwich :berrypie :soup :bakedapple :brittle)
+        :nut :sandwich :berrypie :soup :bakedapple :brittle :driedapple :driedherb :pickled :jarcompote :cannedfish)
        (if (and (eql spin 2) (cut-look kind)) (build-cut g kind) (build-good g kind)))    ; cut on the board: slices   ; the towns' goods - goods.lisp
       (:blin
        (shape g :cyl '(.1 .1 .012 12) "#e4e0d4" 0 .006 0)

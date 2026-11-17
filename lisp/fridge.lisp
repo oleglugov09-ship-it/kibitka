@@ -55,7 +55,7 @@ They hold things whether the door is open or shut; putting things in asks for an
   (destructuring-bind (fx fz) *fridge-at*
     (let ((half (/ (first *fridge-size*) 2)))
       (and (< (abs (- x fx)) half) (< (abs (- z fz)) half)
-           (find-if (lambda (level) (< (abs (- level top)) .04)) *fridge-shelves*)))))
+           (find-if (lambda (level) (< -.04 (- top level) .45)) (reverse *fridge-shelves*))))))      ; the shelf or the top of what stands on it
 
 (defun fridge-slot (x z level kind)
   "Return the free place on the fridge shelf LEVEL nearest to (X Z) for a thing of KIND, as (X Z), or NIL if the shelf is full.
@@ -70,8 +70,12 @@ A shelf has four places, two by two, like a section of the rack in small; things
       (first (sort (remove-if #'taken-p (loop for dx in '(-.11 .11) append (loop for dz in '(-.11 .11) collect (list (+ fx dx) (+ fz dz)))))
                    #'< :key (lambda (place) (+ (expt (- (first place) x) 2) (expt (- (second place) z) 2))))))))
 
-;;; The dryer: a slatted shelf on brackets above the stove. Mushrooms left on it overnight do not go bad:
-;;; by the morning they are dried, keep for ever and sell as a dish.
+;;; The dryer: a slatted shelf on brackets above the stove. Mushrooms, apples and herbs left on it overnight
+;;; are dried by the morning (the recipes with the hearth :LINE): they keep for ever and sell as a dish.
+
+(defun dried-of (kind)
+  "Return what KIND turns into on the dryer overnight, or NIL."
+  (second (find-if (lambda (r) (and (eq (first r) kind) (eq (fifth r) :line))) *recipes*)))
 
 (defparameter *dryer-top* 1.72 "The height of the dryer above the floor.")
 
@@ -112,13 +116,13 @@ Mushrooms on the dryer are dried instead."
       (cond ((or (null *spoil-day*) (< day *spoil-day*)) (setf *spoil-day* day))      ; the first look, or the clock was turned back
             ((> day *spoil-day*)
              (setf *spoil-day* day)
-             (let* ((dry (remove-if-not (lambda (spec) (and (eq (first spec) :mushroom) (on-dryer-p spec))) (mapcar #'car *items*)))
+             (let* ((dry (remove-if-not (lambda (spec) (and (dried-of (first spec)) (on-dryer-p spec))) (mapcar #'car *items*)))
                     (bad (remove-if-not (lambda (spec) (and (member (first spec) *perishable*) (not (in-fridge-p spec)) (not (on-dryer-p spec))))
                                         (mapcar #'car *items*))))
                (when dry
-                 (set-items (mapcar (lambda (spec) (if (member spec dry :test #'equal) (list* :dried (rest spec)) spec)) (mapcar #'car *items*)))
+                 (set-items (mapcar (lambda (spec) (if (member spec dry :test #'equal) (list* (dried-of (first spec)) (rest spec)) spec)) (mapcar #'car *items*)))
                  (save-interior)
-                 (say-all "Грибы на сушилке высохли: теперь не испортятся"))
+                 (say-all "На сушилке высохло: теперь не испортится"))
                (when bad
                  (set-items (remove-if (lambda (spec) (member spec bad :test #'equal)) (mapcar #'car *items*)))
                  (save-interior)

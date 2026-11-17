@@ -35,10 +35,13 @@
         (:apple :charlotte "шарлотку" :bread) (:apple :bakedapple "печёные яблоки" :honey) (:apple :jam "варенье")
         (:bread :sandwich "бутерброды" :fish) (:berry :berrypie "пирог с клюквой" :bread) (:cans :soup "суп" :water)
         (:nut :brittle "козинаки" :honey)
-        (:mushroom :dried "сушёные грибы" nil :line)))
+        (:mushroom :dried "сушёные грибы" nil :line) (:apple :driedapple "сушёные яблоки" nil :line) (:herb :driedherb "сушёные травы" nil :line)
+        ;; closed in a jar at the crate under the washstand (the hearth :JAR): it never goes bad
+        (:mushroom :pickled "солёные грибы" nil :jar) (:apple :jarcompote "компот в банке" nil :jar) (:fish :cannedfish "рыбные консервы" nil :jar)))
 
 ;;; What goes into the kettle with the water: entries of (good brew-key name-of-the-drink).
 (setf *brews* '((:apple :compote "компот") (:herb :herbal "травяной чай") (:berry :mors "клюквенный морс")
+                (:driedapple :compote "компот из сухофруктов") (:driedherb :herbal "травяной чай")
                 (:toadstool :trip "мухоморный отвар")))
 
 ;;; What grows by the bus stops: entries of (good where seasons weathers count-a-day).

@@ -1,0 +1,301 @@
+;;;; Home: what gives the wagon a day and a year of its own.
+;;;;
+;;;; The tear-off calendar by the door has a leaf for every game day: the day of the trip, the weekday, the
+;;;; season and how long it lasts, and on the back a note and an omen. The omens are true: tomorrow's weather
+;;;; is decided from the day's number, the leaf foretells it and at dawn the driver's wagon makes it so.
+;;;; The trip diary hangs under the calendar and writes itself: it hears the events of the game (LOG-EVENT)
+;;;; and keeps a page per day. Before winter the window is sealed with paper and a quilt is hung on the
+;;;; door: the wagon cools more slowly. Jars are filled and closed by paw at the crate under the washstand:
+;;;; a good, boiling water from the kettle, and turns of the seaming key; what is in a jar never goes bad.
+;;;; The words of the calendar come from mods (*CALENDAR-NOTES*, *OMENS*); the numbers are in economy.lisp.
+
+(in-package #:kiosk-trip)
+
+(defvar *calendar-notes* '() "The notes on the backs of the calendar leaves: a list of strings, one a day in turn.")
+(defvar *omens* '() "The omens by tomorrow's weather: a plist of weather and a list of strings.")
+(defparameter *weekdays* '("понедельник" "вторник" "среда" "четверг" "пятница" "суббота" "воскресенье"))
+
+(defvar *calendar-day* nil "The day whose leaf is on top of the calendar, or NIL before the first look.")
+(defvar *weather-day* nil "The day for which the foretold weather has already been made.")
+(defvar *diary* '() "The trip diary: entries of (day . plist of what happened), the newest first.")
+(defvar *insulation* '() "What is done for the winter: a list that may hold :WINDOW and :DOOR.")
+(defvar *jars* 4 "The number of empty jars in the crate.")
+(defvar *home* nil "The nodes of this file, a plist: :leaf :strips :quilt :jars :can.")
+
+(defun save-home ()
+  (unless (net-guest-p)
+    (put-save :home (list *calendar-day* (subseq *diary* 0 (min 14 (length *diary*))) *insulation* *jars*))))
+
+(defun load-home ()
+  (let ((f (get-save :home)))
+    (when (fits f '((:or integer null) list list integer))
+      (destructuring-bind (day diary insulation jars) f
+        (setf *calendar-day* day
+              *diary* (remove-if-not (lambda (e) (and (consp e) (integerp (car e)) (listp (cdr e)) (evenp (length (cdr e))))) diary)
+              *insulation* (intersection '(:window :door) insulation)
+              *jars* (max 0 (min 99 jars)))))))
+
+(defstate :home
+  :clear (lambda () (setf *calendar-day* nil *weather-day* nil *diary* '() *insulation* '() *jars* *start-jars*))
+  :load #'load-home :save #'save-home :show (lambda () (show-home)))
+
+;;; ------------------------------------------------------------------ the calendar
+
+(defun season-in (days)
+  "Return the season it will be DAYS game days from now."
+  (let ((left (- (* *season-days* *day-len*) *season-clock*)))
+    (nth (mod (+ (position *season* *seasons*) (if (> (* days *day-len*) left) 1 0)) 4) *seasons*)))
+
+(defun season-days-left ()
+  "Return the number of whole game days until the season changes."
+  (max 0 (floor (- (* *season-days* *day-len*) *season-clock*) *day-len*)))
+
+(defun day-weather (day &optional (season *season*))
+  "Return the weather foretold for the game day DAY in SEASON. The same day always gives the same answer."
+  (let ((r (hash2 (* day 7.31) 4.2)))
+    (if (eq season :winter)
+        (cond ((< r .4) :snow) ((< r .5) :fog) ((< r .7) :cloudy) (t :clear))
+        (cond ((< r .3) :rain) ((< r .42) :fog) ((< r .62) :cloudy) (t :clear)))))
+
+(defun leaf-cards (day)
+  "Return the two sides of the calendar leaf for DAY: the front and the back."
+  (let* ((tomorrow (day-weather (1+ day) (season-in 1)))
+         (omens (getf *omens* tomorrow))
+         (left (season-days-left)))
+    (list (format nil "~d-й день пути~%~%~a~%~%~a~a"
+                  (1+ day) (tr (nth (mod day 7) *weekdays*)) (tr (getf *season-names* *season*))
+                  (if (zerop left) (tr " — последний день") (format nil (tr " · до смены сезона дней: ~d") left)))
+          (format nil "~a~%~%~a"
+                  (if *calendar-notes* (tr (nth (mod day (length *calendar-notes*)) *calendar-notes*)) "")
+                  (if omens (tr (nth (mod day (length omens)) omens)) "")))))
+
+(defun calendar-label ()
+  (let ((today (today)))
+    (if (and *calendar-day* (>= *calendar-day* today))
+        "E — прочитать сегодняшний лист календаря"
+        (format nil "E — оторвать лист: на календаре ~d-й день, а идёт ~d-й" (1+ (or *calendar-day* 0)) (1+ today)))))
+
+(defun use-calendar ()
+  "Tear the calendar down to today's leaf and read it."
+  (let ((today (today)))
+    (unless (and *calendar-day* (>= *calendar-day* today))
+      (setf *calendar-day* today)
+      (save-home) (show-home))
+    (open-show (leaf-cards today) (lambda ()))))
+
+(defun step-weather-omen ()
+  "At the start of a day make the weather the calendar foretold for it; the driver alone does it."
+  (unless (net-guest-p)
+    (let ((day (today)))
+      (cond ((or (null *weather-day*) (< day *weather-day*)) (setf *weather-day* day))   ; the first look, or the clock was turned back
+            ((> day *weather-day*)
+             (setf *weather-day* day)
+             (set-weather (day-weather day) 7))))))
+
+;;; ------------------------------------------------------------------ the diary
+
+(defun diary-note (event plist)
+  "Write down in today's page of the diary what the event EVENT with fields PLIST means for the trip."
+  (when (and (not (net-guest-p)) (boundp '*day-t*)
+             (member event '(:sold :arrived :cooked :foraged :gnome :debt :fuel :spoiled :canned :rail :license :recycled)))
+    (let* ((day (today))
+           (page (or (assoc day *diary*) (first (push (list day) *diary*)))))
+      (flet ((add (key n) (setf (getf (cdr page) key) (+ n (getf (cdr page) key 0))))
+             (note (key what) (unless (member what (getf (cdr page) key) :test #'equal)
+                                (setf (getf (cdr page) key) (append (getf (cdr page) key) (list what))))))
+        (case event
+          (:sold (add :sold 1) (add :income (or (getf plist :price) 0)))
+          ((:arrived :rail) (note :towns (town-name (trade-town))))
+          (:cooked (note :dishes (getf plist :dish)))
+          (:canned (note :dishes (getf plist :dish)))
+          (:foraged (add :picked 1))
+          (:gnome (add :gnomes 1))
+          (:debt (add :debt (or (getf plist :paid) 0)))
+          (:fuel (add :fuel (or (getf plist :pay) 0)))
+          (:spoiled (add :spoiled (or (getf plist :n) 0)))
+          (:license (add :papers 1))
+          (:recycled (add :recycled 1))))
+      (save-home))))
+
+(defun diary-page (page)
+  "Return the text of one page of the diary: PAGE is (day . plist)."
+  (destructuring-bind (day &key towns sold income dishes picked gnomes debt fuel spoiled papers recycled) page
+    (format nil "~d-й день пути, ~a~%~%~{~a~^~%~}"
+            (1+ day) (tr (nth (mod day 7) *weekdays*))
+            (or (remove nil
+                        (list (and towns (format nil "Были: ~{~a~^, ~}" towns))
+                              (and sold (format nil "Продали: ~d, выручка ~d р." sold (or income 0)))
+                              (and dishes (format nil "Приготовили: ~{~a~^, ~}" (mapcar (lambda (k) (or (second (assoc k *kinds*)) "блюдо")) dishes)))
+                              (and picked (format nil "Собрали у дороги: ~d" picked))
+                              (and recycled (format nil "Сдали бутылки и макулатуру"))
+                              (and fuel (format nil "Залили бензина на ~d р." fuel))
+                              (and debt (format nil "Внесли в счёт долга: ~d р." debt))
+                              (and papers (format nil "Получили бумагу в горсовете"))
+                              (and gnomes (format nil "Нашли гномиков: ~d" gnomes))
+                              (and spoiled (format nil "Испортилось: ~d" spoiled))))
+                (list (tr "Тихий день: ехали и смотрели в окно"))))))
+
+(defun use-diary ()
+  "Open the diary: today's page first, then back through the last week."
+  (let ((pages (subseq *diary* 0 (min 7 (length *diary*)))))
+    (open-show (if pages (mapcar #'diary-page pages) (list (tr "Тетрадь пуста: дорога только началась"))) (lambda ()))))
+
+;;; ------------------------------------------------------------------ for the winter: the window and the door
+
+(defun cooling-factor ()
+  "Return the share of the winter cooling that gets past what was done for the winter."
+  (* (if (member :window *insulation*) *seal-factor* 1.0) (if (member :door *insulation*) *seal-factor* 1.0)))
+
+(defun toggle-insulation (what)
+  "Seal the window with paper or hang the quilt on the door, or undo it; WHAT is :WINDOW or :DOOR."
+  (cond ((member what *insulation*)
+         (setf *insulation* (remove what *insulation*))
+         (say (if (eq what :window) "Отклеили бумагу с окна" "Сняли одеяло с двери")))
+        ((and (eq what :window) (not *dev*) (< *papers* *seal-papers*))
+         (say (format nil "Нужно ~d связки макулатуры — она лежит у остановок и заправок" *seal-papers*))
+         (return-from toggle-insulation nil))
+        (t (when (and (eq what :window) (not *dev*)) (decf *papers* *seal-papers*) (save-finds))
+           (push what *insulation*)
+           (say (if (eq what :window) "Окно заклеено на зиму: кибитка остывает медленнее" "Одеяло на двери: из тамбура не дует"))))
+  (save-home) (show-home))
+
+(defcommon :insulation :value (list (and (member :window *insulation*) t) (and (member :door *insulation*) t))
+  :spec '((:member t nil) (:member t nil))
+  :accept (lambda (v)
+            (let ((now (remove nil (list (and (first v) :window) (and (second v) :door)))))
+              (unless (equal (sort (copy-list now) #'string<) (sort (copy-list *insulation*) #'string<))
+                (setf *insulation* now) (show-home)))))
+
+;;; ------------------------------------------------------------------ jars
+
+(defvar *can* nil "The jar being closed: (good . turns of the key done), or NIL.")
+(defvar *can-dip* 0.0 "The seconds left of the key's turn.")
+
+(defun jar-of (kind)
+  "Return what the good KIND becomes in a jar, or NIL: the recipes with the hearth :JAR."
+  (second (find-if (lambda (r) (and (eq (first r) kind) (eq (fifth r) :jar))) *recipes*)))
+
+(defun preserved-p (kind)
+  "Return true if KIND is food put by for the winter: from a jar or from the dryer."
+  (and (find-if (lambda (r) (and (eq (second r) kind) (member (fifth r) '(:jar :line)))) *recipes*) t))
+
+(defun crate-point ()
+  "Return where the crate of jars stands: x, height above the floor, z."
+  (list (first *washstand-at*) 0.0 (- (second *washstand-at*) .88)))
+
+(defun jar-label ()
+  (cond (*can* (format nil "E — крутить закаточный ключ: ~d из ~d" (cdr *can*) *can-turns*))
+        ((and *carry* (null (cdr *carry*)) (jar-of (car *carry*)))
+         (format nil "E — закатать в банку: ~a · пустых банок ~d" (good-name (jar-of (car *carry*))) *jars*))
+        (t (format nil "Пустые банки: ~d. С грибами, яблоками или рыбой в лапах — закатать" *jars*))))
+
+(defun use-jars ()
+  "Answer E on the crate of jars: start a jar with what we carry, then a turn of the key per press."
+  (cond (*can*
+         (incf (cdr *can*))
+         (setf *can-dip* .2)
+         (when (audio :steps) (object-call (audio :steps) "play"))
+         (cond ((< (cdr *can*) *can-turns*) nil)
+               (*carry* (decf (cdr *can*)) (say "Лапы заняты: освободи их и забери банку"))
+               (t (let ((dish (jar-of (car *can*))))
+                    (setf *can* nil)
+                    (setf *carry* (cons dish nil) *carry-from* nil *carry-cut* nil)
+                    (show-carry) (show-home)
+                    (log-event :canned :dish dish)
+                    (say (format nil "Закатано: ~a. Не испортится, а зимой стоит дороже" (second (assoc dish *kinds*))))))))
+        ((not (and *carry* (null (cdr *carry*)) (jar-of (car *carry*))))
+         (say "В банки закатывают грибы, яблоки и рыбу: принеси в лапах"))
+        ((<= *jars* 0) (say "Пустых банок нет: их продают в хозтоварах в Красном Куте"))
+        ((or (<= *kettle-tea* 0) *kettle-brew*) (say "Нужен кипяток: вскипяти чайник с чистой водой"))
+        (t (decf *jars*) (decf *kettle-tea*)
+           (setf *can* (cons (car *carry*) 0) *carry* nil *carry-from* nil)
+           (show-carry) (show-kettle) (save-home) (save-interior) (show-home)
+           (say (format nil "В банке, залито кипятком. Крути ключ: E, всего ~d оборотов" *can-turns*)))))
+
+;;; ------------------------------------------------------------------ what is seen and pressed
+
+(defparameter *calendar-at* '(.68 1.5 2.76) "The calendar on the back wall by the door: x, height above the floor, z.")
+(defparameter *diary-at* '(.68 1.12 2.76) "The diary on a nail under the calendar.")
+(defparameter *roll-at* '(1.46 1.02 1.5) "The roll of paper for sealing the window, on the window wall.")
+(defparameter *hook-at* '(-.66 1.72 2.76) "The hook for the door quilt, on the back wall to the right of the door.")
+
+(defun show-home ()
+  "Show the calendar leaf, the winter things and the jars as the state has them."
+  (destructuring-bind (&key leaf strips quilt jars can) *home*
+    (when leaf (godot:object-set leaf "text" (cl:format nil "~d" (1+ (or *calendar-day* (today))))))
+    (dolist (s strips) (object-set s "visible" (and (member :window *insulation*) t)))
+    (when quilt (object-set quilt "visible" (and (member :door *insulation*) t)))
+    (loop for jar in jars for i from 0 do (object-set jar "visible" (< i *jars*)))
+    (when can (object-set can "visible" (and *can* t)))))
+
+(defun jar-model (parent x y z &optional (rgb "#8a6a4a"))
+  "Build a glass jar with a tin lid under PARENT with its bottom at (X Y Z); RGB is what is in it."
+  (let ((g (group parent x y z)))
+    (shape g :cyl '(.05 .05 .11 10) rgb 0 .06 0 :shadow nil)
+    (shape g :cyl '(.058 .058 .14 10) "#d8e8f0" 0 .07 0 :alpha .3 :rough .1 :shadow nil)
+    (shape g :cyl '(.05 .05 .02 10) "#d8a840" 0 .15 0 :metal .6 :rough .4 :shadow nil)
+    g))
+
+(defun make-home (c)
+  "Build the calendar, the diary, the winter things and the crate of jars for the wagon C."
+  (let ((f *floor*) (strips '()) (jars '()) leaf quilt can)
+    ;; the calendar: a card with a picture and a block of leaves; the number on the top leaf is the day
+    (destructuring-bind (x y z) *calendar-at*
+      (shape c :box '(.2 .3 .012) "#e8e0d0" x (+ f y) z :shadow nil)
+      (shape c :box '(.18 .12 .01) "#3f6f73" x (+ f y .08) (- z .008) :shadow nil)
+      (shape c :box '(.14 .12 .03) "#f6f2e8" x (+ f y -.07) (- z .02) :shadow nil)
+      (shape c :box '(.14 .02 .034) "#a3262c" x (+ f y -.02) (- z .02) :shadow nil)
+      (setf leaf (sign c "" x (+ f y -.08) (- z .04) :h .07 :rgb "#2a2a2e" :yaw pi)))
+    ;; the diary: a school notebook on a nail
+    (destructuring-bind (x y z) *diary-at*
+      (shape c :box '(.16 .2 .015) "#4a6a52" x (+ f y) z :rot '(0 0 .06) :shadow nil)
+      (shape c :box '(.1 .03 .017) "#e8e0d0" x (+ f y .04) (- z .002) :rot '(0 0 .06) :shadow nil)
+      (shape c :box '(.012 .012 .03) "#8a8e92" x (+ f y .11) (- z .01) :shadow nil))
+    ;; the roll of paper by the window, and the strips over the gaps once the window is sealed
+    (destructuring-bind (x y z) *roll-at*
+      (shape c :cyl '(.05 .05 .1 10) "#f0ece0" x (+ f y) z :rot (list (/ pi 2) 0 0) :shadow nil)
+      (shape c :cyl '(.02 .02 .11 6) "#8a6440" x (+ f y) z :rot (list (/ pi 2) 0 0) :shadow nil))
+    (let ((x (- *half-width* .085)))
+      (dolist (z '(-1.33 1.33)) (push (shape c :box '(.012 1.2 .07) "#f0ece0" x (+ f 1.5) z :shadow nil) strips))
+      (dolist (y '(.925 2.075)) (push (shape c :box '(.012 .07 2.66) "#f0ece0" x (+ f y) 0 :shadow nil) strips)))
+    ;; the hook by the door and the quilt, which hangs on the door itself and swings with it
+    (destructuring-bind (x y z) *hook-at*
+      (shape c :box '(.03 .03 .06) "#34363a" x (+ f y) (- z .02) :shadow nil))
+    (when *door*
+      (setf quilt (group *door* .55 -.1 -.07))
+      (shape quilt :box '(1.0 1.7 .05) "#5a2a5a" 0 0 0)
+      (dotimes (i 3) (dotimes (j 5) (shape quilt :box '(.3 .3 .052) (if (evenp (+ i j)) "#7a3a5a" "#3f5f73") (- (* i .33) .33) (- (* j .33) .66) -.002 :shadow nil))))
+    ;; the crate of jars under the washstand, and the jar that is being closed on top of it
+    (destructuring-bind (x y z) (crate-point)
+      (let ((g (group c x (+ f y) z)))
+        (shape g :box '(.5 .04 .36) "#7a5a3a" 0 .02 0)
+        (dolist (sz '(-.17 .17)) (shape g :box '(.5 .22 .03) "#7a5a3a" 0 .13 sz))
+        (dolist (sx '(-.24 .24)) (shape g :box '(.03 .22 .36) "#7a5a3a" sx .13 0))
+        (setf jars (loop for i below 6 collect (jar-model g (- (* (mod i 3) .15) .15) .04 (- (* (floor i 3) .15) .075) "#e8eef0")))
+        (setf can (jar-model g 0 .26 0))
+        (let ((key (group can 0 .17 0)))                                  ; the seaming key on the lid
+          (shape key :cyl '(.065 .065 .02 10) "#8a8e92" 0 0 0 :metal .7 :rough .3 :shadow nil)
+          (shape key :box '(.2 .015 .02) "#5a3e26" .08 .02 0 :shadow nil))))
+    (setf *home* (list :leaf leaf :strips strips :quilt quilt :jars jars :can can)))
+  (show-home))
+
+(defun home-usables ()
+  "Return the things to press for the calendar, the diary, the winter things and the jars."
+  (list (usable (first *calendar-at*) (second *calendar-at*) (third *calendar-at*) #'calendar-label #'use-calendar nil 2.6 .15)
+        (usable (first *diary-at*) (second *diary-at*) (third *diary-at*) (lambda () "E — дневник поездки") #'use-diary nil 2.6 .13)
+        (usable (first *roll-at*) (second *roll-at*) (third *roll-at*)
+                (lambda () (if (member :window *insulation*) "E — отклеить бумагу с окна"
+                               (format nil "E — заклеить окно на зиму: ~d связки макулатуры · у нас ~d" *seal-papers* *papers*)))
+                (lambda () (toggle-insulation :window)) nil 2.6 .12)
+        (usable (first *hook-at*) (second *hook-at*) (third *hook-at*)
+                (lambda () (if (member :door *insulation*) "E — снять одеяло с двери" "E — завесить дверь одеялом на зиму"))
+                (lambda () (toggle-insulation :door)) nil 2.6 .12)
+        (destructuring-bind (x y z) (crate-point) (usable x (+ y .3) z #'jar-label #'use-jars nil 2.6 .28))))
+
+(defun step-home (delta)
+  "Keep the calendar's promises about the weather and turn the seaming key."
+  (step-weather-omen)
+  (unless *calendar-day* (setf *calendar-day* (today)) (show-home))          ; a new trip: the calendar starts at today's leaf
+  (when (and *can* (getf *home* :can))
+    (setf *can-dip* (max 0.0 (- *can-dip* delta)))
+    (node-3d-set-rotation (getf *home* :can) (v3 0 (+ (* (cdr *can*) 1.05) (* -5.0 *can-dip*)) 0))))
