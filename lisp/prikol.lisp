@@ -97,10 +97,15 @@ The goat, the fishing and the mine each give theirs once per day cycle."
   "Return the price of carrying the wagon by train to town TW, by the length of the way."
   (max *rail-min* (round (* *rail-per-km* (/ (plan-way (town-stop-d tw)) 1000)))))
 
+(defun booth-at-hand-p (i)
+  "Return true if booth I stands within walking distance of the wagon and the wagon is standing."
+  (and (< *speed* .4) (some (lambda (g) (and (eql (second g) i) (< (abs (- (first g) *dist*)) 80.0))) *gimmicks*) t))
+
 (defshared gimmick-use :gimmick (i)
   "Do what E does at booth I."
   (let ((use (booth i :use)))
-    (when (and use (not (and (booth i :daily) (spent-p i)))) (funcall use))))
+    (cond ((not (booth-at-hand-p i)) (say "Будка далеко"))                  ; a guest's message may name any booth: the driver checks
+          ((and use (not (and (booth i :daily) (spent-p i)))) (funcall use)))))
 
 (defun rail-ride (tw)
   "Travel by train to town TW: instantly, for money.
@@ -174,7 +179,7 @@ Return T if a train ride was pending (GO-TO-TOWN then does nothing itself)."
   :shelf '("#1e1e22" "#8a8e92" "#a3262c")
   :label (lambda () (if *lid* (format nil "E — ~d банки с крышками за ~d р. · у вас пустых: ~d" (first *jar-deal*) (second *jar-deal*) *jars*)
            (format nil "E — купить чугунную крышку для сковородки за ~d р.: под ней жарится вдвое быстрее" *lid-price*)))
-  :use (lambda () (cond (*lid* (when (pay (second *jar-deal*)) (incf *jars* (first *jar-deal*)) (save-home) (show-jars)
+  :use (lambda () (cond (*lid* (when (pay (second *jar-deal*)) (incf *jars* (first *jar-deal*)) (save-home) (show-home)
                                         (say (format nil "Купили банки. Пустых теперь ~d: закатывают у ящика под умывальником" *jars*))))
              ((pay *lid-price*) (setf *lid* t) (save-prikol) (show-lid) (log-event :lid :money *money*)
               (say-all "Купили крышку! Висит над сковородкой: теперь на сковородке жарится вдвое быстрее")))))

@@ -96,7 +96,10 @@ Each is a node of its own; they run along the rails one after another. Return th
 (defvar *cars* '() "The cars, each a plist (:node :d :v :dir :blink :n).")
 (defvar *next-car* 8.0 "The time (by *TIME*) to release the next oncoming car.")
 (defvar *next-pass* 35.0 "The time to release the next car going our way that will overtake.")
-(defvar *next-event* 170.0 "The time to release the next emergency vehicles.")
+(defparameter *event-gap* '(900.0 2100.0)
+  "The shortest and the longest pause between emergency vehicles, in seconds: a fire engine, an ambulance
+or a chase is a rare sight, once in a quarter of an hour at the most.")
+(defvar *next-event* 700.0 "The time to release the next emergency vehicles.")
 (defvar *car-n* 0)
 
 (defun car-wheels (g half zs &optional (r .34))
@@ -182,7 +185,7 @@ to its own lane."
               (0 (send :fire 19.0 0) (send :fire 19.0 22))
               (1 (send :ambulance 21.0 0))
               (t (send :runaway 24.0 0) (send :police 24.0 20) (send :police 24.0 38)))))
-        (setf *next-event* (+ *time* 200 (* 160 (vr *car-n* 9)))))))
+        (setf *next-event* (+ *time* (first *event-gap*) (* (- (second *event-gap*) (first *event-gap*)) (vr *car-n* 9)))))))
   (let ((walker (walker-on-road)))
    (setf *cars*
         (remove-if

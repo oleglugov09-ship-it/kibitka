@@ -55,7 +55,10 @@ They hold things whether the door is open or shut; putting things in asks for an
   (destructuring-bind (fx fz) *fridge-at*
     (let ((half (/ (first *fridge-size*) 2)))
       (and (< (abs (- x fx)) half) (< (abs (- z fz)) half)
-           (find-if (lambda (level) (< -.04 (- top level) .45)) (reverse *fridge-shelves*))))))      ; the shelf or the top of what stands on it
+           ;; the shelf, the top of what stands on it, or the floor of the fridge under the lower shelf: all of the
+           ;; footprint belongs to the shelves, so nothing is put 'into the fridge' past them
+           (or (find-if (lambda (level) (< -.04 (- top level) .45)) (reverse *fridge-shelves*))
+               (first *fridge-shelves*))))))
 
 (defun fridge-slot (x z level kind)
   "Return the free place on the fridge shelf LEVEL nearest to (X Z) for a thing of KIND, as (X Z), or NIL if the shelf is full.
@@ -82,7 +85,7 @@ A shelf has four places, two by two, like a section of the rack in small; things
 (defun dryer-surface ()
   "Return the dryer as (x z width depth height)."
   (destructuring-bind (sx sz) *stove-at*
-    (list (- sx .02) (- sz .49) .5 .7 *dryer-top*)))
+    (list (- sx .02) (- sz .45) .5 1.2 *dryer-top*)))                      ; long enough for four things in a row
 
 (defun on-dryer-p (spec)
   (destructuring-bind (cx cz w d top) (dryer-surface)
@@ -117,7 +120,8 @@ Mushrooms on the dryer are dried instead."
             ((> day *spoil-day*)
              (setf *spoil-day* day)
              (let* ((dry (remove-if-not (lambda (spec) (and (dried-of (first spec)) (on-dryer-p spec))) (mapcar #'car *items*)))
-                    (bad (remove-if-not (lambda (spec) (and (member (first spec) *perishable*) (not (in-fridge-p spec)) (not (on-dryer-p spec))))
+                    (bad (remove-if-not (lambda (spec) (and (member (first spec) *perishable*) (not (in-fridge-p spec))
+                                                            (not (and (on-dryer-p spec) (dried-of (first spec))))))      ; the dryer saves only what dries
                                         (mapcar #'car *items*))))
                (when dry
                  (set-items (mapcar (lambda (spec) (if (member spec dry :test #'equal) (list* (dried-of (first spec)) (rest spec)) spec)) (mapcar #'car *items*)))
@@ -129,6 +133,8 @@ Mushrooms on the dryer are dried instead."
                  (log-event :spoiled :n (length bad) :dist (round *dist*))
                  (say-all (format nil "За ночь испортилось: ~d шт. Молоко, рыбу и грибы на ночь убирай в холодильник — он у стены с ковром"
                                   (length bad))))))))))
+
+(defstate :fridge :clear (lambda () (setf *fridge-open* nil *spoil-day* nil)) :show (lambda () (apply-fridge)))
 
 (defcommon :fridge :value (and *fridge-open* t) :spec '(:member t nil)
   :accept (lambda (open) (unless (eq open (and *fridge-open* t)) (setf *fridge-open* open) (apply-fridge))))

@@ -18,7 +18,9 @@
 (defvar *walk-here* nil "True when the wagon stands where you can get out.
 Such places are a gas station, a bus stop, the observatory and the recycling depot.")
 
-(defun save-finds () (put-save :finds (list *bottles* *papers* (and *spyglass* t) *picked*)))
+(defun save-finds ()
+  "Write the finds to the save. A guest does not: what it holds of them is the driver's."
+  (unless (net-guest-p) (put-save :finds (list *bottles* *papers* (and *spyglass* t) *picked*))))
 
 (defun load-finds ()
   (let ((f (get-save :finds)))
@@ -79,9 +81,18 @@ Each place has its own set, the same for all players."
                 (shape g :box '(.31 .17 .02) "#6a5038" 0 .08 0 :shadow nil) (shape g :box '(.02 .17 .23) "#6a5038" 0 .08 0 :shadow nil)))
       g)))
 
+(defun find-places ()
+  "Return the path coordinates of the places where finds lie: the bus stops and the gas stations."
+  (append *stop-ds* (mapcan (lambda (tw) (copy-list (town-stations tw))) *towns*)))
+
 (defun step-finds ()
   "Update the finds by the nearby places: build them, and remove the far ones."
-  (let ((near (remove-if-not (lambda (d) (< (abs (- d *dist*)) 70)) (append *stop-ds* (mapcan (lambda (tw) (copy-list (town-stations tw))) *towns*)))))
+  (let ((day (today)))                                              ; a new day: what grew yesterday is gone, lay the places out anew
+    (unless (eql day *finds-day*)
+      (setf *finds-day* day)
+      (dolist (f *find-nodes*) (node-queue-free (second f)))
+      (setf *find-nodes* '())))
+  (let ((near (remove-if-not (lambda (d) (< (abs (- d *dist*)) 70)) (find-places))))
     (setf *find-nodes* (remove-if (lambda (f) (when (or (not (member (first (first f)) near))            ; drove away, or someone picked it up
                                                         (member (list (round (first (first f))) (second (first f)) (third (first f)))
                                                                 *picked* :test #'equal))
@@ -101,7 +112,8 @@ The action is shared: once one player picks it up, it is gone for everyone."
   (let ((id (list (round d) kind i)))
     (cond ((member id *picked* :test #'equal) (say "Это уже подобрали"))
           ((forage-p kind)                                               ; a plant: the good goes into the paws
-           (when (give-good kind (forage-text kind))
+           (when (cond ((not (plant-there-p d kind i)) (say "Здесь уже ничего не растёт") nil)   ; yesterday's plant, or one a guest made up
+                       (t (give-good kind (forage-text kind))))
              (push id *picked*)
              (forget-old-plants)
              (save-finds)

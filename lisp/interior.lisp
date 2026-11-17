@@ -22,8 +22,8 @@
     ;; milk for sale - on the bottom shelf to the right of the record player
     (:milk -.24 .55 -2.5 0) (:milk .24 .55 -2.5 0) (:milk .71 .55 -2.5 0) (:milk 1.18 .55 -2.5 0)
     (:lamp 1.18 1.1 -2.5 0)
-    ;; by the back wall: a barrel and sacks
-    (:barrel -.9 0.0 2.3 0) (:sack -.9 .72 2.3 0) (:sack 1.0 0.0 2.35 1))
+    ;; by the carpet wall between the fridge and the stove: a barrel with a sack on it; another sack by the rack
+    (:barrel -1.12 0.0 1.26 0) (:sack -1.12 .72 1.26 0) (:sack 1.1 0.0 -1.85 1))
   "The things we start with: three parcels and four cartons of milk on the rack.
 New parcels are brought to the window (trade.lisp). Each entry is
 (kind x bottom-height z quarter-turns). The boxes get addresses on the first load.")
@@ -124,8 +124,12 @@ Return the node."
    (put-save :interior
               (append (mapcar #'car *items*)
                       (when *carry*
-                        (list (or *carry-from*
-                                  (append (list (car *carry*) .6 0.0 .8 0) (when (cdr *carry*) (list (cdr *carry*)))))))))))
+                        (let ((spec (or *carry-from*
+                                        (append (list (car *carry*) .6 0.0 .8 0) (when (cdr *carry*) (list (cdr *carry*)))))))
+                          (list (if *carry-cut* (list* (first spec) (second spec) (third spec) (fourth spec) 2 (nthcdr 5 spec)) spec))))   ; cut stays cut
+                      ;; what lies on the cutting board or stands in a jar half closed is on the floor after a restart
+                      (when (and (boundp '*chop*) *chop*) (list (list (car *chop*) .3 0.0 .8 0)))
+                      (when (and (boundp '*can*) *can*) (list (list (car *can*) 0.0 0.0 .8 0)))))))
 
 (defun spec-ok-p (it)
   "Return true if the thing IT is recorded correctly: (kind x height z spin [town-number])."
@@ -138,11 +142,22 @@ Return the node."
 (defun specs-ok-p (specs)
   (and (listp specs) (<= (length specs) *max-items*) (every #'spec-ok-p specs)))
 
+(defparameter *moved-furniture*
+  '(((:barrel -.9 0.0 2.3 0) . (:barrel -1.12 0.0 1.26 0))
+    ((:sack -.9 .72 2.3 0) . (:sack -1.12 .72 1.26 0))
+    ((:sack 1.0 0.0 2.35 1) . (:sack 1.1 0.0 -1.85 1)))
+  "Things of the old starting arrangement that now stand inside the stove and the washstand, and where they go:
+an old save still has them at the old places.")
+
+(defun sublis-specs (moves specs)
+  "Return SPECS with every record that is the old side of MOVES replaced by its new side."
+  (mapcar (lambda (spec) (or (cdr (assoc spec moves :test #'equal)) spec)) specs))
+
 (defun load-interior ()
   "Return the saved arrangement, or the starting one if the save is missing or damaged."
   (let ((specs (get-save :interior)))
     (if (and specs (specs-ok-p specs))
-        specs
+        (sublis-specs *moved-furniture* specs)
         (address-crates *start-interior*))))                          ; the world is permanent: addresses are town numbers, leave them alone
 
 (defun set-items (specs)

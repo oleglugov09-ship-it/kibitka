@@ -9,8 +9,10 @@
 ;;;; above it once bought: under it things fry twice as fast.
 ;;;;
 ;;;; Both are common to everyone in the wagon (DEFCOMMON at the end of the file): one kettle, one pan. While
-;;;; someone carries the kettle, the others see it gone (:AWAY). The driver decides when it has boiled.
-;;;; Neither is saved: after a restart the kettle is empty on the table and the pan is on its nail.
+;;;; someone carries the kettle, the others see it gone (:AWAY) and know who has it, so when that cat leaves
+;;;; the kettle is back on the table. The driver decides when it has boiled.
+;;;; Neither is saved: after a restart, a new game or a visit to somebody's wagon the kettle is empty on the
+;;;; table and the pan is on its nail (DEFSTATE :KITCHEN below).
 
 (in-package #:kiosk-trip)
 
@@ -20,6 +22,7 @@
 (defparameter *pan-nail* '(.28 1.5 .385) "The nail the frying pan hangs on, relative to the stove: x, height above the floor, z.")
 
 (defvar *kettle-at* :table "Where the kettle is: :TABLE, :STOVE, :PAW (in our paw) or :AWAY (in another cat's paw).")
+(defvar *kettle-holder* nil "The number of the player who carries the kettle (0 is the driver), or NIL.")
 (defvar *kettle-water* nil "True when there is cold water in the kettle.")
 (defvar *kettle-heat* 0.0 "The number of seconds the water has been heated.")
 (defvar *kettle-tea* 0 "The number of cups of tea left in the kettle.")
@@ -51,6 +54,8 @@
 
 (defun show-kettle ()
   "Show the kettle where it is and the frying pan where it is."
+  (when (and *camera* *kettle-nodes* (null (getf *kettle-nodes* :paw)))        ; the camera is made after the wagon: the paw kettle waits for it
+    (setf (getf *kettle-nodes* :paw) (kettle-model *camera* 0 -.29 -.44)))
   (loop for key in '(:table :stove :paw)
         do (let ((node (getf *kettle-nodes* key))) (when node (object-set node "visible" (eq *kettle-at* key)))))
   (let ((steam (getf *kettle-nodes* :steam)))
@@ -73,7 +78,7 @@
       (setf *kettle-nodes*
             (list :table (and *table* (kettle-model *table* (- (first *table-at*) .16) (+ *table-top* .035) (second *table-at*)))
                   :stove stove :steam steam
-                  :paw (and *camera* (kettle-model *camera* 0 -.29 -.44)))
+                  :paw nil)                                                ; made by SHOW-KETTLE once there is a camera
             *pan-nodes*
             (destructuring-bind (nx ny nz) *pan-nail*
               (let ((lid (group c (+ sx nx) (+ f ny .36) (+ sz nz))))                ; the lid on its own nail, above the pan
@@ -91,8 +96,14 @@
 
 ;;; ------------------------------------------------------------------ what E does
 
+(defun my-number () "Return our number among the players: 0 for the driver and for a solo game." (if (net-guest-p) *net-id* 0))
+
+(defun player-here-p (number)
+  "Return true if the player NUMBER is in the game: ourselves or one of the others."
+  (or (eql number (my-number)) (and (member number *net-others* :key #'first) t)))
+
 (defun move-kettle (to text)
-  (setf *kettle-at* to *kettle-heat* 0.0)
+  (setf *kettle-at* to *kettle-heat* 0.0 *kettle-holder* (and (eq to :paw) (my-number)))
   (show-kettle)
   (say text))
 
@@ -277,8 +288,8 @@
 (defun step-kettle (delta)
   "Heat the kettle on the burning stove by DELTA seconds and let the steam rise once it has boiled.
 Everyone counts the heat for their own hint; the driver alone decides that it has boiled."
-  (when (and (eq *kettle-at* :away) (null *net-others*))                   ; whoever carried it has left: it is back on the table
-    (setf *kettle-at* :table) (show-kettle))
+  (when (and (eq *kettle-at* :away) (not (player-here-p *kettle-holder*)))   ; whoever carried it has left: it is back on the table
+    (setf *kettle-at* :table *kettle-holder* nil) (show-kettle))
   (when (and (eq *kettle-at* :stove) *kettle-water* (> *fire* 0))
     (when (and (>= (incf *kettle-heat* delta) *boil-time*) (not (net-guest-p)))
       (setf *kettle-water* nil *kettle-heat* 0.0 *kettle-tea* *kettle-cups*)
@@ -293,13 +304,14 @@ Everyone counts the heat for their own hint; the driver alone decides that it ha
 ;;; ------------------------------------------------------------------ shared over the network
 
 (defcommon :kettle
-  :value (list (if (eq *kettle-at* :away) :paw *kettle-at*) (and *kettle-water* t) *kettle-tea* *kettle-brew*)
-  :spec '((:member :table :stove :paw) (:member t nil) integer symbol)
+  :value (list (if (eq *kettle-at* :away) :paw *kettle-at*) (and *kettle-water* t) *kettle-tea* *kettle-brew* *kettle-holder*)
+  :spec '((:member :table :stove :paw) (:member t nil) integer symbol (:or integer null))
   :accept (lambda (state)
-            (destructuring-bind (at water tea brew) state
-              ;; 'in a paw' means ours if we hold it and somebody else's otherwise
-              (let ((at (cond ((not (eq at :paw)) at) ((eq *kettle-at* :paw) :paw) (t :away)))
+            (destructuring-bind (at water tea brew holder) state
+              ;; 'in a paw' is ours if the holder is us and somebody else's otherwise
+              (let ((at (cond ((not (eq at :paw)) at) ((eql holder (my-number)) :paw) (t :away)))
                     (tea (max 0 (min *kettle-cups* tea))))
+                (setf *kettle-holder* (and (member at '(:paw :away)) holder))
                 (unless (and (eq at *kettle-at*) (eq water (and *kettle-water* t)) (= tea *kettle-tea*) (eq brew *kettle-brew*))
                   (when (or (not (eq at *kettle-at*)) (and water (not *kettle-water*))) (setf *kettle-heat* 0.0))
                   (setf *kettle-at* at *kettle-water* water *kettle-tea* tea
@@ -308,3 +320,9 @@ Everyone counts the heat for their own hint; the driver alone decides that it ha
 
 (defcommon :pan :value (and *pan-on* t) :spec '(:member t nil)
   :accept (lambda (on) (unless (eq on (and *pan-on* t)) (setf *pan-on* on) (show-kettle))))
+
+(defstate :kitchen
+  :clear (lambda ()
+           (setf *kettle-at* :table *kettle-holder* nil *kettle-water* nil *kettle-heat* 0.0 *kettle-tea* 0 *kettle-brew* nil
+                 *pan-on* nil *chop* nil *chop-dip* 0.0 *trip-until* 0.0))
+  :show (lambda () (show-kettle) (when *chop-nodes* (show-chop))))

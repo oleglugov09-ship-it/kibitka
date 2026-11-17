@@ -28,11 +28,12 @@
 
 ;;; The recipes: entries of (raw-good dish dish-name-in-the-accusative [second-ingredient [hearth]]).
 ;;; With a second ingredient both must lie on the stove; such a recipe wins over what each makes alone.
+;;; A dish is made by one recipe only: where it sells is decided by its raw good.
 ;;; The hearth is the stove unless given: :LINE is the dryer above it (overnight).
 (setf *recipes*
       '((:milk :blin "блины") (:fish :fried "жареную рыбу") (:berry :jam "варенье") (:bread :toast "гренки") (:cans :stew "горячую тушёнку")
         (:mushroom :shroomfry "жареные грибы") (:mushroom :creamfry "грибы в сметане" :milk)
-        (:apple :charlotte "шарлотку" :bread) (:apple :bakedapple "печёные яблоки" :honey) (:apple :jam "варенье")
+        (:apple :charlotte "шарлотку" :bread) (:apple :bakedapple "печёные яблоки")
         (:bread :sandwich "бутерброды" :fish) (:berry :berrypie "пирог с клюквой" :bread) (:cans :soup "суп" :water)
         (:nut :brittle "козинаки" :honey)
         (:mushroom :dried "сушёные грибы" nil :line) (:apple :driedapple "сушёные яблоки" nil :line) (:herb :driedherb "сушёные травы" nil :line)

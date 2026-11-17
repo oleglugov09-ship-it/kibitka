@@ -173,15 +173,19 @@ As many are placed as there are players.")
         (loop for st in *stool-nodes* for i from 0 do (object-set st "visible" (< i n)))
         (refresh-seats)))))
 
+(defvar *poured* '() "What is in the glasses that stand poured: entries of (glass node . brew).")
+
 (defun pour-tea ()
   (let ((cup (find-if-not (lambda (c) (object-get c "visible")) (subseq *cup-nodes* 0 (max 1 *stools-shown*)))))
-    (cond (cup (object-set cup "visible" t) (say "Налил стакан чая") t)
+    (cond (cup (object-set cup "visible" t)
+               (setf *poured* (cons (cons cup *kettle-brew*) (remove cup *poured* :key #'car)))   ; the glass keeps what was in the kettle then
+               (say "Налил стакан чая") t)
           (t (say "Стаканы полные — пейте") nil))))
 
 (defun drink-tea (cup)
   "Drink the glass CUP: what it does depends on what was brewed in the kettle (kettle.lisp)."
   (object-set cup "visible" nil)
-  (case *kettle-brew*
+  (case (cdr (assoc cup *poured*))
     (:compote (setf *warm* (min 1.0 (+ *warm* .3))) (say "Компот. Сладко и тепло"))
     (:herbal (setf *warm* (min 1.0 (+ *warm* .15)) *boost-until* (+ *time* *water-time*)) (say "Травяной чай. Бодрит: пять минут бегаешь быстрее"))
     (:mors (setf *warm* (min 1.0 (+ *warm* .2)) *boost-until* (+ *time* (/ *water-time* 2))) (say "Клюквенный морс. Кисло и бодро"))

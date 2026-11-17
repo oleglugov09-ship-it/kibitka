@@ -500,6 +500,7 @@ stand on the windowsill, the same as by hand."
 (defun guest-first (h)
   "Handle the first state H from the host: build the same world and decide where to appear."
   (setf *net-joined* t)
+  (reset-commons)                                         ; somebody else's wagon: its common things are taken as they are
   (log-event :guest-joined :departed (getf h :departed) :dist (round (getf h :dist)) :name *net-name*)
   (start-trip :seed (getf h :seed))
   (setf *seat* nil *pos* (v3 .2 0 1.2))
@@ -708,7 +709,7 @@ it but walks there smoothly, hopping as it goes."
                  (far (> (+ (* dx dx) (* dz dz)) 4.0))                       ; sat or jumped: no dragging across the wagon
                  (nx (if far x (+ (getf st :x) (* k dx)))) (nz (if far z (+ (getf st :z) (* k dz))))
                  (moving (> (sqrt (+ (* dx dx) (* dz dz))) .06))
-                 (lying (or (< eye .8) (> eye (+ *eye* .25))))               ; on a bunk: the eyes are just above a mattress
+                 (lying (look-lying-p look))                                 ; on a bunk: the eyes are just above its mattress
                  (y (if lying (- eye .12) (max -.6 (min 0.0 (- eye *eye*)))))  ; sat down: lower by the eye height difference
                  (hop (+ (getf st :hop) (* k (- (if moving 1.0 0.0) (getf st :hop))))))
             (setf (getf (rest a) :x) nx (getf (rest a) :z) nz (getf (rest a) :hop) hop
@@ -763,6 +764,7 @@ trouble and waiting at a bus stop."
 
 (defun net-stop ()
   "Close the network game and restore everything it moved: the view, the wagon, the counters."
+  (reset-commons)
   (dolist (p *net-peers*)
     (when (getf p :node) (node-queue-free (getf p :node)))
     (when (getf p :peer)                                  ; a guest through the room server has no direct connection

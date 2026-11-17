@@ -316,12 +316,18 @@ Without the frying pan on the stove (kettle.lisp) that is only milk. A toadstool
                                        (< (abs (- (third spec) top)) .08)))
                    (mapcar #'car *items*))))
 
-(defun stove-jobs ()
+(defun stove-jobs (&optional going)
   "Return what the stove cooks right now: entries of (dish item-record ...).
-Recipes of two ingredients come first and take a pair each; whatever is left cooks alone. A toadstool
-among them makes one job, :RUINED, of everything on the stove."
+GOING are the jobs already cooking: those whose things all still stand on the stove go on as they are, so
+putting one more thing down does not start anybody's countdown anew. Of the rest, recipes of two
+ingredients come first and take a pair each; whatever is left cooks alone. A toadstool among them makes
+one job, :RUINED, of everything on the stove."
   (let ((raws (raw-on-stove)) (jobs '()))
     (when (find :toadstool raws :key #'first) (return-from stove-jobs (list (cons :ruined raws))))
+    (dolist (job going)
+      (when (and (not (eq (first job) :ruined)) (every (lambda (spec) (member spec raws :test #'equal)) (rest job)))
+        (push job jobs)
+        (setf raws (remove-if (lambda (spec) (member spec (rest job) :test #'equal)) raws))))
     (dolist (r *recipes*)
       (destructuring-bind (raw dish name &optional with hearth) r
         (declare (ignore name))
@@ -343,7 +349,7 @@ among them makes one job, :RUINED, of everything on the stove."
 (defun step-cook (delta)
   "Advance the cooking by DELTA seconds; the driver computes it.
 What stands on the hot stove turns into dishes (STOVE-JOBS); each job has its own countdown."
-  (let ((jobs (stove-jobs)))
+  (let ((jobs (stove-jobs (mapcar #'car *cook*))))
     (setf *cook* (remove-if-not (lambda (c) (member (car c) jobs :test #'equal)) *cook*))
     (dolist (job jobs)
       (unless (assoc job *cook* :test #'equal)
@@ -372,7 +378,11 @@ What stands on the hot stove turns into dishes (STOVE-JOBS); each job has its ow
 (defun good-price (kind price)
   "Return how much a buyer pays for the good KIND when paying PRICE for the raw good.
 A dish costs more."
-  (let ((price (if (dish-p kind) (+ (* *blin-factor* price) *blin-bonus*) price)))
+  (let* ((recipe (dish-p kind))
+         (price (cond ((null recipe) price)
+                      ;; a dish of two goods: the second one is paid for as well, a little above what it costs raw
+                      ((fourth recipe) (+ (* *blin-factor* price) *blin-bonus* (round (* *second-share* (good-base (fourth recipe))))))
+                      (t (+ (* *blin-factor* price) *blin-bonus*)))))
     (if (and (eq *season* :winter) (preserved-p kind)) (round (* *winter-bonus* price)) price)))  ; what was put by for the winter
 
 (defun good-p (kind) (or (and (dish-p kind) t) (and (assoc kind *goods*) t)))

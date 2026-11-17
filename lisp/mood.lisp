@@ -92,6 +92,8 @@ void fragment() {
 (defcommon :curtains :value (and *curtains-shut* t) :spec '(:member t nil)
   :accept (lambda (shut) (setf *curtains-shut* shut)))
 
+(defstate :curtains :clear (lambda () (setf *curtains-shut* nil)))
+
 (defun make-mood (c)
   "Build for the wagon C the smoke over the pipe, the glow of the window, the lights that pass and the rain on the roof."
   (let ((old (getf *mood* :roof))) (when old (node-queue-free old)))            ; the sound hangs under the root, not under the old wagon

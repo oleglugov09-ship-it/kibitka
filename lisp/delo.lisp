@@ -106,7 +106,9 @@ save, SHOW refreshes what is visible; with KEEP a new game leaves this part alon
 Each part is cleared first and then filled with what was saved, so nothing foreign (left after playing as
 a guest) remains."
   (loop for (nil clear load nil show) in *state-parts*
-        do (when clear (funcall clear)) (when load (funcall load)) (when show (funcall show))))
+        do (when clear (funcall clear))
+           (when load (noting :load-world (funcall load)))                 ; one damaged section must not stop the launch
+           (when show (funcall show))))
 
 (defun reset-world ()
   "Start a new game: reset every part to its initial state and write it to the save.
@@ -133,30 +135,54 @@ launch down, in the browser too."
 ;;; Common things of the wagon. Whatever several cats share inside it (the radio, the dice, the kettle, the
 ;;; frying pan, the fridge door) is declared once with DEFCOMMON: how to read its value, what shape the value
 ;;; has and what to do when another player's value arrives. The values travel together with the switches
-;;; (net.lisp), in the order of declaration; whoever changed a thing last is right. A subsystem no longer
-;;; edits a list of fixed length in three places to share one more thing.
+;;; (net.lisp), in the order of declaration.
+;;;
+;;; Every thing has a clock: a number that grows by one each time its value changes here. A value that arrives
+;;; is taken only if its clock is ahead of ours; with equal clocks the driver's value stands. So a message that
+;;; was already on its way when somebody else changed the thing (a guest's whole state is sent on any edit of
+;;; theirs) cannot put the old value back: its clock is behind.
 
 (defvar *commons* '() "The common things, in the order they were declared: entries of (name spec driver-owned value-function accept-function).")
+(defvar *common-clocks* (make-hash-table) "The table from the name of a common thing to (clock . value as last seen here).")
 
 (defmacro defcommon (name &key value (spec t) accept driver)
   "Declare the common thing NAME.
 VALUE is a form giving what we send: something made of numbers, keywords, strings and lists of them.
 SPEC is its shape for FITS; a value of another shape is dropped. ACCEPT is a function of one argument,
-called with a value that arrived: it compares, stores and shows. With DRIVER the thing is the driver's
-to decide: what a guest sends is ignored."
+called with a value that arrived: it compares, stores, shows and, where the thing is saved, saves. With
+DRIVER the thing is the driver's to decide: what a guest sends is ignored, what the driver sends is taken."
   `(let ((entry (list ,name ,spec ,driver (lambda () ,value) ,accept)) (old (assoc ,name *commons*)))
      (if old (setf (cdr old) (cdr entry)) (setf *commons* (append *commons* (list entry))))
      ,name))
 
-(defun common-state ()
-  "Return the values of all common things, in the order of declaration."
-  (loop for (nil nil nil value) in *commons* collect (funcall value)))
+(defun reset-commons ()
+  "Forget the clocks: called when we join somebody's wagon or come back to our own, so that what is there is taken as it is."
+  (clrhash *common-clocks*))
 
-(defun accept-common (values &optional driver-side)
-  "Take in the common things VALUES sent by another player.
+(defun common-clock (name value)
+  "Return the clock cell of the common thing NAME, first noticing whether its VALUE has changed here."
+  (let ((cell (gethash name *common-clocks*)))
+    (cond ((null cell) (setf (gethash name *common-clocks*) (cons 0 value)))
+          ((equal value (cdr cell)) cell)
+          (t (incf (car cell)) (setf (cdr cell) value) cell))))
+
+(defun common-state ()
+  "Return the common things as (clock value) entries, in the order of declaration."
+  (loop for (name nil nil value) in *commons*
+        collect (let ((now (funcall value))) (list (car (common-clock name now)) now))))
+
+(defun accept-common (entries &optional driver-side)
+  "Take in the common things ENTRIES sent by another player: (clock value) each.
 DRIVER-SIDE is true when we are the driver receiving from a guest."
-  (when (and (listp values) (ignore-errors (list-length values)) (= (length values) (length *commons*)))
-    (loop for (name spec driver nil accept) in *commons*
-          for v in values
-          do (when (and (fits v spec) (not (and driver driver-side)))
-               (noting name (funcall accept v))))))
+  (when (and (listp entries) (ignore-errors (list-length entries)) (= (length entries) (length *commons*)))
+    (loop for (name spec driver value accept) in *commons*
+          for entry in entries
+          do (when (fits entry (list 'integer spec))
+               (destructuring-bind (clock v) entry
+                 (let ((cell (common-clock name (funcall value))))
+                   (when (cond (driver (not driver-side))                                  ; the driver's thing: guests take it as it is
+                               ((> clock (car cell)) t)
+                               ((= clock (car cell)) (and (not driver-side) (not (equal v (cdr cell)))))
+                               (t nil))                                                    ; behind ours: an old message
+                     (noting name (funcall accept v))
+                     (setf (car cell) (max clock (car cell)) (cdr cell) (funcall value)))))))))

@@ -142,7 +142,7 @@ A shelf is scanned lengthwise: the rack along x, the upper shelves and windowsil
 
 (defun shelf-level (top)
   "Return the level of the rack that the height TOP belongs to: the shelf itself or the top of what stands on it."
-  (find-if (lambda (lv) (< -.06 (- top lv) .5)) (reverse *shelf-levels*)))
+  (find-if (lambda (lv) (< -.06 (- top lv) *level-room*)) (reverse *shelf-levels*)))
 
 (defun shelf-half (kind spin)
   "Return the half-width and half-depth a thing of KIND takes on the rack."
@@ -158,17 +158,23 @@ A shelf is scanned lengthwise: the rack along x, the upper shelves and windowsil
                          append (loop for dz in (second *small-slots*) collect (list (+ cx dx) (+ *shelf-z* dz)))))
       (loop for x in *shelf-slots-x* collect (list x *shelf-z*))))
 
-(defun stack-here (kind x z level)
-  "Return how many things of KIND already stand on one another at the place (X Z) of the shelf LEVEL."
-  (count-if (lambda (it) (destructuring-bind (ikind ix iy iz &rest more) (car it)
+(defparameter *rack-front* -2.2 "The z nearer than which a point belongs to the rack on the front wall.")
+(defparameter *level-room* .5 "The height above a shelf up to which what stands there belongs to that shelf.")
+
+(defun stack-here (kind x z level &optional cut)
+  "Return how many things of KIND stand on one another at the place (X Z) of the shelf LEVEL.
+With CUT, count the cut ones (slices on a board) instead of the whole ones: the two do not stack together."
+  (count-if (lambda (it) (destructuring-bind (ikind ix iy iz spin &rest more) (car it)
                            (declare (ignore more))
-                           (and (eq ikind kind) (< (abs (- ix x)) .03) (< (abs (- iz z)) .03) (< -.02 (- iy level) .5))))
+                           (and (eq ikind kind) (eq (and cut t) (eql spin 2))
+                                (< (abs (- ix x)) .03) (< (abs (- iz z)) .03) (< -.02 (- iy level) *level-room*))))
             *items*))
 
 (defun stack-room-p (kind x z level)
-  "Return true if a thing of KIND may go on top of the stack of its own kind at (X Z) on LEVEL."
+  "Return true if the whole thing of KIND that we carry may go on top of the stack of its own kind at (X Z) on LEVEL.
+Cut goods do not stack, and nothing is stacked on them."
   (let ((high (second (assoc kind *stackable*))))
-    (and high (< 0 (stack-here kind x z level) high))))
+    (and high (not *carry-cut*) (zerop (stack-here kind x z level t)) (< 0 (stack-here kind x z level) high))))
 
 (defun stack-rise (kind x z level)
   "Return how far above LEVEL the next thing of KIND stands at (X Z): the height of the stack there."
@@ -182,7 +188,7 @@ A stack of the same kind that is not yet full is not in the way: the thing goes 
         (some (lambda (it)
                 (destructuring-bind (ikind ix iy iz spin &rest more) (car it)
                   (declare (ignore more))
-                  (and (< iz -2.2) (< -.05 (- iy level) .5)
+                  (and (< -.05 (- iy level) *level-room*)                 ; whatever reaches into the place, wherever its middle is
                        (not (and (eq ikind kind) (< (abs (- ix x)) .03) (< (abs (- iz z)) .03) (stack-room-p kind x z level)))
                        (multiple-value-bind (iw id) (shelf-half ikind spin)
                          (and (< (abs (- ix x)) (- (+ hw iw) .04)) (< (abs (- iz z)) (- (+ hd id) .02)))))))
@@ -190,10 +196,10 @@ A stack of the same kind that is not yet full is not in the way: the thing goes 
 
 (defun shelf-slot (x z level kind)
   "Return the free place on LEVEL nearest to (X Z) for a thing of KIND, as (X Z), or NIL if the level is full.
-A stack of the same kind with room on top counts as nearer than an empty place: stacks fill up first."
+A stack of the same kind with room on top counts as a little nearer than an empty place beside it."
   (first (sort (remove-if (lambda (place) (slot-taken-p (first place) (second place) level kind)) (shelf-places kind))
                #'< :key (lambda (place) (- (+ (expt (- (first place) x) 2) (expt (- (second place) z) 2))
-                                           (if (stack-room-p kind (first place) (second place) level) .05 0))))))
+                                           (if (stack-room-p kind (first place) (second place) level) .01 0))))))   ; a small pull: the next place stays reachable
 
 (defun surface-at (x z top)
   "Return the shelf or windowsill that point (X Z TOP) falls on, as (X Z WIDTH DEPTH HEIGHT).
@@ -211,7 +217,7 @@ Return NIL for the floor or the top of an item."
         (:fridge-shut "Холодильник закрыт: E по дверце")
         (:fridge-big "В холодильник влезают только продукты")
         (:fridge-full "На этой полке холодильника мест нет: по четыре на полку")
-        (t "На стеллаже вещи стоят в один ряд — выбери свободное место"))))
+        (t "Сюда не встаёт — выбери свободное место на полке"))))
   (destructuring-bind (x z top) spot
     (multiple-value-bind (w h d) (item-size (car *carry*) 0)
       (declare (ignore h))
@@ -221,7 +227,7 @@ Return NIL for the floor or the top of an item."
                     (some (lambda (entry) (and (< (abs (- z (second entry))) .22) (< (abs (- x *half-width* .29)) .3)))
                           (getf *client* :stall)))
                "Тут лежит товар клиента — поставь рядом")
-              ((and (< z -2.2) (shelf-level top)) nil)                ; the rack: the place has already been chosen by slots
+              ((and (< z *rack-front*) (shelf-level top)) nil)                ; the rack: the place has already been chosen by slots
               ((fridge-shelf x z top) nil)                            ; the fridge: likewise
               ((some (lambda (it)                                   ; no putting one item inside another
                        (destructuring-bind (kind ix iy iz spin &rest more) (car it)
@@ -250,7 +256,7 @@ Return NIL for the floor or the top of an item."
                         (if place
                             (list (first place) (second place) (+ level (stack-rise (car *carry*) (first place) (second place) level)))
                             (append raw (list :fridge-full))))))))
-          ((< (second raw) -2.2)                                   ; the rack: the item goes to the nearest free slot of the level
+          ((< (second raw) *rack-front*)                                   ; the rack: the item goes to the nearest free slot of the level
            (let ((level (shelf-level (third raw))))
              (cond ((null level) (append raw (list :stack)))
                    (t (let ((place (shelf-slot (first raw) (second raw) level (car *carry*))))

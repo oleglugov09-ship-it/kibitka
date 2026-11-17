@@ -81,7 +81,7 @@
 (defun all-abed-p ()
   "Return true when everyone in the wagon is lying or sitting.
 The driver is on the bunk, the guests are on any seat (their eyes are lower than when standing)."
-  (every (lambda (p) (or (getf p :wait) (not (getf p :placed)) (let ((eye (or (getf p :eye) *eye*))) (or (< eye (- *eye* .1)) (> eye (+ *eye* .25)))))) *net-peers*))
+  (every (lambda (p) (or (getf p :wait) (not (getf p :placed)) (< (or (getf p :eye) *eye*) (- *eye* .1)) (look-lying-p (getf p :look 0)))) *net-peers*))
 
 ;;; ------------------------------------------------------------------ words
 
@@ -115,7 +115,7 @@ The request carries what we hold in our paws: the action may take it or hand som
   "Run THUNK as the driver on behalf of guest P, with the guest's paws holding CARRY.
 Reply to the guest with what is now in its paws and what was said to it."
   (when (member p *net-peers*)
-    (let ((*actor* p) (*carry* (and (car carry) carry)) (*carry-from* nil) (*said* '()) (*pending* nil))
+    (let ((*actor* p) (*carry* (and (car carry) carry)) (*carry-from* nil) (*carry-cut* nil) (*said* '()) (*pending* nil))   ; the guest's paws, not ours
       (funcall thunk)
       (peer-send p (list :r (car *carry*) (cdr *carry*) (mapcar #'clean-text (reverse *said*)) *pending*)))))
 

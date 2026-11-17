@@ -24,7 +24,14 @@
                          (max 0 (- *debt-total* (- total left)))
                          left))))))
 (defstate :debt
-  :clear (lambda () (setf *debt* *debt-total* *story-stage* :intro))
+  :clear (lambda ()
+           (when (and (boundp '*ending*) *ending*)                         ; a new game in the middle of the credits: roll them up
+             (setf *ending* nil)
+             (when *ending-ui*
+               (object-set (getf *ending-ui* :root) "visible" nil)
+               (when (getf *ending-ui* :music) (object-call (getf *ending-ui* :music) "stop"))))
+           (setf *debt* *debt-total* *story-stage* :intro *show* nil)
+           (when (and (boundp '*show-ui*) *show-ui*) (show-card)))
   :load #'load-debt :save #'save-debt)
 
 (defun debt-hud ()

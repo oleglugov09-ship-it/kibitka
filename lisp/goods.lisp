@@ -6,7 +6,6 @@
 (in-package #:kiosk-trip)
 
 (defun dish-p (kind) "Return the recipe entry if KIND is a cooked dish." (find kind *recipes* :key #'second))
-(defun dish-of (raw) "Return the dish cooked from the raw good RAW, or NIL." (second (assoc raw *recipes*)))
 (defun raw-of (kind) "Return the raw good the dish KIND is cooked from; for a non-dish return KIND itself." (let ((r (dish-p kind))) (if r (first r) kind)))
 (defun good-name (kind) (cond ((dish-p kind) (third (dish-p kind))) (t (or (second (assoc kind *goods*)) "товар"))))
 (defun good-base (kind) (or (third (assoc kind *goods*)) 5))
