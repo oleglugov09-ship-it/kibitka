@@ -56,7 +56,7 @@ def unstash():
 
 
 def start(port, **env):
-    e = dict(os.environ, KIOSK_SLYNK=str(port), KIOSK_NOLOG="1", **env)
+    e = dict(os.environ, KIOSK_SLYNK=str(port), KIOSK_NOLOG="1", KIOSK_LANG="ru", **env)   # the checks compare Russian text
     log = open(f"/tmp/kibitka-smoke-{port}.log", "w")
     p = subprocess.Popen(["godot", "--path", "project", "--audio-driver", "Dummy", "--disable-vsync", "--max-fps", "60"] + (["--headless"] if HEADLESS else []),
                          cwd=ROOT, env=e,

@@ -11,6 +11,7 @@
 
 (defvar *mods* '() "The mods found at startup, in load order: entries of (name place status), status :ok or the error text.")
 (defvar *mod* nil "The name of the mod being loaded, or NIL.")
+(defvar *mod-dir* nil "The folder of the mod being loaded, or NIL.")
 
 (defun text-file (path)
   "Return the text of the game file at PATH, decoded as UTF-8."
@@ -28,6 +29,10 @@
             (eval form)
             (setf start next)))))
 
+(defun include (file)
+  "Read and evaluate FILE from the folder of the mod being loaded; a mod.lisp calls this to split itself up."
+  (eval-text (text-file (cl:format nil "~a/~a" *mod-dir* file))))
+
 (defun mod-names (place)
   "Return the names of the mod folders in PLACE that have a mod.lisp, sorted."
   (sort (remove-if-not (lambda (name) (file-here-p (cl:format nil "~a/~a/mod.lisp" place name)))
@@ -39,7 +44,7 @@
   (setf *mods* '())
   (dolist (place '("res://mods" "user://mods"))
     (dolist (name (mod-names place))
-      (let ((*mod* name))
+      (let ((*mod* name) (*mod-dir* (cl:format nil "~a/~a" place name)))
         (push (list name place
                     (handler-case (progn (eval-text (text-file (cl:format nil "~a/~a/mod.lisp" place name))) :ok)
                       (error (c) (note-error c (cl:format nil "mod ~a" name)) (princ-to-string c))))

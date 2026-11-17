@@ -6,11 +6,7 @@
 
 (in-package #:kiosk-trip)
 
-(defparameter *gimmick-plan*
-  '((0 .16 "РЫБАЛКА" "#3f6f73") (1 .26 "ТИР" "#3c4638") (2 .66 "ХОЗТОВАРЫ: ПЛИТЫ" "#5a5a5e") (3 .42 "БИБЛИОТЕКА" "#6a3a2e") (4 .50 "КОЗА МАНЬКА" "#6a5038")
-    (5 .24 "МАЯК" "#a3262c") (6 .42 "ПЕЧАТИ: ОКНО № 3" "#8a8070") (8 .37 "ШАХТА: КЛЕТЬ" "#3a3838")
-    (9 .34 "МИНЕРАЛЬНАЯ ВОДА" "#3f6f73") (10 .35 "ПОГРУЗКА НА ПЛАТФОРМУ" "#7a5a50") (11 .33 "ПЛОТНИК" "#8a6440")
-    (12 .455 "ГОРСОВЕТ: ЗАДАНИЯ" "#b8ac94" 6) (13 .49 "МИЛИЦИЯ: УЧАСТОК" "#2c4a7a" 6))
+(defvar *gimmick-plan* '()
   "The booths, each a list (number, fraction of the town length, sign, colour [, town number]).
 The town number is given only when it differs from the booth number.")
 

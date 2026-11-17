@@ -169,10 +169,7 @@ The sky stays over the wagon, turns with the day cycle and fades towards dawn an
 
 ;;; ------------------------------------------------------------------ big telescope
 
-(defparameter *scope-sights*
-  '(("moon" "Луна: моря и кратеры") ("jupiter" "Юпитер: полосы облаков и четыре луны в ряд") ("saturn" "Сатурн и его кольца")
-    ("mars" "Марс: рыжий диск, белая полярная шапка") ("venus" "Венера: узкий серп, как у молодой Луны")
-    ("pleiades" "Плеяды: семь сестёр в голубой дымке") ("andromeda" "Туманность Андромеды: другая галактика")))
+(defvar *scope-sights* '())
 
 (defun make-scope (root)
   (let ((layer (gdext:make-object "CanvasLayer")) (bg (gdext:make-object "ColorRect")) (pic (gdext:make-object "TextureRect")))

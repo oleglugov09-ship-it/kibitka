@@ -4,9 +4,7 @@
 
 (in-package #:kiosk-trip)
 
-(defparameter *town-names*
-  '("Заречный" "Северный" "Красный Кут" "Ленинск" "Берёзовка" "Первомайск" "Октябрьский" "Дальний" "Горняк"
-    "Светлый" "Узловая" "Сосновка"))
+(defvar *town-names* '())
 
 (defun town-name (i)
   "Return the name of town number I.

@@ -56,10 +56,7 @@
     (:veg :kinds (:pine :meadow :autumn :birch :rocky :steppe :marsh) :len (180 520)))
   "The layers: for each, its kinds (a repeated kind is more frequent) and piece lengths in meters.")
 
-(defparameter *names*
-  '(:plain "равнина" :hills "холмы" :mountains "горы" :canyon "каньон" :serpentine "серпантин" :none "" :river "река" :lake "озеро"
-    :pine "хвойный лес" :meadow "цветущий луг" :autumn "осенняя роща" :birch "березняк" :rocky "каменистая пустошь"
-    :steppe "степь" :marsh "болото"))
+(defvar *names* '())
 
 (defparameter *amp* '(:plain .3 :hills .9 :mountains 1.7 :canyon .7 :serpentine 1.6) "The relief strength by kind.")
 (defvar *route* '() "The route sheet: entries (from to layer kind).

@@ -10,10 +10,7 @@
 
 (defparameter *restricted* '((:coal :coal "уголь") (:berry :air "авиагруз (клюква)"))
   "The goods that need a licence: (GOODS-KIND LICENCE DISPLAY-NAME).")
-(defparameter *quests*
-  '((:post :coal "Почтовый рейс" "вручить три посылки" 3 "лицензия на уголь")
-    (:clean :air "Чистый город" "сдать восемь бутылок или связок в пункт приёма" 8 "лицензия на авиагруз")
-    (:album :honor "Альбом области" "снять пять ориентиров фотоаппаратом" 5 "почётная грамота и 15 р."))
+(defvar *quests* '()
   "The town council quests: (KEY GRANTS TITLE TASK COUNT REWARD-NAME).")
 
 (defvar *licenses* '() "The licences obtained: :coal, :air, :honor.")

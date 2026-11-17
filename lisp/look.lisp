@@ -5,7 +5,7 @@
 
 (in-package #:kiosk-trip)
 
-(defparameter *outfits* '("Пальто и шарф" "Тулуп и ушанка" "Пальто и кепка" "Комбинезон и каска" "Кожанка и фуражка"))
+(defvar *outfits* '())
 (defparameter *fur-names* '("Чёрный" "Рыжий" "Серый" "Белый" "Бурый" "Угольный"))
 
 (defvar *outfit* 0 "The outfit, as an index into *OUTFITS*.")

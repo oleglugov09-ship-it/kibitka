@@ -139,10 +139,7 @@ Pressing the same key again switches it off."
 
 ;;; ------------------------------------------------------------------ camera
 
-(defparameter *mark-names*
-  '(:windmill "Мельница" :plane "Самолёт" :church "Церковь на холме" :pumpjacks "Качалки" :mast "Радиомачта"
-    :elevator "Элеватор" :wheel "Колесо обозрения" :pylons "ЛЭП" :watchtower "Вышка лесника" :oldbus "Автобус в поле"
-    :radar "Станция на горе" :farm "Ферма" :rocket "Ракета"))
+(defvar *mark-names* '())
 
 (defun photo-path (slot) (format nil "user://photo-~d.png" slot))
 

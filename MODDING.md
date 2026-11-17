@@ -14,11 +14,30 @@ build only loads the shipped mods.
 Mods load in alphabetical order, the player's after the shipped ones. A mod that fails does not stop
 the game: the error goes to the log and the debug screen (`F3`) shows the mod as `FAILED`.
 
-## What the game ships as a mod
+## What the game ships as mods
 
-`project/mods/stories/` — all nine town stories (chains of parcels with names and lines) and their
-English text. The core (`lisp/istorii.lisp`) only knows how to carry a story; with the folder removed
-the game runs with plain parcels.
+The core in `lisp/` is logic only; what the game shows comes from two mods.
+
+| Mod | What is in it |
+|---|---|
+| `project/mods/base/` | the content the world is planned from — see the table below |
+| `project/mods/stories/` | the nine town stories: chains of parcels with names and lines |
+
+| File in `base/` | Tables it sets |
+|---|---|
+| `towns.lisp` | town names, the goods and their prices, what each town makes and lacks, cooktop recipes |
+| `booths.lisp` | the booths with gimmicks, their notes for the guide book, town council quests |
+| `gnomes.lisp` | where each gnome hides and what it is called |
+| `places.lisp` | the relief of each stretch, landmarks, diners, what the telescope shows |
+| `looks.lisp` | the outfits |
+| `en.lisp` | English for all of the above |
+
+Each table is declared empty in the core with a docstring that describes its shape; a mod fills it
+with `(setf *table* '(...))`. Without `base` the game has no world to plan and will not start; without
+`stories` it runs with plain parcels.
+
+What a booth, a gnome or a recipe *does* is still code in the core: a mod can move, rename and reprice
+them, but a new kind of booth needs code.
 
 ## What a mod may call
 
@@ -26,6 +45,8 @@ the game runs with plain parcels.
 |---|---|
 | `(define-story :key step...)` | adds a chain of story parcels; the same key replaces a story |
 | `(translate "ru" "en" ...)` | adds English text for the mod's own Russian strings |
+| `(include "file.lisp")` | reads another file from the mod's own folder |
+| `(setf *table* '(...))` | replaces one of the content tables listed above |
 
 A story step is `(from-town to-town sender sender-words recipient recipient-words radio-summary
 (town who words))`. Towns are numbers 0–11 along the ring road. Text is written in Russian (the game's

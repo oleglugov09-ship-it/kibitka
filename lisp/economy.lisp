@@ -44,8 +44,7 @@
 
 ;;; Things to do on the road (uyut.lisp)
 (defparameter *cook-time* 28.0 "The number of seconds it takes a raw good on the hot stove to become a dish.")
-(defparameter *recipes*
-  '((:milk :blin "блины") (:fish :fried "жареную рыбу") (:berry :jam "варенье") (:bread :toast "гренки") (:cans :stew "горячую тушёнку"))
+(defvar *recipes* '()
   "The recipes: entries of (raw-good dish dish-name-in-the-accusative).
 A dish is wanted wherever its raw good is wanted, but at twice the price. Without the cooktop the stove
 bakes only blini: nothing else fits on its round lid.")
@@ -60,23 +59,9 @@ bakes only blini: nothing else fits on its round lid.")
 (defparameter *busk-live* 2 "The factor by which coins come more often for a live guitar than for a record.")
 
 ;;; Goods and towns (goods.lisp)
-(defparameter *goods*
-  '((:milk "молоко" 5) (:fish "рыбу" 7) (:bread "хлеб" 4) (:coal "уголь" 9) (:tools "инструмент" 12) (:books "книги" 10)
-    (:cans "тушёнку" 8) (:water "минеральную воду" 5) (:honey "мёд" 9) (:berry "клюкву" 6))
+(defvar *goods* '()
   "The goods: entries of (kind, name in the accusative case as in 'they sell fish', average price).")
-(defparameter *town-trade*
-  '(((:fish) (:milk :bread :tools))            ; Zarechny: the river
-    ((:cans) (:milk :books :honey))            ; Severny: army depots
-    ((:tools) (:milk :fish :bread))            ; Krasny Kut: factories
-    ((:books) (:milk :honey :water))           ; Leninsk: colleges and a printing house
-    ((:milk :honey) (:tools :cans :books))     ; Beryozovka: a village
-    ((:fish) (:milk :water :coal))             ; Pervomaysk: the port
-    ((:bread) (:fish :honey :berry))           ; Oktyabrsky: the bakery plant by the town council
-    ((:berry) (:bread :cans :tools :coal))     ; Dalny: cranberries from the swamps, everything else is brought in
-    ((:coal) (:milk :bread :cans))             ; Gornyak: coal mines
-    ((:water) (:fish :berry :books))           ; Svetly: a resort
-    ((:bread) (:coal :tools :water))           ; Uzlovaya: the station bakery
-    ((:honey) (:cans :books :tools)))          ; Sosnovka: forest apiaries
+(defvar *town-trade* '()
   "The trade of each town by town number: (what is made here) (what is short here).")
 (defparameter *sell-range* '(.55 .8) "The share of the average price a seller asks, as (FROM TO).")
 (defparameter *buy-range* '(1.4 1.9) "The share of the average price a buyer pays, as (FROM TO).")

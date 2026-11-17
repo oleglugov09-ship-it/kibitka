@@ -25,8 +25,12 @@
 (dolist (f '("delo" "tverd" "random" "economy" "land" "karta" "razmetka" "goods" "istorii" "places" "prikol" "bumagi"))
   (load (merge-pathnames (concatenate 'string f ".lisp") cl-user::*here*)))
 
-;; the stories live in a mod: the core ships none
-(load (merge-pathnames "../project/mods/stories/mod.lisp" cl-user::*here*))
+;; the content lives in mods: the core ships none. INCLUDE here is plain LOAD from the mod's folder
+(defvar *mod-dir* nil)
+(defun include (file) (load (merge-pathnames file *mod-dir*)))
+(dolist (name '("base" "stories"))
+  (let ((*mod-dir* (merge-pathnames (concatenate 'string "../project/mods/" name "/") cl-user::*here*)))
+    (include "mod.lisp")))
 
 (defvar *checks* 0) (defvar *fails* '())
 (defmacro check (what test)
