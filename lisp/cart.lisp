@@ -109,8 +109,6 @@ Its width follows the picture. Return the mesh instance, or NIL when the picture
             (node-add-child c mi)
             (node-3d-set-position mi (v3 0 (+ f wh -.02) (second layer)))))))
     (shape c :ball '(.28 12 6) "#ffd890" 0 (+ f wh .45) (- (- z) .05) :emit "#ffb050" :energy 2 :scale '(1 1 .2))
-    ;; the ventilation box on the roof
-    (shape c :box '(.3 .9 .3) "#3a3a40" -.8 (+ f wh .9) -1.4 :metal .5)
     ;; inside: the floor, the carpet on the floor, the lining
     (shape c :box (list (- (* 2 x) .1) .04 (- (* 2 z) .1)) (kc :floor) 0 (+ f .02) 0)
     (shape c :box '(1.8 .02 2.8) "#2a3a6a" -.15 (+ f .05) 0)
