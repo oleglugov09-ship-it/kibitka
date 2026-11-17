@@ -31,11 +31,20 @@
         when (typep component 'asdf:cl-source-file)
           collect (asdf:component-pathname component)))
 
+(defvar *stale* nil
+  "True once a source newer than its object has been met: every file after it in load order is compiled
+again too, because it may use a macro from the changed one.")
+
 (defun cross-compile (source)
   (let* ((dir (car (last (pathname-directory source))))
          (output (merge-pathnames (make-pathname :name (format nil "~a--~a" dir (pathname-name source))
                                                  :type "o")
                                   *build*)))
+    ;; an object newer than its source is kept, as long as nothing before it in load order has changed.
+    ;; To rebuild everything (after changing the compiler or this script): rm build-web/*.o
+    (when (and (not *stale*) (probe-file output) (> (file-write-date output) (file-write-date source)))
+      (return-from cross-compile output))
+    (setf *stale* t)
     (format t "~&;;; cross: ~a~%" (enough-namestring source *root*))
     (install-cross-overrides)
     (let ((compiled (compile-file source :output-file output :system-p t :verbose nil :print nil)))

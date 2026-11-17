@@ -37,7 +37,8 @@ in their paws.")
 (defun pay (sum)
   "Pay SUM roubles.
 Return NIL and show a hint if there is not enough money."
-  (cond ((< *money* sum) (say (format nil "Нужно ~d р., а у нас ~d" sum *money*)) nil)
+  (cond (*dev* t)                                                        ; on the dev polygon everything is free
+        ((< *money* sum) (say (format nil "Нужно ~d р., а у нас ~d" sum *money*)) nil)
         (t (decf *money* sum) t)))
 
 (defun give-good (kind text)
@@ -80,7 +81,7 @@ Return true if the good was given."
 (defun spent-p (i)
   "Return true, with a hint, if the free thing at booth I has already been taken today.
 The goat, the fishing and the mine each give theirs once per day cycle."
-  (when (eql (cdr (assoc i *gimmick-spent*)) (today))
+  (when (and (not *dev*) (eql (cdr (assoc i *gimmick-spent*)) (today)))            ; the dev polygon has no limits
     (say "Здесь на сегодня всё. Приходи завтра")
     t))
 
@@ -171,8 +172,8 @@ Return T if a train ride was pending (GO-TO-TOWN then does nothing itself)."
     (sign g title 8.78 3.5 0 :h (if (> (length title) 14) .3 .45) :rgb "#f0ece0")
     (flood g 7.5 3.0 0 :range 14.0)
     (case index                                                        ; every booth has its own landmark
-      (0 (build-pond g) (beam-between g '(7.0 1.0 -2.6) '(5.0 3.4 -2.6) :thick .04 :rgb "#3a2a1e") (shape g :box '(.5 .5 .5) "#55708a" 7.2 .25 -2.4))
-      (1 (build-range g) (dolist (z '(2.6 3.4 4.2)) (shape g :cyl '(.3 .3 .04 12) "#e8e0d0" 12.8 1.6 z :rot (list 0 0 (/ pi 2))) (shape g :cyl '(.1 .1 .05 8) "#a3262c" 12.76 1.6 z :rot (list 0 0 (/ pi 2)) :shadow nil)))
+      (0 (unless (member "nopond" *dev-flags* :test #'string=) (build-pond g)) (beam-between g '(7.0 1.0 -2.6) '(5.0 3.4 -2.6) :thick .04 :rgb "#3a2a1e") (shape g :box '(.5 .5 .5) "#55708a" 7.2 .25 -2.4))
+      (1 (unless (member "nopond" *dev-flags* :test #'string=) (build-range g)) (dolist (z '(2.6 3.4 4.2)) (shape g :cyl '(.3 .3 .04 12) "#e8e0d0" 12.8 1.6 z :rot (list 0 0 (/ pi 2))) (shape g :cyl '(.1 .1 .05 8) "#a3262c" 12.76 1.6 z :rot (list 0 0 (/ pi 2)) :shadow nil)))
       (3 (dotimes (i 4) (shape g :box '(.5 .5 .7) (nth i '("#6a3a2e" "#2c4a7a" "#3c5a48" "#c9a13a")) 7.2 (+ .25 (* i .5)) 3.2 :rot (list 0 (* i .2) 0))))
       (4 (let ((s (group g 7.0 0 3.0))) (node-3d-set-scale s (v3 .55 .55 .55)) (mark-cow s 0 0 1.2 "#e8e4d8")) (shape g :box '(.1 .9 3.0) "#6a5038" 5.4 .45 3.0))
       (8 (dolist (z '(-3.4 -4.6)) (shape g :box '(.3 5.0 .3) "#5a4636" 11.0 2.5 z)) (shape g :box '(.4 .4 1.8) "#5a4636" 11.0 5.0 -4.0) (shape g :box '(1.4 1.8 1.0) "#3a3a40" 11.0 .9 -4.0))
@@ -197,7 +198,7 @@ They go in a row, every 22 m, from the start of the first town, past gas station
         do (let* ((tw (nth (or town i) *towns*)) (i i) (title title) (rgb rgb)
                   (d (or (pop slots) (+ (town-start tw) (* f (- (town-end tw) (town-start tw)))))))
              (push (list d i) *gimmicks*)
-             (when (member i '(0 1)) (push (list (- d 11.0) (+ d 17.0)) *bare*))   ; the pond and the shooting alley need open ground
+             (when (and (member i '(0 1)) (not (member "nobare" *dev-flags* :test #'string=))) (push (list (- d 11.0) (+ d 17.0)) *bare*))   ; the pond and the shooting alley need open ground
              (push (make-scene :d0 (- d 10) :d1 (+ d 10) :build (lambda () (build-gimmick d i title rgb))) *scenes*))))
 
 (defun prikol-usables ()

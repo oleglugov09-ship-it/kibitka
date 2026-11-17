@@ -23,7 +23,9 @@
                     (len (sqrt (+ (* dx dx) (* dy dy) (* dz dz))))
                     (cosa (/ (+ (* dx (vector3-x dir)) (* dy (vector3-y dir)) (* dz (vector3-z dir))) (max len .01)))
                     (a (acos (max -1 (min 1 cosa)))))
-               (when (and (< len *reach*) (< a best-a)) (setf best what best-a a))))
+               ;; the door counts only when the gaze is really on it: its half-width as seen from here, not a wide cone
+               (when (and (< len *reach*) (< a best-a) (or (not (eq what :door)) (< a (+ .06 (atan .45 (max len .3))))))
+                 (setf best what best-a a))))
     best))
 
 (defun interact ()
@@ -75,7 +77,10 @@ Discs are handled by hand too."
 
 (defun hint-text ()
   (let ((u (and (in-cart-p) (or (usable-here :hand) (usable-here)))))
-    (cond (u (if (usable-label u) (funcall (usable-label u)) ""))
+    (cond ((and (/= (input-get-mouse-mode) 2) (not *lobby-open*) (not *map-open*) (not *look-open*) (not *docs-open*)
+                (not *play*) (not *cheats-open*) (not *paused*))
+           "Щёлкни мышью по игре, чтобы снова оглядываться")              ; the browser let the mouse go (Esc, another window)
+          (u (if (usable-label u) (funcall (usable-label u)) ""))
           ((and (in-cart-p) *build*) *build-hint*)
           ((and (in-cart-p) (carry-hint)))
           ((and (in-cart-p) (client-hint)))

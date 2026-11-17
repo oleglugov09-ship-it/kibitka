@@ -269,5 +269,5 @@ The driver starts it by the road ahead; a guest puts it where the driver has it 
         (let* ((ph (+ (* 6 (vr k 23)) (* *day-t* .06))) (d (+ (* k *walker-step*) (* 17 (sin ph))))
                (x (if (< (vr k 24) .7) *walker-x* -7.2)))                   ; the pavement on the left is beyond the oncoming lane
           (destructuring-bind (px py pz) (side-point x d .08)
-            (node-3d-set-position g (v3 px (+ py (* .07 (abs (sin (* *time* 7))))) pz))
+            (node-3d-set-position g (v3 px (+ (max py (+ (road-y d) .05)) (* .07 (abs (sin (* *time* 7))))) pz))   ; pavements lie flush with the road: do not sink into them
             (node-3d-set-rotation g (v3 0 (- (if (> (cos ph) 0) pi 0) (road-frame d)) 0))))))))

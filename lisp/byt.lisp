@@ -116,12 +116,12 @@ As many are placed as there are players.")
       (shape sv :cyl '(.05 .1 .08 12) "#d8a040" 0 .36 0 :metal .85 :rough .3)
       (shape sv :box '(.1 .02 .02) "#d8a040" .15 .16 0 :metal .85 :rough .3 :rot (list 0 0 -.3)))
     ;; a plate of bagels
-    (shape g :cyl '(.13 .1 .02 12) "#f0ede4" (+ tx .08) (+ top .045) (+ tz .0) :shadow nil)
+    (shape g :cyl '(.2 .16 .02 14) "#f0ede4" (+ tx .08) (+ top .045) (+ tz .0) :shadow nil)
     (setf *bagel-nodes*
           (loop for i below 6 for a = (* i (/ (* 2 pi) 6))
-                collect (let ((bg (group g (+ tx .08 (* .07 (cos a))) (+ top .065) (+ tz (* .07 (sin a))))))
-                          (shape bg :cyl '(.04 .04 .018 8) "#c8964a" 0 0 0 :shadow nil)
-                          (shape bg :cyl '(.016 .016 .02 6) "#f0ede4" 0 0 0 :shadow nil)
+                collect (let ((bg (group g (+ tx .08 (* .115 (cos a))) (+ top .07) (+ tz (* .115 (sin a))))))
+                          (shape bg :cyl '(.065 .065 .028 10) "#c8964a" 0 0 0 :shadow nil)
+                          (shape bg :cyl '(.026 .026 .03 6) "#f0ede4" 0 0 0 :shadow nil)
                           bg)))
     (setf *cup-nodes*
           (loop for (x z) in *cup-spots*
@@ -180,7 +180,7 @@ As many are placed as there are players.")
              (usable (- tx .16) (+ top .22) tz (lambda () "E — налить чаю из самовара") #'pour-tea nil 2.6 .16)
              (usable (+ tx .08) (+ top .08) tz
                    (lambda () (if (some (lambda (n) (object-get n "visible")) *bagel-nodes*) "E — съесть сушку" "Сушки кончились"))
-                   #'eat-bagel nil 2.6 .12))
+                   #'eat-bagel nil 2.6 .22))
        (loop for cup in *cup-nodes* for (x z) in *cup-spots*
              when (object-get cup "visible")
                collect (let ((cup cup)) (usable x (+ top .07) z (lambda () "E — выпить чай") (lambda () (drink-tea cup)) nil 2.6 .09)))))))
@@ -399,6 +399,9 @@ These are the map, the stove, the light switch, the ladder, the window and the b
                (usable (- .5 *half-width*) .62 0.0
                        (lambda () (if (and *seat* (eq (first *seat*) :fold)) "E — встать" "E — сесть на полку")) #'sit-on-bunk)
                (usable (- .32 *half-width*) .8 0.0 (lambda () "E — откинуть полку") #'toggle-fold))
+           ;; raised, the shelf stands on edge and its golden handles are up at chest height: E on either folds it down
+           (unless *fold-down* (usable (- .31 *half-width*) 1.05 -.7 (lambda () "E — откинуть полку") #'toggle-fold nil 2.6 .16))
+           (unless *fold-down* (usable (- .31 *half-width*) 1.05 .7 (lambda () "E — откинуть полку") #'toggle-fold nil 2.6 .16))
            (usable (- .1 *half-width*) 1.6 0.0
                    (lambda () (if *fold-down* "E — поднять полку" "E — откинуть полку")) #'toggle-fold))))
 
@@ -427,7 +430,9 @@ Blockers always take part: when a blocker is hit most precisely, it is what is u
 and there is no action."
   (let ((best nil) (least 1.0))
     (dolist (u (usables))
-      (when (or (null (usable-action u)) (eq (and (usable-hand u) t) (and hand t)))
+      (when (and (or (null (usable-action u)) (eq (and (usable-hand u) t) (and hand t)))
+                 ;; standing outside, the things inside the wagon are behind its wall: not through it
+                 (or *meta* (not (outdoors-p (vector3-x *pos*) (vector3-z *pos*))) (outdoors-p (usable-x u) (usable-z u))))
         (let ((miss (usable-miss u)))
           (when (and miss (< miss least)) (setf best u least miss)))))
     (and best (usable-action best) best)))                     ; the most precise hit was a blocker, so nothing is hit

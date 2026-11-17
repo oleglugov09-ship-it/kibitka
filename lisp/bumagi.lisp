@@ -177,7 +177,7 @@ When we carry coal or air cargo in bulk, once in a while on the road, outside to
 and ask for a licence. Travelling light, we are never stopped."
   (unless (net-guest-p)
     (cond ((null *check*)
-           (when (and *auto* (> *speed* 4.0) (not (town-at *dist*)) (not (bare-at *dist*)) (not *meta*)
+           (when (and *auto* (not *dev*) (> *speed* 4.0) (not (town-at *dist*)) (not (bare-at *dist*)) (not *meta*)
                       (bulk-cargo)                                        ; only those loaded with coal or air cargo are stopped
                       (< (decf *check-in* delta) 0))
              (setf *check* (list :stopping *auto* *way*) *auto* nil)       ; autopilot is off: the wagon brakes by itself

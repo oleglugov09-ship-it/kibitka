@@ -1088,4 +1088,6 @@ otherwise the world and messages drift apart."
   "The line snapped."
 "Ушёл далеко — занятие окончено"
   "You walked away — the activity is over"
+"Щёлкни мышью по игре, чтобы снова оглядываться"
+  "Click the game to look around again"
 ) by #'cddr do (setf (gethash ru *en*) en))
