@@ -106,7 +106,8 @@ Return T when the key was ours."
     (:next "Next place (PageDown)" 250 78) (:prev "Previous place (PageUp)" 250 104)
     (:weather "Weather: next" 250 130) (:season "Season: next" 250 156) (:night "Night / day" 250 182)
     (:milk "Give milk" 250 222) (:fish "Give fish" 250 248) (:coal "Give coal" 250 274)
-    (:tir "Play: shooting range" 440 78) (:fishing "Play: fishing" 440 104) (:mine "Play: mine" 440 130) (:goat "Play: goat" 440 156))
+    (:tir "Play: shooting range" 440 78) (:fishing "Play: fishing" 440 104) (:mine "Play: mine" 440 130) (:goat "Play: goat" 440 156)
+    (:debt "Pay off the debt" 440 196) (:ending "Ending: play / stop" 440 222))
   "The cheat panel: entries of (key label x y [:switch]).")
 
 (defun cheat-p (key) (and (member key *cheat-on*) t))
@@ -145,6 +146,8 @@ Return T when the key was ours."
        (:paws (setf *walk-speed* (if (cheat-p :paws) 13.2 2.2)))
        (:truck (setf *max-speed* (if (cheat-p :truck) 54.0 9.0)))))
     (:money (cheat-money)) (:tank (cheat-fuel))
+    (:debt (pay-debt *debt*) (say "The debt is paid off: the ticket is sold at the savings bank"))
+    (:ending (toggle-cheats) (if *ending* (stop-ending) (start-ending)))
     (:daily (setf *gimmick-spent* '()) (say "Once-a-day limits are reset"))
     (:next (jump-place 1)) (:prev (jump-place -1))
     (:weather (set-weather (let ((all '(:clear :cloudy :rain :fog :snow))) (nth (mod (1+ (or (position *weather* all) 0)) 5) all)) 5))

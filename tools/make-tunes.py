@@ -89,6 +89,40 @@ def mosquito():
         out.append((math.sin(phase) + 0.4 * math.sin(2 * phase)) * (0.6 + 0.4 * math.sin(2 * math.pi * 0.5 * t)))
     save("mosquito.wav", out)
 
+# The final tune: C, G, A minor, F — and home to C. Per chord: (bass, three notes of the picking pattern).
+FINALE_CHORDS = [(-21, (-9, -5, -2)), (-26, (-14, -10, -7)), (-24, (-12, -9, -5)), (-28, (-16, -12, -9))]
+FINALE_TUNE = [(7, 10), (5, 2), (3, 0), (0, -4), (7, 10), (10, 5), (7, 3), (8, 3),
+               (3, 7, 10, 7), (5, 2, 5, 10), (12, 10, 7, 3), (8, 7, 3, 0), (7, 10, 15, 10), (14, 10, 5, 2), (3, 0, 3, 7), (3, 0, -4, 0)]
+
+def finale():
+    """Make the tune for the closing credits: a guitar picks four chords, a melody joins and grows,
+    a quiet organ comes in under it, and the last chord rings out. About 70 seconds, at half the rate."""
+    rng = random.Random(23); beat = 0.5; bars = 4 + 2 * len(FINALE_TUNE) + 1
+    track = [0.0] * int((bars * 4 * beat + 4) * RATE)
+    for bar in range(bars - 1):
+        bass, pick = FINALE_CHORDS[bar % 4]; t0 = bar * 4 * beat
+        mix(track, t0, pluck(note(bass), 2.2, rng), 0.9)
+        for k, q in enumerate((pick[0], pick[1], pick[2], pick[1], pick[0], pick[2], pick[1], pick[2])):
+            mix(track, t0 + k * beat / 2, pluck(note(q), 1.3, rng), 0.45)
+        if bar >= 4:
+            tune = FINALE_TUNE[(bar - 4) % len(FINALE_TUNE)]; again = bar - 4 >= len(FINALE_TUNE)
+            for k, n in enumerate(tune):
+                mix(track, t0 + k * 4 * beat / len(tune), pluck(note(n), 1.8, rng), 0.8)
+            if again:                                            # the second time round an organ holds the chord
+                for q in pick:
+                    f = note(q + 12)
+                    mix(track, t0, [math.sin(2 * math.pi * f * i / RATE) * min(1.0, i / 3000) * min(1.0, (4 * beat * RATE - i) / 3000)
+                                    for i in range(int(4 * beat * RATE))], 0.07)
+    for k, n in enumerate((-21, -9, -5, -2, 3, 7)):               # the last chord, strummed
+        mix(track, (bars - 1) * 4 * beat + k * 0.07, pluck(note(n), 5.0, rng), 0.8)
+    half = [(track[i] + track[i + 1]) / 2 for i in range(0, len(track) - 1, 2)]
+    peak = max(abs(v) for v in half) or 1.0
+    with wave.open(str(OUT / "finale.wav"), "wb") as w:
+        w.setnchannels(1); w.setsampwidth(2); w.setframerate(RATE // 2)
+        w.writeframes(b"".join(struct.pack("<h", int(30000 * v / peak)) for v in half))
+
 if __name__ == "__main__":
-    guitar(); radio(); siren(); mosquito()
-    print("guitar.wav, radio.wav, siren.wav, mosquito.wav →", OUT)
+    import sys
+    if sys.argv[1:] == ["finale"]: finale()
+    else: guitar(); radio(); siren(); mosquito(); finale()
+    print("guitar.wav, radio.wav, siren.wav, mosquito.wav, finale.wav →", OUT)

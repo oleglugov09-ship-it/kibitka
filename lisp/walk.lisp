@@ -155,7 +155,7 @@ the gas station).")
 (defun action-down (name)
   "Return true if the action NAME is held down.
 While the lobby is open, keys go to its fields, not to the game."
-  (and (not *lobby-open*) (not *map-open*) (not *look-open*) (not *play*)
+  (and (not *lobby-open*) (not *map-open*) (not *look-open*) (not *play*) (not *show*)
        (object-call (gdext:singleton "Input") "is_action_pressed" (action-name name) nil)))
 
 (defun action-p (event name)

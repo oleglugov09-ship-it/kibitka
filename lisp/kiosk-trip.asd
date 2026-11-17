@@ -29,5 +29,5 @@
                  (:file "interior")
                  (:file "city")
                  (:file "places") (:file "marks") (:file "towns") (:file "stops") (:file "traffic") (:file "vista")
-                 (:file "byt") (:file "trade") (:file "goods") (:file "istorii") (:file "uyut") (:file "net") (:file "lobby") (:file "look") (:file "stars") (:file "finds") (:file "dalny") (:file "prikol") (:file "igry") (:file "activities") (:file "bumagi") (:file "gnomy") (:file "guide") (:file "sync") (:file "log") (:file "map") (:file "dev") (:file "mods")
+                 (:file "byt") (:file "trade") (:file "goods") (:file "istorii") (:file "uyut") (:file "net") (:file "lobby") (:file "look") (:file "stars") (:file "finds") (:file "dalny") (:file "prikol") (:file "igry") (:file "activities") (:file "bumagi") (:file "debt") (:file "gnomy") (:file "guide") (:file "sync") (:file "log") (:file "map") (:file "dev") (:file "mods")
                  (:file "trip")))

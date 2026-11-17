@@ -632,7 +632,8 @@ the map."
 
 (defun hud-text ()
   (format nil "~{~a~^~%~}"
-          (remove nil (list (let ((net (net-hud))) (and (plusp (length net)) net))
+          (remove nil (list (debt-hud)
+                            (let ((net (net-hud))) (and (plusp (length net)) net))
                             (and *auto* (format nil "Автопилот → ~a · ~,1f км" (cdr *auto*) (/ (max 0 (way-to (car *auto*))) 1000)))))))
 
 ;;; Every frame

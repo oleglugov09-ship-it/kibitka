@@ -13,4 +13,5 @@
 (include "looks.lisp")
 (include "guide.lisp")
 (include "lines.lisp")
+(include "story.lisp")
 (include "en.lisp")

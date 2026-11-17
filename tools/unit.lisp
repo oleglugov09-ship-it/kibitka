@@ -22,7 +22,7 @@
 (defun net-guest-p () nil) (defun put-save (key form) (declare (ignore key)) form) (defun get-save (key) (declare (ignore key)) nil)
 (defun say-all (text) text)
 
-(dolist (f '("delo" "tverd" "random" "economy" "land" "karta" "razmetka" "goods" "istorii" "places" "prikol" "bumagi"))
+(dolist (f '("delo" "tverd" "random" "economy" "land" "karta" "razmetka" "goods" "istorii" "places" "prikol" "bumagi" "debt"))
   (load (merge-pathnames (concatenate 'string f ".lisp") cl-user::*here*)))
 
 ;; the content lives in mods: the core ships none. INCLUDE here is plain LOAD from the mod's folder
@@ -226,6 +226,14 @@
 (check "будка стоит в своём городе"
        (every (lambda (g) (some (lambda (tw) (< (town-start tw) (first g) (town-end tw))) *towns*)) *gimmicks*))
 (check "будки не стоят вплотную" (loop for (a b) on (sort (mapcar #'first *gimmicks*) #'<) while b always (> (- b a) 20)))
+(check "сберкасса стоит в первом городе" (let ((g (find 14 *gimmicks* :key #'second))) (and g (eq (town-at (first g)) (first *towns*)))))
+(let ((*debt* *debt-total*) (*story-stage* :owing))
+  (check "взнос не больше остатка долга" (and (= (debt-share) *debt-chunk*) (let ((*debt* 7)) (= (debt-share) 7))))
+  (pay-debt *debt-chunk*)
+  (check "после взноса долг меньше, история та же" (and (= *debt* (- *debt-total* *debt-chunk*)) (eq *story-stage* :owing)))
+  (pay-debt *debt*)
+  (check "долг выплачен — открыт выезд" (and (zerop *debt*) (eq *story-stage* :free))))
+(check "у вступления и титров есть текст" (and *intro-cards* *credits* (every #'stringp *intro-cards*) (every #'stringp *credits*)))
 (check "на каждый запрещённый товар есть задание с лицензией"
        (every (lambda (r) (find (second r) *quests* :key #'second)) *restricted*))
 (check "запрещённые товары существуют" (every (lambda (r) (assoc (first r) *goods*)) *restricted*))

@@ -44,6 +44,34 @@ ALONG is :z for a side wall and :x for an end wall."
             (put a h0 0 wh) (put h0 h1 0 y0) (put h0 h1 y1 wh) (setf a h1)))
         (put a to 0 wh)))))
 
+;;; The carpet on the wall is a real one, pixelated (tools/make-carpet.py): one pixel is one knot.
+
+(defvar *carpet-mat* nil "The material with the picture of the wall carpet.")
+
+(defun wall-carpet (parent x y z height)
+  "Hang the pictured carpet of height HEIGHT under PARENT, centred at (X Y Z) and facing x+.
+Its width follows the picture. Return the mesh instance, or NIL when the picture is missing."
+  (let ((path "res://textures/murals/carpet.png"))
+    (when (file-here-p path)
+      (let ((img (gdext:make-object "Image")) (mi (gdext:make-object "MeshInstance3D")) (mesh (gdext:make-object "QuadMesh")))
+        (object-call img "load_png_from_buffer" (file-bytes path))
+        (unless *carpet-mat*
+          (let ((tx (gdext:make-object "ImageTexture")) (m (gdext:make-object "StandardMaterial3D")))
+            (object-call tx "set_image" img)
+            (object-set m "albedo_texture" tx)
+            (object-set m "texture_filter" 0)                    ; unfiltered: the pixels stay square
+            (object-set m "roughness" 1.0)
+            (object-set m "metallic_specular" .05)
+            (gdext:setf-reference *carpet-mat* m)))
+        (object-set mesh "size" (vector2 (/ (* height (object-call img "get_width")) (object-call img "get_height")) height))
+        (object-set mi "mesh" mesh)
+        (object-set mi "material_override" *carpet-mat*)
+        (object-set mi "cast_shadow" 0)
+        (node-add-child parent mi)
+        (node-3d-set-position mi (v3 x y z))
+        (node-3d-set-rotation mi (v3 0 (/ pi 2) 0))
+        mi))))
+
 (defun make-cart (root)
   (when *cart* (node-queue-free *cart*))
   (setf *cart* (group root) *bulbs* '() *glow* '())
@@ -93,9 +121,10 @@ ALONG is :z for a side wall and :x for an end wall."
     (let ((w0 (+ (- x) .08)))
       (flet ((layer (n) (+ w0 (* n .012))))
         (shape c :box (list .01 (- wh .1) (- (* 2 z) .2)) (kc :inside) (layer .5) (+ f (/ wh 2)) 0 :shadow nil)
-        (shape c :box '(.01 1.7 2.6) (kc :carpet) (layer 1.5) (+ f 1.25) 0)
-        (shape c :box '(.01 1.5 2.4) (kc :carpet2) (layer 2.5) (+ f 1.25) 0)
-        (shape c :box '(.01 1.36 2.26) (kc :carpet) (layer 3.5) (+ f 1.25) 0)))
+        (unless (wall-carpet c (layer 2.5) (+ f 1.25) 0 1.7)        ; no picture: the plain carpet, as before
+          (shape c :box '(.01 1.7 2.6) (kc :carpet) (layer 1.5) (+ f 1.25) 0)
+          (shape c :box '(.01 1.5 2.4) (kc :carpet2) (layer 2.5) (+ f 1.25) 0)
+          (shape c :box '(.01 1.36 2.26) (kc :carpet) (layer 3.5) (+ f 1.25) 0))))
     ;; the lamp, the light, the fairy lights
     (push (shape c :ball '(.16 12 8) "#ffe8b0" 0 (+ f wh .25) 0 :emit "#ffc070" :energy 3 :shadow nil) *glow*)
     (push (light c "#ffb070" 3.5 8 0 (+ f wh .1) 0) *glow*)

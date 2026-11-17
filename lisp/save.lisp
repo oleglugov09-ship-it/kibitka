@@ -16,7 +16,7 @@
   '((:world "user://save.sexp"
      (:game "user://game.sexp") (:interior "user://interior6.sexp") (:wall "user://wall.sexp") (:finds "user://finds.sexp")
      (:prikol "user://prikol.sexp") (:papers "user://bumagi.sexp") (:gnomes "user://gnomy.sexp")
-     (:stories "user://stories.sexp"))
+     (:stories "user://stories.sexp") (:debt "user://debt.sexp"))
     (:me "user://me.sexp"
      (:place "user://player.sexp") (:look "user://look.sexp") (:lobby "user://lobby.sexp")
      (:lang "user://lang.sexp")))

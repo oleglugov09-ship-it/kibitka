@@ -87,6 +87,10 @@ bakes only blini: nothing else fits on its round lid.")
 (defparameter *fine-cargo* 6 "The fine for carrying a forbidden good without a licence.")
 (defparameter *fine-ignore* 3 "The fine for not showing the papers.")
 
+;;; Father's debt (debt.lisp)
+(defparameter *debt-total* 300 "The number of rubles father left us owing.")
+(defparameter *debt-chunk* 25 "The most rubles one payment at the savings bank takes: the rest stays for fuel.")
+
 ;;; Market glut, parcels, the train (logic changes of 16.11.2026)
 (defparameter *glut-step* .12 "The price shift for each recent deal in the same good in the same town.")
 (defparameter *glut-floor* .45 "The share below which the buyer's price does not fall.")

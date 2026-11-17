@@ -71,6 +71,7 @@ Return true if the good was given."
     (10 (format nil "E — погрузить кибитку на платформу: до любого города, ~,1f р. за километр" *rail-per-km*))
     (11 (format nil "E — ~d досок за ~d р." (first *carpenter-deal*) (second *carpenter-deal*)))
     (12 (quest-label))
+    (14 (bank-label))
     (13 (if *fines* (format nil "E — оплатить штрафы: ~d р." (reduce #'+ *fines*)) "Участок: штрафов за вами нет"))
     (t "Будка")))
 
@@ -121,6 +122,7 @@ The goat, the fishing and the mine each give theirs once per day cycle."
                  (say "Кибитка на платформе. Выбери город на карте — поезд довезёт; чем дальше, тем дороже"))))
     (12 (use-quests))
     (13 (pay-fines))
+    (14 (bank-use))
     (11 (when (pay (second *carpenter-deal*)) (incf *planks* (first *carpenter-deal*))
           (say (format nil "Плотник отсыпал ~d досок. В печку: ~d" (first *carpenter-deal*) *planks*))))))
 

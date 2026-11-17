@@ -38,6 +38,74 @@ By default it faces the road (towards -x of the lot)."
     (node-3d-set-rotation l (v3 pitch yaw 0))
     l))
 
+;;; Mosaics on the end walls. Every house end has one of its own: the cells of one atlas
+;;; (tools/make-mosaics.py), a block of them per town, handed out in the order the town is built.
+
+(defparameter *mosaic-grid* '(24 20 48 64 40)
+  "The mosaic atlas: columns and rows of cells, tiles across and down a cell, cells per town.")
+(defvar *mosaic-town* 0 "The index of the town being built.")
+(defvar *mosaic-count* 0 "The number of mosaics already placed in the town being built.")
+(defvar *mosaic-atlas* nil "The atlas texture.")
+(defvar *mosaic-shader* nil)
+(defvar *mosaic-mats* (make-hash-table) "The table mapping a cell number to its material.")
+
+(defparameter *mosaic-code* "shader_type spatial;
+// One cell of the atlas, one texel per tile. Each tile gets its own shade and a dark seam;
+// both fade out with distance, so far walls do not flicker.
+uniform sampler2D atlas : source_color, filter_nearest, repeat_disable;
+uniform vec2 cell; uniform vec2 grid; uniform vec2 tiles;
+void fragment() {
+  vec2 p = UV * tiles; vec2 t = floor(p); vec2 f = fract(p);
+  vec3 c = textureLod(atlas, (cell + (t + 0.5) / tiles) / grid, 0.0).rgb;
+  float near = 1.0 - clamp(max(fwidth(p.x), fwidth(p.y)) * 2.5, 0.0, 1.0);
+  float shade = 0.88 + 0.22 * fract(sin(dot(t + cell * 7.0, vec2(12.9898, 78.233))) * 43758.5453);
+  float seam = step(0.86, max(f.x, f.y));
+  c *= mix(1.0, shade, near) * mix(1.0, 0.55, seam * near);
+  ALBEDO = c * 0.82; ROUGHNESS = 1.0; SPECULAR = 0.1;
+}" "The shader of a mosaic.")
+
+(defun mosaic-material (n)
+  "Return the material showing cell N of the mosaic atlas, or NIL when the atlas is missing."
+  (destructuring-bind (cols rows w h per-town) *mosaic-grid*
+    (declare (ignore per-town))
+    (or (gethash n *mosaic-mats*)
+        (let ((path "res://textures/murals/atlas.png"))
+          (unless *mosaic-atlas*
+            (when (file-here-p path)
+              (let ((img (gdext:make-object "Image")) (tx (gdext:make-object "ImageTexture")) (sh (gdext:make-object "Shader")))
+                (object-call img "load_png_from_buffer" (file-bytes path))
+                (object-call tx "set_image" img)
+                (object-set sh "code" *mosaic-code*)
+                (gdext:setf-reference *mosaic-atlas* tx)
+                (gdext:setf-reference *mosaic-shader* sh))))
+          (when *mosaic-atlas*
+            (let ((m (gdext:make-object "ShaderMaterial")))
+              (object-set m "shader" *mosaic-shader*)
+              (object-call m "set_shader_parameter" "atlas" *mosaic-atlas*)
+              (object-call m "set_shader_parameter" "cell" (vector2 (mod n cols) (floor n cols)))
+              (object-call m "set_shader_parameter" "grid" (vector2 cols rows))
+              (object-call m "set_shader_parameter" "tiles" (vector2 w h))
+              (gdext:setf-reference (gethash n *mosaic-mats*) m)
+              m))))))
+
+(defun end-mosaic (g x z yaw wide high)
+  "Add to G the next mosaic of the town being built, on a blank wall WIDE by HIGH whose foot is at (X, Z).
+YAW turns it: 0 faces z+, pi faces z-, -pi/2 faces the street."
+  (let* ((per-town (fifth *mosaic-grid*))
+         (mat (mosaic-material (+ (* per-town (mod *mosaic-town* 12)) (mod *mosaic-count* per-town))))
+         (mh (min (- high 3.0) (/ (- wide 2.0) .75) 14.0)))
+    (incf *mosaic-count*)
+    (when mat
+      (let ((mi (gdext:make-object "MeshInstance3D")) (mesh (gdext:make-object "QuadMesh")))
+        (object-set mesh "size" (vector2 (* mh .75) mh))
+        (object-set mi "mesh" mesh)
+        (object-set mi "material_override" mat)
+        (object-set mi "cast_shadow" 0)
+        (node-add-child g mi)
+        (node-3d-set-position mi (v3 x (max (+ 1.8 (/ mh 2)) (- (* high .62) 1.0)) z))
+        (node-3d-set-rotation mi (v3 0 yaw 0))
+        mi))))
+
 ;;; Building blocks of houses
 
 (defun body (g w h d rgb x z)
@@ -60,6 +128,8 @@ It has ribbon windows, columns of balconies and entrances with canopies."
     (body g w h d rgb x z)
     (shape g :box (list (+ w .4) .5 (+ d .4)) "#4c4e52" (+ x (/ w 2)) (+ h .25) z :shadow nil)
     (window-rows g floors x z d :lit (+ 2 floors))
+    (end-mosaic g (+ x (/ w 2)) (+ z (/ d 2) .1) 0 w h)
+    (end-mosaic g (+ x (/ w 2)) (- z (/ d 2) .1) pi w h)
     (let ((n (max 2 (round d 16))))
       (dotimes (i n)
         (let ((bz (+ z (* (- (/ (+ i .5) n) .5) d))))
@@ -78,8 +148,8 @@ Between them are courtyards."
            (rgb (nth (random 3) '("#84807a" "#8a7d6e" "#7b7d82"))))
       (shape g :box (list len (+ h 4) 12.0) rgb (+ 9 (/ len 2)) (- (/ h 2) 2) z)
       (shape g :box (list (+ len .4) .5 12.4) "#4c4e52" (+ 9 (/ len 2)) (+ h .25) z :shadow nil)
-      ;; the end facing the street: a blank wall with a mural, windows on the sides
-      (shape g :box '(.14 6.0 5.0) (nth (random 4) '("#8a4038" "#3f6f73" "#a8843c" "#55708a")) 8.95 (+ 2 (/ h 2)) z :shadow nil)
+      ;; the end facing the street: a blank wall with a mosaic, windows on the sides
+      (end-mosaic g 8.9 z (- (/ pi 2)) 12.0 h)
       (dolist (sz '(-1 1))
         (dotimes (f floors)
           (shape g :box (list (* len .9) 1.25 .12) "#2e333b" (+ 9 (/ len 2)) (+ 1.6 (* f 2.8)) (+ z (* sz 6.05)) :shadow nil))
@@ -162,6 +232,8 @@ It has a main building, a striped chimney and a gatehouse."
   (let ((h (* 12 2.8)))
     (body g 16.0 h 16.0 "#7b7d82" 18.0 0)
     (window-rows g 12 18.0 0 16.0 :lit 8)
+    (end-mosaic g 26.0 8.1 0 16.0 h)
+    (end-mosaic g 26.0 -8.1 pi 16.0 h)
     (dolist (sz '(-1 1)) (shape g :box (list 1.0 (- h 3) 2.4) "#9a9488" 17.6 (+ 1.5 (/ h 2)) (* sz 5) :shadow nil))
     (shape g :box '(4.0 2.6 4.0) "#5c5e62" 26.0 (+ h 1.3) 0 :shadow nil)))
 
@@ -359,7 +431,7 @@ Gas stations are on the right, as planned: a house that would overlap a gas stat
 In towns with a character of their own a gap is left on the right (CITY-GAP)."
   (setf (town-plaza tw) nil)
   (with-solids
-   (let ((*keep-into* (list nil)))
+   (let ((*keep-into* (list nil)) (*mosaic-town* (town-index tw)) (*mosaic-count* 0))
     (dotimes (i 2)
       (let ((side (if (zerop i) -1 1)) (d (+ (town-start tw) 4.0)))
         (loop while (< (+ d 20) (town-end tw))
