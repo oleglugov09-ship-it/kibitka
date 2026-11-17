@@ -122,22 +122,50 @@ A shelf is scanned lengthwise: the rack along x, the upper shelves and windowsil
                  (loop for x from (- cx (/ w 2) -.3) to (+ cx (/ w 2) -.3) by .2
                        do (when (free-p x cz top) (return-from shelf-spot (list x cz top))))))))
 
+;;; The rack. A level has three sections between the uprights. A big thing (a parcel, a crate) takes one of the
+;;; two places of a section; goods are small and stand six to a section, in three columns and two rows. Both
+;;; kinds share a shelf: a place is free when nothing standing on the level reaches into it.
+
 (defparameter *shelf-slots-x* '(-1.18 -.71 -.24 .24 .71 1.18)
-  "The slots on one level of the rack: three sections between the uprights, two slots in each.")
-(defparameter *shelf-levels* '(0.0 .55 1.1 1.65) "The levels of the rack: the floor under it and three shelves; 4 × 6 = 24 slots in all.")
+  "The places for big things on one level of the rack: three sections, two places in each.")
+(defparameter *shelf-sections* '(-.945 0.0 .945) "The middles of the three sections of the rack.")
+(defparameter *small-slots* '((-.31 0.0 .31) (-.13 .13))
+  "The places for goods within a section: the offsets across it and the offsets in depth, 3 × 2 = 6.")
+(defparameter *small-half* '(.14 .12) "The half-width and half-depth a good is counted to take, whatever its real size.")
+(defparameter *shelf-levels* '(0.0 .55 1.1 1.65) "The levels of the rack: the floor under it and three shelves.")
 
 (defun shelf-level (top) (find-if (lambda (lv) (< (abs (- lv top)) .06)) *shelf-levels*))
 
-(defun slot-taken-p (x level)
-  (or (and (= level *jukebox-y*) (< x -.4))                              ; the record player and the box of discs stand here
-      (some (lambda (it) (and (< (fourth (car it)) -2.2) (< (abs (- (second (car it)) x)) .22)
-                              (< (abs (- (third (car it)) level)) .1)))
-            *items*)))
+(defun shelf-half (kind spin)
+  "Return the half-width and half-depth a thing of KIND takes on the rack."
+  (if (good-p kind)
+      (values-list *small-half*)
+      (multiple-value-bind (w h d) (item-size kind spin) (declare (ignore h)) (values (/ w 2) (/ d 2)))))
 
-(defun shelf-slot (x level)
-  "Return the free slot on LEVEL nearest to X, or NIL if the level is full."
-  (first (sort (remove-if (lambda (sx) (slot-taken-p sx level)) (copy-list *shelf-slots-x*))
-               #'< :key (lambda (sx) (abs (- sx x))))))
+(defun shelf-places (kind)
+  "Return every place of one level where a thing of KIND may stand, as (X Z) entries."
+  (if (good-p kind)
+      (loop for cx in *shelf-sections*
+            append (loop for dx in (first *small-slots*)
+                         append (loop for dz in (second *small-slots*) collect (list (+ cx dx) (+ *shelf-z* dz)))))
+      (loop for x in *shelf-slots-x* collect (list x *shelf-z*))))
+
+(defun slot-taken-p (x z level kind)
+  "Return true if a thing of KIND cannot stand at (X Z) on LEVEL of the rack: something there is in the way."
+  (multiple-value-bind (hw hd) (shelf-half kind 0)
+    (or (and (= level *jukebox-y*) (< x -.4))                            ; the record player and the box of discs stand here
+        (some (lambda (it)
+                (destructuring-bind (ikind ix iy iz spin &rest more) (car it)
+                  (declare (ignore more))
+                  (and (< iz -2.2) (< (abs (- iy level)) .1)
+                       (multiple-value-bind (iw id) (shelf-half ikind spin)
+                         (and (< (abs (- ix x)) (- (+ hw iw) .04)) (< (abs (- iz z)) (- (+ hd id) .02)))))))
+              *items*))))
+
+(defun shelf-slot (x z level kind)
+  "Return the free place on LEVEL nearest to (X Z) for a thing of KIND, as (X Z), or NIL if the level is full."
+  (first (sort (remove-if (lambda (place) (slot-taken-p (first place) (second place) level kind)) (shelf-places kind))
+               #'< :key (lambda (place) (+ (expt (- (first place) x) 2) (expt (- (second place) z) 2))))))
 
 (defun surface-at (x z top)
   "Return the shelf or windowsill that point (X Z TOP) falls on, as (X Z WIDTH DEPTH HEIGHT).
@@ -150,7 +178,7 @@ Return NIL for the floor or the top of an item."
   "Return why what is in hand cannot be put at SPOT: text for the player, or NIL if it can."
   (when (fourth spot)
     (return-from spot-problem
-      (if (eq (fourth spot) :full) "На этом этаже стеллажа мест нет: по два в секции" "На стеллаже вещи стоят в один ряд — выбери свободное место")))
+      (if (eq (fourth spot) :full) "На этом этаже стеллажа мест нет: в секции шесть товаров или две посылки" "На стеллаже вещи стоят в один ряд — выбери свободное место")))
   (destructuring-bind (x z top) spot
     (multiple-value-bind (w h d) (item-size (car *carry*) 0)
       (declare (ignore h))
@@ -183,8 +211,8 @@ Return NIL for the floor or the top of an item."
           ((< (second raw) -2.2)                                   ; the rack: the item goes to the nearest free slot of the level
            (let ((level (shelf-level (third raw))))
              (cond ((null level) (append raw (list :stack)))
-                   (t (let ((sx (shelf-slot (first raw) level)))
-                        (if sx (list sx *shelf-z* level) (append raw (list :full))))))))
+                   (t (let ((place (shelf-slot (first raw) (second raw) level (car *carry*))))
+                        (if place (list (first place) (second place) level) (append raw (list :full))))))))
           (t raw))))
 
 (defun carry-use ()
