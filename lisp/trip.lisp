@@ -203,7 +203,7 @@ That is the body, the truck under it, everything bolted on inside, the things an
     (step-trade delta)
     (step-auto delta)
     (step-net delta)
-    (step-lobby) (step-lang) (step-debug)
+    (step-lobby) (step-lang) (step-debug) (step-cheats)
     (step-look)
     (timed :meta (step-meta delta))))
 

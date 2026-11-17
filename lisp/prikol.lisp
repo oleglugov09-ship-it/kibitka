@@ -159,9 +159,9 @@ Return T if a train ride was pending (GO-TO-TOWN then does nothing itself)."
 
 (defun dev-slots ()
   "Return the testing-ground slots for the booths.
-They go in a row, every 40 m, from the start of the first town, past gas stations and the market."
+They go in a row, every 22 m, from the start of the first town, past gas stations and the market."
   (loop for tw in *towns*
-        append (loop for d from (+ (town-start tw) 60.0) below (- (town-end tw) 60.0) by 40.0
+        append (loop for d from (+ (town-start tw) 60.0) below (- (town-end tw) 60.0) by 22.0
                      unless (some (lambda (busy) (< (abs (- busy d)) 45.0)) (cons (town-stop-d tw) (town-stations tw)))
                        collect d)))
 

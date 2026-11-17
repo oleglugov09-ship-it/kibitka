@@ -41,7 +41,7 @@ Only the driver moves the wagon."
 (defun debug-text ()
   (let* ((tw (town-at *dist*)) (place (ignore-errors (walk-place)))
          (near (first (sort (copy-list (places-of-interest)) #'< :key (lambda (p) (abs (- (car p) *dist*)))))))
-    (cl:format nil "F3 or ` — debug~:[~; · DEV POLYGON~]   PageUp/PageDown — jump between places
+    (cl:format nil "F3 or ` — debug~:[~; · DEV POLYGON~] · F4 or \\ — cheats · PageUp/PageDown — jump between places
 fps ~d · lang ~a · view ~a~@[ · mini-game ~a~]
 path ~,1f m · ~a · speed ~,1f · dir ~a · lane ~,1f~@[ · autopilot → ~a~] · turns ahead ~d
 town: ~a · nearest: ~a
@@ -76,6 +76,7 @@ mods: ~:[none~;~:*~{~a~^, ~}~] · stories ~d"
   "Handle the debug key K.
 Return T when the key was ours."
   (cond ((or (= k (1+ +key-f2+)) (= k 96)) (toggle-debug) t)          ; F3, or the backquote key where the browser keeps F3 for itself
+        ((or (= k (+ 2 +key-f2+)) (= k 92)) (toggle-cheats) t)        ; F4, or the backslash key
         ((and *debug-on* (= k 4194324)) (jump-place 1) t)            ; PageDown
         ((and *debug-on* (= k 4194323)) (jump-place -1) t)))         ; PageUp
 
@@ -87,3 +88,78 @@ Return T when the key was ours."
     (unless (net-guest-p) (setf *poi* -1) (jump-place 1)))
   (when (and *debug-on* *debug-label*)
     (godot:object-set *debug-label* "text" (or (ignore-errors (debug-text)) "debug: could not build the text"))))
+
+;;; ------------------------------------------------------------------ cheats (F4)
+;;; A panel of switches and buttons for testing: move fast, never run dry, jump between places, change
+;;; the weather, get goods, start a booth game without walking up to it. It is in English, like the
+;;; debug screen, and written past the translation (GODOT:OBJECT-SET).
+
+(defvar *cheats-open* nil "True while the cheat panel is shown.")
+(defvar *cheat-ui* nil "The cheat panel: a plist of :bg and :buttons, the latter (key . button) pairs.")
+(defvar *cheat-on* '() "The switches that are on: a list of keys among :paws :truck :fuel :noon.")
+(defparameter *cheat-plan*
+  '((:paws "Fast paws x6" 60 78 :switch) (:truck "Fast truck x6" 60 104 :switch)
+    (:fuel "Endless fuel" 60 130 :switch) (:noon "Always noon" 60 156 :switch)
+    (:money "+100 rub" 60 196) (:tank "Full tank" 60 222) (:daily "Reset once-a-day limits" 60 248)
+    (:next "Next place (PageDown)" 250 78) (:prev "Previous place (PageUp)" 250 104)
+    (:weather "Weather: next" 250 130) (:season "Season: next" 250 156) (:night "Night / day" 250 182)
+    (:milk "Give milk" 250 222) (:fish "Give fish" 250 248) (:coal "Give coal" 250 274)
+    (:tir "Play: shooting range" 440 78) (:fishing "Play: fishing" 440 104) (:mine "Play: mine" 440 130) (:goat "Play: goat" 440 156))
+  "The cheat panel: entries of (key label x y [:switch]).")
+
+(defun cheat-p (key) (and (member key *cheat-on*) t))
+
+(defun cheat-label (key label)
+  (if (member key '(:paws :truck :fuel :noon)) (cl:format nil "~a: ~:[off~;ON~]" label (cheat-p key)) label))
+
+(defun make-cheats ()
+  (let ((layer (gdext:make-object "CanvasLayer")) (bg (gdext:make-object "ColorRect")))
+    (node-add-child *root* layer) (node-add-child layer bg)
+    (godot:object-set layer "layer" 21)
+    (godot:object-set bg "position" (vector2 40 40)) (godot:object-set bg "size" (vector2 560 280))
+    (godot:object-set bg "color" (color .08 .1 .09 .94))
+    (let ((title (hud-label bg "" 20 10 10 '(.75 1.0 .75))))
+      (godot:object-set title "text" "CHEATS · F4 or \\ — close · for the driver or solo play"))
+    (setf *cheat-ui*
+          (list :bg bg
+                :buttons (loop for (key label x y) in *cheat-plan*
+                               collect (let ((b (lobby-control "Button" bg (- x 40) (- y 40) 180 22)))
+                                         (godot:object-set b "toggle_mode" t)
+                                         (godot:object-set b "text" (cheat-label key label))
+                                         (cons key b)))))))
+
+(defun toggle-cheats ()
+  (unless *cheat-ui* (make-cheats))
+  (setf *cheats-open* (not *cheats-open*))
+  (godot:object-set (getf *cheat-ui* :bg) "visible" *cheats-open*)
+  (input-set-mouse-mode (if *cheats-open* 0 2)))
+
+(defun cheat (key)
+  "Do what the button KEY of the cheat panel does."
+  (case key
+    ((:paws :truck :fuel :noon)
+     (setf *cheat-on* (if (cheat-p key) (remove key *cheat-on*) (cons key *cheat-on*)))
+     (case key
+       (:paws (setf *walk-speed* (if (cheat-p :paws) 13.2 2.2)))
+       (:truck (setf *max-speed* (if (cheat-p :truck) 54.0 9.0)))))
+    (:money (cheat-money)) (:tank (cheat-fuel))
+    (:daily (setf *gimmick-spent* '()) (say "Once-a-day limits are reset"))
+    (:next (jump-place 1)) (:prev (jump-place -1))
+    (:weather (set-weather (let ((all '(:clear :cloudy :rain :fog :snow))) (nth (mod (1+ (or (position *weather* all) 0)) 5) all)) 5))
+    (:season (set-season (nth (mod (1+ (position *season* *seasons*)) 4) *seasons*)))
+    (:night (setf *day-t* (if (> (daylight *day-t*) .5) 900.0 330.0)))
+    (:milk (give-good :milk "Milk in your paws")) (:fish (give-good :fish "Fish in your paws")) (:coal (give-good :coal "Coal in your paws"))
+    ((:tir :fishing :mine :goat) (toggle-cheats) (start-play (if (eq key :fishing) :fish key)))))
+
+(defun step-cheats ()
+  "Keep the switches in force and answer the buttons of the open panel."
+  (unless (net-guest-p)
+    (when (cheat-p :fuel) (setf *fuel* 1.0))
+    (when (cheat-p :noon) (setf *day-t* 390.0)))
+  (when *cheats-open*
+    (loop for (key . b) in (getf *cheat-ui* :buttons)
+          do (when (object-get b "button_pressed")
+               (godot:object-set b "button_pressed" nil)
+               (cheat key)
+               (when *cheat-ui*
+                 (godot:object-set b "text" (cheat-label key (second (assoc key *cheat-plan*)))))))))
