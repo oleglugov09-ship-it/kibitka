@@ -176,6 +176,10 @@ Return T if a train ride was pending (GO-TO-TOWN then does nothing itself)."
       (1 (unless (member "nopond" *dev-flags* :test #'string=) (build-range g)) (dolist (z '(2.6 3.4 4.2)) (shape g :cyl '(.3 .3 .04 12) "#e8e0d0" 12.8 1.6 z :rot (list 0 0 (/ pi 2))) (shape g :cyl '(.1 .1 .05 8) "#a3262c" 12.76 1.6 z :rot (list 0 0 (/ pi 2)) :shadow nil)))
       (3 (dotimes (i 4) (shape g :box '(.5 .5 .7) (nth i '("#6a3a2e" "#2c4a7a" "#3c5a48" "#c9a13a")) 7.2 (+ .25 (* i .5)) 3.2 :rot (list 0 (* i .2) 0))))
       (4 (let ((s (group g 7.0 0 3.0))) (node-3d-set-scale s (v3 .55 .55 .55)) (mark-cow s 0 0 1.2 "#e8e4d8")) (shape g :box '(.1 .9 3.0) "#6a5038" 5.4 .45 3.0))
+      (5 (dotimes (k 6) (shape g :cyl '(.8 .9 1.0 12) (if (evenp k) "#e8e4d8" "#a3262c") 7.0 (+ .5 k) -3.2))   ; a small lighthouse
+         (shape g :cyl '(1.1 1.1 .12 12) "#2a2c30" 7.0 6.06 -3.2)
+         (shape g :cyl '(.5 .5 .8 10) "#ffe9a0" 7.0 6.5 -3.2 :emit "#ffd870" :energy 3.0 :shadow nil)
+         (shape g :cyl '(.05 .7 .5 10) "#a3262c" 7.0 7.15 -3.2))
       (8 (dolist (z '(-3.4 -4.6)) (shape g :box '(.3 5.0 .3) "#5a4636" 11.0 2.5 z)) (shape g :box '(.4 .4 1.8) "#5a4636" 11.0 5.0 -4.0) (shape g :box '(1.4 1.8 1.0) "#3a3a40" 11.0 .9 -4.0))
       (9 (shape g :cyl '(.5 .6 1.0 10) "#e8e4d8" 7.2 .5 -2.6) (shape g :cyl '(.06 .06 .5 6) "#7ab0c8" 7.2 1.2 -2.6 :alpha .6))
       (10 (shape g :box '(3.2 .9 12.0) "#4a4e52" 16.0 .45 0) (dolist (x '(15.2 16.8)) (shape g :box '(.1 .14 13.0) "#8a8e92" x .05 0 :metal .6)))
@@ -184,11 +188,14 @@ Return T if a train ride was pending (GO-TO-TOWN then does nothing itself)."
 
 (defun dev-slots ()
   "Return the testing-ground slots for the booths.
-They go in a row, every 22 m, from the start of the first town, past gas stations and the market."
-  (loop for tw in *towns*
-        append (loop for d from (+ (town-start tw) 60.0) below (- (town-end tw) 60.0) by 22.0
-                     unless (some (lambda (busy) (< (abs (- busy d)) 45.0)) (cons (town-stop-d tw) (town-stations tw)))
-                       collect d)))
+They go in a row from the start of the first town, past gas stations and the market: 14 m apart, and
+26 m after each of the first two, whose pond and shooting alley need the room."
+  (let ((slots '()))
+    (dolist (tw *towns* (nreverse slots))
+      (let ((d (+ (town-start tw) 60.0)))
+        (loop while (< d (- (town-end tw) 60.0))
+              do (cond ((some (lambda (busy) (< (abs (- busy d)) 40.0)) (cons (town-stop-d tw) (town-stations tw))) (incf d 14.0))
+                       (t (push d slots) (incf d (if (< (length slots) 3) 26.0 14.0)))))))))
 
 (defun plan-gimmicks ()
   "Place the booths according to the plan; called from PLAN-PLACES."
@@ -201,11 +208,19 @@ They go in a row, every 22 m, from the start of the first town, past gas station
              (when (and (member i '(0 1)) (not (member "nobare" *dev-flags* :test #'string=))) (push (list (- d 11.0) (+ d 17.0)) *bare*))   ; the pond and the shooting alley need open ground
              (push (make-scene :d0 (- d 10) :d1 (+ d 10) :build (lambda () (build-gimmick d i title rgb))) *scenes*))))
 
+(defparameter *gimmick-spots*
+  '((0 12.2 5.6 1.2) (1 10.7 4.2 1.3) (4 10.2 -3.0 .8) (5 10.2 3.2 2.0) (8 14.2 4.0 1.5) (9 10.4 2.6 1.0) (11 10.4 2.6 .8))
+  "Where else, besides its window, a booth answers to E: entries of (index sideways along-the-road height).
+These are the things the booth is about: the pier, the firing counter, the goat, the lighthouse, the pit head.")
+
 (defun prikol-usables ()
+  "Return the things to press at the booth we are standing by: its window and its landmark."
   (let ((place (walk-place)))
     (when (and place (eq (first place) :gimmick))
-      (let ((i (third place)))
-        (list (road-usable 11.9 (second place) 1.3 (lambda () (gimmick-label i)) (lambda () (gimmick-use i)) 3.2 .7))))))
+      (let* ((i (third place)) (d (second place)) (spot (assoc i *gimmick-spots*)))
+        (flet ((press (x at up) (road-usable x at up (lambda () (gimmick-label i)) (lambda () (gimmick-use i)) 4.5 1.2)))
+          (cons (press 11.9 d 1.3)
+                (when spot (list (press (second spot) (+ d (third spot)) (fourth spot))))))))))
 
 (defun step-prikol ()
   (when (and *wait* (> *time* (job-until *wait*)))                    ; the wait is over: fish, coal
