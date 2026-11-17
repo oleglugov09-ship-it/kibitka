@@ -40,25 +40,7 @@
 
 ;;; ------------------------------------------------------------------ shared over the network
 
-(defun shared-state ()
-  (list *pennants* (and *radio-on* t) (first *dice*) (second *dice*) (third *dice*) (fourth *dice*) (and *swatter* t) *swat-seq*))
-
-(defun apply-shared (spare guarded)
-  "Accept the shared state SPARE from another player.
-GUARDED means we are the driver: we count the pennants ourselves."
-  (when (and (listp spare) (= (length spare) 8))
-    (destructuring-bind (mask radio seq a b name swatter swat) spare
-      (when (and (integerp swat) (> swat *swat-seq*))                   ; someone swatted the mosquito, and it is shared
-        (setf *swat-seq* swat)
-        (when *mosquito* (end-mosquito "Хлоп! Кто-то прихлопнул комара")))
-      (unless guarded (setf *swatter* (and swatter t)) (show-swatter))
-      (when (and (not guarded) (integerp mask) (/= mask *pennants*))
-        (setf *pennants* mask) (show-pennants))
-      (unless (eq (and radio t) (and *radio-on* t)) (set-radio radio))
-      (when (and (integerp seq) (> seq (first *dice*)) (integerp a) (integerp b) (<= 1 a 6) (<= 1 b 6) (stringp name))
-        (setf *dice* (list seq a b (subseq name 0 (min 24 (length name)))))
-        (show-dice)
-        (say (format nil "~a бросает кости: ~d и ~d" (fourth *dice*) a b))))))
+;;; What is shared here is declared at the end of the file (DEFCOMMON): pennants, radio, dice, fly swatter.
 
 ;;; ------------------------------------------------------------------ flashlight (F)
 ;;; Everyone has their own: a cone beam from the paw; the flashlight itself is visible in the corner of the
@@ -306,25 +288,22 @@ Each time it is about something different."
 
 ;;; ------------------------------------------------------------------ pancakes
 
-(defvar *hob* nil "True once the cooktop for the stove is bought (hardware store, Krasny Kut): three spots and all recipes.")
+(defvar *lid* nil "True once the lid for the frying pan is bought (hardware store, Krasny Kut): under it things fry twice as fast.")
 
 (defun stove-surface ()
-  "Return where things are put to cook, as (x z width depth height).
-The stove lid is one spot; with the cooktop there are three."
+  "Return where things are put to cook, as (x z width depth height): the top of the stove."
   (destructuring-bind (sx sz) *stove-at*
-    (if *hob* (list (+ sx .16) sz .86 .5 (+ *stove-top* .04)) (list sx sz .6 .5 *stove-top*))))
+    (list sx sz .6 .5 *stove-top*)))
 
 (defun raw-on-stove ()
   "Return the records of the items that stand on the stove and can be cooked.
-Without the cooktop that is only milk."
+Without the frying pan on the stove (kettle.lisp) that is only milk."
   (destructuring-bind (cx cz w d top) (stove-surface)
     (remove-if-not (lambda (spec) (and (dish-of (first spec)) (null (sixth spec))
-                                       (or *hob* *pan-on* (eq (first spec) :milk))      ; the frying pan fries anything (kettle.lisp)
+                                       (or *pan-on* (eq (first spec) :milk))
                                        (< (abs (- (second spec) cx)) (+ (/ w 2) .03)) (< (abs (- (fourth spec) cz)) (+ (/ d 2) .03))
                                        (< (abs (- (third spec) top)) .08)))
                    (mapcar #'car *items*))))
-
-(defun show-hob () (when (un :hob) (object-set (un :hob) "visible" (and *hob* t))))
 
 (defun step-cook (delta)
   "Advance the cooking by DELTA seconds; the driver computes it.
@@ -333,7 +312,7 @@ Raw goods on the hot stove turn into a dish (*RECIPES*); each has its own countd
     (setf *cook* (remove-if-not (lambda (c) (member (car c) raws :test #'equal)) *cook*))
     (dolist (raw raws)
       (unless (assoc raw *cook* :test #'equal)
-        (push (cons raw *cook-time*) *cook*)
+        (push (cons raw (if (and *lid* *pan-on*) (/ *cook-time* 2) *cook-time*)) *cook*)   ; under the lid it is twice as fast
         (say-all (if (> *fire* 0)
                      (format nil "Готовим ~a: полминуты на огне" (good-name (dish-of (first raw))))
                      "Печка холодная — подбрось доску, и будет готовиться"))))
@@ -441,15 +420,6 @@ In the swamp a mosquito flies into the wagon: it whines, circles around the head
         (shape mi :box '(.33 .2 .004) "#f0ece0" 0 0 -.004 :shadow nil)
         (shape mi :box '(.02 .04 .012) "#8a6440" 0 .1 0 :shadow nil)
         (push (list mi mat) cards)))
-    ;; the cooktop on the stove: a cast-iron plate with two burners, visible once bought (SHOW-HOB)
-    (destructuring-bind (sx sz) *stove-at*
-      (let ((hob (group c (+ sx .16) (+ f *stove-top*) sz)))
-        (shape hob :box '(.88 .04 .52) "#26262a" 0 .02 0 :metal .5 :rough .6)
-        (dolist (dx '(-.22 .22))
-          (shape hob :cyl '(.11 .11 .012 12) "#3a3a40" dx .046 0 :metal .5 :rough .5 :shadow nil)
-          (shape hob :cyl '(.06 .06 .014 10) "#5a2a1e" dx .047 0 :emit "#ff5020" :energy .8 :shadow nil))
-        (shape hob :box '(.05 .3 .05) "#26262a" .4 -.15 .2) (shape hob :box '(.05 .3 .05) "#26262a" .4 -.15 -.2)   ; the legs of the overhang
-        (setf (getf *uyut* :hob) hob)))
     ;; pennants above the window (right wall)
     (dotimes (i 12)
       (let ((g (group c (- *half-width* .1) (+ f 2.13) (- (* i .21) 1.155))))
@@ -553,3 +523,28 @@ In the swamp a mosquito flies into the wagon: it whines, circles around the head
   (step-sleep delta)
   (step-mosquito delta)
   (unless (net-guest-p) (step-cook delta)))
+
+;;; ------------------------------------------------------------------ shared over the network
+
+(defcommon :pennants :value *pennants* :spec 'integer :driver t          ; the driver counts the pennants
+  :accept (lambda (mask) (unless (= mask *pennants*) (setf *pennants* mask) (show-pennants))))
+
+(defcommon :radio :value (and *radio-on* t) :spec '(:member t nil)
+  :accept (lambda (on) (unless (eq on (and *radio-on* t)) (set-radio on))))
+
+(defcommon :dice :value (copy-list *dice*) :spec '(integer integer integer string)
+  :accept (lambda (roll)
+            (destructuring-bind (seq a b name) roll
+              (when (and (> seq (first *dice*)) (<= 1 a 6) (<= 1 b 6))
+                (setf *dice* (list seq a b (subseq name 0 (min 24 (length name)))))
+                (show-dice)
+                (say (format nil "~a бросает кости: ~d и ~d" (fourth *dice*) a b))))))
+
+(defcommon :swatter :value (and *swatter* t) :spec '(:member t nil) :driver t
+  :accept (lambda (bought) (setf *swatter* bought) (show-swatter)))
+
+(defcommon :swat :value *swat-seq* :spec 'integer                        ; someone swatted the mosquito, and it is shared
+  :accept (lambda (seq)
+            (when (> seq *swat-seq*)
+              (setf *swat-seq* seq)
+              (when *mosquito* (end-mosquito "Хлоп! Кто-то прихлопнул комара")))))

@@ -103,6 +103,7 @@ PLACE is the rounded path coordinate of the stay.")
 (defun item-in-sight ()
   "Return the milk or parcel we are looking at, or NIL."
   (find-if (lambda (it) (and (portable-p it)
+                             (or *fridge-open* (not (in-fridge-p (car it))))       ; not through the shut fridge door
                              (multiple-value-bind (w h) (item-size (first (car it)) (fifth (car it)))
                                (looking-at (second (car it)) (+ (third (car it)) (/ h 2)) (fourth (car it)) 2.3 (min .3 (+ .08 (* .25 w)))))))
            *items*))

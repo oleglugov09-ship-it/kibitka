@@ -479,7 +479,7 @@ built at once if it is not there yet."
 
 (defun switches ()
   "Return the switches as they are now for us: (shelf lights window shared door ladder)."
-  (list (and *fold-down* t) (and *lights-on* t) (and *window-open* t) (shared-state)   ; fourth: the shared one, uyut.lisp
+  (list (and *fold-down* t) (and *lights-on* t) (and *window-open* t) (common-state)   ; fourth: the common things (DEFCOMMON, delo.lisp)
         (and *door-open* t) (and *ladder-down* t)))
 
 (defun set-switches (list &key guarded)
@@ -488,7 +488,7 @@ With GUARDED (on the driver's side) the window cannot be closed while a customer
 stand on the windowsill, the same as by hand."
   (when (and (listp list) (= (length list) 6))
     (destructuring-bind (fold lights window spare door ladder) list
-      (apply-shared spare guarded)
+      (accept-common spare guarded)
       (when (and guarded *window-open* (not window) (window-busy-p)) (setf window t))
       (unless (eq (and fold t) (and *fold-down* t)) (toggle-fold))
       (unless (eq (and lights t) (and *lights-on* t)) (setf *lights-on* (and lights t)) (apply-lights))

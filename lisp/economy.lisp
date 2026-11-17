@@ -48,7 +48,8 @@
   "The recipes: entries of (raw-good dish dish-name-in-the-accusative).
 A dish is wanted wherever its raw good is wanted, but at twice the price. Without the cooktop the stove
 bakes only blini: nothing else fits on its round lid.")
-(defparameter *hob-price* 40 "The price of the cast-iron cooktop for the stove, sold at the hardware shop in Krasny Kut.")
+(defparameter *lid-price* 25 "The price of the cast-iron lid for the frying pan, sold at the hardware shop in Krasny Kut.")
+(defparameter *perishable* '(:milk :fish) "The goods that go bad overnight unless they are in the fridge (fridge.lisp).")
 (defparameter *blin-factor* 2 "The factor by which blini cost more than milk...")
 (defparameter *blin-bonus* 3 "...and the number of rubles added on top.")
 (defparameter *swatter-price* 6 "The price of the fly swatter at the gas station by the swamp.")

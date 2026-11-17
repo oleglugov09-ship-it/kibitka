@@ -91,8 +91,8 @@
   "the jetty: hook a fish and reel it in, once a day"
  "тир: пять выстрелов мышкой, с четырёх попаданий приз"
   "shooting gallery: five mouse shots, four hits win a prize"
- "хозтовары: плита на буржуйку — готовить не только блины"
-  "hardware store: a cooktop for the stove — cook more than pancakes"
+ "хозтовары: крышка для сковородки — жарится вдвое быстрее"
+  "hardware store: a lid for the frying pan — fries twice as fast"
  "библиотека: макулатура в обмен на книги"
   "library: waste paper in exchange for books"
  "коза Манька: доить в такт, раз в сутки"
@@ -213,8 +213,8 @@
   "FISHING"
  "ТИР"
   "SHOOTING RANGE"
- "ХОЗТОВАРЫ: ПЛИТЫ"
-  "HARDWARE: COOKTOPS"
+ "ХОЗТОВАРЫ"
+  "HARDWARE"
  "БИБЛИОТЕКА"
   "LIBRARY"
  "КОЗА МАНЬКА"
@@ -245,7 +245,7 @@
 
 M (или карта на стене у двери) — выбрать город: грузовик едет сам. S при виде снаружи — остановить, V — вид снаружи.
 
-ЛКМ — руки: взять, поставить, отдать. E — всё остальное: окно, колокольчик, дверь, печка, полка, самовар, сесть.
+ЛКМ — руки: взять, поставить, отдать. E — всё остальное: окно, колокольчик, дверь, печка, полка, чайник, сесть.
 
 Деньги дают посылки и торговля через окно. Бензин — на заправках: R — залить, P — купить доски для печки.
 
@@ -254,7 +254,7 @@ M (или карта на стене у двери) — выбрать горо�
 
 M (or the map on the wall by the door) — pick a town: the truck drives itself. S in the outside view — stop, V — outside view.
 
-LMB is your paws: take, put, hand over. E is everything else: window, bell, door, stove, shelf, samovar, sit down.
+LMB is your paws: take, put, hand over. E is everything else: window, bell, door, stove, shelf, kettle, sit down.
 
 Money comes from parcels and trading through the window. Fuel is at gas stations: R — fill up, P — buy planks for the stove.
 
@@ -285,7 +285,7 @@ On the way: a bridge over a gorge, a tunnel, a mountain switchback, a swamp. In 
 
 Купить и тут же продать нельзя: товар надо везти. Возишь одно и то же в один город — цена там падает, потом отходит.
 
-Готовка: молоко на горячей буржуйке через полминуты становится блинами. С плитой (хозтовары, Красный Кут) мест три и рецептов больше: рыба — жареная рыба, клюква — варенье, хлеб — гренки, тушёнка — горячая тушёнка. Блюдо берут там же, где ищут сырьё, но вдвое дороже."
+Готовка: молоко на горячей буржуйке через полминуты становится блинами. На сковородке (висит у печки, E — поставить) рецептов больше: рыба — жареная рыба, клюква — варенье, хлеб — гренки, тушёнка — горячая тушёнка. Крышка из хозтоваров в Красном Куте жарит вдвое быстрее. Молоко и рыба вне холодильника к утру портятся. Блюдо берут там же, где ищут сырьё, но вдвое дороже."
   "At the market in the middle of a town (the «MARKET» sign) and at bus stops where cats are waiting: slide the window open and ring the bell — a customer will come to the window.
 
 A seller puts local goods on the windowsill — cheap. LMB — buy.
@@ -294,7 +294,7 @@ A buyer wants what the town is short of — and pays well. Put the goods on the 
 
 You can't buy and sell on the spot: goods have to travel. Keep hauling the same thing to one town and the price there drops, then recovers.
 
-Cooking: milk on a hot stove turns into pancakes in half a minute. With a cooktop (hardware store, Krasny Kut) you get three spots and more recipes: fish — fried fish, cranberries — jam, bread — toast, canned stew — hot stew. A dish sells where they want the raw goods, but for twice the price."
+Cooking: milk on a hot stove turns into pancakes in half a minute. On the frying pan (it hangs by the stove, E puts it on) there are more recipes: fish — fried fish, cranberries — jam, bread — toast, canned stew — hot stew. The lid from the hardware store in Krasny Kut fries twice as fast. Milk and fish left outside the fridge spoil by morning. A dish sells where they want the raw goods, but for twice the price."
  "ЧТО ГДЕ ДЕЛАЮТ И ИЩУТ"
   "WHO MAKES AND WANTS WHAT"
  "ПОСЫЛКИ"
@@ -329,7 +329,7 @@ Some senders have a name and a story: Aunt Zina sends jam to her student son, th
   "GNOMES: SPECIAL PLACES"
  "В КИБИТКЕ"
   "IN THE WAGON"
- "Буржуйка: зимой топи досками (уголь горит втрое дольше). Полка поднята — на её месте чайный стол с самоваром и сушками.
+ "Буржуйка: зимой топи досками (уголь горит втрое дольше). Полка поднята — на её месте чайный стол с чайником и сушками.
 
 Фотоаппарат у окна: E — взять в лапу, носить можно и по улице. Правая кнопка — к глазам, левая — снять: карточка ложится на стену над ковром. Ориентиры и северное сияние — редкие кадры.
 
@@ -342,7 +342,7 @@ Some senders have a name and a story: Aunt Zina sends jam to her student son, th
 Под крышей вдоль обеих стен — верхние полки: посмотри вверх и поставь туда что угодно из рук.
 
 I — профиль: одежда и шерсть твоего кота. B — стройка: переставить вещи в кибитке."
-  "Stove: in winter feed it planks (coal burns three times longer). With the shelf folded up, a tea table with a samovar and bagels takes its place.
+  "Stove: in winter feed it planks (coal burns three times longer). With the shelf folded up, a tea table with a kettle and bagels takes its place.
 
 Camera by the window: E — take it in your paw, you can carry it outside too. Right button — raise it to your eye, left — shoot: the photo lands on the wall above the rug. Landmarks and the northern lights are rare shots.
 

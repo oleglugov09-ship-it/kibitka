@@ -142,7 +142,7 @@ Reply to the guest with what is now in its paws and what was said to it."
 (defun world-slow ()
   "Return the part of the world that changes rarely: papers, booths, finds, the route."
   (list (list *licenses* *fines* (and *quest* (list (car *quest*) (cdr *quest*))) (first *check*))
-        (list (and *stamp* t) (and *badge* t) (loop for (i . day) in *gimmick-spent* collect (list i day)) (and *hob* t))
+        (list (and *stamp* t) (and *badge* t) (loop for (i . day) in *gimmick-spent* collect (list i day)) (and *lid* t))
         (list *bottles* *papers* (and *spyglass* t)
               (remove-if (lambda (id) (> (abs (- (first id) *dist*)) 200.0)) *picked*))      ; picked-up things: only the nearby ones
         (and *auto* (list (f1 (car *auto*)) (cdr *auto*) *way*))))
@@ -181,7 +181,7 @@ seconds (a message may have been lost); otherwise :SAME stands in for it."
                 (setf *check* (and phase (list phase nil nil 0.0)))
                 (show-officer (eq phase :waiting)))))))
       (when (fits prikol '(t t list t))
-        (unless (eq (and (fourth prikol) t) (and *hob* t)) (setf *hob* (and (fourth prikol) t)) (show-hob))
+        (unless (eq (and (fourth prikol) t) (and *lid* t)) (setf *lid* (and (fourth prikol) t)) (show-lid))
         (setf *stamp* (and (first prikol) t) *badge* (and (second prikol) t)
               *gimmick-spent* (loop for e in (third prikol)
                                     when (fits e '(integer integer)) collect (cons (first e) (second e)))))

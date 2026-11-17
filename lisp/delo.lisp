@@ -129,3 +129,34 @@ launch down, in the browser too."
        (format t "~&Старт, мс: ~{~a~^ · ~}~%"
                (loop for (name . ms) in (sort (remove-if (lambda (e) (< (cdr e) 30)) ,log) #'> :key #'cdr)
                      collect (format nil "~a ~d" name ms))))))
+
+;;; Common things of the wagon. Whatever several cats share inside it (the radio, the dice, the kettle, the
+;;; frying pan, the fridge door) is declared once with DEFCOMMON: how to read its value, what shape the value
+;;; has and what to do when another player's value arrives. The values travel together with the switches
+;;; (net.lisp), in the order of declaration; whoever changed a thing last is right. A subsystem no longer
+;;; edits a list of fixed length in three places to share one more thing.
+
+(defvar *commons* '() "The common things, in the order they were declared: entries of (name spec driver-owned value-function accept-function).")
+
+(defmacro defcommon (name &key value (spec t) accept driver)
+  "Declare the common thing NAME.
+VALUE is a form giving what we send: something made of numbers, keywords, strings and lists of them.
+SPEC is its shape for FITS; a value of another shape is dropped. ACCEPT is a function of one argument,
+called with a value that arrived: it compares, stores and shows. With DRIVER the thing is the driver's
+to decide: what a guest sends is ignored."
+  `(let ((entry (list ,name ,spec ,driver (lambda () ,value) ,accept)) (old (assoc ,name *commons*)))
+     (if old (setf (cdr old) (cdr entry)) (setf *commons* (append *commons* (list entry))))
+     ,name))
+
+(defun common-state ()
+  "Return the values of all common things, in the order of declaration."
+  (loop for (nil nil nil value) in *commons* collect (funcall value)))
+
+(defun accept-common (values &optional driver-side)
+  "Take in the common things VALUES sent by another player.
+DRIVER-SIDE is true when we are the driver receiving from a guest."
+  (when (and (listp values) (ignore-errors (list-length values)) (= (length values) (length *commons*)))
+    (loop for (name spec driver nil accept) in *commons*
+          for v in values
+          do (when (and (fits v spec) (not (and driver driver-side)))
+               (noting name (funcall accept v))))))

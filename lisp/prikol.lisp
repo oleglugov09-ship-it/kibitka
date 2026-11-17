@@ -22,15 +22,15 @@ in their paws.")
 (defvar *rush-told* nil)
 (defvar *rush-bell* 0.0)
 
-(defun save-prikol () (unless (net-guest-p) (put-save :prikol (list (and *stamp* t) (and *badge* t) *gimmick-spent* (and *hob* t)))))
+(defun save-prikol () (unless (net-guest-p) (put-save :prikol (list (and *stamp* t) (and *badge* t) *gimmick-spent* (and *lid* t)))))
 (defun load-prikol ()
   (let ((f (get-save :prikol)))
     (when (fits f '(t t &optional t t))
-      (setf *stamp* (and (first f) t) *badge* (and (second f) t) *hob* (and (fourth f) t)
+      (setf *stamp* (and (first f) t) *badge* (and (second f) t) *lid* (and (fourth f) t)
             *gimmick-spent* (and (fits (third f) '(:each cons)) (third f))))))
 (defstate :prikol
-  :clear (lambda () (setf *stamp* nil *badge* nil *hob* nil *boost-until* 0.0 *gimmick-spent* '() *wait* nil *rail-ticket* nil))
-  :load #'load-prikol :save #'save-prikol :show (lambda () (show-hob)))
+  :clear (lambda () (setf *stamp* nil *badge* nil *lid* nil *boost-until* 0.0 *gimmick-spent* '() *wait* nil *rail-ticket* nil))
+  :load #'load-prikol :save #'save-prikol :show (lambda () (show-lid)))
 
 (defun boost-factor () (if (< *time* *boost-until*) *water-boost* 1.0))
 
@@ -60,8 +60,8 @@ Return true if the good was given."
   (case i
     (0 "E — порыбачить с мостков")
     (1 (format nil "E — тир: пять выстрелов за ~d р. Целиться самому" *range-price*))
-    (2 (if *hob* "Плита у вас уже стоит. Готовьте на здоровье"
-           (format nil "E — купить плиту на буржуйку за ~d р.: жарить рыбу, варить варенье, греть тушёнку" *hob-price*)))
+    (2 (if *lid* "Крышка у вас уже есть: под ней на сковородке жарится вдвое быстрее"
+           (format nil "E — купить чугунную крышку для сковородки за ~d р.: под ней жарится вдвое быстрее" *lid-price*)))
     (3 (format nil "E — обменять ~d связки макулатуры на книги · у тебя ~d" *book-papers* *papers*))
     (4 "E — подоить козу Маньку")
     (5 "E — подняться на маяк: что почём в ближайших городах")
@@ -96,9 +96,9 @@ The goat, the fishing and the mine each give theirs once per day cycle."
   (when (and (member i '(0 4 8)) (spent-p i)) (return-from gimmick-use nil))
   (case i
     (0 (if *carry* (say "Руки заняты — удочку не взять") (begin-play :fish)))        ; the games are in igry.lisp
-    (2 (cond (*hob* (say "Плита уже стоит"))
-             ((pay *hob-price*) (setf *hob* t) (save-prikol) (show-hob) (log-event :hob :money *money*)
-              (say-all "Купили плиту! Она на буржуйке: ставь на неё рыбу, клюкву, хлеб или тушёнку — приготовится"))))
+    (2 (cond (*lid* (say "Крышка уже куплена"))
+             ((pay *lid-price*) (setf *lid* t) (save-prikol) (show-lid) (log-event :lid :money *money*)
+              (say-all "Купили крышку! Висит над сковородкой: теперь на сковородке жарится вдвое быстрее"))))
     (1 (when (pay *range-price*) (begin-play :tir)))
     (3 (cond ((and (not *dev*) (< *papers* *book-papers*)) (say (format nil "Нужно ~d связки макулатуры — она лежит у остановок и заправок" *book-papers*)))
              (*carry* (say "Руки заняты — книги не взять"))

@@ -49,7 +49,8 @@ Each entry is (x z width depth height)."
     (append (loop for top in *shelf-tops* collect (list (/ (+ x0 x1) 2) *shelf-z* (- x1 x0) .54 top))
             (destructuring-bind (z0 z1) *rack-z*                                       ; overhead racks
               (loop for sx in '(-1 1) collect (list (* sx (- *half-width* .2)) (/ (+ z0 z1) 2) .36 (- z1 z0) *rack-top*)))
-            (list (stove-surface))                                                 ; the stove top or the cooktop on it: cooking happens here (uyut.lisp)
+            (list (stove-surface))                                                 ; the stove top: cooking happens here (uyut.lisp)
+            (fridge-surfaces)                                                      ; the shelves of the open fridge (fridge.lisp)
             ;; with the window slid open there is one shared windowsill: through the opening, from our edge to the
             ;; outer one. Both we and the customer put things on the same board, each as far as they can reach
             (when (> *window-k* .9)
@@ -459,7 +460,7 @@ These are the map, the stove, the light switch, the ladder, the window and the b
   "Return everything that can be pressed right now.
 The order matters: the first one that fits the crosshair is the one that fires."
   (unless *meta*
-    (append (trade-usables) (kettle-usables) (table-usables) (seat-usables) (uyut-usables) (stars-usables) (finds-usables) (dalny-usables) (prikol-usables) (gnome-usables) (bumagi-usables) (fixture-usables))))
+    (append (trade-usables) (kettle-usables) (fridge-usables) (table-usables) (seat-usables) (uyut-usables) (stars-usables) (finds-usables) (dalny-usables) (prikol-usables) (gnome-usables) (bumagi-usables) (fixture-usables))))
 
 (defun window-label () (if *window-open* "E — закрыть окно" "E — раздвинуть окно"))
 
