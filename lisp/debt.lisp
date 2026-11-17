@@ -116,7 +116,7 @@ Return what is left."
                    (say (format nil "Внесли ~d р. Осталось ~d р." sum *debt*))))))))
 
 ;; the savings bank is a booth like the others (DEFBOOTH, prikol.lisp)
-(defbooth 14 :label #'bank-label :use #'bank-use)
+(defbooth 14 :label #'bank-label :use #'bank-use :shelf '("#4a6a52" "#d8d0b8" "#c9a13a"))
 
 ;;; ------------------------------------------------------------------ the ending
 

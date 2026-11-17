@@ -319,26 +319,39 @@ is always there; the lower one when it is folded down, otherwise there are the s
 (defvar *stove-light* nil)
 (defvar *cold-told* nil)
 
+(defvar *stove-planks* '() "The planks sticking out of the firebox, in the order they burn away.")
+
 (defun make-stove (c)
+  "Build the stove under C: a box stove level with the washstand, with a wide flat top for the frying pan,
+a wing with a ring for the kettle, and planks that stick out of the firebox while they burn."
   (destructuring-bind (x z) *stove-at*
-    (let ((g (group c x *floor* z)) (iron "#1e1e22"))
-      ;; a box stove with a wide flat top, so a frying pan fits; the pipe leaves from the back corner
-      (dolist (sx '(-.24 .24)) (dolist (sz '(-.2 .2)) (shape g :box '(.05 .26 .05) iron sx .13 sz)))
-      (shape g :box '(.56 .62 .48) iron 0 .57 0 :metal .4 :rough .7)
-      (shape g :box '(.64 .04 .54) "#2a2a30" 0 .9 0 :metal .4 :rough .6)
-      (shape g :box '(.04 .22 .2) "#2a2a30" .29 .5 0)
-      (setf *stove-glow* (shape g :box '(.045 .1 .14) "#ff8030" .295 .5 0 :emit "#ff6010" :energy 3.0 :shadow nil))
-      (shape g :cyl '(.07 .07 3.3 8) iron -.2 2.55 .17 :metal .4 :rough .7)       ; the pipe through the roof to the outside
+    (let* ((g (group c x *floor* z)) (iron "#1e1e22") (top *stove-top*) (legs .12) (body (- top .04 legs)) (mid (+ legs (/ body 2))))
+      (dolist (sx '(-.24 .24)) (dolist (sz '(-.2 .2)) (shape g :box (list .05 legs .05) iron sx (/ legs 2) sz)))
+      (shape g :box (list .56 body .48) iron 0 mid 0 :metal .4 :rough .7)
+      (shape g :box '(.64 .04 .54) "#2a2a30" 0 (- top .02) 0 :metal .4 :rough .6)
+      (shape g :box '(.04 .24 .22) "#2a2a30" .29 mid 0)                           ; the firebox, its door open
+      (setf *stove-glow* (shape g :box '(.045 .14 .16) "#ff8030" .295 mid 0 :emit "#ff6010" :energy 3.0 :shadow nil))
+      ;; the planks in the fire: one for every plank's worth of burning left, the last thrown in burns away first
+      (setf *stove-planks*
+            (loop for i below 6
+                  collect (shape g :box '(.46 .03 .07) "#8a6440" (+ .44 (* .012 i)) (+ mid -.05 (* .02 (mod i 3))) (- (* .05 (mod i 4)) .075)
+                                 :rot (list 0 (* .12 (- (mod i 3) 1)) (* .06 (- (mod i 2) .5))) :shadow nil)))
+      (shape g :cyl (list .07 .07 (- 4.2 top) 8) iron -.2 (/ (+ 4.2 top) 2) .17 :metal .4 :rough .7)   ; the pipe through the roof to the outside
       (shape g :box '(.36 .04 .36) "#3a3a40" -.2 2.72 .17 :metal .5 :rough .6)    ; the flashing on the roof
       (shape g :cyl '(.2 .02 .14 8) iron -.2 4.3 .17 :metal .4 :rough .7)         ; the rain cap
       (shape g :cyl '(.02 .02 .12 4) iron -.14 4.2 .17) (shape g :cyl '(.02 .02 .12 4) iron -.26 4.2 .17)
       ;; the wing to the right of the firebox: a ring where the kettle boils (kettle.lisp)
-      (dolist (sx '(-.2 .2)) (shape g :box '(.05 .26 .05) iron sx .13 -.66))
-      (shape g :box '(.5 .62 .46) iron 0 .57 -.47 :metal .4 :rough .7)
-      (shape g :box '(.58 .04 .5) "#2a2a30" 0 .9 -.49 :metal .4 :rough .6)
-      (shape g :cyl '(.12 .12 .012 12) "#3a3a40" 0 .924 -.49 :metal .5 :rough .5 :shadow nil)
-      (shape g :cyl '(.07 .07 .014 10) "#5a2a1e" 0 .925 -.49 :emit "#ff5020" :energy .8 :shadow nil)
-      (setf *stove-light* (light g "#ff7030" 0.0 4.5 .4 .6 0)))))
+      (dolist (sx '(-.2 .2)) (shape g :box (list .05 legs .05) iron sx (/ legs 2) -.66))
+      (shape g :box (list .5 body .46) iron 0 mid -.47 :metal .4 :rough .7)
+      (shape g :box '(.58 .04 .5) "#2a2a30" 0 (- top .02) -.49 :metal .4 :rough .6)
+      (shape g :cyl '(.12 .12 .012 12) "#3a3a40" 0 (+ top .004) -.49 :metal .5 :rough .5 :shadow nil)
+      (shape g :cyl '(.07 .07 .014 10) "#5a2a1e" 0 (+ top .005) -.49 :emit "#ff5020" :energy .8 :shadow nil)
+      (setf *stove-light* (light g "#ff7030" 0.0 4.5 .4 mid 0)))))
+
+(defun show-fire ()
+  "Show as many planks in the firebox as there is burning left, counted in planks."
+  (let ((n (ceiling (max 0.0 *fire*) *plank-burn*)))
+    (loop for plank in *stove-planks* for i from 0 do (object-set plank "visible" (< i n)))))
 
 (defun looking-at (x y z &optional (reach 2.6) (cone .33))
   "Return true when the player looks at the wagon point (X, Y above the floor, Z).
@@ -428,7 +441,7 @@ These are the map, the stove, the light switch, the ladder, the window and the b
   (remove nil
           (list
            (usable (first *map-at*) (second *map-at*) (third *map-at*) (lambda () "E — карта: куда ехать") #'open-map)
-           (usable (first *stove-at*) .5 (second *stove-at*)
+           (usable (+ (first *stove-at*) .3) (* *stove-top* .5) (second *stove-at*)
                    (lambda () (if (> *planks* 0) (format nil "E — подбросить доску · осталось ~d" *planks*) "Досок нет — купи на заправке (P)"))
                    #'feed-stove)
            (usable (first *switch-at*) (second *switch-at*) (third *switch-at*)
@@ -714,6 +727,7 @@ the map."
     (let ((k (if (> *fire* 0) (+ .75 (* .25 (sin (* *time* 9)))) 0.0)))
       (when *stove-light* (object-set *stove-light* "light_energy" (* 2.2 k)))
       (when *stove-glow* (object-set *stove-glow* "visible" (> *fire* 0))))
+    (show-fire)
     (let ((frost (if winter (max 0.0 (min 1.0 (* 2.0 (- .62 *warm*)))) 0.0)))
       (when (and *frost-mat* (> (abs (- frost *frost-now*)) .01))
         (setf *frost-now* frost)

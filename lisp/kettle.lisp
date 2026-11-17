@@ -16,7 +16,7 @@
 
 (defparameter *boil-time* 20.0 "The number of seconds the kettle takes to boil on a burning stove.")
 (defparameter *kettle-cups* 4 "The number of cups of tea in one boiled kettle.")
-(defparameter *kettle-ring* '(0.0 .93 -.49) "The ring for the kettle, relative to the stove: x, height above the floor, z.")
+(defparameter *kettle-ring* '(0.0 .78 -.49) "The ring for the kettle, relative to the stove: x, height above the floor, z.")
 (defparameter *pan-nail* '(.28 1.5 .385) "The nail the frying pan hangs on, relative to the stove: x, height above the floor, z.")
 
 (defvar *kettle-at* :table "Where the kettle is: :TABLE, :STOVE, :PAW (in our paw) or :AWAY (in another cat's paw).")

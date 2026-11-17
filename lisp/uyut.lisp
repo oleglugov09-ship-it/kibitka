@@ -34,7 +34,7 @@
 (defparameter *camera-at* '(1.44 1.55 1.72))
 (defparameter *radio-at* '(1.36 1.45 2.25))
 (defparameter *guitar-at* '(1.22 1.35 2.74))
-(defparameter *stove-top* .92 "The height of the stove top above the floor: milk is put on it.")
+(defparameter *stove-top* .77 "The height of the stove top above the floor, level with the washstand: things are put on it to cook.")
 
 (defun un (key) (getf *uyut* key))
 

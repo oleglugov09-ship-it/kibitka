@@ -242,9 +242,10 @@ and ask for a licence. Travelling light, we are never stopped."
 ;;; ------------------------------------------------------------------ the booths of the papers
 
 ;; the town council: quests for licences
-(defbooth 12 :label #'quest-label :use #'use-quests)
+(defbooth 12 :label #'quest-label :use #'use-quests :shelf '("#a3262c" "#b8ac94" "#6a3a2e"))
 
 ;; the militia station: fines are paid here
 (defbooth 13
+  :shelf '("#2c4a7a" "#d8d0b8" "#2a2c30")
   :label (lambda () (if *fines* (format nil "E — оплатить штрафы: ~d р." (reduce #'+ *fines*)) "Участок: штрафов за вами нет"))
   :use #'pay-fines)

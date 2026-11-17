@@ -61,14 +61,15 @@ Return true if the good was given."
 ;;; signs is content: the mod's *GIMMICK-PLAN*. Booths that belong to another subsystem are declared in its
 ;;; file (the town council and the militia in bumagi.lisp, the savings bank in debt.lisp).
 
-(defvar *booths* '() "The booths by number: entries of (number . plist of :label :use :build :spot :daily).")
+(defvar *booths* '() "The booths by number: entries of (number . plist of :label :use :build :spot :daily :shelf).")
 
-(defmacro defbooth (number &key label use build spot daily)
+(defmacro defbooth (number &key label use build spot daily shelf)
   "Declare what the booth NUMBER does.
 LABEL is the hint at its window: a string or a function returning one. USE is a function called on E.
 BUILD is a function of the booth group that adds its landmark. SPOT is (sideways along-the-road height):
-where else, besides the window, it answers to E. With DAILY its free thing is given once a game day."
-  `(progn (setf *booths* (cons (list ,number :label ,label :use ,use :build ,build :spot ,spot :daily ,daily)
+where else, besides the window, it answers to E. With DAILY its free thing is given once a game day.
+SHELF is a list of colours: what stands on the shelves behind the seller."
+  `(progn (setf *booths* (cons (list ,number :label ,label :use ,use :build ,build :spot ,spot :daily ,daily :shelf ,shelf)
                                (remove ,number *booths* :key #'first)))
           ,number))
 
@@ -153,6 +154,7 @@ Return T if a train ride was pending (GO-TO-TOWN then does nothing itself)."
 
 ;; the pier: fishing
 (defbooth 0
+  :shelf '("#3f6f73" "#8aa0b0" "#c9a13a")
   :daily t
   :spot '(12.2 5.6 1.2)
   :label "E — порыбачить с мостков"
@@ -161,6 +163,7 @@ Return T if a train ride was pending (GO-TO-TOWN then does nothing itself)."
 
 ;; the shooting range
 (defbooth 1
+  :shelf '("#e8e0d0" "#a3262c" "#3c4638")
   :spot '(10.7 4.2 1.3)
   :label (lambda () (format nil "E — тир: пять выстрелов за ~d р. Целиться самому" *range-price*))
   :use (lambda () (when (pay *range-price*) (begin-play :tir)))
@@ -168,6 +171,7 @@ Return T if a train ride was pending (GO-TO-TOWN then does nothing itself)."
 
 ;; the hardware shop: the lid for the frying pan
 (defbooth 2
+  :shelf '("#1e1e22" "#8a8e92" "#a3262c")
   :label (lambda () (if *lid* "Крышка у вас уже есть: под ней на сковородке жарится вдвое быстрее"
            (format nil "E — купить чугунную крышку для сковородки за ~d р.: под ней жарится вдвое быстрее" *lid-price*)))
   :use (lambda () (cond (*lid* (say "Крышка уже куплена"))
@@ -176,6 +180,7 @@ Return T if a train ride was pending (GO-TO-TOWN then does nothing itself)."
 
 ;; the library: waste paper for books
 (defbooth 3
+  :shelf '("#6a3a2e" "#2c4a7a" "#3c5a48" "#c9a13a")
   :label (lambda () (format nil "E — обменять ~d связки макулатуры на книги · у тебя ~d" *book-papers* *papers*))
   :use (lambda () (cond ((and (not *dev*) (< *papers* *book-papers*)) (say (format nil "Нужно ~d связки макулатуры — она лежит у остановок и заправок" *book-papers*)))
              (*carry* (say "Руки заняты — книги не взять"))
@@ -186,6 +191,7 @@ Return T if a train ride was pending (GO-TO-TOWN then does nothing itself)."
 
 ;; Manka the goat
 (defbooth 4
+  :shelf '("#f0ede4" "#3a6aa8" "#d8a030")
   :daily t
   :spot '(10.2 -3.0 .8)
   :label "E — подоить козу Маньку"
@@ -199,6 +205,7 @@ Return T if a train ride was pending (GO-TO-TOWN then does nothing itself)."
 
 ;; the lighthouse: prices in the two nearest towns
 (defbooth 5
+  :shelf '("#d8d0b8" "#2c4a7a" "#a3262c")
   :spot '(10.2 3.2 2.0)
   :label "E — подняться на маяк: что почём в ближайших городах"
   :use (lambda () (let* ((here (trade-town))                                ; the two nearest towns by road, in either direction
@@ -214,6 +221,7 @@ Return T if a train ride was pending (GO-TO-TOWN then does nothing itself)."
 
 ;; window no. 3: the stamp
 (defbooth 6
+  :shelf '("#e8e0d0" "#8a8070" "#6a3a2e")
   :label (lambda () (if *stamp* "Печать уже стоит: за посылки платят вдвое" (format nil "E — получить печать за ~d р.: посылки вдвое дороже" *stamp-price*)))
   :use (lambda () (cond (*stamp* (say "Печать уже стоит"))
              ((pay *stamp-price*) (setf *stamp* t) (save-prikol) (log-event :stamp)
@@ -221,6 +229,7 @@ Return T if a train ride was pending (GO-TO-TOWN then does nothing itself)."
 
 ;; the mine
 (defbooth 8
+  :shelf '("#1a1a1e" "#5a4636" "#c9a13a")
   :daily t
   :spot '(10.7 -5.6 1.2)
   :label "E — спуститься в шахту за углём"
@@ -229,6 +238,7 @@ Return T if a train ride was pending (GO-TO-TOWN then does nothing itself)."
 
 ;; mineral water
 (defbooth 9
+  :shelf '("#7ab0c8" "#e8e0d0" "#3f6f73")
   :spot '(10.4 2.6 1.0)
   :label (lambda () (format nil "E — стакан минеральной воды за ~d р.: бодрит" *water-price*))
   :use (lambda () (when (pay *water-price*) (setf *boost-until* (+ *time* *water-time*)) (say "Нарзан! В нос шибает. Пять минут бегаешь быстрее")))
@@ -236,6 +246,7 @@ Return T if a train ride was pending (GO-TO-TOWN then does nothing itself)."
 
 ;; the flatcar: the wagon goes by train
 (defbooth 10
+  :shelf '("#7a5a50" "#d8d0b8" "#2a2c30")
   :label (lambda () (format nil "E — погрузить кибитку на платформу: до любого города, ~,1f р. за километр" *rail-per-km*))
   :use (lambda () (cond (*actor* (say "На платформу кибитку ставит водитель: маршрут — его дело"))
               (t (setf *rail-ticket* t) (open-map)
@@ -244,18 +255,52 @@ Return T if a train ride was pending (GO-TO-TOWN then does nothing itself)."
 
 ;; the carpenter: planks
 (defbooth 11
+  :shelf '("#c8a060" "#8a6440" "#5a3e26")
   :spot '(10.4 2.6 .8)
   :label (lambda () (format nil "E — ~d досок за ~d р." (first *carpenter-deal*) (second *carpenter-deal*)))
   :use (lambda () (when (pay (second *carpenter-deal*)) (incf *planks* (first *carpenter-deal*))
           (say (format nil "Плотник отсыпал ~d досок. В печку: ~d" (first *carpenter-deal*) *planks*))))
   :build (lambda (g) (dotimes (i 6) (shape g :box '(2.4 .06 .22) "#c8a060" 7.2 (+ .04 (* i .065)) (+ 2.4 (* .03 i)))) (shape g :box '(1.6 .8 .7) "#8a6440" 7.2 .4 -2.6)))
 
+(defparameter *booth-window* '(1.1 2.3 1.0) "The window of a booth: its bottom, its top and half its width.")
+
+(defun booth-shell (g index rgb)
+  "Build under G the walls of booth INDEX in colour RGB, with a window to the road, and what is seen through it:
+a lit room, a counter, shelves with the goods of this booth (its :SHELF colours) and the seller."
+  (destructuring-bind (y0 y1 half) *booth-window*
+    (shape g :box '(.15 2.8 4.6) rgb 12.925 1.4 0)                                        ; the back wall
+    (dolist (z '(-2.225 2.225)) (shape g :box '(4.0 2.8 .15) rgb 11.0 1.4 z))              ; the sides
+    (shape g :box (list .15 y0 4.6) rgb 9.075 (/ y0 2) 0)                                  ; the front: below the window,
+    (shape g :box (list .15 (- 2.8 y1) 4.6) rgb 9.075 (/ (+ y1 2.8) 2) 0)                  ; above it
+    (dolist (s '(-1 1))                                                                    ; and beside it
+      (shape g :box (list .15 (- y1 y0) (- 2.3 half)) rgb 9.075 (/ (+ y0 y1) 2) (* s (/ (+ 2.3 half) 2))))
+    (dolist (s '(-1 1)) (shape g :box (list .2 (- y1 y0) .08) "#e8e0d0" 9.05 (/ (+ y0 y1) 2) (* s half) :shadow nil))   ; the window frame
+    (shape g :box (list .2 .08 (* 2 half)) "#e8e0d0" 9.05 y1 0 :shadow nil)
+    ;; inside
+    (shape g :box '(3.7 .06 4.3) "#6a5a48" 11.0 .13 0 :shadow nil)                         ; the floor
+    (shape g :box '(.02 2.6 4.3) "#d8d0b8" 12.84 1.4 0 :shadow nil)                        ; whitewash on the back wall
+    (shape g :box '(.5 .95 3.6) "#8a6440" 9.5 .575 0)                                      ; the counter
+    (shape g :box '(.56 .04 3.7) "#5a3e26" 9.5 1.07 0 :shadow nil)
+    (let ((colours (or (booth index :shelf) '("#8a8e92" "#b0aa98" "#6a5038"))))
+      (loop for y in '(.9 1.5 2.1) for row from 0
+            do (shape g :box '(.36 .04 3.9) "#5a3e26" 12.64 y 0 :shadow nil)
+               (loop for k below 8
+                     do (shape g :box (list .2 (+ .2 (* .06 (mod (+ k row) 3))) .24) (nth (mod (+ k row index) (length colours)) colours)
+                               12.64 (+ y .02 (/ (+ .2 (* .06 (mod (+ k row) 3))) 2)) (- (* k .48) 1.68) :shadow nil))))
+    (shape g :ball '(.09 8 5) "#ffe8b0" 10.9 2.55 0 :emit "#ffc070" :energy 2.5 :shadow nil)   ; the lamp
+    (shape g :cyl '(.008 .008 .2 4) "#2a2a2e" 10.9 2.7 0 :shadow nil)
+    (light g "#ffd090" 1.6 6.0 10.6 2.3 0)
+    ;; the seller: a cat behind the counter, looking out at the road; every booth has its own
+    (let ((cat (group g 10.25 .16 (if (evenp index) .35 -.35))))
+      (node-3d-set-rotation cat (v3 0 (- (/ pi 2)) 0))
+      (make-cat cat (+ 3 (* 5 index))))))
+
 (defun build-gimmick (d index title rgb)
   (let ((g (apply #'group *world* (road-pos d 3.2 -.35))))
     (node-3d-set-rotation g (v3 0 (- (road-frame d)) 0))
     (shape g :box '(9.0 .1 10.0) "#5a5a58" 7.5 .05 0 :shadow nil)
-    (shape g :box '(4.0 2.8 4.6) rgb 11.0 1.4 0) (shape g :box '(4.6 .25 5.2) "#4c4e52" 11.0 2.95 0 :rot '(0 0 -.06))
-    (shape g :box '(.14 1.0 1.6) "#e8c070" 8.95 1.6 0 :emit "#ffc060" :energy 1.0 :shadow nil)
+    (booth-shell g index rgb)
+    (shape g :box '(4.6 .25 5.2) "#4c4e52" 11.0 2.95 0 :rot '(0 0 -.06))
     (shape g :box '(.6 .08 1.8) "#8a6440" 8.7 1.05 0)
     (shape g :box '(.2 .7 4.4) "#2a2c30" 8.9 3.5 0 :shadow nil)
     (sign g title 8.78 3.5 0 :h (if (> (length title) 14) .3 .45) :rgb "#f0ece0")
