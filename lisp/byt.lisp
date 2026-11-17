@@ -257,6 +257,7 @@ is always there; the lower one when it is folded down, otherwise there are the s
         (dolist (dy '(-.55 .55)) (shape g :box '(.05 .04 1.3) "#34363a" 0 dy 0 :metal .5 :rough .5 :shadow nil))
         (dolist (dz '(-.65 .65)) (shape g :box '(.05 1.1 .04) "#34363a" 0 0 dz :metal .5 :rough .5 :shadow nil))
         (frost-pane g)
+        (rain-pane g)                                                  ; mood.lisp
         (push (list g s) panes)))
     (let ((in (group c (- x .09) (+ f .95) 0)) (out (group c (+ x .09) (+ f .95) 0)))
       (shape in :box '(.3 .04 2.5) "#8a6440" -.15 -.02 0)
