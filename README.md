@@ -52,6 +52,7 @@ Games this one looks up to (no affiliation with any of them):
 - **Easy Delivery Co.** — small deliveries in a small truck.
 - **Papers, Please** — documents, stamps and inspections.
 - **Slow Roads** — unhurried driving with nowhere to be.
+- **Cat Mail Co.** — a cat post office: sorting parcels, a task list, playing the routine together.
 - **Cozy Caravan** — a caravan that trades at markets along the way.
 - **ШХД: ЗИМА (It's Winter)** and the other ШХД games — the mood of post-Soviet panel-block towns.
 
