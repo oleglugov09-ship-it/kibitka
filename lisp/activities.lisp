@@ -1,6 +1,7 @@
 ;;;; Booth activities played in the world itself, not on a flat screen: at the shooting range you take
 ;;;; the rifle and shoot the plates that ride along the backboard; at the fishing booth you swing the
-;;;; rod, cast the float into the pond, wait for the bite and reel the fish in.
+;;;; rod, cast the float into the pond, wait for the bite and reel the fish in; at the mine you chip the
+;;;; rock face with a pickaxe looking for coal; and Manka the goat is milked while she eats.
 ;;;;
 ;;;; Whoever walked up plays, with their own eyes and paws (a guest too); the driver only admits them
 ;;;; and hands out the prize by score (START-PLAY and PLAY-RESULT in igry.lisp). Aiming is done by the
@@ -10,7 +11,7 @@
 
 (in-package #:kiosk-trip)
 
-(defvar *act* nil "The activity in progress: a plist with :kind (:tir :fish) and its state, or NIL.")
+(defvar *act* nil "The activity in progress: a plist with :kind (:tir :fish :mine :goat) and its state, or NIL.")
 (defvar *act-node* nil "What the paw holds during the activity, under the camera: the rifle or the rod.")
 (defvar *act-held* nil "True if the left mouse button was down last frame.")
 (defvar *bobber* nil "The fishing float: a node in the world, hidden when nobody fishes.")
@@ -52,6 +53,11 @@ The ball counts as at least 10 screen pixels wide, so a far plate is still fair 
     (:fish (let ((g (group *camera* .24 -.22 -.3)))
              (node-3d-set-rotation g (v3 -1.0 0 -.12))
              (shape g :cyl '(.006 .014 1.7 6) "#6a5038" 0 .8 0 :shadow nil)
+             (setf *act-node* g)))
+    (:mine (let ((g (group *camera* .2 -.2 -.4)))                              ; a pickaxe
+             (node-3d-set-rotation g (v3 -.5 0 -.2))
+             (shape g :cyl '(.014 .016 .6 6) "#6a5038" 0 .2 0 :shadow nil)
+             (shape g :box '(.3 .035 .035) "#3a3a40" 0 .5 0 :metal .6 :rough .4 :shadow nil)
              (setf *act-node* g)))))
 
 (defun start-act (kind)
@@ -61,7 +67,10 @@ The ball counts as at least 10 screen pixels wide, so a far plate is still fair 
   (ecase kind
     (:tir (with-act (shots hits) (setf shots 5 hits 0))
           (dolist (p *tir-plates*) (setf (seventh p) t) (object-set (first p) "visible" t)))
-    (:fish (with-act (phase tries) (setf phase :aim tries 3)))))
+    (:fish (with-act (phase tries) (setf phase :aim tries 3)))
+    (:mine (with-act (strikes found) (setf strikes 10 found 0)) (reset-rock))
+    (:goat (with-act (pulls good mood until) (setf pulls 6 good 0 mood :eats until 1.2))
+           (when *goat-milk* (node-3d-set-scale *goat-milk* (v3 1 .1 1))))))
 
 (defun end-act (score)
   "Put the tool away and, when SCORE is not NIL, report it to the driver."
@@ -158,6 +167,71 @@ The ball counts as at least 10 screen pixels wide, so a far plate is still fair 
            (cond ((>= strain 1.0) (retry-fishing "Леска лопнула."))
                  ((>= pull 1.0) (hint "Вытащил!") (end-act 1)))))))))
 
+;;; ------------------------------------------------------------------ mine: find the seam with a pickaxe
+
+(defun near-eye-p (point reach)
+  "Return true if the world POINT is within REACH metres of the eyes."
+  (let ((eye (eye-point)))
+    (< (+ (expt (- (vector3-x point) (vector3-x eye)) 2) (expt (- (vector3-y point) (vector3-y eye)) 2)
+          (expt (- (vector3-z point) (vector3-z eye)) 2))
+       (* reach reach))))
+
+(defun reset-rock ()
+  "Make the rock face whole again and hide five lumps of coal in it."
+  (let ((coal '()))
+    (loop while (< (length coal) 5) do (pushnew (random (length *rock*)) coal))
+    (loop for block in *rock* for i from 0
+          do (setf (fourth block) (and (member i coal) t) (fifth block) nil)
+             (object-set (first block) "material_override" (material "#5a554e"))
+             (node-3d-set-scale (first block) (v3 1 1 1)))))
+
+(defun step-mine-act (click)
+  (with-act (time strikes found note done)
+    (cond (done (when (> time done) (end-act found)))
+          (t (hint (format nil "ШАХТА · ударов: ~d · угля: ~d из 3 · ЛКМ — бить по породе~@[ · ~a~]" strikes found note))
+             (when click
+               (let ((block (find-if (lambda (b) (and (not (fifth b)) (let ((at (object-get (first b) "global_position")))
+                                                                         (and (near-eye-p at 4.0) (aimed-at-p at .28)))))
+                                     *rock*)))
+                 (when block
+                   (decf strikes)
+                   (setf (fifth block) t)
+                   (cond ((fourth block)                                       ; coal: a black lump stays in the hole
+                          (incf found) (setf note "Уголь!")
+                          (object-set (first block) "material_override" (material "#121216" :rough .5))
+                          (node-3d-set-scale (first block) (v3 .7 .7 .7)))
+                         (t (let ((near (count-if (lambda (b) (and (fourth b) (<= (abs (- (second b) (second block))) 1)
+                                                                   (<= (abs (- (third b) (third block))) 1)))
+                                                  *rock*)))
+                              (setf note (format nil "Пусто. Угля рядом: ~d" near))   ; the colour of the chip says how much coal is around
+                              (object-set (first block) "material_override"
+                                          (material (nth (min near 3) '("#8a857c" "#c9a13a" "#d8782a" "#c0392b"))))
+                              (node-3d-set-scale (first block) (v3 1 1 .25)))))
+                   (cond ((>= found 3) (setf note "Ящик полон!" done (+ time 1.0)))
+                         ((zerop strikes) (setf note "Кирка затупилась. Пустая порода" done (+ time 1.0)))))))))))
+
+;;; ------------------------------------------------------------------ goat: milk while she eats
+
+(defun step-goat-act (click)
+  "Manka eats, then lifts her head and watches. Milk only while she eats; touched while watching, she kicks."
+  (with-act (time pulls good mood until note done)
+    (when (and *goat* (> time until))
+      (setf mood (if (eq mood :eats) :watches :eats)
+            until (+ time (if (eq mood :eats) (+ .9 (random 1.1)) (+ .6 (random .8))))))
+    (when *goat* (node-3d-set-rotation *goat* (v3 (if (eq mood :eats) .22 -.06) (if (eq mood :eats) 0 .5) 0)))
+    (cond (done (when (> time done) (when *goat* (node-3d-set-rotation *goat* (v3 0 0 0))) (end-act good)))
+          (t (hint (format nil "КОЗА МАНЬКА · дои (ЛКМ), пока она ест; подняла голову — не трогай · осталось ~d · в ведре ~d~@[ · ~a~]"
+                           pulls good note))
+             (when (and click *goat* (plusp pulls))
+               (let ((at (object-get *goat* "global_position")))
+                 (when (and (near-eye-p at 4.0) (aimed-at-p (v3 (vector3-x at) (+ (vector3-y at) .45) (vector3-z at)) .8))
+                   (decf pulls)
+                   (cond ((eq mood :eats)
+                          (incf good) (setf note "Струйка в ведро")
+                          (when *goat-milk* (node-3d-set-scale *goat-milk* (v3 1 (* 3.0 good) 1))))
+                         (t (setf note "Манька лягнула!")))
+                   (when (zerop pulls) (setf done (+ time 1.0))))))))))
+
 ;;; ------------------------------------------------------------------ frame step
 
 (defun step-act (delta)
@@ -168,4 +242,6 @@ The ball counts as at least 10 screen pixels wide, so a far plate is still fair 
         (setf *act-held* down)
         (cond ((> (+ (expt (- (vector3-x *pos*) (first from)) 2) (expt (- (vector3-z *pos*) (second from)) 2)) (* 14.0 14.0))
                (say "Ушёл далеко — занятие окончено") (end-act nil))
-              (t (ecase kind (:tir (step-range click)) (:fish (step-fishing delta click down release)))))))))
+              (t (ecase kind
+                   (:tir (step-range click)) (:fish (step-fishing delta click down release))
+                   (:mine (step-mine-act click)) (:goat (step-goat-act click)))))))))

@@ -99,7 +99,7 @@ The goat, the fishing and the mine each give theirs once per day cycle."
              ((pay *hob-price*) (setf *hob* t) (save-prikol) (show-hob) (log-event :hob :money *money*)
               (say-all "Купили плиту! Она на буржуйке: ставь на неё рыбу, клюкву, хлеб или тушёнку — приготовится"))))
     (1 (when (pay *range-price*) (begin-play :tir)))
-    (3 (cond ((< *papers* *book-papers*) (say (format nil "Нужно ~d связки макулатуры — она лежит у остановок и заправок" *book-papers*)))
+    (3 (cond ((and (not *dev*) (< *papers* *book-papers*)) (say (format nil "Нужно ~d связки макулатуры — она лежит у остановок и заправок" *book-papers*)))
              (*carry* (say "Руки заняты — книги не взять"))
              (t (decf *papers* *book-papers*) (save-finds)
                 (give-good :books (nth (random 4) '("Выдали стопку книг: «Два капитана» сверху" "Выдали книги: фантастика, зачитанная до дыр"
@@ -152,6 +152,17 @@ Return T if a train ride was pending (GO-TO-TOWN then does nothing itself)."
                         (list (shape g :cyl '(.3 .3 .05 14) (if (evenp i) "#e8e0d0" "#e0b040") x y -13.2 :rot (list (/ pi 2) 0 0) :shadow nil)
                               x y -13.2 .45 (+ .9 (* .35 i)) t)))))
 
+(defvar *goat* nil "Manka the goat by her booth: the node, as built with the booth.")
+(defvar *goat-milk* nil "The milk in Manka's pail: a node that grows as the pail fills.")
+(defvar *rock* '() "The rock face of the mine, as built with its booth: entries of (node x y coal broken).")
+
+(defun build-rock (g)
+  "Build the rock face beside booth group G: four rows of eight blocks against a dark backing."
+  (shape g :box '(4.9 2.7 .4) "#2e2a27" 7.5 1.25 7.3)
+  (setf *rock* (loop for i below 32
+                     collect (list (shape g :box '(.5 .5 .5) "#5a554e" (+ 5.58 (* .55 (mod i 8))) (+ .3 (* .55 (floor i 8))) 6.85)
+                                   (mod i 8) (floor i 8) nil nil))))
+
 (defun build-pond (g)
   "Build the fishing pond beside booth group G: the water, a short pier and reeds."
   (setf *pond* (shape g :cyl '(4.0 4.0 .05 24) "#3f7f9a" 9.0 .07 -9.5 :shadow nil :rough .15 :metal .3))
@@ -175,12 +186,17 @@ Return T if a train ride was pending (GO-TO-TOWN then does nothing itself)."
       (0 (unless (member "nopond" *dev-flags* :test #'string=) (build-pond g)) (beam-between g '(7.0 1.0 -2.6) '(5.0 3.4 -2.6) :thick .04 :rgb "#3a2a1e") (shape g :box '(.5 .5 .5) "#55708a" 7.2 .25 -2.4))
       (1 (unless (member "nopond" *dev-flags* :test #'string=) (build-range g)) (dolist (z '(2.6 3.4 4.2)) (shape g :cyl '(.3 .3 .04 12) "#e8e0d0" 12.8 1.6 z :rot (list 0 0 (/ pi 2))) (shape g :cyl '(.1 .1 .05 8) "#a3262c" 12.76 1.6 z :rot (list 0 0 (/ pi 2)) :shadow nil)))
       (3 (dotimes (i 4) (shape g :box '(.5 .5 .7) (nth i '("#6a3a2e" "#2c4a7a" "#3c5a48" "#c9a13a")) 7.2 (+ .25 (* i .5)) 3.2 :rot (list 0 (* i .2) 0))))
-      (4 (let ((s (group g 7.0 0 3.0))) (node-3d-set-scale s (v3 .55 .55 .55)) (mark-cow s 0 0 1.2 "#e8e4d8")) (shape g :box '(.1 .9 3.0) "#6a5038" 5.4 .45 3.0))
+      (4 (let ((s (group g 7.0 0 3.0)))                                        ; Manka the goat and her pail (activities.lisp)
+           (node-3d-set-scale s (v3 .55 .55 .55)) (mark-cow s 0 0 1.2 "#e8e4d8")
+           (setf *goat* s))
+         (shape g :cyl '(.2 .16 .3 10) "#8a8e92" 7.0 .15 2.2 :metal .5 :rough .4)
+         (setf *goat-milk* (shape g :cyl '(.17 .17 .02 10) "#f6f4ee" 7.0 .06 2.2 :shadow nil))
+         (shape g :box '(.1 .9 3.0) "#6a5038" 5.4 .45 3.0))
       (5 (dotimes (k 6) (shape g :cyl '(.8 .9 1.0 12) (if (evenp k) "#e8e4d8" "#a3262c") 7.0 (+ .5 k) -3.2))   ; a small lighthouse
          (shape g :cyl '(1.1 1.1 .12 12) "#2a2c30" 7.0 6.06 -3.2)
          (shape g :cyl '(.5 .5 .8 10) "#ffe9a0" 7.0 6.5 -3.2 :emit "#ffd870" :energy 3.0 :shadow nil)
          (shape g :cyl '(.05 .7 .5 10) "#a3262c" 7.0 7.15 -3.2))
-      (8 (dolist (z '(-3.4 -4.6)) (shape g :box '(.3 5.0 .3) "#5a4636" 11.0 2.5 z)) (shape g :box '(.4 .4 1.8) "#5a4636" 11.0 5.0 -4.0) (shape g :box '(1.4 1.8 1.0) "#3a3a40" 11.0 .9 -4.0))
+      (8 (build-rock g) (dolist (z '(-3.4 -4.6)) (shape g :box '(.3 5.0 .3) "#5a4636" 11.0 2.5 z)) (shape g :box '(.4 .4 1.8) "#5a4636" 11.0 5.0 -4.0) (shape g :box '(1.4 1.8 1.0) "#3a3a40" 11.0 .9 -4.0))
       (9 (shape g :cyl '(.5 .6 1.0 10) "#e8e4d8" 7.2 .5 -2.6) (shape g :cyl '(.06 .06 .5 6) "#7ab0c8" 7.2 1.2 -2.6 :alpha .6))
       (10 (shape g :box '(3.2 .9 12.0) "#4a4e52" 16.0 .45 0) (dolist (x '(15.2 16.8)) (shape g :box '(.1 .14 13.0) "#8a8e92" x .05 0 :metal .6)))
       (11 (dotimes (i 6) (shape g :box '(2.4 .06 .22) "#c8a060" 7.2 (+ .04 (* i .065)) (+ 2.4 (* .03 i)))) (shape g :box '(1.6 .8 .7) "#8a6440" 7.2 .4 -2.6)))
@@ -209,7 +225,7 @@ They go in a row from the start of the first town, past gas stations and the mar
              (push (make-scene :d0 (- d 10) :d1 (+ d 10) :build (lambda () (build-gimmick d i title rgb))) *scenes*))))
 
 (defparameter *gimmick-spots*
-  '((0 12.2 5.6 1.2) (1 10.7 4.2 1.3) (4 10.2 -3.0 .8) (5 10.2 3.2 2.0) (8 14.2 4.0 1.5) (9 10.4 2.6 1.0) (11 10.4 2.6 .8))
+  '((0 12.2 5.6 1.2) (1 10.7 4.2 1.3) (4 10.2 -3.0 .8) (5 10.2 3.2 2.0) (8 10.7 -5.6 1.2) (9 10.4 2.6 1.0) (11 10.4 2.6 .8))
   "Where else, besides its window, a booth answers to E: entries of (index sideways along-the-road height).
 These are the things the booth is about: the pier, the firing counter, the goat, the lighthouse, the pit head.")
 
