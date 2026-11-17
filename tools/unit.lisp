@@ -18,6 +18,7 @@
 (defvar *kinds* '()) (defvar *dalny* 7) (defvar *land* nil) (defvar *time* 0.0) (defvar *dist* 0.0)
 (defvar *find-nodes* '()) (defvar *stop-ds* '()) (defvar *observatory* nil) (defvar *depot-d* nil)
 (defvar *airmail-d* nil) (defvar *plane* nil) (defvar *client* nil) (defvar *stamp* nil) (defvar *items* (quote ())) (defvar *carry* nil) (defvar *gnome-nodes* (quote ())) (defvar *gnome-told* nil)
+(defvar *lid* nil) (defvar *papers* 0) (defvar *money* 0) (defvar *dev* nil)
 (defun reset-vista ()) (defun clear-land ()) (defun clear-roads ())
 (defun net-guest-p () nil) (defun put-save (key form) (declare (ignore key)) form) (defun get-save (key) (declare (ignore key)) nil)
 (defun say-all (text) text)
@@ -247,6 +248,11 @@
   (check "список не той длины отброшен целиком" (null lamp))
   (defcommon :lamp :value lamp :spec '(:member t nil) :accept (lambda (v) (setf lamp v)))
   (check "повторное объявление не плодит записи" (= (length *commons*) 2)))
+(check "у каждой будки из плана есть объявление: подпись и действие"
+       (every (lambda (plan) (and (booth (first plan) :label) (booth (first plan) :use))) *gimmick-plan*))
+(check "у каждой будки из плана есть заметка в путеводителе"
+       (every (lambda (plan) (assoc (first plan) *gimmick-notes*)) *gimmick-plan*))
+(check "подпись будки — строка" (every (lambda (plan) (stringp (gimmick-label (first plan)))) *gimmick-plan*))
 (check "у вступления и титров есть текст" (and *intro-cards* *credits* (every #'stringp *intro-cards*) (every #'stringp *credits*)))
 (check "на каждый запрещённый товар есть задание с лицензией"
        (every (lambda (r) (find (second r) *quests* :key #'second)) *restricted*))

@@ -56,24 +56,28 @@ Return true if the good was given."
 
 ;;; ------------------------------------------------------------------ what each booth does
 
+;;; A booth is declared once with DEFBOOTH: what its window says, what E does, what stands next to it and
+;;; where else besides the window it answers to E. Where the booths stand and what is written on their
+;;; signs is content: the mod's *GIMMICK-PLAN*. Booths that belong to another subsystem are declared in its
+;;; file (the town council and the militia in bumagi.lisp, the savings bank in debt.lisp).
+
+(defvar *booths* '() "The booths by number: entries of (number . plist of :label :use :build :spot :daily).")
+
+(defmacro defbooth (number &key label use build spot daily)
+  "Declare what the booth NUMBER does.
+LABEL is the hint at its window: a string or a function returning one. USE is a function called on E.
+BUILD is a function of the booth group that adds its landmark. SPOT is (sideways along-the-road height):
+where else, besides the window, it answers to E. With DAILY its free thing is given once a game day."
+  `(progn (setf *booths* (cons (list ,number :label ,label :use ,use :build ,build :spot ,spot :daily ,daily)
+                               (remove ,number *booths* :key #'first)))
+          ,number))
+
+(defun booth (i key) (getf (rest (assoc i *booths*)) key))
+
 (defun gimmick-label (i)
-  (case i
-    (0 "E — порыбачить с мостков")
-    (1 (format nil "E — тир: пять выстрелов за ~d р. Целиться самому" *range-price*))
-    (2 (if *lid* "Крышка у вас уже есть: под ней на сковородке жарится вдвое быстрее"
-           (format nil "E — купить чугунную крышку для сковородки за ~d р.: под ней жарится вдвое быстрее" *lid-price*)))
-    (3 (format nil "E — обменять ~d связки макулатуры на книги · у тебя ~d" *book-papers* *papers*))
-    (4 "E — подоить козу Маньку")
-    (5 "E — подняться на маяк: что почём в ближайших городах")
-    (6 (if *stamp* "Печать уже стоит: за посылки платят вдвое" (format nil "E — получить печать за ~d р.: посылки вдвое дороже" *stamp-price*)))
-    (8 "E — спуститься в шахту за углём")
-    (9 (format nil "E — стакан минеральной воды за ~d р.: бодрит" *water-price*))
-    (10 (format nil "E — погрузить кибитку на платформу: до любого города, ~,1f р. за километр" *rail-per-km*))
-    (11 (format nil "E — ~d досок за ~d р." (first *carpenter-deal*) (second *carpenter-deal*)))
-    (12 (quest-label))
-    (14 (bank-label))
-    (13 (if *fines* (format nil "E — оплатить штрафы: ~d р." (reduce #'+ *fines*)) "Участок: штрафов за вами нет"))
-    (t "Будка")))
+  "Return the hint at the window of booth I."
+  (let ((label (booth i :label)))
+    (cond ((functionp label) (funcall label)) (label) (t "Будка"))))
 
 (defvar *gimmick-spent* '() "The record of free takings, each a pair (booth-number . day): when the free thing was last taken.")
 
@@ -93,38 +97,9 @@ The goat, the fishing and the mine each give theirs once per day cycle."
   (max *rail-min* (round (* *rail-per-km* (/ (plan-way (town-stop-d tw)) 1000)))))
 
 (defshared gimmick-use :gimmick (i)
-  (when (and (member i '(0 4 8)) (spent-p i)) (return-from gimmick-use nil))
-  (case i
-    (0 (if *carry* (say "Руки заняты — удочку не взять") (begin-play :fish)))        ; the games are in igry.lisp
-    (2 (cond (*lid* (say "Крышка уже куплена"))
-             ((pay *lid-price*) (setf *lid* t) (save-prikol) (show-lid) (log-event :lid :money *money*)
-              (say-all "Купили крышку! Висит над сковородкой: теперь на сковородке жарится вдвое быстрее"))))
-    (1 (when (pay *range-price*) (begin-play :tir)))
-    (3 (cond ((and (not *dev*) (< *papers* *book-papers*)) (say (format nil "Нужно ~d связки макулатуры — она лежит у остановок и заправок" *book-papers*)))
-             (*carry* (say "Руки заняты — книги не взять"))
-             (t (decf *papers* *book-papers*) (save-finds)
-                (give-good :books (nth (random 4) '("Выдали стопку книг: «Два капитана» сверху" "Выдали книги: фантастика, зачитанная до дыр"
-                                                    "Выдали книги: том энциклопедии и сказки" "Выдали книги: стихи и справочник грибника"))))))
-    (4 (if *carry* (say "Руки заняты — ведро не взять") (begin-play :goat)))
-    (5 (let* ((here (trade-town))                                ; the two nearest towns by road, in either direction
-              (near (sort (loop for tw in *towns* unless (= (town-index tw) here)
-                                collect (cons (or (plan-way (town-stop-d tw)) 1e9) (town-index tw)))
-                          #'< :key #'car)))
-         (say (format nil "С маяка видно далеко. ~{~a~^ · ~}"
-                      (loop for (nil . i) in (subseq near 0 2) collect (market-note i))))))
-    (6 (cond (*stamp* (say "Печать уже стоит"))
-             ((pay *stamp-price*) (setf *stamp* t) (save-prikol) (log-event :stamp)
-              (say "Справка с круглой печатью! Теперь за посылки платят вдвое"))))
-    (8 (if *carry* (say "Руки заняты — уголь не унести") (begin-play :mine)))
-    (9 (when (pay *water-price*) (setf *boost-until* (+ *time* *water-time*)) (say "Нарзан! В нос шибает. Пять минут бегаешь быстрее")))
-    (10 (cond (*actor* (say "На платформу кибитку ставит водитель: маршрут — его дело"))
-              (t (setf *rail-ticket* t) (open-map)
-                 (say "Кибитка на платформе. Выбери город на карте — поезд довезёт; чем дальше, тем дороже"))))
-    (12 (use-quests))
-    (13 (pay-fines))
-    (14 (bank-use))
-    (11 (when (pay (second *carpenter-deal*)) (incf *planks* (first *carpenter-deal*))
-          (say (format nil "Плотник отсыпал ~d досок. В печку: ~d" (first *carpenter-deal*) *planks*))))))
+  "Do what E does at booth I."
+  (let ((use (booth i :use)))
+    (when (and use (not (and (booth i :daily) (spent-p i)))) (funcall use))))
 
 (defun rail-ride (tw)
   "Travel by train to town TW: instantly, for money.
@@ -174,6 +149,107 @@ Return T if a train ride was pending (GO-TO-TOWN then does nothing itself)."
   (loop for (x z) in '((5.6 -8.2) (5.9 -10.9) (12.2 -8.0) (12.4 -11.2) (9.4 -13.2))
         do (shape g :cyl '(.02 .03 1.1 5) "#5a7a3a" x .55 z :shadow nil)))
 
+;;; ------------------------------------------------------------------ the booths themselves
+
+;; the pier: fishing
+(defbooth 0
+  :daily t
+  :spot '(12.2 5.6 1.2)
+  :label "E — порыбачить с мостков"
+  :use (lambda () (if *carry* (say "Руки заняты — удочку не взять") (begin-play :fish)))
+  :build (lambda (g) (unless (member "nopond" *dev-flags* :test #'string=) (build-pond g)) (beam-between g '(7.0 1.0 -2.6) '(5.0 3.4 -2.6) :thick .04 :rgb "#3a2a1e") (shape g :box '(.5 .5 .5) "#55708a" 7.2 .25 -2.4)))
+
+;; the shooting range
+(defbooth 1
+  :spot '(10.7 4.2 1.3)
+  :label (lambda () (format nil "E — тир: пять выстрелов за ~d р. Целиться самому" *range-price*))
+  :use (lambda () (when (pay *range-price*) (begin-play :tir)))
+  :build (lambda (g) (unless (member "nopond" *dev-flags* :test #'string=) (build-range g)) (dolist (z '(2.6 3.4 4.2)) (shape g :cyl '(.3 .3 .04 12) "#e8e0d0" 12.8 1.6 z :rot (list 0 0 (/ pi 2))) (shape g :cyl '(.1 .1 .05 8) "#a3262c" 12.76 1.6 z :rot (list 0 0 (/ pi 2)) :shadow nil))))
+
+;; the hardware shop: the lid for the frying pan
+(defbooth 2
+  :label (lambda () (if *lid* "Крышка у вас уже есть: под ней на сковородке жарится вдвое быстрее"
+           (format nil "E — купить чугунную крышку для сковородки за ~d р.: под ней жарится вдвое быстрее" *lid-price*)))
+  :use (lambda () (cond (*lid* (say "Крышка уже куплена"))
+             ((pay *lid-price*) (setf *lid* t) (save-prikol) (show-lid) (log-event :lid :money *money*)
+              (say-all "Купили крышку! Висит над сковородкой: теперь на сковородке жарится вдвое быстрее")))))
+
+;; the library: waste paper for books
+(defbooth 3
+  :label (lambda () (format nil "E — обменять ~d связки макулатуры на книги · у тебя ~d" *book-papers* *papers*))
+  :use (lambda () (cond ((and (not *dev*) (< *papers* *book-papers*)) (say (format nil "Нужно ~d связки макулатуры — она лежит у остановок и заправок" *book-papers*)))
+             (*carry* (say "Руки заняты — книги не взять"))
+             (t (decf *papers* *book-papers*) (save-finds)
+                (give-good :books (nth (random 4) '("Выдали стопку книг: «Два капитана» сверху" "Выдали книги: фантастика, зачитанная до дыр"
+                                                    "Выдали книги: том энциклопедии и сказки" "Выдали книги: стихи и справочник грибника"))))))
+  :build (lambda (g) (dotimes (i 4) (shape g :box '(.5 .5 .7) (nth i '("#6a3a2e" "#2c4a7a" "#3c5a48" "#c9a13a")) 7.2 (+ .25 (* i .5)) 3.2 :rot (list 0 (* i .2) 0)))))
+
+;; Manka the goat
+(defbooth 4
+  :daily t
+  :spot '(10.2 -3.0 .8)
+  :label "E — подоить козу Маньку"
+  :use (lambda () (if *carry* (say "Руки заняты — ведро не взять") (begin-play :goat)))
+  :build (lambda (g) (let ((s (group g 7.0 0 3.0)))                                        ; Manka the goat and her pail (activities.lisp)
+           (node-3d-set-scale s (v3 .55 .55 .55)) (mark-cow s 0 0 1.2 "#e8e4d8")
+           (setf *goat* s))
+         (shape g :cyl '(.2 .16 .3 10) "#8a8e92" 7.0 .15 2.2 :metal .5 :rough .4)
+         (setf *goat-milk* (shape g :cyl '(.17 .17 .02 10) "#f6f4ee" 7.0 .06 2.2 :shadow nil))
+         (shape g :box '(.1 .9 3.0) "#6a5038" 5.4 .45 3.0)))
+
+;; the lighthouse: prices in the two nearest towns
+(defbooth 5
+  :spot '(10.2 3.2 2.0)
+  :label "E — подняться на маяк: что почём в ближайших городах"
+  :use (lambda () (let* ((here (trade-town))                                ; the two nearest towns by road, in either direction
+              (near (sort (loop for tw in *towns* unless (= (town-index tw) here)
+                                collect (cons (or (plan-way (town-stop-d tw)) 1e9) (town-index tw)))
+                          #'< :key #'car)))
+         (say (format nil "С маяка видно далеко. ~{~a~^ · ~}"
+                      (loop for (nil . i) in (subseq near 0 2) collect (market-note i))))))
+  :build (lambda (g) (dotimes (k 6) (shape g :cyl '(.8 .9 1.0 12) (if (evenp k) "#e8e4d8" "#a3262c") 7.0 (+ .5 k) -3.2))   ; a small lighthouse
+         (shape g :cyl '(1.1 1.1 .12 12) "#2a2c30" 7.0 6.06 -3.2)
+         (shape g :cyl '(.5 .5 .8 10) "#ffe9a0" 7.0 6.5 -3.2 :emit "#ffd870" :energy 3.0 :shadow nil)
+         (shape g :cyl '(.05 .7 .5 10) "#a3262c" 7.0 7.15 -3.2)))
+
+;; window no. 3: the stamp
+(defbooth 6
+  :label (lambda () (if *stamp* "Печать уже стоит: за посылки платят вдвое" (format nil "E — получить печать за ~d р.: посылки вдвое дороже" *stamp-price*)))
+  :use (lambda () (cond (*stamp* (say "Печать уже стоит"))
+             ((pay *stamp-price*) (setf *stamp* t) (save-prikol) (log-event :stamp)
+              (say "Справка с круглой печатью! Теперь за посылки платят вдвое")))))
+
+;; the mine
+(defbooth 8
+  :daily t
+  :spot '(10.7 -5.6 1.2)
+  :label "E — спуститься в шахту за углём"
+  :use (lambda () (if *carry* (say "Руки заняты — уголь не унести") (begin-play :mine)))
+  :build (lambda (g) (build-rock g) (dolist (z '(-3.4 -4.6)) (shape g :box '(.3 5.0 .3) "#5a4636" 11.0 2.5 z)) (shape g :box '(.4 .4 1.8) "#5a4636" 11.0 5.0 -4.0) (shape g :box '(1.4 1.8 1.0) "#3a3a40" 11.0 .9 -4.0)))
+
+;; mineral water
+(defbooth 9
+  :spot '(10.4 2.6 1.0)
+  :label (lambda () (format nil "E — стакан минеральной воды за ~d р.: бодрит" *water-price*))
+  :use (lambda () (when (pay *water-price*) (setf *boost-until* (+ *time* *water-time*)) (say "Нарзан! В нос шибает. Пять минут бегаешь быстрее")))
+  :build (lambda (g) (shape g :cyl '(.5 .6 1.0 10) "#e8e4d8" 7.2 .5 -2.6) (shape g :cyl '(.06 .06 .5 6) "#7ab0c8" 7.2 1.2 -2.6 :alpha .6)))
+
+;; the flatcar: the wagon goes by train
+(defbooth 10
+  :label (lambda () (format nil "E — погрузить кибитку на платформу: до любого города, ~,1f р. за километр" *rail-per-km*))
+  :use (lambda () (cond (*actor* (say "На платформу кибитку ставит водитель: маршрут — его дело"))
+              (t (setf *rail-ticket* t) (open-map)
+                 (say "Кибитка на платформе. Выбери город на карте — поезд довезёт; чем дальше, тем дороже"))))
+  :build (lambda (g) (shape g :box '(3.2 .9 12.0) "#4a4e52" 16.0 .45 0) (dolist (x '(15.2 16.8)) (shape g :box '(.1 .14 13.0) "#8a8e92" x .05 0 :metal .6))))
+
+;; the carpenter: planks
+(defbooth 11
+  :spot '(10.4 2.6 .8)
+  :label (lambda () (format nil "E — ~d досок за ~d р." (first *carpenter-deal*) (second *carpenter-deal*)))
+  :use (lambda () (when (pay (second *carpenter-deal*)) (incf *planks* (first *carpenter-deal*))
+          (say (format nil "Плотник отсыпал ~d досок. В печку: ~d" (first *carpenter-deal*) *planks*))))
+  :build (lambda (g) (dotimes (i 6) (shape g :box '(2.4 .06 .22) "#c8a060" 7.2 (+ .04 (* i .065)) (+ 2.4 (* .03 i)))) (shape g :box '(1.6 .8 .7) "#8a6440" 7.2 .4 -2.6)))
+
 (defun build-gimmick (d index title rgb)
   (let ((g (apply #'group *world* (road-pos d 3.2 -.35))))
     (node-3d-set-rotation g (v3 0 (- (road-frame d)) 0))
@@ -184,24 +260,7 @@ Return T if a train ride was pending (GO-TO-TOWN then does nothing itself)."
     (shape g :box '(.2 .7 4.4) "#2a2c30" 8.9 3.5 0 :shadow nil)
     (sign g title 8.78 3.5 0 :h (if (> (length title) 14) .3 .45) :rgb "#f0ece0")
     (flood g 7.5 3.0 0 :range 14.0)
-    (case index                                                        ; every booth has its own landmark
-      (0 (unless (member "nopond" *dev-flags* :test #'string=) (build-pond g)) (beam-between g '(7.0 1.0 -2.6) '(5.0 3.4 -2.6) :thick .04 :rgb "#3a2a1e") (shape g :box '(.5 .5 .5) "#55708a" 7.2 .25 -2.4))
-      (1 (unless (member "nopond" *dev-flags* :test #'string=) (build-range g)) (dolist (z '(2.6 3.4 4.2)) (shape g :cyl '(.3 .3 .04 12) "#e8e0d0" 12.8 1.6 z :rot (list 0 0 (/ pi 2))) (shape g :cyl '(.1 .1 .05 8) "#a3262c" 12.76 1.6 z :rot (list 0 0 (/ pi 2)) :shadow nil)))
-      (3 (dotimes (i 4) (shape g :box '(.5 .5 .7) (nth i '("#6a3a2e" "#2c4a7a" "#3c5a48" "#c9a13a")) 7.2 (+ .25 (* i .5)) 3.2 :rot (list 0 (* i .2) 0))))
-      (4 (let ((s (group g 7.0 0 3.0)))                                        ; Manka the goat and her pail (activities.lisp)
-           (node-3d-set-scale s (v3 .55 .55 .55)) (mark-cow s 0 0 1.2 "#e8e4d8")
-           (setf *goat* s))
-         (shape g :cyl '(.2 .16 .3 10) "#8a8e92" 7.0 .15 2.2 :metal .5 :rough .4)
-         (setf *goat-milk* (shape g :cyl '(.17 .17 .02 10) "#f6f4ee" 7.0 .06 2.2 :shadow nil))
-         (shape g :box '(.1 .9 3.0) "#6a5038" 5.4 .45 3.0))
-      (5 (dotimes (k 6) (shape g :cyl '(.8 .9 1.0 12) (if (evenp k) "#e8e4d8" "#a3262c") 7.0 (+ .5 k) -3.2))   ; a small lighthouse
-         (shape g :cyl '(1.1 1.1 .12 12) "#2a2c30" 7.0 6.06 -3.2)
-         (shape g :cyl '(.5 .5 .8 10) "#ffe9a0" 7.0 6.5 -3.2 :emit "#ffd870" :energy 3.0 :shadow nil)
-         (shape g :cyl '(.05 .7 .5 10) "#a3262c" 7.0 7.15 -3.2))
-      (8 (build-rock g) (dolist (z '(-3.4 -4.6)) (shape g :box '(.3 5.0 .3) "#5a4636" 11.0 2.5 z)) (shape g :box '(.4 .4 1.8) "#5a4636" 11.0 5.0 -4.0) (shape g :box '(1.4 1.8 1.0) "#3a3a40" 11.0 .9 -4.0))
-      (9 (shape g :cyl '(.5 .6 1.0 10) "#e8e4d8" 7.2 .5 -2.6) (shape g :cyl '(.06 .06 .5 6) "#7ab0c8" 7.2 1.2 -2.6 :alpha .6))
-      (10 (shape g :box '(3.2 .9 12.0) "#4a4e52" 16.0 .45 0) (dolist (x '(15.2 16.8)) (shape g :box '(.1 .14 13.0) "#8a8e92" x .05 0 :metal .6)))
-      (11 (dotimes (i 6) (shape g :box '(2.4 .06 .22) "#c8a060" 7.2 (+ .04 (* i .065)) (+ 2.4 (* .03 i)))) (shape g :box '(1.6 .8 .7) "#8a6440" 7.2 .4 -2.6)))
+    (let ((build (booth index :build))) (when build (funcall build g)))      ; every booth has its own landmark
     g))
 
 (defun dev-slots ()
@@ -226,11 +285,6 @@ They go in a row from the start of the first town, past gas stations and the mar
              (when (and (member i '(0 1)) (not (member "nobare" *dev-flags* :test #'string=))) (push (list (- d 11.0) (+ d 17.0)) *bare*))   ; the pond and the shooting alley need open ground
              (push (make-scene :d0 (- d 10) :d1 (+ d 10) :build (lambda () (build-gimmick d i title rgb))) *scenes*))))
 
-(defparameter *gimmick-spots*
-  '((0 12.2 5.6 1.2) (1 10.7 4.2 1.3) (4 10.2 -3.0 .8) (5 10.2 3.2 2.0) (8 10.7 -5.6 1.2) (9 10.4 2.6 1.0) (11 10.4 2.6 .8))
-  "Where else, besides its window, a booth answers to E: entries of (index sideways along-the-road height).
-These are the things the booth is about: the pier, the firing counter, the goat, the lighthouse, the pit head.")
-
 (defun prikol-usables ()
   "Return the things to press at every booth within walking distance of the wagon: its window and its landmark.
 Each booth answers for itself, whichever of them the wagon stopped closest to: on foot one walks from
@@ -238,10 +292,10 @@ booth to booth, and a gas station next door does not switch them off."
   (when (< *speed* .4)
     (loop for (d i) in *gimmicks*
           when (< (abs (- d *dist*)) 80.0)
-            append (let ((i i) (d d) (spot (assoc i *gimmick-spots*)))
+            append (let ((i i) (d d) (spot (booth i :spot)))
                      (flet ((press (x at up) (road-usable x at up (lambda () (gimmick-label i)) (lambda () (gimmick-use i)) 4.5 1.2)))
                        (cons (press 11.9 d 1.3)
-                             (when spot (list (press (second spot) (+ d (third spot)) (fourth spot))))))))))
+                             (when spot (list (press (first spot) (+ d (second spot)) (third spot))))))))))
 
 (defun step-prikol ()
   (when (and *wait* (> *time* (job-until *wait*)))                    ; the wait is over: fish, coal

@@ -1,6 +1,6 @@
 ;;;; The story that frames the trip. We come by train and learn that father left his debt to us and went
 ;;;; abroad (the intro: a few cards over a dark screen). The debt is paid off in parts at the savings bank,
-;;;; a booth in the first town (prikol.lisp calls BANK-LABEL and BANK-USE). Once it is paid, the same window
+;;;; a booth in the first town (DEFBOOTH 14 below). Once it is paid, the same window
 ;;;; sells the ticket out: the wagon drives into the sunset, the credits roll and the final tune plays.
 ;;;; The words (cards, credits) come from mods; the sums are in economy.lisp.
 ;;;; The debt belongs to whoever owns the game: a guest neither pays it nor sees the intro and the ending.
@@ -109,6 +109,9 @@ Return what is left."
                (if (zerop *debt*)
                    (say-all "Долг закрыт! Кассирша ставит штамп «ПОГАШЕНО». Теперь в этом окне продают билет к отцу — E, когда будете готовы")
                    (say (format nil "Внесли ~d р. Осталось ~d р." sum *debt*))))))))
+
+;; the savings bank is a booth like the others (DEFBOOTH, prikol.lisp)
+(defbooth 14 :label #'bank-label :use #'bank-use)
 
 ;;; ------------------------------------------------------------------ the ending
 

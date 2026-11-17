@@ -238,3 +238,13 @@ and ask for a licence. Travelling light, we are never stopped."
   (list (usable (first *folder-at*) (second *folder-at*) (third *folder-at*)
                 (lambda () (if (and *check* (eq (first *check*) :waiting)) "E — показать документы милиции" "E — папка с документами"))
                 #'use-folder)))
+
+;;; ------------------------------------------------------------------ the booths of the papers
+
+;; the town council: quests for licences
+(defbooth 12 :label #'quest-label :use #'use-quests)
+
+;; the militia station: fines are paid here
+(defbooth 13
+  :label (lambda () (if *fines* (format nil "E — оплатить штрафы: ~d р." (reduce #'+ *fines*)) "Участок: штрафов за вами нет"))
+  :use #'pay-fines)
