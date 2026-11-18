@@ -207,6 +207,11 @@ That is the good sought or a dish made from it (blini will do for milk)."
     (:charlotte (shape g :cyl '(.1 .1 .012 12) "#e4e0d4" 0 .006 0)                        ; an apple pie
                 (shape g :cyl '(.085 .09 .05 12) "#d8a040" 0 .037 0)
                 (dotimes (i 5) (shape g :box '(.03 .006 .012) "#f0d8a0" (* .04 (cos (* i 1.25))) .064 (* .04 (sin (* i 1.25))) :shadow nil)))
+    (:vobla (shape g :box '(.12 .004 .004) "#d8d2c0" 0 .17 0 :shadow nil)                 ; three dried roach on a string, tails down
+            (dotimes (i 3)
+              (let ((x (* .045 (- i 1))))
+                (shape g :ball '(.03 6 4) "#a08a5a" x .1 0 :scale '(.45 1.6 .18) :shadow nil)
+                (shape g :box '(.03 .025 .004) "#8a7448" x .035 0 :shadow nil))))
     (:dried (shape g :box '(.004 .16 .004) "#d8d2c0" 0 .08 0 :shadow nil)                  ; dried mushrooms on a string
             (dotimes (i 5) (shape g :ball '(.026 6 4) "#6a4a34" 0 (+ .025 (* i .03)) 0 :scale '(1 .45 1) :shadow nil)))
     (:fried (shape g :cyl '(.1 .1 .012 12) "#e4e0d4" 0 .006 0)                          ; a plate with a browned fish on it
@@ -253,7 +258,7 @@ That is the good sought or a dish made from it (blini will do for milk)."
 
 (defparameter *modelled* '(:fish :bread :coal :tools :books :cans :water :honey :berry :fried :jam :toast :stew
                            :mushroom :toadstool :apple :herb :shroomfry :creamfry :charlotte :dried
-                           :nut :sandwich :berrypie :soup :bakedapple :brittle :driedapple :driedherb :pickled :jarcompote :cannedfish)
+                           :nut :sandwich :berrypie :soup :bakedapple :brittle :driedapple :driedherb :vobla :pickled :jarcompote :cannedfish)
   "The goods and dishes BUILD-GOOD has a model for. Any other good from a mod is drawn as a plain packet.")
 
 (defun build-packet (g kind)
@@ -279,7 +284,7 @@ That is the good sought or a dish made from it (blini will do for milk)."
                         (:mushroom "грибы" (.16 .17 .16)) (:toadstool "грибы" (.16 .17 .16)) (:apple "яблоки" (.18 .12 .18)) (:herb "травы" (.1 .18 .06))
                         (:shroomfry "жареные грибы" (.22 .06 .22)) (:creamfry "грибы в сметане" (.2 .1 .2)) (:charlotte "шарлотка" (.22 .08 .22))
                         (:dried "сушёные грибы" (.08 .17 .08))
-                        (:driedapple "сушёные яблоки" (.08 .17 .08)) (:driedherb "сушёные травы" (.1 .16 .06))
+                        (:driedapple "сушёные яблоки" (.08 .17 .08)) (:driedherb "сушёные травы" (.1 .16 .06)) (:vobla "вобла" (.14 .18 .04))
                         (:pickled "солёные грибы" (.12 .16 .12)) (:jarcompote "компот в банке" (.12 .16 .12)) (:cannedfish "рыбные консервы" (.12 .05 .12))
                         (:nut "орехи" (.16 .14 .16)) (:sandwich "бутерброды" (.22 .06 .22)) (:berrypie "пирог с клюквой" (.22 .08 .22))
                         (:soup "суп" (.2 .12 .2)) (:bakedapple "печёные яблоки" (.22 .1 .22)) (:brittle "козинаки" (.18 .08 .08))

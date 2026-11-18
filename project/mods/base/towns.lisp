@@ -47,7 +47,7 @@
         (:apple :charlotte "шарлотку" :bread) (:apple :bakedapple "печёные яблоки")
         (:bread :sandwich "бутерброды" :fish) (:berry :berrypie "пирог с клюквой" :bread) (:cans :soup "суп" :water)
         (:nut :brittle "козинаки" :honey)
-        (:mushroom :dried "сушёные грибы" nil :line) (:apple :driedapple "сушёные яблоки" nil :line) (:herb :driedherb "сушёные травы" nil :line)
+        (:mushroom :dried "сушёные грибы" nil :line) (:apple :driedapple "сушёные яблоки" nil :line) (:herb :driedherb "сушёные травы" nil :line) (:fish :vobla "воблу" nil :line)
         ;; closed in a jar at the crate under the washstand (the hearth :JAR): it never goes bad
         (:mushroom :pickled "солёные грибы" nil :jar) (:apple :jarcompote "компот в банке" nil :jar) (:fish :cannedfish "рыбные консервы" nil :jar)))
 

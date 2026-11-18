@@ -51,9 +51,9 @@ Each distinct error text goes to the log only once."
 
 (defun quiet-debugger (condition hook)
   (declare (ignore hook))
-  (ignore-errors (note-error condition "отладчик") (finish-output))
+  (ignore-errors (note-error condition "debugger") (finish-output))
   (ignore-errors (throw (intern "CALLBACK-ERROR" "GD-EXTENSION-CALLBACK") condition))
-  (ignore-errors (format t "~&Мимо отладчика не вышло: ~a~%" condition)))
+  (ignore-errors (cl:format t "~&The debugger could not be kept out: ~a~%" condition)))
 
 (defun quiet-debugger-on ()
   "Put QUIET-DEBUGGER in place. It is done from a frame: the game is loaded under SI:SAFE-EVAL, which binds
