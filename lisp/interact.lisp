@@ -105,11 +105,59 @@ Discs are handled by hand too."
              ((spell-ready-p) "Q — заклинание")
              (t "")))))
 
+;;; What is said goes three ways. A message about what we did is a toast in the middle of the screen: it
+;;; stays for as long as it takes to read, and the next one waits its turn instead of wiping it out. What a
+;;; cat says - anything with «words» after a name - goes into a framed panel lower down, with a queue of
+;;; its own, so a customer's line and a hint no longer fight for one place. And everything said is written
+;;; into the notebook (N), newest first, for whoever did not have the time to read it.
+
+(defvar *toasts* '() "The messages waiting for their turn in the middle of the screen.")
+(defvar *toast-shown* 0.0 "The seconds the current message has been on the screen.")
+(defvar *speech* nil "The line in the panel right now: (text . seconds left).")
+(defvar *speeches* '() "The lines waiting for the panel.")
+(defvar *speech-label* nil)
+(defvar *said-log* '() "The notebook: entries of (day . text), the newest first.")
+(defparameter *said-keep* 90 "The number of entries the notebook keeps.")
+(defparameter *toast-least* 1.2 "The seconds a message stays at the least before the next one may take its place.")
+
+(defun read-time (text) "Return the seconds TEXT stays on the screen: longer for a longer one." (max 2.5 (min 10.0 (/ (length text) 12.0))))
+(defun speech-p (text) "Return true if TEXT is somebody's words: a name, a colon and a quotation." (and (search ": «" text) t))
+
+(defun note-said (text)
+  (unless (equal text (cdr (first *said-log*)))
+    (push (cons (if (fboundp 'trip-day) (funcall 'trip-day) 0) text) *said-log*)
+    (when (> (length *said-log*) *said-keep*) (setf *said-log* (subseq *said-log* 0 *said-keep*)))))
+
 (defun say (text)
-  "Show TEXT as a hint on the screen.
+  "Show TEXT on the screen and write it into the notebook.
 When the driver performs an action on behalf of a guest, the hint goes to the guest,
 not to the driver."
-  (if *actor* (push text *said*) (setf *toast* (cons text 2.5))))
+  (cond (*actor* (push text *said*))
+        ((not (stringp text)))
+        (t (note-said text)
+           (cond ((speech-p text)
+                  (cond ((null *speech*) (setf *speech* (cons text (read-time text))))
+                        ((or (equal text (car *speech*)) (member text *speeches* :test #'equal)))
+                        (t (setf *speeches* (last (append *speeches* (list text)) 4)))))
+                 ((and *toast* (> (cdr *toast*) .45) (< *toast-shown* *toast-least*) (not (equal text (car *toast*))))   ; something is still being read: wait
+                  (unless (member text *toasts* :test #'equal)
+                    (setf *toasts* (last (append *toasts* (list text)) 4))))
+                 (t (setf *toast* (cons text (read-time text)) *toast-shown* 0.0))))))
+
+(defun notebook-cards ()
+  "Return the notebook as cards for the screen: nine entries a page, the newest first."
+  (let* ((pages (loop for rest on *said-log* by (lambda (l) (nthcdr 9 l)) collect (subseq rest 0 (min 9 (length rest)))))
+         (n (length pages)))
+    (loop for page in pages for i from 1
+          collect (format nil "~a~%~%~{~a~^~%~}"
+                          (format nil (tr "БЛОКНОТ · страница ~d из ~d · пробел — дальше, Q — закрыть") i n)
+                          (mapcar (lambda (e) (format nil (tr "день ~d · ~a") (car e) (cdr e))) page)))))
+
+(defun press-notebook ()
+  "Open the notebook: everything that was said, the newest first."
+  (cond ((null *said-log*) (say "В блокноте пока пусто") t)
+        ((and (boundp '*show*) (symbol-value '*show*)) nil)
+        (t (funcall 'open-show (notebook-cards) (lambda ())) t)))
 
 (defun make-hint (root)
   (let ((layer (gdext:make-object "CanvasLayer")) (l (gdext:make-object "Label")))
@@ -122,12 +170,43 @@ not to the driver."
     (object-call l "add_theme_font_size_override" "font_size" 10)   ; the picture is 640x360: the font is half the size
     (object-call l "add_theme_constant_override" "outline_size" 3)
     (object-call l "add_theme_color_override" "font_outline_color" (color 0 0 0 .8))
-    (setf *hint* l)))
+    (setf *hint* l)
+    ;; the panel for what cats say: lower down, framed, wrapped to a column
+    (let ((s (gdext:make-object "Label")) (box (gdext:make-object "StyleBoxFlat")))
+      (node-add-child layer s)
+      (object-set box "bg_color" (color .07 .06 .05 .82))
+      (object-set box "border_color" (color .85 .66 .25 .9))
+      (dolist (side '("left" "top" "right" "bottom"))
+        (object-set box (format nil "border_width_~a" side) 1)
+        (object-set box (format nil "content_margin_~a" side) 6.0))
+      (object-call s "add_theme_stylebox_override" "normal" box)
+      (object-set s "anchor_left" .5) (object-set s "anchor_right" .5)
+      (object-set s "anchor_top" .97) (object-set s "anchor_bottom" .97)
+      (object-set s "offset_left" -210.0) (object-set s "offset_right" 210.0)
+      (object-set s "grow_vertical" 0)                                   ; grows upwards from the bottom edge
+      (object-set s "horizontal_alignment" 1)
+      (object-set s "autowrap_mode" 3)
+      (object-call s "add_theme_font_size_override" "font_size" 10)
+      (object-set s "visible" nil)
+      (setf *speech-label* s))))
 
 (defun step-hint (delta)
   "Update the hint each frame, DELTA seconds after the previous one.
 Show the SAY message until it expires, otherwise what is under the crosshair."
-  (when *toast* (when (<= (decf (cdr *toast*) delta) 0) (setf *toast* nil)))
+  (when *toast*
+    (incf *toast-shown* delta)
+    (when (or (<= (decf (cdr *toast*) delta) 0) (and *toasts* (> *toast-shown* *toast-least*) (> (cdr *toast*) .45)))
+      (setf *toast* nil)))
+  (when (and (null *toast*) *toasts*)                                    ; the next one in the queue
+    (let ((text (pop *toasts*))) (setf *toast* (cons text (read-time text)) *toast-shown* 0.0)))
+  (when *speech* (when (<= (decf (cdr *speech*) delta) 0) (setf *speech* nil)))
+  (when (and (null *speech*) *speeches*)
+    (let ((text (pop *speeches*))) (setf *speech* (cons text (read-time text)))))
+  (when *speech-label*
+    (let ((text (if (and *speech* (not *hud-hidden*)) (car *speech*) "")))
+      (unless (string= text (object-get *speech-label* "text"))
+        (object-set *speech-label* "text" text)
+        (object-set *speech-label* "visible" (plusp (length text))))))
   (when *hint*
     (let ((text (cond (*toast* (car *toast*)) ((= (input-get-mouse-mode) 2) (hint-text)) (t ""))))
       (unless (string= text (object-get *hint* "text")) (object-set *hint* "text" text)))))

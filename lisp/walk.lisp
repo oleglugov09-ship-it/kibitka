@@ -7,6 +7,24 @@
 (in-package #:kiosk-trip)
 
 (defparameter *eye* 1.2 "The eye height above the floor: we are cats, shorter than a human.")
+;; the stepladder by the rack: stand on it (E) to see the top shelf and put things there properly
+(defparameter *steps-at* '(0.0 -1.72) "Where one stands on the stepladder: x and z in the wagon.")
+(defparameter *steps-rise* .55 "How much higher the eyes are on the stepladder, in metres.")
+(defvar *on-steps* nil "True while we stand on the stepladder.")
+(defvar *steps-up* 0.0 "How far we have climbed right now, in metres: it follows *ON-STEPS* smoothly.")
+
+(defun use-steps ()
+  "Climb the stepladder, or step down from it."
+  (cond (*on-steps* (setf *on-steps* nil))
+        (t (setf *seat* nil *on-steps* t
+                 *pos* (v3 (first *steps-at*) (vector3-y *pos*) (second *steps-at*)))))
+  t)
+
+(defun steps-usables ()
+  "Return the stepladder as a thing to press."
+  (list (usable (first *steps-at*) .4 (- (second *steps-at*) .28)
+                (lambda () (if *on-steps* "E — слезть со стремянки" "E — встать на стремянку: верхняя полка будет на уровне глаз"))
+                #'use-steps nil 2.2 .2)))
 (defparameter *mouse-sens* .0025)
 (defparameter *bounds* '(-1.4 1.4 -2.55 2.68) "The bounds x0 x1 z0 z1 on the wagon floor, right up to the back wall with the door.")
 
@@ -71,6 +89,7 @@ The truck drives only on autopilot (the map); the player can just stop it with S
     (:torch "torch" "Фонарик" press-torch)
     (:jump "jump" "Прыжок" press-jump)
     (:hide-hud "hide_hud" "Скрыть приборы и надписи" press-hide-hud)
+    (:notebook "notebook" "Блокнот: всё, что было сказано" press-notebook)
     (:unstuck "unstuck" "Застрял: встать в центр кибитки" press-unstuck))
   "The action table: (key godot-action-name settings-label [press-handler]).
 Actions without a handler (walking, running) are polled every frame. A handler returns true if the press
@@ -253,7 +272,11 @@ The meta room and waiting at the bus stop are not remembered."
       ;; the eye height is one for everything: both the camera and the aim (*EYE-NOW*). The aim used to be
       ;; computed 'from the wagon floor' while the outside camera stood on the ground: a metre of difference,
       ;; and things outdoors were almost impossible to hit
-      (setf *eye-now* (+ (* *floor* (- 1 down)) (if *seat* (fifth *seat*) *eye*) *jump-y*
+      ;; on the stepladder by the rack the eyes are level with the top shelf; a step aside and we are down again
+      (when (and *on-steps* (or *seat* *meta* (> (+ (expt (- x (first *steps-at*)) 2) (expt (- z (second *steps-at*)) 2)) .12)))
+        (setf *on-steps* nil))
+      (setf *steps-up* (+ *steps-up* (* .2 (- (if *on-steps* *steps-rise* 0.0) *steps-up*))))
+      (setf *eye-now* (+ (* *floor* (- 1 down)) (if *seat* (fifth *seat*) *eye*) *jump-y* *steps-up*
                          (if (and (not *meta*) (outdoors-p x z)) (ground-rise x z) 0.0)))        ; outside — along the ground
       (node-3d-set-position *camera* (v3 x *eye-now* z)))
     (when *torch-node* (object-set *torch-node* "visible" t))

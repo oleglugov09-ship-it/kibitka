@@ -27,6 +27,17 @@ The record player and the discs sit on the left of its bottom shelf.")
 (defparameter *rack-top* 2.28 "The height of the overhead racks above the floor.")
 (defparameter *rack-z* '(-2.0 2.4) "The z extent, from and to, of the overhead racks along the wall.")
 
+(defun make-steps (c)
+  "Build the stepladder in front of the rack under C: two rails, two treads and a top to stand on."
+  (destructuring-bind (x z) *steps-at*
+    (let ((g (group c x *floor* (- z .28))) (wood "#8a6440") (dark "#5a3e26"))
+      (dolist (sx '(-.19 .19))
+        (shape g :box '(.04 .62 .04) dark sx .3 -.1 :rot '(.3 0 0))             ; the rails lean on the rack
+        (shape g :box '(.04 .58 .04) dark sx .28 .12 :rot '(-.22 0 0)))         ; and the back legs
+      (shape g :box '(.36 .03 .14) wood 0 .2 .07) (shape g :box '(.36 .03 .14) wood 0 .38 0)
+      (shape g :box '(.4 .035 .2) wood 0 .57 -.04)
+      g)))
+
 (defun make-racks (c)
   "Build the overhead racks under C as a grating, like luggage nets on a train.
 They are lengthwise slats with sparse crossbars, so from below you can see what lies on them
@@ -495,7 +506,7 @@ These are the map, the stove, the light switch, the ladder, the window and the b
   "Return everything that can be pressed right now.
 The order matters: the first one that fits the crosshair is the one that fires."
   (unless *meta*
-    (append (trade-usables) (kettle-usables) (fridge-usables) (curtain-usables) (home-usables) (table-usables) (seat-usables) (uyut-usables) (stars-usables) (finds-usables) (dalny-usables) (prikol-usables) (life-usables) (gnome-usables) (bumagi-usables) (fixture-usables))))
+    (append (trade-usables) (steps-usables) (kettle-usables) (fridge-usables) (curtain-usables) (home-usables) (table-usables) (seat-usables) (uyut-usables) (stars-usables) (finds-usables) (dalny-usables) (prikol-usables) (life-usables) (gnome-usables) (bumagi-usables) (fixture-usables))))
 
 (defun window-label () (if *window-open* "E — закрыть окно" "E — раздвинуть окно"))
 
@@ -772,4 +783,4 @@ the map."
 
 (defun make-byt (cart)
   "Build everything bolted down into the freshly assembled wagon CART."
-  (make-shelf cart) (make-racks cart) (make-fold cart) (make-table cart) (make-stove cart) (make-frost cart) (make-controls cart) (make-washstand cart) (make-window cart))
+  (make-shelf cart) (make-racks cart) (make-steps cart) (make-fold cart) (make-table cart) (make-stove cart) (make-frost cart) (make-controls cart) (make-washstand cart) (make-window cart))
