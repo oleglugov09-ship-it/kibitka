@@ -14,8 +14,18 @@
 (defvar *fridge-door* nil "The hinge node of the fridge door.")
 (defvar *spoil-day* nil "The game day up to which spoiling has been counted, or NIL before the first check.")
 
+(defvar *fridge-k* 0.0 "How far the fridge door is open right now: 0 shut, 1 open; it follows *FRIDGE-OPEN*.")
+
 (defun apply-fridge ()
-  (when *fridge-door* (node-3d-set-rotation *fridge-door* (v3 0 (if *fridge-open* 1.75 0.0) 0))))
+  (when *fridge-door* (node-3d-set-rotation *fridge-door* (v3 0 (* 1.75 *fridge-k*) 0))))
+
+(defun step-fridge (delta)
+  "Swing the fridge door towards where it should be, like the wagon door (STEP-DOOR)."
+  (let ((target (if *fridge-open* 1.0 0.0)))
+    (unless (< (abs (- target *fridge-k*)) .001)
+      (incf *fridge-k* (* (- target *fridge-k*) (min 1 (* delta 6))))
+      (when (< (abs (- target *fridge-k*)) .002) (setf *fridge-k* target))
+      (apply-fridge))))
 
 (defun make-fridge (c)
   "Build the fridge under C: a white enamel box open towards the room, two shelves, a door on a hinge."

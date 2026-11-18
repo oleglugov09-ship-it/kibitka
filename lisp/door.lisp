@@ -86,6 +86,7 @@ It cannot be lowered while moving."
 
 (defun step-door (delta)
   (step-ladder delta)
+  (step-fridge delta)
   (let ((target (if *door-open* 1.0 0.0)))
     (unless (< (abs (- target *door-k*)) .001)
       (incf *door-k* (* (- target *door-k*) (min 1 (* delta 5))))

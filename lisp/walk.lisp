@@ -13,18 +13,19 @@
 (defvar *on-steps* nil "True while we stand on the stepladder.")
 (defvar *steps-up* 0.0 "How far we have climbed right now, in metres: it follows *ON-STEPS* smoothly.")
 
-(defun use-steps ()
-  "Climb the stepladder, or step down from it."
-  (cond (*on-steps* (setf *on-steps* nil))
-        (t (setf *seat* nil *on-steps* t
-                 *pos* (v3 (first *steps-at*) (vector3-y *pos*) (second *steps-at*)))))
-  t)
+(defparameter *steps-run* .35 "How long the climb onto the stepladder is, in metres of walking towards the rack.")
 
 (defun steps-usables ()
-  "Return the stepladder as a thing to press."
-  (list (usable (first *steps-at*) .4 (- (second *steps-at*) .28)
-                (lambda () (if *on-steps* "E — слезть со стремянки" "E — встать на стремянку: верхняя полка будет на уровне глаз"))
-                #'use-steps nil 2.2 .2)))
+  "The stepladder is not pressed: it is climbed by walking onto it, like stairs (STEPS-CLIMB)."
+  '())
+
+(defun steps-climb (x z)
+  "Return how far up the stepladder one standing at X, Z is: 0 on the floor, 1 on the top tread.
+Walking towards the rack in front of it, one goes up tread by tread; a step aside and one is down."
+  (destructuring-bind (sx sz) *steps-at*
+    (if (< (abs (- x sx)) .3)
+        (max 0.0 (min 1.0 (/ (- (+ sz *steps-run*) z) *steps-run*)))
+        0.0)))
 (defparameter *mouse-sens* .0025)
 (defparameter *bounds* '(-1.4 1.4 -2.55 2.68) "The bounds x0 x1 z0 z1 on the wagon floor, right up to the back wall with the door.")
 
@@ -273,9 +274,9 @@ The meta room and waiting at the bus stop are not remembered."
       ;; computed 'from the wagon floor' while the outside camera stood on the ground: a metre of difference,
       ;; and things outdoors were almost impossible to hit
       ;; on the stepladder by the rack the eyes are level with the top shelf; a step aside and we are down again
-      (when (and *on-steps* (or *seat* *meta* (> (+ (expt (- x (first *steps-at*)) 2) (expt (- z (second *steps-at*)) 2)) .12)))
-        (setf *on-steps* nil))
-      (setf *steps-up* (+ *steps-up* (* .2 (- (if *on-steps* *steps-rise* 0.0) *steps-up*))))
+      (let ((k (if (or *seat* *meta*) 0.0 (steps-climb x z))))
+        (setf *on-steps* (> k .5)
+              *steps-up* (+ *steps-up* (* .3 (- (* k *steps-rise*) *steps-up*)))))
       (setf *eye-now* (+ (* *floor* (- 1 down)) (if *seat* (fifth *seat*) *eye*) *jump-y* *steps-up*
                          (if (and (not *meta*) (outdoors-p x z)) (ground-rise x z) 0.0)))        ; outside — along the ground
       (node-3d-set-position *camera* (v3 x *eye-now* z)))
