@@ -10,8 +10,8 @@
 
 (in-package #:kiosk-trip)
 
-(defparameter *shop-names* '("ПРОДУКТЫ" "ХЛЕБ" "АПТЕКА" "ГАСТРОНОМ" "КНИГИ" "ПОЧТА" "СБЕРКАССА" "ОВОЩИ" "УНИВЕРМАГ"))
-(defparameter *slogans* '("СЛАВА ТРУДУ" "МИР ТРУД МАЙ" "НАША ЦЕЛЬ" "ЛЕТАЙТЕ САМОЛЁТАМИ"))
+(defvar *shop-names* '() "The signs over the shops, from mods: a list of strings.")
+(defvar *slogans* '() "The slogans on the roofs of tall houses, from mods: a list of strings.")
 (defparameter *city-ahead* 430.0 "The distance ahead at which a town is built, far enough for it to rise out of the haze.")
 (defparameter *zones*
   '((.00 :village) (.13 :garages) (.24 :blocks5) (.43 :centre) (.57 :blocks9) (.76 :garages) (.87 :village))

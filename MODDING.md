@@ -25,7 +25,14 @@ The core in `lisp/` is logic only; what the game shows comes from two mods.
 
 | File in `base/` | Tables it sets |
 |---|---|
-| `towns.lisp` | town names, the goods and their prices, what each town makes and lacks, cooktop recipes |
+| `towns.lisp` | town names, shop signs and slogans, the goods with their prices and traits, what each town makes and lacks, cooktop recipes, the traits of dishes |
+| `economy.lisp` | the deals at the booths, who comes to the window, what needs a licence |
+| `wagon.lisp` | what stands in the wagon at the start of a new game |
+| `story.lisp` | the cards of the intro and the closing credits |
+| `calendar.lisp` | the days of the week, the notes and the omens of the tear-off calendar |
+| `forces.lisp` | who answers for each town's supply, and which town is its rival |
+| `seasons.lisp` | what the towns use more of in each season, the holidays, the loudspeaker, the shift, the pioneer camp's canteen, the record sleeves |
+| `people.lisp` | the people of the road; written by `tools/make-people.py`, edit the table there |
 | `booths.lisp` | the booths with gimmicks, their notes for the guide book, town council quests |
 | `gnomes.lisp` | where each gnome hides and what it is called |
 | `places.lisp` | the relief of each stretch, landmarks, diners, what the telescope shows |
@@ -37,6 +44,21 @@ The core in `lisp/` is logic only; what the game shows comes from two mods.
 Each table is declared empty in the core with a docstring that describes its shape; a mod fills it
 with `(setf *table* '(...))`. Without `base` the game has no world to plan and will not start; without
 `stories` it runs with plain parcels.
+
+### A good of your own
+
+A good is one record in `*goods*`: `(kind "name in the accusative" price key value ...)`. The traits after the
+price are optional: `:spoils t` — it goes bad overnight outside the fridge; `:stack 3` — so many stand on one
+another on a shelf; `:cut "#d89a8a"` — it can be cut on the board, and that is the colour of its slices. The
+core has models for its own goods; any other good is drawn as a plain packet with a paper label, and for
+that it wants `:size (width height depth)` in metres, `:rgb "#colour"` and `:title "name in the nominative"`:
+
+```lisp
+(setf *goods* (append *goods* '((:soap "мыло" 6 :stack 4 :size (.1 .05 .07) :rgb "#e8d8c0" :title "мыло"))))
+```
+
+Put it into a town's `*town-trade*` and it is made, allocated, short and sold like the rest. Append to the
+end of `*goods*`: the plan's crates remember a good by its place in the list.
 
 What a booth, a gnome or a recipe *does* is still code in the core: a mod can move, rename and reprice
 them, but a new kind of booth needs code.

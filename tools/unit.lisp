@@ -250,6 +250,17 @@
          (> (trade-price :honey :buyer 3) (let ((*holidays* '())) (trade-price :honey :buyer 3)))))
 (reset-plan 0)
 
+(check "свойства товара читаются из его записи в моде, свойства блюд — из своей таблицы"
+       (and (trait :milk :spoils) (not (trait :bread :spoils)) (= (trait :cans :stack) 3) (= (trait :jam :stack) 2)
+            (stringp (trait :fish :cut)) (stringp (trait :fried :cut)) (null (trait :coal :cut))
+            (cuttable-p :bread) (not (cuttable-p :fried)) (stringp (cut-look :fried))))
+(let ((*goods* (append *goods* '((:soap "мыло" 6 :stack 4 :size (.1 .05 .07) :rgb "#e8d8c0" :title "мыло")))))
+  (check "товар из мода без модели и без правок ядра: цена, свойства, размер"
+         (and (= (good-base :soap) 6) (= (trait :soap :stack) 4) (equal (trait :size :soap) nil) (equal (trait :soap :size) '(.1 .05 .07)))))
+(check "таблицы, переехавшие в мод, на месте"
+       (and (= (length *weekdays*) 7) *shop-names* *slogans* *start-interior* *restricted* *camp-food* *shift-themes* *shift-hours*
+            (= (length *plank-price*) 2) (= (length *jar-deal*) 2) (= (length *carpenter-deal*) 2) *quest-money*
+            (< .99 (loop for (nil . share) in *client-mix* sum share) 1.01)))
 (check "у каждого города есть сила, и соперники названы взаимно"
        (and (= (length *forces*) 12)
             (every (lambda (f) (or (null (fourth f)) (eql (fourth (assoc (fourth f) *forces*)) (first f)))) *forces*)))

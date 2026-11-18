@@ -98,6 +98,7 @@ That is the body, the truck under it, everything bolted on inside, the things an
   (setf *random-state* (make-random-state t))
   (init-lang) (init-dev)
   (load-mods)                                             ; stories and whatever else mods bring (mods.lisp)
+  (adopt-goods)                                           ; a mod's goods without a model get a place among the things
   (make-action-names)
   (add-layout-twins)
   (make-pivots root)

@@ -218,8 +218,8 @@ Its x points to the right of the road and its z backwards along the path."
              holder))
   :step #'step-column)
 
-(defparameter *shift-themes* '(:factory :mine :sawmill :rail :port) "The towns where a shift walks home from the gates.")
-(defparameter *shift-hours* '((280.0 400.0) (820.0 940.0)) "When the shifts change: seconds since dawn, as (from to) ranges.")
+(defvar *shift-themes* '() "The characters of the towns where a shift walks home from the gates, from mods.")
+(defvar *shift-hours* '() "When the shifts change, from mods: seconds since dawn, as (from to) ranges.")
 
 (deflife :shift
   :spots #'town-spots
@@ -405,8 +405,8 @@ Its x points to the right of the road and its z backwards along the path."
 ;;; the supply manager takes food for the canteen at the gates and pays by transfer, and the factory that
 ;;; keeps the camp counts it as a deed.
 
-(defparameter *camp-food* '(:milk :bread :apple :honey :berry :fish :cans) "The raw goods the camp's canteen takes, besides any cooked dish.")
-(defparameter *camp-daily* 6 "How many things the canteen takes in one game day.")
+(defvar *camp-food* '() "The raw goods the camp's canteen takes, besides any cooked dish, from mods.")
+(defvar *camp-daily* 6 "How many things the canteen takes in one game day; mods may change it.")
 (defparameter *camp-gate-x* 12.0 "How far from the road axis the camp's gates stand.")
 (defvar *camp-fed* nil "What the canteen has taken today: (day . count).")
 (defvar *life-season* nil "The season the seasonal scenes were built in.")

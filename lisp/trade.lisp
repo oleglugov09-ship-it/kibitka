@@ -181,7 +181,7 @@ With CUT, count the cut ones (slices on a board) instead of the whole ones: the 
 (defun stack-room-p (kind x z level)
   "Return true if the whole thing of KIND that we carry may go on top of the stack of its own kind at (X Z) on LEVEL.
 Cut goods do not stack, and nothing is stacked on them."
-  (let ((high (second (assoc kind *stackable*))))
+  (let ((high (trait kind :stack)))
     (and high (not (carry-prop :cut)) (zerop (stack-here kind x z level t)) (< 0 (stack-here kind x z level) high))))
 
 (defun stack-rise (kind x z level)

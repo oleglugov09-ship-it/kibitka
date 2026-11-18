@@ -4,12 +4,23 @@
       '("Заречный" "Северный" "Красный Кут" "Ленинск" "Берёзовка" "Первомайск" "Октябрьский" "Дальний" "Горняк"
     "Светлый" "Узловая" "Сосновка"))
 
-;;; The goods: entries of (kind, name in the accusative case as in 'they sell fish', average price).
+;;; The signs over the shops and the slogans on the roofs.
+(setf *shop-names* '("ПРОДУКТЫ" "ХЛЕБ" "АПТЕКА" "ГАСТРОНОМ" "КНИГИ" "ПОЧТА" "СБЕРКАССА" "ОВОЩИ" "УНИВЕРМАГ"))
+(setf *slogans* '("СЛАВА ТРУДУ" "МИР ТРУД МАЙ" "НАША ЦЕЛЬ" "ЛЕТАЙТЕ САМОЛЁТАМИ"))
+
+;;; The goods: entries of (kind, name in the accusative case as in 'they sell fish', average price) and then,
+;;; in any order, the good's traits as key and value: :spoils t - goes bad overnight outside the fridge;
+;;; :stack n - so many stand on one another on a shelf; :cut "#colour" - it can be cut on the board, and the
+;;; colour of its slices. A good the core has no model for is drawn as a plain packet: give it :size
+;;; (width height depth) in metres, :rgb "#colour" and :title, its name in the nominative.
 (setf *goods*
-      '((:milk "молоко" 5) (:fish "рыбу" 7) (:bread "хлеб" 4) (:coal "уголь" 9) (:tools "инструмент" 12) (:books "книги" 10)
-    (:cans "тушёнку" 8) (:water "минеральную воду" 5) (:honey "мёд" 9) (:berry "клюкву" 6)
+      '((:milk "молоко" 5 :spoils t) (:fish "рыбу" 7 :spoils t :cut "#d89a8a") (:bread "хлеб" 4 :stack 3 :cut "#e8c080") (:coal "уголь" 9) (:tools "инструмент" 12) (:books "книги" 10 :stack 4)
+    (:cans "тушёнку" 8 :stack 3 :cut "#9a5a34") (:water "минеральную воду" 5) (:honey "мёд" 9) (:berry "клюкву" 6)
     ;; what is not made anywhere but grows by the bus stops (*forage* below)
-    (:mushroom "грибы" 8) (:apple "яблоки" 6) (:herb "травы" 5) (:toadstool "грибы" 1) (:nut "орехи" 9)))
+    (:mushroom "грибы" 8 :spoils t :cut "#d8c8a8") (:apple "яблоки" 6 :cut "#f0e8c0") (:herb "травы" 5) (:toadstool "грибы" 1 :cut "#d8c8a8") (:nut "орехи" 9)))
+
+;;; The traits of cooked dishes and preserves, with the same keys: (dish key value ...).
+(setf *dish-traits* '((:pickled :stack 2) (:jarcompote :stack 2) (:cannedfish :stack 3) (:jam :stack 2) (:fried :cut "#b8782c")))
 
 ;;; The trade of each town by town number: (what is made here) (what is short here).
 (setf *town-trade*

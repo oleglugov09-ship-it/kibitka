@@ -9,6 +9,14 @@
 (defun raw-of (kind) "Return the raw good the dish KIND is cooked from; for a non-dish return KIND itself." (let ((r (dish-p kind))) (if r (first r) kind)))
 (defun good-name (kind) (cond ((dish-p kind) (third (dish-p kind))) (t (or (second (assoc kind *goods*)) "товар"))))
 (defun good-base (kind) (or (third (assoc kind *goods*)) 5))
+
+(defun trait (kind key)
+  "Return the trait KEY of the good or dish KIND, as its record in the mod has it, or NIL.
+A good's record is (kind name price key value ...); a dish's traits are in *DISH-TRAITS*. The keys: :spoils -
+goes bad overnight outside the fridge; :stack - how many stand on one another; :cut - it can be cut on the
+board, and the colour of its slices; :size - (width height depth) and :rgb - the colour, for a good that has
+no model of its own and is drawn as a plain packet; :title - its name in the nominative."
+  (getf (if (assoc kind *goods*) (cdddr (assoc kind *goods*)) (rest (assoc kind *dish-traits*))) key))
 (defun town-makes (i) (first (nth i *town-trade*)))
 (defun town-wants (i) (second (nth i *town-trade*)))
 
@@ -111,12 +119,6 @@ That is the good sought or a dish made from it (blini will do for milk)."
              (say-all (format nil "Рынок. ~a~:[~;. Гудок: смена идёт с завода!~]" (market-note (third place)) (rush-p (third place))))))
           ((> *speed* 2.0) (setf *market-told* nil)))))
 
-(defparameter *cut-rgb* '((:fish "#d89a8a") (:bread "#e8c080") (:mushroom "#d8c8a8") (:toadstool "#d8c8a8") (:apple "#f0e8c0") (:cans "#9a5a34"))
-  "What can be cut on the board, and the colour of its slices: entries of (good colour).")
-
-(defparameter *cut-dish-rgb* '((:fried "#b8782c"))
-  "The dishes that keep the look of slices when cooked from a cut good, and the colour of the slices: (dish colour).")
-
 ;;; The record of a thing is (kind x height z spin [address [properties]]). The properties are a list of
 ;;; alternating keys and values that says what happened to this very thing: it was cut on the board, it
 ;;; came from a shop. A new property needs a line in *PROP-KEYS* and nothing else: the record, the save,
@@ -147,15 +149,15 @@ That is the good sought or a dish made from it (blini will do for milk)."
       (make-spec (first spec) (second spec) (third spec) (fourth spec) 0 nil '(:cut t))
       spec))
 
-(defun cuttable-p (kind) (and (assoc kind *cut-rgb*) t))
+(defun cuttable-p (kind) (and (assoc kind *goods*) (trait kind :cut) t))
 
 (defun cut-look (kind)
   "Return the colour of the slices if a thing of KIND, put down as cut, is shown as slices; else NIL."
-  (second (or (assoc kind *cut-rgb*) (assoc kind *cut-dish-rgb*))))
+  (trait kind :cut))
 
 (defun build-cut (g kind)
   "Build the good KIND cut up: a row of slices, raw ones on a small board, cooked ones on a plate."
-  (if (assoc kind *cut-dish-rgb*)
+  (if (not (assoc kind *goods*))                                   ; a cooked dish
       (shape g :cyl '(.11 .11 .012 12) "#e4e0d4" 0 .006 0)
       (shape g :box '(.2 .012 .14) "#c8a060" 0 .006 0))
   (dotimes (i 6) (shape g :box '(.018 .07 .1) (cut-look kind) (- (* i .03) .075) .05 0 :rot (list 0 0 -.35) :shadow nil)))
@@ -248,6 +250,24 @@ That is the good sought or a dish made from it (blini will do for milk)."
             (shape g :box '(.18 .01 .012) "#8a6a3a" 0 .17 0 :shadow nil)
             (dotimes (i 14) (shape g :ball '(.016 5 3) (if (zerop (mod i 4)) "#c8303c" "#a3202c")
                                    (* (if (< i 9) .055 .025) (cos (* i 1.9))) (if (< i 9) .082 .095) (* (if (< i 9) .055 .025) (sin (* i 1.9))) :shadow nil)))))
+
+(defparameter *modelled* '(:fish :bread :coal :tools :books :cans :water :honey :berry :fried :jam :toast :stew
+                           :mushroom :toadstool :apple :herb :shroomfry :creamfry :charlotte :dried
+                           :nut :sandwich :berrypie :soup :bakedapple :brittle :driedapple :driedherb :pickled :jarcompote :cannedfish)
+  "The goods and dishes BUILD-GOOD has a model for. Any other good from a mod is drawn as a plain packet.")
+
+(defun build-packet (g kind)
+  "Build a good that has no model of its own: a packet of its :size and :rgb with a paper label."
+  (destructuring-bind (w h d) (third (assoc kind *kinds*))
+    (shape g :box (list w h d) (or (trait kind :rgb) "#b0946a") 0 (/ h 2) 0)
+    (shape g :box (list (* .6 w) (* .4 h) .004) "#f0ece0" 0 (/ h 2) (+ (/ d 2) .004) :shadow nil)))
+
+(defun adopt-goods ()
+  "Give a place among the things to every good a mod brought without a model: its size comes from its record."
+  (dolist (entry *goods*)
+    (unless (assoc (first entry) *kinds*)
+      (setf *kinds* (append *kinds* (list (list (first entry) (or (trait (first entry) :title) (second entry))
+                                                (or (trait (first entry) :size) '(.16 .16 .16)))))))))
 
 (setf *kinds* (append *kinds*
                       '((:fish "рыба" (.16 .12 .3)) (:bread "хлеб" (.2 .1 .1)) (:coal "уголь" (.18 .2 .18)) (:tools "инструмент" (.24 .15 .12))

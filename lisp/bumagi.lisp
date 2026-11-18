@@ -8,8 +8,7 @@
 
 (in-package #:kiosk-trip)
 
-(defparameter *restricted* '((:coal :coal "уголь") (:berry :air "авиагруз (клюква)"))
-  "The goods that need a licence: (GOODS-KIND LICENCE DISPLAY-NAME).")
+(defvar *restricted* '() "The goods that need a licence, from mods: entries of (goods-kind licence display-name).")
 (defvar *quests* '()
   "The town council quests: (KEY GRANTS TITLE TASK COUNT REWARD-NAME).")
 

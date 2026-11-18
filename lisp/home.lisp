@@ -13,7 +13,7 @@
 
 (defvar *calendar-notes* '() "The notes on the backs of the calendar leaves: a list of strings, one a day in turn.")
 (defvar *omens* '() "The omens by tomorrow's weather: a plist of weather and a list of strings.")
-(defparameter *weekdays* '("понедельник" "вторник" "среда" "четверг" "пятница" "суббота" "воскресенье"))
+(defvar *weekdays* '() "The names of the days of the week, from mods: seven strings, Monday first.")
 
 (defvar *calendar-day* nil "The day whose leaf is on top of the calendar, or NIL before the first look.")
 (defvar *trip-day0* 0 "The game day on which this trip began: the calendar and the diary count the days from it.")

@@ -16,18 +16,6 @@
     ;; goods: build mode does not offer them (there are not enough keys, nor should there be) - they are carried in the paws, see trade.lisp
     (:milk "молоко" (.12 .22 .12)) (:blin "блины" (.2 .1 .2)))
   "The things that can be placed, each as (kind name (width height depth)).")
-(defparameter *start-interior*
-  '(;; three parcels from the warehouse - for the first three towns (middle shelf)
-    (:box -1.18 1.1 -2.5 0) (:box -.71 1.1 -2.5 0) (:box -.24 1.1 -2.5 0)
-    ;; milk for sale - on the bottom shelf to the right of the record player
-    (:milk -.24 .55 -2.5 0) (:milk .24 .55 -2.5 0) (:milk .71 .55 -2.5 0) (:milk 1.18 .55 -2.5 0)
-    (:lamp 1.18 1.1 -2.5 0)
-    ;; by the carpet wall between the fridge and the stove: a barrel with a sack on it; another sack by the rack
-    (:barrel -1.12 0.0 1.26 0) (:sack -1.12 .72 1.26 0) (:sack 1.1 0.0 -1.85 1))
-  "The things we start with: three parcels and four cartons of milk on the rack.
-New parcels are brought to the window (trade.lisp). Each entry is
-(kind x bottom-height z quarter-turns). The boxes get addresses on the first load.")
-
 (defvar *items* '() "The things standing in the wagon, each as ((kind x y z spin [town-number]) . node).
 A thing with a town number is a parcel.")
 (defvar *build* nil "Whether build mode is on.")
@@ -36,6 +24,10 @@ A thing with a town number is a parcel.")
 (defvar *ghost* nil "The translucent blank shown where the thing will stand.")
 (defvar *ghost-key* nil)
 (defvar *build-hint* "" "The text to show under the crosshair in build mode.")
+
+(defvar *start-interior* '()
+  "The things we start with, from mods: entries of (kind x bottom-height z quarter-turns). The boxes get
+addresses on the first load; new parcels are brought to the window (trade.lisp).")
 
 (defun item-size (kind spin)
   "Return the width (x), height and depth (z) of a thing of KIND turned by SPIN quarter turns."
@@ -48,7 +40,7 @@ SPIN is its rotation in quarter turns, ADDR the town number on the side of a cra
 Return the node."
   (let ((g (group parent x (+ *floor* y) z)) (wood "#8a6440") (dark "#5a3e26"))
     (node-3d-set-rotation g (v3 0 (* spin (/ pi 2)) 0))
-    (ecase kind
+    (ecase (if (and (good-p kind) (not (member kind '(:milk :blin)))) :good kind)   ; milk and blini have clauses of their own
       ((:crate :box)
        (destructuring-bind (w h d) (third (assoc kind *kinds*))
          (shape g :box (list w h d) wood 0 (/ h 2) 0)
@@ -98,10 +90,10 @@ Return the node."
        (shape g :box '(.128 .06 .128) "#3a6aa8" 0 .06 0 :shadow nil)       ; the label sticks out 4 mm: any closer and it flickers
        (shape g :box '(.12 .06 .02) "#f0ede4" 0 .19 0 :shadow nil)
        (shape g :box '(.03 .04 .03) "#d8d2c0" .03 .2 0 :shadow nil))
-      ((:fish :bread :coal :tools :books :cans :water :honey :berry :fried :jam :toast :stew
-        :mushroom :toadstool :apple :herb :shroomfry :creamfry :charlotte :dried
-        :nut :sandwich :berrypie :soup :bakedapple :brittle :driedapple :driedherb :pickled :jarcompote :cannedfish)
-       (if (and (getf props :cut) (cut-look kind)) (build-cut g kind) (build-good g kind))
+      (:good
+       (cond ((and (getf props :cut) (cut-look kind)) (build-cut g kind))
+             ((member kind *modelled*) (build-good g kind))
+             (t (build-packet g kind)))                              ; a mod's good without a model of its own
        (when (getf props :shop) (shape g :box '(.045 .03 .004) "#f0ede4" .05 .03 .075 :shadow nil)))   ; a shop's price tag    ; cut on the board: slices   ; the towns' goods - goods.lisp
       (:blin
        (shape g :cyl '(.1 .1 .012 12) "#e4e0d4" 0 .006 0)

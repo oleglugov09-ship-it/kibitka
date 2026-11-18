@@ -14,6 +14,14 @@
 (setf *disc-titles*
       '(("placeholder-1" "Дорожная") ("placeholder-2" "Весёлый шофёр") ("placeholder-3" "Вечер в Заречном")))
 
+;;; The towns, by character, where a shift walks home from the gates, and when: seconds since dawn.
+(setf *shift-themes* '(:factory :mine :sawmill :rail :port))
+(setf *shift-hours* '((280.0 400.0) (820.0 940.0)))
+
+;;; The pioneer camp's canteen: the raw goods it takes besides any cooked dish, and how many things a day.
+(setf *camp-food* '(:milk :bread :apple :honey :berry :fish :cans))
+(setf *camp-daily* 6)
+
 ;;; The holidays: (season, day of the season from zero, key, name, the goods buyers come for).
 ;;; The keys are what life.lisp dresses the towns by.
 (setf *holidays*

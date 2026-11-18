@@ -127,7 +127,7 @@ Mushrooms on the dryer are dried instead."
             ((> day *spoil-day*)
              (setf *spoil-day* day)
              (let* ((dry (remove-if-not (lambda (spec) (and (dried-of (first spec)) (on-dryer-p spec))) (mapcar #'car *items*)))
-                    (bad (remove-if-not (lambda (spec) (and (member (first spec) *perishable*) (not (in-fridge-p spec))
+                    (bad (remove-if-not (lambda (spec) (and (trait (first spec) :spoils) (not (in-fridge-p spec))
                                                             (not (and (on-dryer-p spec) (dried-of (first spec))))))      ; the dryer saves only what dries
                                         (mapcar #'car *items*))))
                (when dry

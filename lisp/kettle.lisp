@@ -197,7 +197,7 @@
         (when *chop*
           (destructuring-bind (x y z) (board-point)
             (loop for i below (cdr *chop*)
-                  collect (shape *cart* :box '(.018 .07 .1) (second (assoc (car *chop*) *cut-rgb*))
+                  collect (shape *cart* :box '(.018 .07 .1) (trait (car *chop*) :cut)
                                  (+ x -.1 (* i .03)) (+ *floor* y .04) (- z .12) :rot (list 0 0 -.35) :shadow nil))))))
 
 (defun use-board ()

@@ -1,6 +1,8 @@
 ;;;; The tear-off calendar (lisp/home.lisp): the notes on the backs of its leaves, one a day in turn, and the omens
 ;;;; by tomorrow's weather. The omens come true: the game makes the weather the leaf foretold.
 
+(setf *weekdays* '("понедельник" "вторник" "среда" "четверг" "пятница" "суббота" "воскресенье"))
+
 (setf *calendar-notes*
       '("Блины: молоко на горячую печку — через полминуты готово. Продавай там, где ищут молоко: дадут вдвое."
         "Совет шофёра: бак заливай в городе, а не на перегоне. До следующей заправки может не хватить."
