@@ -205,6 +205,17 @@
                 (= (stock (first cargo) (second cargo)) (min *stock-cap* (+ before *crate-units*)))
                 (eq (parcel-good (plan-addr 3 :bread)) :bread) (null (parcel-good 3)) (null (parcel-good 1203))))))
 
+(let ((*talons* 0) (*deeds* '()))
+  (reset-plan 0)
+  (let* ((tw (position-if #'plan-cargo (loop for i below 12 collect i))) (cargo (plan-cargo tw)))
+    (deliver-cargo (plan-addr (first cargo) (second cargo)))
+    (check "за ящик, закрывший дыру, горсовет даёт талон; своим два, в ссоре ни одного"
+           (and (= *talons* 1) (= (let ((*deeds* (list (cons 3 *deeds-friend*)))) (crate-talons 3)) 2)
+                (= (let ((*deeds* (list (cons 3 *deeds-feud*)))) (crate-talons 3)) 0))))
+  (check "по талонам — то, чего мало, но что ещё есть на складе"
+         (loop for tw below 12 always (every (lambda (g) (and (>= (shortage tw g) .25) (>= (stock tw g) 1) (state-good-p g))) (rationed-goods tw))))
+  (format t "  городов, где что-то отпускают по талонам: ~d из 12~%" (loop for tw below 12 count (rationed-goods tw))))
+
 (check "у каждого города есть сила, и соперники названы взаимно"
        (and (= (length *forces*) 12)
             (every (lambda (f) (or (null (fourth f)) (eql (fourth (assoc (fourth f) *forces*)) (first f)))) *forces*)))

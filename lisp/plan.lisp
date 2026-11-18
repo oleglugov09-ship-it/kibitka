@@ -32,6 +32,12 @@
 
 (defvar *stocks* (make-hash-table :test 'equal) "The table from (town . good) to the stock in that town's shop.")
 (defvar *plan-day* nil "The game day up to which the plan has been run, or NIL before the first run.")
+;;; Ration coupons. A good a town is short of is not on free sale there: the shop lets it go one at a time,
+;;; at the list price, against a coupon. Coupons are not bought: a council gives them to whoever closed its
+;;; gap with a crate of the plan's cargo. They are one more kind of money, good in any town.
+(defvar *talons* 0 "The number of ration coupons we hold.")
+(defparameter *ration-chance* .35 "The chance that the shop's seller at the window brings a rationed good, when the town has one.")
+
 (defvar *credit* 0 "The money on the co-operative's account, in units: paid by transfer, spent on petrol and the bank's debt.")
 
 (defun state-good-p (kind) "Return true if KIND is a good the plan makes and allocates." (and (some (lambda (tr) (member kind (first tr))) *town-trade*) t))
@@ -147,8 +153,17 @@
         (let ((short (>= (shortage town good) .25)))
           (set-stock town good (+ (stock town good) *crate-units*))
           (add-deeds town 2)                                             ; the town's power sees who closed the gap
+          (when short (incf *talons* (crate-talons town)))               ; and its council hands out coupons
           (if short (* *plan-premium* (standing-factor town :premium)) 0))
         0)))
+
+(defun crate-talons (town)
+  "Return how many ration coupons TOWN's council gives for a crate that closed a gap: none in a quarrel, two to its own."
+  (ecase (standing town) (:friend 2) (:stranger 1) (:feud 0)))
+
+(defun rationed-goods (town)
+  "Return the goods the shop in TOWN sells only against a coupon: short, but not gone."
+  (remove-if-not (lambda (g) (and (state-good-p g) (>= (stock town g) 1))) (short-goods town)))
 
 (defun plan-name (good) "Return the name of GOOD for the supply sheet." (or (second (assoc good *kinds*)) (good-name good)))
 
@@ -273,14 +288,14 @@
     (put-save :plan (list *plan-day* *credit*
                           (loop for key being the hash-keys of *stocks* using (hash-value v)
                                 collect (list (car key) (cdr key) (round v)))
-                          nil *heat* (copy-tree *deeds*) (list *shark* *shark-day* *shark-paid-day*)))))
+                          nil *heat* (copy-tree *deeds*) (list *shark* *shark-day* *shark-paid-day*) *talons*))))
 
 (defun load-plan ()
   (let ((f (get-save :plan)))
-    (when (fits f '((:or integer null) integer (:each (integer keyword real)) &optional (:each cons) integer (:each cons) (integer (:or integer null) integer)))
-      (destructuring-bind (day credit stocks &optional bought (heat 0) deeds (shark (list *shark-total* nil 0))) f
+    (when (fits f '((:or integer null) integer (:each (integer keyword real)) &optional (:each cons) integer (:each cons) (integer (:or integer null) integer) integer))
+      (destructuring-bind (day credit stocks &optional bought (heat 0) deeds (shark (list *shark-total* nil 0)) (talons 0)) f
         (declare (ignore bought))                         ; the old count of shop goods: now each thing carries its own mark
-        (setf *heat* (max 0 heat)
+        (setf *heat* (max 0 heat) *talons* (max 0 talons)
               *deeds* (remove-if-not (lambda (c) (and (integerp (car c)) (integerp (cdr c)))) deeds)
               *shark* (max 0 (first shark)) *shark-day* (second shark) *shark-paid-day* (third shark))
         (clrhash *stocks*)
@@ -291,7 +306,7 @@
 (defstate :plan
   :clear (lambda ()
            (clrhash *stocks*)
-           (setf *plan-day* nil *credit* 0 *heat* 0 *deeds* '()
+           (setf *plan-day* nil *credit* 0 *talons* 0 *heat* 0 *deeds* '()
                  *shark* *shark-total* *shark-day* nil *shark-paid-day* (if (boundp '*day-t*) (today) 0)))
   :load #'load-plan :save #'save-plan)
 
@@ -309,12 +324,12 @@
 ;; (TEXT-SAFE-P, net.lisp), and this one already travels inside four.
 (defcommon :plan
   :value (let ((towns (sheet-towns)))
-           (list *credit* *shark* *heat* (loop for town below (plan-size) collect (deeds town)) towns
+           (list *credit* *shark* *heat* *talons* (loop for town below (plan-size) collect (deeds town)) towns
                  (loop for town in towns append (mapcar (lambda (g) (round (stock town g))) (plan-goods)))))
-  :spec '(integer integer integer (:each integer) (:each integer) (:each integer)) :driver t
+  :spec '(integer integer integer integer (:each integer) (:each integer) (:each integer)) :driver t
   :accept (lambda (v)
-            (destructuring-bind (credit shark heat deeds towns stocks) v
-              (setf *credit* (max 0 credit) *shark* (max 0 shark) *heat* (max 0 heat))
+            (destructuring-bind (credit shark heat talons deeds towns stocks) v
+              (setf *credit* (max 0 credit) *shark* (max 0 shark) *heat* (max 0 heat) *talons* (max 0 talons))
               (when (= (length deeds) (plan-size))
                 (setf *deeds* (loop for town from 0 for n in deeds unless (zerop n) collect (cons town n))))
               (when (and (every (lambda (town) (< -1 town (plan-size))) towns)

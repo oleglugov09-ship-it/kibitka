@@ -84,7 +84,7 @@ are in :STALL as (node z kind address)."
     (let ((items (or (mapcar #'rest (getf *client* :stall)) (getf *client* :goods))))
       (case (getf *client* :kind)
         (:buyer (let ((coins (find :coins items :key #'second))) (and coins (third coins))))
-        (:seller (second (first items)))))))
+        ((:seller :ration) (second (first items)))))))
 
 (defun wanted-p (kind)
   "Return true if the current buyer will take a good of KIND.
