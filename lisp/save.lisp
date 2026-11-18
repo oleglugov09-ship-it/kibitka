@@ -7,6 +7,12 @@
 ;;;; file is brought up to date on reading. We write through a temporary file, and the previous one stays as a
 ;;;; backup copy (.bak): if a write was cut short, we read the copy. Old-style files (one per subsystem) are
 ;;;; left untouched: sections are taken from them once, while the new file does not exist yet.
+;;;;
+;;;; Two guards against bad data rather than a cut-short write. Before a file is replaced, the text about to
+;;;; be written is read back and compared: what does not read back is not written, and the good file stays.
+;;;; And once per launch, when the file has read well, it is copied aside (.start): the backup of a second
+;;;; ago is no help if the game has been writing rubbish for two seconds, the copy from the launch is.
+;;;; When nothing reads although a file is there, we say so and log it instead of starting anew in silence.
 
 (in-package #:kiosk-trip)
 
@@ -30,6 +36,7 @@ The function receives the list of sections (key form ...) and returns it in the 
 (defvar *saves-read* '() "The names of the files that have already been read.")
 (defvar *saves-dirty* '() "The names of the files that are due to be written.")
 (defvar *save-timer* 0.0)
+(defvar *saves-lost* '() "The names of the files that were there but could not be read: the player is told once.")
 
 (defun save-file-of (key) (find-if (lambda (f) (assoc key (cddr f))) *save-files*))
 
@@ -55,8 +62,16 @@ Read the file itself, its backup copy or, when neither exists, the old-style fil
   (destructuring-bind (name path &rest sections) file
     (unless (member name *saves-read*)
       (push name *saves-read*)
-      (let ((got (read-save path)))
-        (when (eq got :none) (setf got (read-save (concatenate 'string path ".bak"))))
+      (let* ((bak (concatenate 'string path ".bak")) (start (concatenate 'string path ".start"))
+             (got (read-save path)))
+        (cond ((not (eq got :none))                                 ; read well: keep a copy for the whole launch
+               (ignore-errors (save-form start (list :save *save-version* got))))
+              (t (setf got (read-save bak))
+                 (when (eq got :none) (setf got (read-save start)))
+                 (when (some #'file-here-p (list path bak start))
+                   (cl:format t "~&The save ~a could not be read~:[: starting anew~;, a spare copy is taken~]~%" path (not (eq got :none)))
+                   (when (eq got :none) (push name *saves-lost*))
+                   (when (fboundp 'log-event) (funcall 'log-event :save-lost :file (string-downcase (symbol-name name)) :rescued (not (eq got :none)))))))
         (cond ((eq got :none)                                      ; no new file — take the old ones one by one
                (loop for (key old) in sections
                      do (let ((form (and (file-here-p old) (load-form old))))
@@ -79,6 +94,12 @@ It reaches the disk within the next second (STEP-SAVES)."
         (setf (gethash key *saves*) form)
         (pushnew (first file) *saves-dirty*)))))
 
+(defun form-reads-back-p (form)
+  "Return true if FORM, written the way a save is written, reads back as the same thing."
+  (let* ((text (ignore-errors (with-standard-io-syntax (prin1-to-string form))))
+         (back (and text (ignore-errors (with-standard-io-syntax (let ((*read-eval* nil)) (values (read-from-string text))))))))
+    (and text (equal back form))))
+
 (defun write-save (file)
   (destructuring-bind (name path &rest sections) file
     (declare (ignore name))
@@ -86,16 +107,25 @@ It reaches the disk within the next second (STEP-SAVES)."
           (form (list :save *save-version*
                       (loop for (key) in sections
                             when (gethash key *saves*) collect key and collect (gethash key *saves*)))))
-      (when (save-form tmp form)
-        (when (file-here-p path) (dir-access-rename-absolute path bak))        ; the previous one becomes the backup
-        (dir-access-rename-absolute tmp path)))))
+      (cond ((not (form-reads-back-p form))                                    ; rubbish must not replace a good file
+             (error "The save ~a does not read back; the file on disk is left as it was" path))
+            ((save-form tmp form)
+             (when (file-here-p path) (dir-access-rename-absolute path bak))        ; the previous one becomes the backup
+             (dir-access-rename-absolute tmp path))))))
 
 (defun flush-saves ()
   "Write everything that has changed right now."
   (dolist (name (shiftf *saves-dirty* '()))
     (noting :save (write-save (assoc name *save-files*)))))
 
+(defun step-saves-lost ()
+  "Tell the player, once the game is on, that a save was there and could not be read."
+  (when (and *saves-lost* (boundp '*time*) (> (symbol-value '*time*) 8.0) (not (and (boundp '*lobby-open*) (symbol-value '*lobby-open*))))
+    (setf *saves-lost* '())
+    (funcall 'say "Сохранение не прочиталось — игра началась заново. Напиши автору: такого быть не должно")))
+
 (defun step-saves (delta)
+  (step-saves-lost)
   (when (and *saves-dirty* (<= (decf *save-timer* delta) 0))
     (setf *save-timer* 1.0)
     (flush-saves)))

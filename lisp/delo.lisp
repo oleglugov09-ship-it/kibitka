@@ -153,14 +153,16 @@ Collections (KEEP) are left alone."
         do (unless keep (when clear (funcall clear)) (when save (funcall save)) (when show (funcall show)))))
 
 (defmacro stages (&body forms)
-  "Run FORMS in order, timing each one.
+  "Run FORMS in order, timing each one; an error in one is logged and the next one runs.
 Print one line to the log: which startup stages took more than 30 ms. It shows what exactly slows the
 launch down, in the browser too."
   (let ((log (gensym "LOG")) (t0 (gensym "T0")))
     `(let ((,log '()))
        ,@(loop for form in forms
                collect `(let ((,t0 (get-internal-real-time)))
-                          ,form
+                          ;; one stage that fails must not stop the launch: in the browser an error here used to
+                          ;; end in a prompt for the debugger's input, and what came after (the save!) never ran
+                          (noting ,(if (consp form) (cl:format nil "startup: ~(~a~)" (first form)) "startup") ,form)
                           (push (cons ,(if (consp form) (string-downcase (princ-to-string (first form))) "?")
                                       (round (* 1000 (- (get-internal-real-time) ,t0)) internal-time-units-per-second))
                                 ,log)))

@@ -125,6 +125,7 @@ That is the body, the truck under it, everything bolted on inside, the things an
   ;; a probe of live editing: can this build run code sent to it (in the browser, through the interpreter).
   ;; A line in the log at every launch; it shows whether (live:everyone ...) will work for the player
   (format t "~&Проба живой правки: ~a~%" (run-text "(progn (defun eval-probe (x) (* x 3)) (eval-probe 14))"))
+  (when (member "torture" *dev-flags* :test #'string=) (gc-torture))   ; the browser build's memory under load: dev.lisp
   (unless (net-from-env) (open-lobby))))
 
 (defvar *paused* nil "True while the pause menu (Esc) is open: the world stands still, the REPL works.")
@@ -215,4 +216,4 @@ That is the body, the truck under it, everything bolted on inside, the things an
     (timed :meta (step-meta delta))))
 
 (defmethod unhandled-input ((root trip-root) event)
-  (unless (or *paused* *lobby-open* *map-open* *show*) (handle-input event)))
+  (unless (or *paused* *lobby-open* *map-open* *show*) (noting "key" (handle-input event))))

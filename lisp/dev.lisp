@@ -14,9 +14,40 @@
                        (and (object-call (gdext:singleton "OS") "has_feature" "web")
                             (let ((q (ignore-errors (object-call (gdext:singleton "JavaScriptBridge") "eval" "location.search"))))
                               (when (stringp q)
-                                (setf *dev-flags* (remove-if-not (lambda (f) (search f q)) '("nostart" "nopond" "nobare"))))
+                                (setf *dev-flags* (remove-if-not (lambda (f) (search f q)) '("nostart" "nopond" "nobare" "torture"))))
                               (and (stringp q) (search "dev" q)))))
                    t)))
+
+;;; A torture test for the memory of the browser build (the page address with ?torture). The game's data
+;;; are lists of numbers, keywords and strings held in local variables while more is allocated; if the
+;;; collector cannot see a local, it frees what is still in use, and what comes back is garbage. Each round
+;;; builds such lists, forces a collection in the middle and checks every element afterwards.
+
+(defun torture-round (n seed)
+  "Build lists of N entries, collect garbage while holding them only in locals, and return the number of damaged entries."
+  (let* ((a (loop for i below n collect (list i (cl:format nil "line ~d" (+ i seed)) (* 1.5 i) (if (evenp i) :even :odd))))
+         (b (mapcar (lambda (e) (cons (first e) (copy-seq (second e)))) a))
+         (junk (loop for i below (* 4 n) collect (make-string 24 :initial-element #\x))))   ; pressure on the collector
+    (si:gc t)
+    (let ((c (mapcar (lambda (e) (list (third e) (fourth e))) a)) (bad 0))
+      (setf junk nil)
+      (si:gc t)
+      (loop for e in a for p in b for q in c for i from 0
+            do (unless (and (listp e) (eql (first e) i) (stringp (second e)) (string= (second e) (cl:format nil "line ~d" (+ i seed)))
+                            (floatp (third e)) (= (third e) (* 1.5 i)) (eq (fourth e) (if (evenp i) :even :odd))
+                            (consp p) (eql (car p) i) (stringp (cdr p)) (string= (cdr p) (second e))
+                            (listp q) (eql (first q) (third e)) (eq (second q) (fourth e)))
+                 (incf bad)))
+      bad)))
+
+(defun gc-torture (&optional (rounds 300) (n 400))
+  "Run the torture ROUNDS times; print and return the number of rounds that came back damaged."
+  (let ((damaged 0) (errors 0))
+    (dotimes (r rounds)
+      (handler-case (when (plusp (torture-round n r)) (incf damaged))
+        (error (c) (incf errors) (when (< errors 4) (cl:format t "~&Memory torture, round ~d: ~a~%" r c)))))
+    (cl:format t "~&Memory torture: rounds ~d, damaged ~d, with an error ~d~%" rounds damaged errors)
+    (list damaged errors)))
 
 (defun places-of-interest ()
   "Return everything worth checking by hand, in order along the road, as (path-coordinate . name) pairs."
