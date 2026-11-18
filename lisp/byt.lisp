@@ -341,7 +341,7 @@ a wing with a ring for the kettle, and planks that stick out of the firebox whil
       ;; the planks in the fire: one for every plank's worth of burning left, the last thrown in burns away first
       (setf *stove-planks*
             (loop for i below 6
-                  collect (shape g :box '(.46 .03 .07) "#8a6440" (+ .44 (* .012 i)) (+ mid -.05 (* .02 (mod i 3))) (- (* .05 (mod i 4)) .075)
+                  collect (shape g :box '(.2 .03 .06) "#8a6440" (+ .33 (* .008 i)) (+ mid -.05 (* .02 (mod i 3))) (- (* .04 (mod i 4)) .06)   ; a palm's width out of the door, no more
                                  :rot (list 0 (* .12 (- (mod i 3) 1)) (* .06 (- (mod i 2) .5))) :shadow nil)))
       (shape g :cyl (list .07 .07 (- 4.2 top) 8) iron -.2 (/ (+ 4.2 top) 2) .17 :metal .4 :rough .7)   ; the pipe through the roof to the outside
       (shape g :box '(.36 .04 .36) "#3a3a40" -.2 2.72 .17 :metal .5 :rough .6)    ; the flashing on the roof

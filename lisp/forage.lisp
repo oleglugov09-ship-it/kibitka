@@ -13,7 +13,7 @@
   "Return true if the place at path coordinate D belongs to a village town or lies within 700 m of one."
   (some (lambda (tw) (and (eq (town-theme tw) :village) (< (- (town-start tw) 700.0) d (+ (town-end tw) 700.0)))) *towns*))
 
-(defvar *finds-day* nil "The game day for which the finds by the road are laid out.")
+(defvar *finds-day* nil "What the finds by the road are laid out for: (day season weather).")
 
 (defun grows-p (entry d &optional any-weather)
   "Return true if the *FORAGE* ENTRY grows at path coordinate D right now; with ANY-WEATHER, whatever the weather."
@@ -39,7 +39,7 @@ The number is 100·day + 10·(place of the good in *FORAGE*) + i: at most ten go
 (defun plant-there-p (d kind i)
   "Return true if the plant KIND number I really grows today at the place whose path coordinate rounds to D.
 The driver asks this before giving the good: a plant of yesterday, or one that a guest's message made up,
-gives nothing. The weather is not asked: a mushroom that came up in the rain may be picked after it."
+gives nothing. The weather is not asked: it may have just changed, and the plant still stands on the screen."
   (let ((place (find-if (lambda (p) (< (abs (- p d)) 1.0)) (find-places))))
     (and place (integerp i)
          (find-if (lambda (s) (and (eq (first s) kind) (eql (second s) i))) (forage-spots place t))

@@ -101,7 +101,7 @@ Return the node."
       ((:fish :bread :coal :tools :books :cans :water :honey :berry :fried :jam :toast :stew
         :mushroom :toadstool :apple :herb :shroomfry :creamfry :charlotte :dried
         :nut :sandwich :berrypie :soup :bakedapple :brittle :driedapple :driedherb :pickled :jarcompote :cannedfish)
-       (if (and (eql spin 2) (cut-look kind)) (build-cut g kind) (build-good g kind)))    ; cut on the board: slices   ; the towns' goods - goods.lisp
+       (if (and (eql spin (cut-turn t)) (cut-look kind)) (build-cut g kind) (build-good g kind)))    ; cut on the board: slices   ; the towns' goods - goods.lisp
       (:blin
        (shape g :cyl '(.1 .1 .012 12) "#e4e0d4" 0 .006 0)
        (dotimes (i 5) (shape g :cyl (list (- .08 (* i .003)) .08 .014 10) (if (evenp i) "#d8a040" "#c88a30") (* .004 (- i 2)) (+ .02 (* i .014)) 0 :shadow nil))
@@ -126,10 +126,7 @@ Return the node."
                       (when *carry*
                         (let ((spec (or *carry-from*
                                         (append (list (car *carry*) .6 0.0 .8 0) (when (cdr *carry*) (list (cdr *carry*)))))))
-                          (list (if *carry-cut* (list* (first spec) (second spec) (third spec) (fourth spec) 2 (nthcdr 5 spec)) spec))))   ; cut stays cut
-                      ;; what lies on the cutting board or stands in a jar half closed is on the floor after a restart
-                      (when (and (boundp '*chop*) *chop*) (list (list (car *chop*) .3 0.0 .8 0)))
-                      (when (and (boundp '*can*) *can*) (list (list (car *can*) 0.0 0.0 .8 0)))))))
+                          (list (if *carry-cut* (list* (first spec) (second spec) (third spec) (fourth spec) (cut-turn t) (nthcdr 5 spec)) spec))))))))   ; cut stays cut
 
 (defun spec-ok-p (it)
   "Return true if the thing IT is recorded correctly: (kind x height z spin [town-number])."

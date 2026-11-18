@@ -87,8 +87,8 @@ Each place has its own set, the same for all players."
 
 (defun step-finds ()
   "Update the finds by the nearby places: build them, and remove the far ones."
-  (let ((day (today)))                                              ; a new day: what grew yesterday is gone, lay the places out anew
-    (unless (eql day *finds-day*)
+  (let ((day (list (today) *season* *weather*)))                    ; a new day or new weather: what grows has changed, lay the places out anew
+    (unless (equal day *finds-day*)
       (setf *finds-day* day)
       (dolist (f *find-nodes*) (node-queue-free (second f)))
       (setf *find-nodes* '())))

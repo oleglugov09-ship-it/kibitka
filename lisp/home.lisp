@@ -115,6 +115,12 @@ with the last one written would look unchanged."
              (setf *weather-day* day)
              (set-weather (day-weather day) 7))))))
 
+;; the season's clock is the driver's: a guest's calendar then counts the same days to the turn of the season
+(defcommon :season :value (list *season* (round *season-clock* 60)) :spec '(keyword integer) :driver t
+  :accept (lambda (v) (when (member (first v) *seasons*)
+                        (unless (eq (first v) *season*) (set-season (first v)))
+                        (setf *season-clock* (* 60.0 (second v))))))
+
 ;;; ------------------------------------------------------------------ the diary
 
 (defun diary-note (event plist)
@@ -213,34 +219,41 @@ The driver does it, on a guest's behalf too: the waste paper is the driver's, an
   "Return where the crate of jars stands: x, height above the floor, z."
   (list (first *washstand-at*) 0.0 (- (second *washstand-at*) .88)))
 
+(defun canning-p ()
+  "Return true if what we carry is the good that the open jar waits for."
+  (and *can* *carry* (null (cdr *carry*)) (eq (car *carry*) (car *can*))))
+
 (defun jar-label ()
-  (cond (*can* (format nil "E — крутить закаточный ключ: ~d из ~d" (cdr *can*) *can-turns*))
+  (cond ((canning-p) (format nil "E — крутить закаточный ключ: ~d из ~d" (cdr *can*) *can-turns*))
+        (*can* (format nil "Банка залита кипятком и ждёт: ~a" (good-name (car *can*))))
         ((and *carry* (null (cdr *carry*)) (jar-of (car *carry*)))
          (format nil "E — закатать в банку: ~a · пустых банок ~d" (good-name (jar-of (car *carry*))) *jars*))
         (t (format nil "Пустые банки: ~d. С грибами, яблоками или рыбой в лапах — закатать" *jars*))))
 
 (defun use-jars ()
-  "Answer E on the crate of jars: start a jar with what we carry, then a turn of the key per press."
-  (cond (*can*
+  "Answer E on the crate of jars: open a jar for what we carry, then a turn of the key per press.
+The good stays in the paws until the last turn, when it becomes the closed jar: nothing is laid aside
+that could be lost. A jar opened and left waits for the same good."
+  (cond ((canning-p)
          (incf (cdr *can*))
          (setf *can-dip* .2)
          (when (audio :steps) (object-call (audio :steps) "play"))
-         (cond ((< (cdr *can*) *can-turns*) nil)
-               (*carry* (decf (cdr *can*)) (say "Лапы заняты: освободи их и забери банку"))
-               (t (let ((dish (jar-of (car *can*))))
-                    (setf *can* nil)
-                    (setf *carry* (cons dish nil) *carry-from* nil *carry-cut* nil)
-                    (show-carry) (show-home)
-                    (log-event :canned :dish dish)
-                    (say (format nil "Закатано: ~a. Не испортится, а зимой стоит дороже" (second (assoc dish *kinds*))))))))
+         (when (>= (cdr *can*) *can-turns*)
+           (let ((dish (jar-of (car *can*))))
+             (setf *can* nil)
+             (setf *carry* (cons dish nil) *carry-from* nil *carry-cut* nil)
+             (show-carry) (show-home) (save-interior)
+             (log-event :canned :dish dish)
+             (say (format nil "Закатано: ~a. Не испортится, а зимой стоит дороже" (second (assoc dish *kinds*)))))))
+        (*can* (say (format nil "Банка ждёт: нужно ~a в лапах" (good-name (car *can*)))))
         ((not (and *carry* (null (cdr *carry*)) (jar-of (car *carry*))))
          (say "В банки закатывают грибы, яблоки и рыбу: принеси в лапах"))
         ((<= *jars* 0) (say "Пустых банок нет: их продают в хозтоварах в Красном Куте"))
         ((or (<= *kettle-tea* 0) *kettle-brew*) (say "Нужен кипяток: вскипяти чайник с чистой водой"))
         (t (decf *jars*) (decf *kettle-tea*)
-           (setf *can* (cons (car *carry*) 0) *carry* nil *carry-from* nil)
-           (show-carry) (show-kettle) (save-home) (save-interior) (show-home)
-           (say (format nil "В банке, залито кипятком. Крути ключ: E, всего ~d оборотов" *can-turns*)))))
+           (setf *can* (cons (car *carry*) 0))
+           (show-kettle) (save-home) (show-home)
+           (say (format nil "Банка залита кипятком. Крути ключ: E, всего ~d оборотов" *can-turns*)))))
 
 ;;; ------------------------------------------------------------------ what is seen and pressed
 

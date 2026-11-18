@@ -33,7 +33,9 @@
   #.(let ((h 7))
       ;; a fingerprint of all game sources at build time: desktop and browser builds made from
       ;; the same code get the same one, even though they were built at different times
-      (dolist (file (sort (directory (merge-pathnames "*.lisp" (or *compile-file-truename* *load-truename*)))
+      ;; the mods are part of the rules now (recipes, prices, what grows): they go into the fingerprint too
+      (dolist (file (sort (append (directory (merge-pathnames "*.lisp" (or *compile-file-truename* *load-truename*)))
+                                  (directory (merge-pathnames "../project/mods/*/*.lisp" (or *compile-file-truename* *load-truename*))))
                           #'string< :key #'namestring))
         (with-open-file (in file :external-format :utf-8)
           (loop for c = (read-char in nil) while c
@@ -691,7 +693,8 @@ it but walks there smoothly, hopping as it goes."
           (unless a
             (let* ((g (group *cart* 0 *floor* 0)) (made (make-cat g id look)) (cat (first made)) (k (/ *eye* *cat-eye-y*)))
               (node-3d-set-scale cat (v3 k k k))
-              (sign g name 0 (+ *eye* .6) 0 :h .09 :yaw 0.0)
+              (let ((tag (sign g name 0 (+ *eye* .6) 0 :h .09 :yaw 0.0)))      ; the name: over the head, or just over a lying cat
+                (godot:node-3d-set-position tag (v3 0 (if (look-lying-p look) .7 (+ *eye* .6)) 0)))
               (let ((kind (look-hold look)))                                 ; what the cat holds: in front of its chest
                 (when kind
                   (let ((paws (group cat .16 .62 .34)))

@@ -368,7 +368,8 @@ They go in a row from the start of the first town, past gas stations and the mar
         do (let* ((tw (nth (or town i) *towns*)) (i i) (title title) (rgb rgb)
                   (d (or (pop slots) (+ (town-start tw) (* f (- (town-end tw) (town-start tw)))))))
              (push (list d i) *gimmicks*)
-             (when (and (member i '(0 1)) (not (member "nobare" *dev-flags* :test #'string=))) (push (list (- d 11.0) (+ d 17.0)) *bare*))   ; the pond and the shooting alley need open ground
+             (unless (member "nobare" *dev-flags* :test #'string=)     ; no trees or poles in a booth's yard
+               (push (if (member i '(0 1)) (list (- d 11.0) (+ d 17.0)) (list (- d 8.0) (+ d 8.0))) *bare*))   ; the pond and the shooting alley need open ground
              (push (make-scene :d0 (- d 10) :d1 (+ d 10) :build (lambda () (build-gimmick d i title rgb))) *scenes*))))
 
 (defun prikol-usables ()

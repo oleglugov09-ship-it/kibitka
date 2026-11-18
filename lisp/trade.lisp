@@ -95,7 +95,7 @@ PLACE is the rounded path coordinate of the stay.")
   (when *carry-node* (node-queue-free *carry-node*) (setf *carry-node* nil))
   (when (and *carry* *camera*)
     (let ((g (group *camera* 0 -.27 -.42)))                                ; in the middle of the view, below the crosshair
-      (node-3d-set-scale (build-item g (car *carry*) 0 (- *floor*) 0 (if *carry-cut* 2 0) (cdr *carry*))
+      (node-3d-set-scale (build-item g (car *carry*) 0 (- *floor*) 0 (cut-turn *carry-cut*) (cdr *carry*))
                          (if (cdr *carry*) (v3 .45 .45 .45) (v3 1 1 1)))
       (dolist (sx '(-.07 .07))                                              ; our own paws under it
         (shape g :ball '(.04 6 4) (nth (mod *fur* (length *cat-furs*)) *cat-furs*) sx -.02 .05 :scale '(1 .7 1.5) :shadow nil))
@@ -166,7 +166,7 @@ A shelf is scanned lengthwise: the rack along x, the upper shelves and windowsil
 With CUT, count the cut ones (slices on a board) instead of the whole ones: the two do not stack together."
   (count-if (lambda (it) (destructuring-bind (ikind ix iy iz spin &rest more) (car it)
                            (declare (ignore more))
-                           (and (eq ikind kind) (eq (and cut t) (eql spin 2))
+                           (and (eq ikind kind) (eq (and cut t) (eql spin (cut-turn t)))
                                 (< (abs (- ix x)) .03) (< (abs (- iz z)) .03) (< -.02 (- iy level) *level-room*))))
             *items*))
 
@@ -272,7 +272,7 @@ Return T if something was done."
          (let* ((spot (put-spot)) (problem (and spot (spot-problem spot))))
            (cond (problem (say problem))
                  (spot
-                  (let ((spec (append (list (car *carry*) (float (first spot) 1.0) (float (third spot) 1.0) (float (second spot) 1.0) (if *carry-cut* 2 0))
+                  (let ((spec (append (list (car *carry*) (float (first spot) 1.0) (float (third spot) 1.0) (float (second spot) 1.0) (cut-turn *carry-cut*))
                                       (when (cdr *carry*) (list (cdr *carry*))))))
                     (let ((node (apply #'build-item *cart* spec)))
                       (push (cons spec node) *items*)
@@ -287,7 +287,7 @@ Return T if something was done."
                (fly (cdr it) (hand-point) :dur .2 :free t)                           ; from its place into hand
                (setf *items* (remove it *items*) *carry* (cons (first (car it)) (sixth (car it))) *carry-from* (car it)
                      *took* (car it)
-                     *carry-cut* (and (good-p (first (car it))) (eql (fifth (car it)) 2)))
+                     *carry-cut* (and (good-p (first (car it))) (spec-cut-p (car it))))
                (show-carry) (settle-items) (refresh-seats) (save-interior)
                t)))))
 

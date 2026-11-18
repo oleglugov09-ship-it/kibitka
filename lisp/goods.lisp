@@ -104,6 +104,12 @@ That is the good sought or a dish made from it (blini will do for milk)."
 (defparameter *cut-dish-rgb* '((:fried "#b8782c"))
   "The dishes that keep the look of slices when cooked from a cut good, and the colour of the slices: (dish colour).")
 
+;;; A good that was cut on the board is marked in its record. The record has no field of its own for that, so
+;;; the mark lives in the turn field (the fifth), which goods do not use: 2 means cut. Ask and set it only
+;;; through these two; when a record gets a field for properties, only they change.
+(defun spec-cut-p (spec) "Return true if the item record SPEC is a good that was cut." (eql (fifth spec) 2))
+(defun cut-turn (cut) "Return the value of the turn field for a good that is CUT or not." (if cut 2 0))
+
 (defun cuttable-p (kind) (and (assoc kind *cut-rgb*) t))
 
 (defun cut-look (kind)

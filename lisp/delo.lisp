@@ -168,8 +168,11 @@ DRIVER the thing is the driver's to decide: what a guest sends is ignored, what 
 
 (defun common-state ()
   "Return the common things as (clock value) entries, in the order of declaration."
-  (loop for (name nil nil value) in *commons*
-        collect (let ((now (funcall value))) (list (car (common-clock name now)) now))))
+  (loop for (name nil driver value) in *commons*
+        collect (let ((cell (gethash name *common-clocks*)))
+                  (if (and driver cell (net-guest-p))
+                      (list (car cell) (cdr cell))                            ; the driver's thing: a guest sends back what it was given
+                      (let ((now (funcall value))) (list (car (common-clock name now)) now))))))
 
 (defun accept-common (entries &optional driver-side)
   "Take in the common things ENTRIES sent by another player: (clock value) each.

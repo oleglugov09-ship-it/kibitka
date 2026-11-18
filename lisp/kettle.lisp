@@ -90,7 +90,7 @@
   (let ((knife (group c 0 0 0)))                                             ; the knife of the cutting board
     (shape knife :box '(.03 .004 .18) "#b8bcc0" 0 0 -.05 :metal .7 :rough .3 :shadow nil)
     (shape knife :box '(.03 .015 .1) "#3a2a1e" 0 .004 .09 :shadow nil)
-    (setf *chop-nodes* (list :knife knife :item nil :slices '())))
+    (setf *chop-nodes* (list :knife knife :slices '())))
   (show-chop)
   (show-kettle))
 
@@ -172,64 +172,56 @@
            (say (if *pan-on* "Сковородка на печке: клади на неё рыбу, хлеб, клюкву или тушёнку — пожарится"
                     "Сковородка висит на гвозде")))))
 
-;;; The cutting board. Cutting is done by paw: E lays what we carry on the board, every further E is one
-;;; stroke of the knife and one more slice, and after *CHOPS* strokes the cut good is back in the paws. Cut,
-;;; it looks cut (slices on a little board, BUILD-CUT in goods.lisp) and cooks faster.
+;;; The cutting board. Cutting is done by paw: with a good in the paws every E on the board is one stroke of
+;;; the knife and one more slice, and after *CHOPS* strokes the good in the paws is cut. The good never leaves
+;;; the paws, so nothing can be lost half way: walk off, and only the count of strokes is forgotten. Cut, it
+;;; looks cut (slices on a little board, BUILD-CUT in goods.lisp) and cooks faster.
 
 (defparameter *chops* 5 "The number of knife strokes it takes to cut a good.")
-(defvar *chop* nil "What lies on the board being cut: (good . strokes done), or NIL.")
-(defvar *chop-nodes* nil "The nodes of the cutting, a plist: :knife :item :slices.")
+(defvar *chop* nil "The cutting in hand: (good . strokes done), or NIL.")
+(defvar *chop-nodes* nil "The nodes of the cutting, a plist: :knife :slices.")
 (defvar *chop-dip* 0.0 "The seconds left of the knife's stroke.")
 
 (defun board-point ()
   "Return where the middle of the board is: x, height above the floor, z."
   (list (- (first *washstand-at*) .02) (+ *washstand-top* .045) (- (second *washstand-at*) .6)))
 
+(defun chopping-p ()
+  "Return true if what we carry is the good whose cutting is in hand."
+  (and *chop* *carry* (null (cdr *carry*)) (eq (car *carry*) (car *chop*)) (not *carry-cut*)))
+
 (defun show-chop ()
-  "Show on the board what is being cut and as many slices as there were strokes."
-  (destructuring-bind (&key knife item slices) *chop-nodes*
-    (declare (ignore knife))
-    (when item (node-queue-free item))
-    (dolist (s slices) (node-queue-free s))
-    (setf (getf *chop-nodes* :item) nil (getf *chop-nodes* :slices) '())
-    (when *chop*
-      (destructuring-bind (x y z) (board-point)
-        (let ((whole (build-item *cart* (car *chop*) x y (+ z .06) 0)))
-          (node-3d-set-scale whole (v3 (- 1.0 (* .15 (cdr *chop*))) 1 1))          ; what is left to cut gets shorter
-          (setf (getf *chop-nodes* :item) whole
-                (getf *chop-nodes* :slices)
-                (loop for i below (cdr *chop*)
-                      collect (shape *cart* :box '(.018 .07 .1) (second (assoc (car *chop*) *cut-rgb*))
-                                     (+ x -.1 (* i .03)) (+ *floor* y .04) (- z .12) :rot (list 0 0 -.35) :shadow nil))))))))
+  "Show on the board as many slices as there were strokes."
+  (dolist (s (getf *chop-nodes* :slices)) (node-queue-free s))
+  (setf (getf *chop-nodes* :slices)
+        (when *chop*
+          (destructuring-bind (x y z) (board-point)
+            (loop for i below (cdr *chop*)
+                  collect (shape *cart* :box '(.018 .07 .1) (second (assoc (car *chop*) *cut-rgb*))
+                                 (+ x -.1 (* i .03)) (+ *floor* y .04) (- z .12) :rot (list 0 0 -.35) :shadow nil))))))
 
 (defun use-board ()
-  "Answer E on the cutting board: lay the good down, then one stroke of the knife per press."
-  (cond (*chop*
-         (incf (cdr *chop*))
-         (setf *chop-dip* .18)
-         (when (audio :steps) (object-call (audio :steps) "play"))                 ; a knock on the board
-         (cond ((< (cdr *chop*) *chops*) (show-chop))
-               (*carry* (decf (cdr *chop*)) (say "Лапы заняты: освободи их и забери нарезанное"))
-               (t (let ((kind (car *chop*)))
-                    (setf *chop* nil)
-                    (show-chop)
-                    (setf *carry* (cons kind nil) *carry-from* nil *carry-cut* t)
-                    (show-carry)
-                    (say "Нарезано. На сковородке приготовится вдвое быстрее")))))
-        ((null *carry*) (say "Разделочная доска. Принеси продукт и режь: E — удар ножа"))
+  "Answer E on the cutting board: one stroke of the knife at what we carry."
+  (cond ((null *carry*) (say "Разделочная доска. Принеси продукт и режь: E — удар ножа"))
         ((or (cdr *carry*) (not (cuttable-p (car *carry*)))) (say "Это не режут: режут рыбу, хлеб, грибы, яблоки, тушёнку"))
         (*carry-cut* (say "Уже нарезано"))
-        (t (setf *chop* (cons (car *carry*) 0) *carry* nil *carry-from* nil)
-           (show-carry) (show-chop) (save-interior)
-           (say (format nil "На доске. Режь: E — удар ножа, всего ~d" *chops*)))))
+        (t (unless (chopping-p) (setf *chop* (cons (car *carry*) 0)))             ; another good, or the first stroke
+           (incf (cdr *chop*))
+           (setf *chop-dip* .18)
+           (when (audio :steps) (object-call (audio :steps) "play"))            ; a knock on the board
+           (cond ((< (cdr *chop*) *chops*) (show-chop))
+                 (t (setf *chop* nil *carry-cut* t)
+                    (show-chop) (show-carry) (save-interior)
+                    (say "Нарезано. На сковородке приготовится вдвое быстрее"))))))
 
 (defun board-label ()
-  (cond (*chop* (format nil "E — резать: ~d из ~d" (cdr *chop*) *chops*))
-        ((and *carry* (null (cdr *carry*)) (cuttable-p (car *carry*)) (not *carry-cut*)) "E — положить на доску и резать")
+  (cond ((chopping-p) (format nil "E — резать: ~d из ~d" (cdr *chop*) *chops*))
+        ((and *carry* (null (cdr *carry*)) (cuttable-p (car *carry*)) (not *carry-cut*)) (format nil "E — резать: 0 из ~d" *chops*))
         (t "Разделочная доска")))
 
 (defun step-chop (delta)
-  "Move the knife: it rests by the board and comes down with every stroke."
+  "Move the knife: it rests by the board and comes down with every stroke; a cutting left behind is forgotten."
+  (when (and *chop* (not (chopping-p)) (<= *chop-dip* 0.0)) (setf *chop* nil) (show-chop))
   (let ((knife (getf *chop-nodes* :knife)))
     (when knife
       (setf *chop-dip* (max 0.0 (- *chop-dip* delta)))

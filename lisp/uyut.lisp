@@ -343,7 +343,7 @@ one job, :RUINED, of everything on the stove."
   "Return the number of seconds the JOB takes: less under the lid, less again when everything was cut on the board."
   (* *cook-time* (if *lid* .5 1)
      (if (and (some (lambda (spec) (cuttable-p (first spec))) (rest job))              ; whatever can be cut was cut
-              (every (lambda (spec) (or (eql (fifth spec) 2) (not (cuttable-p (first spec))))) (rest job)))
+              (every (lambda (spec) (or (spec-cut-p spec) (not (cuttable-p (first spec))))) (rest job)))
          *cut-factor* 1)))
 
 (defun step-cook (delta)
@@ -365,7 +365,7 @@ What stands on the hot stove turns into dishes (STOVE-JOBS); each job has its ow
               (set-items (if (eq dish :ruined)
                              (remove first-raw left :test #'equal)
                              ;; a dish from a cut good stays cut: it is put down turned half round, like the good was
-                             (substitute (list dish (second first-raw) (third first-raw) (fourth first-raw) (if (eql (fifth first-raw) 2) 2 0))
+                             (substitute (list dish (second first-raw) (third first-raw) (fourth first-raw) (cut-turn (spec-cut-p first-raw)))
                                          first-raw left :test #'equal))))
             (setf *cook* (remove c *cook*))
             (save-interior)
