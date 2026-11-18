@@ -160,6 +160,7 @@ That is the body, the truck under it, everything bolted on inside, the things an
         (when (and (> gap 1.0) (not (tree-paused-p))) (noting :catch-up (catch-up (min gap 1800.0))))))
     (setf *last-ticks* now))
   ;; the root runs on pause too (process_mode ALWAYS): the REPL queue does not stall, but the world does
+  (quiet-debugger-on)                                            ; log.lisp: no Lisp debugger, ever
   (let ((paused (tree-paused-p)))
     (when (and *paused* (not paused)) (input-set-mouse-mode 2))   ; 'Continue': we look with the mouse again
     (setf *paused* paused)

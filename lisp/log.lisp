@@ -43,6 +43,25 @@ Each distinct error text goes to the log only once."
       (push text *log-errors*)
       (log-event :error :where where :text (subseq text 0 (min 300 (length text)))))))
 
+;;; Nothing may ever open the Lisp debugger: in the browser it asks for input with a window.prompt (the
+;;; «Input:» box players saw), and a refusal ends the launch. gdecl's callbacks catch ERRORs only; whatever
+;;; else reaches the debugger (out of memory, a stack overflow, a broken heap) is logged instead, and the
+;;; callback it happened in is left the way gdecl leaves one after an error. Slynk binds its own hook in its
+;;; threads, so the REPL keeps its debugger.
+
+(defun quiet-debugger (condition hook)
+  (declare (ignore hook))
+  (ignore-errors (note-error condition "отладчик") (finish-output))
+  (ignore-errors (throw (intern "CALLBACK-ERROR" "GD-EXTENSION-CALLBACK") condition))
+  (ignore-errors (format t "~&Мимо отладчика не вышло: ~a~%" condition)))
+
+(defun quiet-debugger-on ()
+  "Put QUIET-DEBUGGER in place. It is done from a frame: the game is loaded under SI:SAFE-EVAL, which binds
+*DEBUGGER-HOOK*, so a value set while loading is lost."
+  (unless (eq *debugger-hook* #'quiet-debugger) (setf *debugger-hook* #'quiet-debugger))
+  (unless (or (find-package "SLYNK") (eq ext:*invoke-debugger-hook* #'quiet-debugger))   ; without Slynk: the first hook too
+    (setf ext:*invoke-debugger-hook* #'quiet-debugger)))
+
 (defun log-url ()
   (let ((base (relay-url)))
     (when base
