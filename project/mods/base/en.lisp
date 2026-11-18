@@ -1,6 +1,10 @@
 ;;;; English for the text of this mod.
 
 (translate
+ "сверхплановая поставка в братскую Озерию: ~a отгрузили из всех городов. В магазинах будет нехватка"
+  "an above-plan shipment to fraternal Ozeria: ~a was loaded out of every town. The shops will run short"
+ "в порт пришёл пароход из Норвенского королевства: ~a завезли в ~a. Там избыток, остальным везти по наряду"
+  "a steamer from the Kingdom of Norven has come into port: ~a was brought to ~a. A surplus there, the rest to be hauled on a work order"
  "Рыбак"
   "Fisherman"
  "Часовой"

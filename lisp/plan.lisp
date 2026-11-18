@@ -357,6 +357,7 @@ A mod that brings a clash is told to rename the newcomer."
   (let ((day (today)))
     (unless (eql day *plan-day*)
       (run-plan-to day)
+      (when (fboundp 'abroad-day) (funcall 'abroad-day day))              ; abroad: a shipment out, a steamer in
       (grow-shark day)
       (save-plan)
       (when (fboundp 'people-day) (funcall 'people-day)))                 ; a day in the count of those who answer for something

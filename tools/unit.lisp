@@ -22,9 +22,9 @@
 (defvar *lid* nil) (defvar *papers* 0) (defvar *money* 0) (defvar *dev* nil)
 (defun reset-vista ()) (defun clear-land ()) (defun clear-roads ())
 (defun net-guest-p () nil) (defun put-save (key form) (declare (ignore key)) form) (defun get-save (key) (declare (ignore key)) nil)
-(defun say-all (text) text)
+(defun say-all (text) text) (defun log-event (&rest r) (declare (ignore r)))
 
-(dolist (f '("delo" "tverd" "random" "economy" "land" "karta" "razmetka" "goods" "plan" "istorii" "places" "prikol" "bumagi" "debt" "people"))
+(dolist (f '("delo" "tverd" "random" "economy" "land" "karta" "razmetka" "goods" "plan" "istorii" "places" "prikol" "bumagi" "debt" "people" "zagranitsa"))
   (load (merge-pathnames (concatenate 'string f ".lisp") cl-user::*here*)))
 
 ;; the content lives in mods: the core ships none. INCLUDE here is plain LOAD from the mod's folder
@@ -564,6 +564,26 @@
           (and debt-day (/ (* debt-day *day-len*) 3600.0)))
   (check "на одних нарядах цеховик закрывается за первые игровые дни, но не сразу" (and shark-day (<= 1 shark-day 15)))
   (check "ссуду можно выплатить, и это не час и не сто часов игры" (and debt-day (<= 20 debt-day 200))))
+
+(format t "Заграница~%")
+(check "у каждой страны есть товары из списка и строка для радио"
+       (and *abroad* (every (lambda (c) (and (some (lambda (g) (assoc g *goods*)) (getf (cdr c) :goods)) (stringp (getf (cdr c) :news)))) *abroad*)))
+(check "страны не действуют в один день, и каждая за месяц хоть раз"
+       (let ((days (loop for d below 30 collect (count-if (lambda (c) (= (mod d (getf (cdr c) :every 7)) (getf (cdr c) :at 0))) *abroad*))))
+         (and (<= (reduce #'max days) 1) (every (lambda (c) (<= (getf (cdr c) :every) 30)) *abroad*))))
+(let ((brother (cdr (find :brother *abroad* :key (lambda (c) (getf (cdr c) :side)))))
+      (west (cdr (find :west *abroad* :key (lambda (c) (getf (cdr c) :side))))))
+  (let ((*goods* *goods*))
+    (let ((saved (make-hash-table :test #'equal)))
+      (maphash (lambda (k v) (setf (gethash k saved) v)) *stocks*)
+      (let ((line (let ((*random-state* (make-random-state t))) (abroad-event brother))))
+        (check "поставка братьям опустошает полки во всех городах"
+               (and (stringp line) (some (lambda (g) (loop for tw below (plan-size) always (<= (stock tw g) (* .31 (max 1e-6 (gethash (cons tw g) saved 0.0))))))
+                                         (getf brother :goods)))))
+      (let ((line (abroad-event west)))
+        (check "пароход с Запада даёт порту избыток, который план повезёт дальше"
+               (and (stringp line) (some (lambda (g) (and (= (stock (getf west :town) g) *stock-cap*) (surplus-p (getf west :town) g))) (getf west :goods)))))
+      (clrhash *stocks*) (maphash (lambda (k v) (setf (gethash k *stocks*) v)) saved))))
 
 (format t "~%~d проверок, ~:[всё сошлось~;провалов: ~:*~d~]~%" *checks* (and *fails* (length *fails*)))
 (ext:quit (if *fails* 1 0))

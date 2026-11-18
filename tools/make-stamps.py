@@ -49,6 +49,12 @@ def sawmill(d, c):     # a fir tree
     for top, half, bottom in ((9, 7, 20), (15, 10, 28), (21, 13, 35)): d.polygon([(20, top), (20 + half, bottom), (20 - half, bottom)], fill=PAPER)
     d.rectangle([18, 35, 22, 40], fill=PAPER)
 
+def camp(d, c):        # a campfire: the pioneer camp
+    d.polygon([(20, 9), (27, 24), (24, 30), (16, 30), (13, 24)], fill=PAPER); d.polygon([(20, 17), (23, 26), (17, 26)], fill=c)
+    d.line([(9, 37), (31, 31)], fill=PAPER, width=3); d.line([(9, 31), (31, 37)], fill=PAPER, width=3)
+
+CAMP = 99  # the camp's number in a parcel's address (CAMP-ADDR in life.lisp)
+
 TOWNS = [(river, (63, 111, 147)), (military, (92, 110, 62)), (factory, (163, 38, 44)), (university, (106, 58, 110)),
          (village, (201, 161, 58)), (port, (44, 74, 122)), (admin, (122, 42, 36)), (outpost, (74, 128, 148)),
          (mine, (58, 56, 56)), (resort, (216, 120, 42)), (rail, (90, 62, 38)), (sawmill, (60, 100, 72))]
@@ -65,4 +71,5 @@ def stamp(picture, colour):
 if __name__ == "__main__":
     OUT.mkdir(parents=True, exist_ok=True)
     for i, (picture, colour) in enumerate(TOWNS): stamp(picture, colour).save(OUT / f"{i}.png")
+    stamp(camp, (194, 42, 34)).save(OUT / f"{CAMP}.png")
     print(len(TOWNS), "stamps ->", OUT)

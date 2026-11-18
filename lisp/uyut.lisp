@@ -255,7 +255,7 @@ A window, building mode or the outside view lowers it."
 Each time it is about something different."
   (incf *radio-n*)
   (when (evenp *radio-n*)                                    ; every other time: about what we ourselves delivered (istorii.lisp)
-    (let ((news (and (not (net-guest-p)) (story-news))))
+    (let ((news (and (not (net-guest-p)) (or (story-news) (and (fboundp 'abroad-news) (funcall 'abroad-news))))))
       (when news (return-from radio-line (format nil "Радио: ~a" news)))))
   (let ((next (find-if (lambda (tw) (> (town-start tw) *dist*)) *towns*)))
     (case (mod *radio-n* 5)

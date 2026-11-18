@@ -84,7 +84,7 @@ PLACE is the rounded path coordinate of the stay.")
 
 (defun carry-name (carry)
   (if (cdr carry)
-      (format nil "посылку в ~a~@[ (от: ~a)~]" (town-name (parcel-town (cdr carry))) (parcel-from (cdr carry)))
+      (format nil "посылку в ~a~@[ (от: ~a)~]" (place-name (parcel-town (cdr carry))) (parcel-from (cdr carry)))
       (good-name (car carry))))
 
 (defvar *carry-props* '() "The properties of the thing in the paws, as in its record: see *PROP-KEYS* in goods.lisp.")

@@ -50,12 +50,12 @@
 (defclient :sender
   :sign (lambda (price good town dest) (declare (ignore town))
           (if good
-              (format nil "НАРЯД: ~a В ~a · ТАРИФ ~/kiosk-trip::rub/" (string-upcase (plan-name good)) (string-upcase (town-name dest)) price)
-              (format nil "ПОСЫЛКА В ~a · ПЛАЧУ ~/kiosk-trip::rub/" (string-upcase (town-name dest)) price)))
+              (format nil "НАРЯД: ~a В ~a · ТАРИФ ~/kiosk-trip::rub/" (string-upcase (plan-name good)) (string-upcase (place-name dest)) price)
+              (format nil "ПОСЫЛКА В ~a · ПЛАЧУ ~/kiosk-trip::rub/" (string-upcase (place-name dest)) price)))
   :hint (lambda (price good town dest) (declare (ignore good town dest))
           (format nil "Отправитель платит ~/kiosk-trip::rub/: ЛКМ по посылке на подоконнике" price))
   :words (lambda (price good town dest) (declare (ignore good town))
-           (format nil "Отправитель: посылка в ~a, платит ~/kiosk-trip::rub/ — возьми её с подоконника (ЛКМ)" (town-name dest) price))
+           (format nil "Отправитель: посылка в ~a, платит ~/kiosk-trip::rub/ — возьми её с подоконника (ЛКМ)" (place-name dest) price))
   :coming "Идёт отправитель с посылкой" :gone "Отправитель унёс посылку")
 
 (defclient :recipient
@@ -101,7 +101,7 @@ It is (:market PATH TOWN-INDEX) at a market or (:stop STOP) at a bus stop with c
   "Return what is paid for a parcel from here to town TOWN: the farther, the more."
   (let ((tw (find town *towns* :key #'town-index)))
     (* (if *stamp* *stamp-factor* 1)                                ; with the town council stamp it is doubled
-       (way-pay (plan-way (town-stop-d tw))))))                     ; by the real road, not by the path coordinate
+       (way-pay (plan-way (if tw (town-stop-d tw) (or (camp-d) *dist*)))))))   ; by the real road; or to the camp
 
 ;;; Clients
 
@@ -233,13 +233,15 @@ The driver keeps count; guests are sent a description, see CLIENT-VIEW."
     (setf kind :ration))                                      ; the shop brings what is short here: against a coupon
   (let* ((story (and (eq kind :sender) (story-sender town)))   ; a sender from a story (istorii.lisp): he has his own addressee
          (regular (and (member kind '(:buyer :seller)) (story-regular town)))     ; a regular: he recognised us and asks
-         (cargo (and (eq kind :sender) (not story) (plan-cargo (trade-town town))))   ; the plan's cargo: a surplus here that is short elsewhere
+         (camp (and (eq kind :sender) (not story) (camp-open-p) (camp-d) (< (random 1.0) *camp-parcel-chance*)))   ; parents send to the pioneer camp
+         (cargo (and (eq kind :sender) (not story) (not camp) (plan-cargo (trade-town town))))   ; the plan's cargo: a surplus here that is short elsewhere
          (person (and (not story) (not regular) (or cargo (not (eq kind :sender)))      ; someone we know by name (people.lisp): a line a day
                       (person-speaks (list :window kind) (trade-town town))))
          (who (and person *person-spoke*))
          (dest (when (eq kind :sender)                       ; where the parcel goes: by the story, by the plan, or to any other town
                  (cond (story (first story))
                        (cargo (first cargo))
+                       (camp *camp-town*)
                        (t (let ((others (remove town (loop for tw in *towns* collect (town-index tw)))))
                             (nth (random (length others)) others))))))
          (good (cond (cargo (second cargo))
@@ -278,6 +280,10 @@ The driver keeps count; guests are sent a description, see CLIENT-VIEW."
       (node-3d-set-position (getf *client* :node) (client-spot 1.0 from)))
     (log-event :client :kind kind :price price :town town :dist (round *dist*))
     (cond (story (say-all (format nil "~a: «~a»" (second story) (third story))))
+          ((eql dest *camp-town*)
+           (say-all (if (eql (trade-town town) *camp-intl-town*)
+                        "Проводница: «Поездом из братской Озерии — детям интернациональной смены, в лагерь «Костёр»»"
+                        "Мама пионера: «В лагерь «Костёр», сыну в третий отряд. Там варенье — не разбейте»")))
           (regular (say-all regular))
           (person (say-all person))
           (t (let ((coming (client-kind kind :coming))) (say (if (functionp coming) (funcall coming town) coming)))))))
@@ -402,7 +408,7 @@ Return four values: what he now has in hand, whether that changed, what to say, 
                (unless (getf *client* :stall) (client-leave))
                (values (cons kind addr) t
                        (if sender
-                           (format nil "Взяли посылку в ~a: задаток ~/kiosk-trip::rub/, при вручении ещё ~/kiosk-trip::rub/ Поставь её на полку" (town-name (parcel-town addr)) (ceiling price 2) (delivery-pay))
+                           (format nil "Взяли посылку в ~a: задаток ~/kiosk-trip::rub/, при вручении ещё ~/kiosk-trip::rub/ Поставь её на полку" (place-name (parcel-town addr)) (ceiling price 2) (delivery-pay))
                            (format nil "Купили ~a за ~/kiosk-trip::rub/" (good-name kind) price))
                        (and (not sender) (or ration (<= price (list-price kind))) '(:shop t))))))))   ; at the list price it is the shop's: not for resale
 

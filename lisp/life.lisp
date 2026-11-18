@@ -410,6 +410,14 @@ Its x points to the right of the road and its z backwards along the path."
 (defparameter *camp-gate-x* 12.0 "How far from the road axis the camp's gates stand.")
 (defvar *camp-fed* nil "What the canteen has taken today: (day . count).")
 (defvar *life-season* nil "The season the seasonal scenes were built in.")
+(defparameter *camp-town* 99 "The camp's number in a parcel's address, in place of a town: no town has it.")
+(defvar *camp-parcel-chance* .3 "The chance that a sender in summer brings a parcel for the camp: parents to their children.")
+(defvar *camp-intl-town* 10
+  "The town with the railway station where the trains from the fraternal republic stop: there the parcels
+for the international session's children are handed to us.")
+
+(defun place-name (town) "Return the name of TOWN as a parcel's address has it: a town, or the camp." (if (eql town *camp-town*) "лагерь «Костёр»" (town-name town)))
+(defun camp-parcel-p (carry) "Return true if CARRY, a thing in the paws, is a parcel for the camp." (and (cdr carry) (eql (parcel-town (cdr carry)) *camp-town*)))
 
 (defun camp-d ()
   "Return the path coordinate of the pioneer camp, or NIL."
@@ -485,6 +493,7 @@ Its x points to the right of the road and its z backwards along the path."
 
 (defun camp-label ()
   (cond ((not (camp-open-p)) "Пионерлагерь «Костёр». Закрыт до лета")
+        ((camp-parcel-p *carry*) "E — отдать вожатой посылку для пионера")
         ((null *carry*) "Хозворота лагеря: завхоз берёт для столовой съестное — блюда, молоко, хлеб, яблоки, мёд")
         (t (format nil "E — сдать завхозу ~a" (carry-name *carry*)))))
 
@@ -492,7 +501,8 @@ Its x points to the right of the road and its z backwards along the path."
   "Hand what we carry to the camp's supply manager: food for the canteen, paid by transfer."
   (let ((kind (car *carry*)) (day (today)))
     (unless (eql (car *camp-fed*) day) (setf *camp-fed* (cons day 0)))
-    (cond ((not (camp-open-p)) (say "Сторож: «Смена кончилась. Приезжай летом»"))
+    (cond ((camp-parcel-p *carry*) (camp-parcel))
+          ((not (camp-open-p)) (say "Сторож: «Смена кончилась. Приезжай летом»"))
           ((null *carry*) (say "Завхоз: «Столовой нужно съестное: блюда, молоко, хлеб, яблоки, мёд. Неси к воротам»"))
           ((or (cdr *carry*) (not (or (dish-p kind) (member kind *camp-food*)))) (say "Завхоз: «Это нам ни к чему. Детей кормим, а не склад держим»"))
           ((>= (cdr *camp-fed*) *camp-daily*) (say "Завхоз: «На сегодня столовая сыта. Завтра приезжай»"))
@@ -507,6 +517,19 @@ Its x points to the right of the road and its z backwards along the path."
                  (say-all (format nil "Завхоз расписался: ~a для столовой, ~/kiosk-trip::rub/ на счёт. Шефы с завода это запомнят" (good-name kind) pay))
                  (when turn (say-standing turn))
                  (let ((line (person-speaks :camp))) (when line (say-later line 4.0)))))))))
+
+(defun camp-parcel ()
+  "Hand the parcel in the paws to the camp. In summer the leader takes it and pays for the delivery; once
+the session is over the watchman takes it to send back to the parents, for half."
+  (let* ((open (camp-open-p)) (pay (if open (delivery-pay) (ceiling (delivery-pay) 2))))
+    (incf *money* pay)
+    (setf *carry* nil *carry-from* nil)
+    (show-carry) (save-interior)
+    (note-quest :post)
+    (log-event :camp-parcel :pay pay :open open)
+    (say-all (if open
+                 (format nil "Вожатая: «Отряд, построиться — почта!» Посылка вручена: +~/kiosk-trip::rub/" pay)
+                 (format nil "Сторож: «Смена разъехалась. Отошлю родителям обратно». +~/kiosk-trip::rub/" pay)))))
 
 (defun life-usables ()
   "Return the things to press outside that belong to the life of the roadside: the camp's gates."
