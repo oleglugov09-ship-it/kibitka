@@ -7,7 +7,11 @@
 
 (in-package #:kiosk-trip)
 
-(defparameter *copy-slots* 8 "How many copies are kept: a new one takes the place of the oldest.")
+(defparameter *copy-slots* 8 "How many copies by hand are kept: a new one takes the place of the oldest.")
+(defparameter *auto-slots* 3
+  "How many automatic copies are kept, in slots after the hand-made ones: one a game day and one at launch,
+so a world gone wrong loses at most a day, and the oldest automatic copy is three days back.")
+(defvar *auto-copy-day* nil "The game day of the last automatic copy.")
 (defvar *copy-ui* nil "The panel: (:layer :new button :rows (button ...)).")
 (defvar *copy-armed* nil "The copy clicked once and waiting for the second click: (slot . time).")
 (defvar *copy-list* '() "The copies on disk as (slot unix-time label), the newest first; read when the panel opens.")
@@ -20,7 +24,7 @@
     (and (fits f '(t real string t)) (eq (first f) :copy) (list slot (second f) (third f)))))
 
 (defun read-copies ()
-  (setf *copy-list* (sort (loop for i below *copy-slots* for c = (copy-info i) when c collect c) #'> :key #'second)))
+  (setf *copy-list* (sort (loop for i below (+ *copy-slots* *auto-slots*) for c = (copy-info i) when c collect c) #'> :key #'second)))
 
 (defun copy-label ()
   "Return what a copy of the world now says about itself: when, which day of the game, money, debt."
@@ -28,14 +32,17 @@
     (format nil "~a · день ~d · ~/kiosk-trip::rub/ · долг ~/kiosk-trip::rub/"
             (subseq dt 5 (min 16 (length dt))) (today) *money* *debt*)))
 
-(defun make-copy ()
-  "Copy the world as it is now into the free or the oldest slot; return T on success."
+(defun make-copy (&optional auto)
+  "Copy the world as it is now into the free or the oldest slot; return T on success.
+With AUTO it goes to the slots of automatic copies, and the hand-made ones are left alone."
   (flush-saves)
   (let* ((file (assoc :world *save-files*))
          (sections (loop for (key) in (cddr file) when (gethash key *saves*) collect key and collect (gethash key *saves*)))
-         (used (mapcar #'first *copy-list*))
-         (slot (or (loop for i below *copy-slots* unless (member i used) return i) (first (first (last *copy-list*)))))
-         (form (list :copy (object-call (gdext:singleton "Time") "get_unix_time_from_system") (copy-label)
+         (from (if auto *copy-slots* 0)) (to (+ from (if auto *auto-slots* *copy-slots*)))
+         (mine (remove-if-not (lambda (c) (<= from (first c) (1- to))) *copy-list*))
+         (slot (or (loop for i from from below to unless (find i mine :key #'first) return i) (first (first (last mine)))))
+         (form (list :copy (object-call (gdext:singleton "Time") "get_unix_time_from_system")
+                     (if auto (format nil "авто · ~a" (copy-label)) (copy-label))
                      (list :save *save-version* sections))))
     (when (and (form-reads-back-p form) (save-form (copy-path slot) form))
       (read-copies)
@@ -66,11 +73,11 @@
     (node-add-child *root* layer) (node-add-child layer bg)
     (object-set layer "layer" 30)                                      ; above the pause menu
     (object-set layer "visible" nil)                                   ; STEP-COPIES opens it and fills the list
-    (object-set bg "position" (vector2 8 24)) (object-set bg "size" (vector2 176 (+ 52 (* 22 *copy-slots*))))
+    (object-set bg "position" (vector2 8 24)) (object-set bg "size" (vector2 176 (+ 52 (* 22 (+ *copy-slots* *auto-slots*)))))
     (object-set bg "color" (color .08 .09 .1 .9))
     (hud-label bg "Копии мира" 8 4 10)
     (let ((new (lobby-control "Button" bg 8 22 160 20 "Сделать копию"))
-          (rows (loop for i below *copy-slots* collect (lobby-control "Button" bg 8 (+ 48 (* 22 i)) 160 20 ""))))
+          (rows (loop for i below (+ *copy-slots* *auto-slots*) collect (lobby-control "Button" bg 8 (+ 48 (* 22 i)) 160 20 ""))))
       (dolist (b (cons new rows)) (object-set b "toggle_mode" t))
       (dolist (b rows) (object-call b "add_theme_font_size_override" "font_size" 8))
       (setf *copy-ui* (list :layer layer :new new :rows rows)))))
@@ -81,8 +88,17 @@
              (object-set b "visible" (and c t))
              (when c (object-set b "text" (if (eql (first c) (car *copy-armed*)) "Точно? Нажми ещё раз" (third c)))))))
 
+(defun step-auto-copy ()
+  "Copy the world by itself once a game day, and once soon after launch, for whoever owns it."
+  (when (and (not (net-guest-p)) *cart* (> *time* 20.0) (not *lobby-open*)
+             (not (eql *auto-copy-day* (today))))
+    (setf *auto-copy-day* (today))
+    (read-copies)
+    (make-copy t)))
+
 (defun step-copies ()
   "Show the panel while the pause menu is open, for whoever owns the world, and answer its buttons."
+  (noting :auto-copy (step-auto-copy))
   (let ((open (and *paused* (not (net-guest-p)) (not *lobby-open*))))
     (when (and open (null *copy-ui*)) (make-copy-panel))
     (when *copy-ui*
