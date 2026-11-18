@@ -257,6 +257,23 @@
 (let ((*goods* (append *goods* '((:soap "мыло" 6 :stack 4 :size (.1 .05 .07) :rgb "#e8d8c0" :title "мыло")))))
   (check "товар из мода без модели и без правок ядра: цена, свойства, размер"
          (and (= (good-base :soap) 6) (= (trait :soap :stack) 4) (equal (trait :size :soap) nil) (equal (trait :soap :size) '(.1 .05 .07)))))
+(check "ящик по наряду помнит товар по имени: для каждого товара адрес читается обратно, и номера не совпадают"
+       (and (every (lambda (g) (eq (parcel-good (plan-addr 7 (first g))) (first g))) *goods*)
+            (every (lambda (g) (= (mod (plan-addr 7 (first g)) 100) 7)) *goods*)
+            (null (number-clashes))))
+(let* ((addr (plan-addr 3 :honey))
+       (*goods* (append (list '(:soap "мыло" 6)) (subseq *goods* 0 4) (list '(:nails "гвозди" 3)) (subseq *goods* 4))))
+  (check "товары мода вставлены в начало и в середину списка — ящик на дороге всё ещё с мёдом"
+         (and (eq (parcel-good addr) :honey) (eq (parcel-good (plan-addr 3 :soap)) :soap))))
+(check "ящик, собранный по-старому (по месту в списке), всё ещё открывается; простая посылка — не груз"
+       (and (eq (parcel-good (+ 3 (* 100 (+ 900 2)))) (first (nth 2 *goods*))) (null (parcel-good 3)) (null (parcel-good 1203))))
+(check "посылка истории помнит историю по имени: адрес читается обратно, старые адреса тоже"
+       (and (every (lambda (s) (let ((got (parcel-story (parcel-addr 5 (first s) 0)))) (and got (eq (first got) (first s)) (eql (second got) 0))))
+                   *stories*)
+            (let ((old (parcel-story (+ 5 (* 100 (+ 1 (* 10 1) 0)))))) (and old (eq (first old) (first (second *stories*)))))
+            (let* ((addr (parcel-addr 5 (first (third *stories*)) 1)) (*stories* (cons '(:new-story) *stories*)))
+              (eq (first (parcel-story addr)) (first (fourth *stories*))))
+            (= (parcel-town (parcel-addr 5 (first (first *stories*)) 2)) 5)))
 (check "таблицы, переехавшие в мод, на месте"
        (and (= (length *weekdays*) 7) *shop-names* *slogans* *start-interior* *restricted* *camp-food* *shift-themes* *shift-hours*
             (= (length *plank-price*) 2) (= (length *jar-deal*) 2) (= (length *carpenter-deal*) 2) *quest-money*

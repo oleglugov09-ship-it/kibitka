@@ -32,18 +32,26 @@ This is how a mod adds a story: see mods/stories/mod.lisp for the shape of a ste
 
 ;;; A story parcel has an address of its own: the town number plus hundreds encoding the story and step. It
 ;;; shows whose parcel it is: the crate says who it is from, and the recipient answers that very parcel
-;;; rather than the first one that happens to come to this town.
+;;; rather than the first one that happens to come to this town. The story is named by a number made from
+;;; its key (NAME-NUMBER), in the hundreds from 100000 up: a mod may add a story anywhere and no parcel on
+;;; the road changes hands. The hundreds below 900 are parcels sent before that, by the story's place in the
+;;; list; they are still delivered. (The hundreds between belong to the plan's crates, plan.lisp.)
+
+(defun story-number (key) "Return the number that names the story KEY in a parcel's address." (name-number key 9000))
 
 (defun parcel-addr (town &optional key n)
   "Return the address of a parcel to town TOWN.
 With KEY and N it is a parcel of story KEY, step N."
-  (+ town (if key (* 100 (+ 1 (* 10 (position key *stories* :key #'first)) n)) 0)))
+  (+ town (if key (* 100 (+ 100000 (* 10 (story-number key)) n)) 0)))
 (defun parcel-town (addr) "Return the town the parcel with address ADDR goes to." (mod addr 100))
 (defun parcel-story (addr)
   "Return whose parcel ADDR is: (key step step-record) for a story parcel, NIL for an ordinary one."
   (let ((id (floor addr 100)))
-    (when (plusp id)
-      (let* ((story (nth (floor (1- id) 10) *stories*)) (n (mod (1- id) 10)) (step (and story (nth n (rest story)))))
+    (multiple-value-bind (story n)
+        (cond ((<= 1 id 899) (values (nth (floor (1- id) 10) *stories*) (mod (1- id) 10)))                 ; sent the old way
+              ((>= id 100000) (values (find (floor (- id 100000) 10) *stories* :key (lambda (s) (story-number (first s))))
+                                      (mod id 10))))
+      (let ((step (and story (nth n (rest story)))))
         (and step (list (first story) n step))))))
 (defun parcel-from (addr) "Return the sender of the story parcel ADDR, or NIL." (let ((s (parcel-story addr))) (and s (third (third s)))))
 (defun parcel-to (addr) "Return the recipient of the story parcel ADDR, or NIL." (let ((s (parcel-story addr))) (and s (fifth (third s)))))

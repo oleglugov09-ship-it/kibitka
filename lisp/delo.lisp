@@ -19,6 +19,14 @@
 Anything missing from the table (and any non-string) is returned as is."
   (if (and (eq *lang* :en) (stringp text)) (or (gethash text *en*) text) text))
 
+(defun name-number (symbol range)
+  "Return a number below RANGE that depends on the name of SYMBOL alone: the same on every machine, in every
+build, wherever the symbol stands in any list. Things that travel or are saved name a good or a story by it."
+  (let ((h 2166136261))
+    (loop for c across (symbol-name symbol)
+          do (setf h (logand (* (logxor h (char-code c)) 16777619) #xffffffff)))
+    (mod h range)))
+
 (defun fits (x spec)
   "Return true if X has the shape SPEC; use it on data from the network and from save files.
 SPEC is T for anything; a type name (INTEGER, REAL, STRING, KEYWORD, LIST, CONS); (:each S) for a

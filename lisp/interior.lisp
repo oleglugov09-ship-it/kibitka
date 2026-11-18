@@ -122,7 +122,7 @@ Return the node."
   (and (listp it) (<= 5 (length it) 7) (props-ok-p (seventh it)) (assoc (first it) *kinds*)
        (every (lambda (v) (and (realp v) (< -6 v 6))) (subseq it 1 4))
        (member (fifth it) '(0 1 2 3))
-       (or (null (sixth it)) (and (integerp (sixth it)) (<= 0 (sixth it) 99999)))))
+       (or (null (sixth it)) (and (integerp (sixth it)) (<= 0 (sixth it) 99999999)))))
 
 
 (defun specs-ok-p (specs)

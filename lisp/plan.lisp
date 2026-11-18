@@ -164,14 +164,28 @@
         (when (and (/= tw town) (> (shortage tw good) worst))
           (setf worst (shortage tw good) best (list tw good)))))))
 
-;;; A crate of the plan's cargo is a parcel whose address says what is in it: the town, plus hundreds from
-;;; 900 up that name the good (story parcels use the hundreds below, istorii.lisp).
+;;; A crate of the plan's cargo is a parcel whose address says what is in it: the town, plus hundreds that
+;;; name the good. The good is named by a number made from its name (NAME-NUMBER), from 1000 to 99999: a mod
+;;; may add goods anywhere in the list and no crate on the road changes its contents. The hundreds from 900
+;;; to 999 are crates packed before that, when a good was known by its place in the list; they still open.
+;;; Story parcels use the hundreds below 900 and above 99999 (istorii.lisp).
 
-(defun plan-addr (town good) (+ town (* 100 (+ 900 (position good (mapcar #'first *goods*))))))
+(defun good-number (good) "Return the number that names GOOD in a crate's address." (+ 1000 (name-number good 99000)))
+(defun plan-addr (town good) (+ town (* 100 (good-number good))))
 (defun parcel-good (addr)
   "Return the good in the crate with address ADDR if it is the plan's cargo, else NIL."
   (let ((id (and (integerp addr) (floor addr 100))))
-    (and id (>= id 900) (first (nth (- id 900) *goods*)))))
+    (cond ((null id) nil)
+          ((<= 900 id 999) (first (nth (- id 900) *goods*)))                    ; packed the old way
+          ((<= 1000 id 99999) (first (find id *goods* :key (lambda (g) (good-number (first g)))))))))
+
+(defun number-clashes ()
+  "Return the goods, and the stories, that share a number with another: there should be none.
+A mod that brings a clash is told to rename the newcomer."
+  (flet ((clashes (keys number)
+           (loop for (a . rest) on keys append (loop for b in rest when (= (funcall number a) (funcall number b)) collect (list a b)))))
+    (append (clashes (mapcar #'first *goods*) #'good-number)
+            (when (boundp '*stories*) (clashes (mapcar #'first (symbol-value '*stories*)) (lambda (k) (name-number k 9000)))))))
 
 (defun deliver-cargo (addr)
   "Put the plan's crate ADDR into the shop of its town; return the premium earned, in units of money."

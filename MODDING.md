@@ -57,8 +57,9 @@ that it wants `:size (width height depth)` in metres, `:rgb "#colour"` and `:tit
 (setf *goods* (append *goods* '((:soap "мыло" 6 :stack 4 :size (.1 .05 .07) :rgb "#e8d8c0" :title "мыло"))))
 ```
 
-Put it into a town's `*town-trade*` and it is made, allocated, short and sold like the rest. Append to the
-end of `*goods*`: the plan's crates remember a good by its place in the list.
+Put it into a town's `*town-trade*` and it is made, allocated, short and sold like the rest. It may stand
+anywhere in the list: crates and parcels on the road remember a good or a story by its name, not by its
+place. Only renaming a good or a story key orphans what is already on the road.
 
 What a booth, a gnome or a recipe *does* is still code in the core: a mod can move, rename and reprice
 them, but a new kind of booth needs code.

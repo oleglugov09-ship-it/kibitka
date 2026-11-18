@@ -264,6 +264,8 @@ That is the good sought or a dish made from it (blini will do for milk)."
 
 (defun adopt-goods ()
   "Give a place among the things to every good a mod brought without a model: its size comes from its record."
+  (let ((clashes (number-clashes)))                               ; two names that make one number: say so, loudly
+    (when clashes (cl:format t "~&MOD ERROR: these goods or stories share a number, rename one of each pair: ~s~%" clashes)))
   (dolist (entry *goods*)
     (unless (assoc (first entry) *kinds*)
       (setf *kinds* (append *kinds* (list (list (first entry) (or (trait (first entry) :title) (second entry))
