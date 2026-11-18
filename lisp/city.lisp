@@ -474,7 +474,7 @@ The wallet is shared, so anyone can refuel."
             ((<= pay 0) (say "Денег нет. Развези посылки"))
             (t (decf *money* pay) (setf *fuel* (min 1.0 (+ *fuel* (/ pay *tank-price*))) *fuel-told* nil)
                (log-event :fuel :pay pay :fuel *fuel* :money *money* :dist (round *dist*))
-               (say-all (format nil "Залили на ~d р. Хватит ещё на ~,1f км" pay (* *fuel* *tank-km*))))))))
+               (say-all (format nil "Залили на ~/kiosk-trip::rub/ Хватит ещё на ~,1f км" pay (* *fuel* *tank-km*))))))))
 
 (defun buy-fuel () "Buy fuel on R at a gas station; return T if we are at one." (when *at-station* (pour-fuel) t))
 
@@ -483,7 +483,7 @@ The wallet is shared, so anyone can refuel."
   (when *at-station*
     (destructuring-bind (n price) *plank-price*
       (cond ((< *money* price) (say "На доски не хватает"))
-            (t (decf *money* price) (incf *planks* n) (say-all (format nil "Купили досок: ~d за ~d р." n price)))))))
+            (t (decf *money* price) (incf *planks* n) (say-all (format nil "Купили досок: ~d за ~/kiosk-trip::rub/" n price)))))))
 
 (defun buy-planks () "Buy planks on P at a gas station; return T if we are at one." (when *at-station* (take-planks) t))
 (defvar *fuel-told* nil)
@@ -499,7 +499,7 @@ The wallet is shared, so anyone can refuel."
   "Add a hundred roubles to the shared wallet for free; the F8 cheat."
   (incf *money* 100)
   (log-event :cheat :what :money :money *money* :dist (round *dist*))
-  (say-all (format nil "Чит: +100 р. В кошельке ~d" *money*)))
+  (say-all (format nil "Чит: +5 р. В кошельке ~/kiosk-trip::rub/" *money*)))
 
 (defun step-fuel (delta)
   (setf *fuel* (max 0.0 (- *fuel* (/ (* *speed* delta) (* 1000 *tank-km*)))))
@@ -518,7 +518,7 @@ Once we stop there the ladder lowers by itself: only at such places can one get 
       (unless (net-guest-p) (setf *ladder-down* t))
       (say (if (net-guest-p)
                "Заправка. Лесенка опущена — можно выйти"
-               (format nil "Заправка. R — бензин на ~d р. · P — ~d доски за ~d р. Лесенка опущена — можно выйти"
+               (format nil "Заправка. R — бензин на ~/kiosk-trip::rub/ · P — ~d доски за ~/kiosk-trip::rub/ Лесенка опущена — можно выйти"
                        *fuel-chunk* (first *plank-price*) (second *plank-price*)))))
     (setf *at-station* at)
     ;; one can get out not only at a gas station: bus stop, observatory, drop-off point (finds.lisp)

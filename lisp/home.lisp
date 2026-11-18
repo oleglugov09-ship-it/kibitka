@@ -154,13 +154,13 @@ with the last one written would look unchanged."
               (trip-day day) (tr (nth (mod (1- (trip-day day)) 7) *weekdays*))
               (or (remove nil
                           (list (and (got :towns) (format nil "Были: ~{~a~^, ~}" (got :towns)))
-                                (and (got :sold) (format nil "Продали: ~d, выручка ~d р." (got :sold) (or (got :income) 0)))
+                                (and (got :sold) (format nil "Продали: ~d, выручка ~/kiosk-trip::rub/" (got :sold) (or (got :income) 0)))
                                 (and (got :dishes) (format nil "Приготовили: ~{~a~^, ~}"
                                                            (mapcar (lambda (k) (or (second (assoc k *kinds*)) "блюдо")) (got :dishes))))
                                 (and (got :picked) (format nil "Собрали у дороги: ~d" (got :picked)))
                                 (and (got :recycled) (format nil "Сдали бутылки и макулатуру"))
-                                (and (got :fuel) (format nil "Залили бензина на ~d р." (got :fuel)))
-                                (and (got :debt) (format nil "Внесли в счёт долга: ~d р." (got :debt)))
+                                (and (got :fuel) (format nil "Залили бензина на ~/kiosk-trip::rub/" (got :fuel)))
+                                (and (got :debt) (format nil "Внесли в счёт долга: ~/kiosk-trip::rub/" (got :debt)))
                                 (and (got :papers) (format nil "Получили бумагу в горсовете"))
                                 (and (got :gnomes) (format nil "Нашли гномиков: ~d" (got :gnomes)))
                                 (and (got :spoiled) (format nil "Испортилось: ~d" (got :spoiled)))))

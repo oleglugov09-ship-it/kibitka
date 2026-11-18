@@ -236,7 +236,13 @@
 (check "будки не стоят вплотную" (loop for (a b) on (sort (mapcar #'first *gimmicks*) #'<) while b always (> (- b a) 20)))
 (check "сберкасса стоит в первом городе" (let ((g (find 14 *gimmicks* :key #'second))) (and g (eq (town-at (first g)) (first *towns*)))))
 (let ((*debt* *debt-total*) (*story-stage* :owing))
-  (check "взнос не больше остатка долга" (and (= (debt-share) *debt-chunk*) (let ((*debt* 7)) (= (debt-share) 7))))
+  (check "взнос не больше остатка долга и не больше кошелька"
+         (and (let ((*money* 1000000)) (= (debt-share) *debt-chunk*))
+              (let ((*money* 1000000) (*debt* 7)) (= (debt-share) 7))
+              (let ((*money* 30)) (= (debt-share) 30))))
+  (check "деньги пишутся рублями и копейками"
+         (and (equal (money-text 5) "25 коп.") (equal (money-text 48) "2 р. 40 коп.") (equal (money-text 200000) "10000 р.")
+              (equal (format nil "за ~/kiosk-trip::rub/" 20) "за 1 р.")))
   (pay-debt *debt-chunk*)
   (check "после взноса долг меньше, история та же" (and (= *debt* (- *debt-total* *debt-chunk*)) (eq *story-stage* :owing)))
   (pay-debt *debt*)

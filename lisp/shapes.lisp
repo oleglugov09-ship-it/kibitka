@@ -202,6 +202,10 @@ RGB is its color, ROT is (x y z) in radians and SCALE is (x y z). Return the Mes
       (push (list parent kind dims x y z rot scale) (cdr *tracking*)))
     mi))
 
+(defun plain-text (node text)
+  "Set the text of NODE to TEXT as it is, past the translation: for text that is already in the game language."
+  (godot:object-set node "text" text))
+
 (defun group (parent &optional (x 0.0) (y 0.0) (z 0.0))
   "Add an empty Node3D under PARENT at (X Y Z) and return it.
 It lets a thing be assembled from shapes and moved as a whole."

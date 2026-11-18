@@ -184,8 +184,7 @@ Cut goods do not stack, and nothing is stacked on them."
   "Return true if a thing of KIND cannot stand at (X Z) on LEVEL of the rack: something there is in the way.
 A stack of the same kind that is not yet full is not in the way: the thing goes on top of it."
   (multiple-value-bind (hw hd) (shelf-half kind 0)
-    (or (and (= level *jukebox-y*) (< x -.4))                            ; the record player and the box of discs stand here
-        (some (lambda (it)
+    (or (some (lambda (it)
                 (destructuring-bind (ikind ix iy iz spin &rest more) (car it)
                   (declare (ignore more))
                   (and (< -.05 (- iy level) *level-room*)                 ; whatever reaches into the place, wherever its middle is
@@ -300,9 +299,9 @@ It is shown while we are not looking at anything specific."
       (ecase (getf *client* :kind)
         (:buyer (if *carry*
                     (format nil "Покупатель ищет ~a: ЛКМ по монетам на подоконнике — отдать" (good-name (client-good)))
-                    (format nil "Покупатель ищет ~a, даёт ~d р.: возьми с полки (ЛКМ) и принеси к окну" (good-name (client-good)) price)))
-        (:seller (format nil "Продавец: ~a по ~d р. — ЛКМ по товару на подоконнике" (good-name (client-good)) price))
-        (:sender (format nil "Отправитель платит ~d р.: ЛКМ по посылке на подоконнике" price))
+                    (format nil "Покупатель ищет ~a, даёт ~/kiosk-trip::rub/: возьми с полки (ЛКМ) и принеси к окну" (good-name (client-good)) price)))
+        (:seller (format nil "Продавец: ~a по ~/kiosk-trip::rub/ — ЛКМ по товару на подоконнике" (good-name (client-good)) price))
+        (:sender (format nil "Отправитель платит ~/kiosk-trip::rub/: ЛКМ по посылке на подоконнике" price))
         (:recipient (format nil "Получатель ждёт посылку в ~a: возьми её с полки (ЛКМ) и поставь на подоконник"
                             (town-name (getf *client* :town))))))))
 
@@ -421,9 +420,9 @@ He climbs the steps over the last third of the walk."
     (node-3d-set-rotation g (v3 0 (- (/ pi 2)) 0))
     (node-3d-set-scale (first (make-cat g look)) (v3 .72 .72 .72))
     (sign g (ecase kind
-              (:buyer (format nil "КУПЛЮ ~a · ~d р." (string-upcase (good-name (or good :milk))) price))
-              (:seller (format nil "ПРОДАЮ ~a · ~d р." (string-upcase (good-name (or good :milk))) price))
-              (:sender (format nil "ПОСЫЛКА В ~a · ПЛАЧУ ~d р." (string-upcase (town-name dest)) price))
+              (:buyer (format nil "КУПЛЮ ~a · ~/kiosk-trip::rub/" (string-upcase (good-name (or good :milk))) price))
+              (:seller (format nil "ПРОДАЮ ~a · ~/kiosk-trip::rub/" (string-upcase (good-name (or good :milk))) price))
+              (:sender (format nil "ПОСЫЛКА В ~a · ПЛАЧУ ~/kiosk-trip::rub/" (string-upcase (town-name dest)) price))
               (:recipient (format nil "ЖДУ ПОСЫЛКУ В ~a" (string-upcase (town-name town)))))
           0 1.42 0 :h .13 :yaw 0.0)
     g))
@@ -496,9 +495,9 @@ The driver keeps count; guests are sent a description, see CLIENT-VIEW."
 
 (defun client-words (kind price town dest)
   (ecase kind
-    (:buyer (format nil "Покупатель ищет ~a: даст ~d р. — возьми с полки и принеси к окну" (good-name (client-good)) price))
-    (:seller (format nil "Продавец: ~a по ~d р. — бери с подоконника (ЛКМ)" (good-name (client-good)) price))
-    (:sender (format nil "Отправитель: посылка в ~a, платит ~d р. — возьми её с подоконника (ЛКМ)" (town-name dest) price))
+    (:buyer (format nil "Покупатель ищет ~a: даст ~/kiosk-trip::rub/ — возьми с полки и принеси к окну" (good-name (client-good)) price))
+    (:seller (format nil "Продавец: ~a по ~/kiosk-trip::rub/ — бери с подоконника (ЛКМ)" (good-name (client-good)) price))
+    (:sender (format nil "Отправитель: посылка в ~a, платит ~/kiosk-trip::rub/ — возьми её с подоконника (ЛКМ)" (town-name dest) price))
     (:recipient (format nil "Получатель ждёт посылку в ~a — поставь её на подоконник" (town-name town)))))
 
 ;;; The client over the network: the driver sends guests a description, guests draw the same one and send their actions
@@ -595,7 +594,7 @@ he now has in hand, whether that changed, and what to say."
                       (incf *money* price)
                       (log-event :sold :price price :money *money* :dist (round *dist*))
                       (client-leave)
-                      (values nil t (format nil "Продали за ~d р." price))))
+                      (values nil t (format nil "Продали за ~/kiosk-trip::rub/" price))))
                    ((and (null holding) (getf *client* :ignore)                 ; what he wants already lies on the windowsill: hand it over on our word
                          (some (lambda (spec) (wanted-p (first spec))) (getf *client* :ignore)))
                     (setf (getf *client* :ignore) nil)
@@ -613,8 +612,8 @@ he now has in hand, whether that changed, and what to say."
                (unless (getf *client* :stall) (client-leave))
                (values (cons kind addr) t
                        (if sender
-                           (format nil "Взяли посылку в ~a: задаток ~d р., при вручении ещё ~d. Поставь её на полку" (town-name (parcel-town addr)) (ceiling price 2) (delivery-pay))
-                           (format nil "Купили ~a за ~d р." (good-name kind) price))))))))
+                           (format nil "Взяли посылку в ~a: задаток ~/kiosk-trip::rub/, при вручении ещё ~/kiosk-trip::rub/ Поставь её на полку" (town-name (parcel-town addr)) (ceiling price 2) (delivery-pay))
+                           (format nil "Купили ~a за ~/kiosk-trip::rub/" (good-name kind) price))))))))
 
 (defun take-from-stall (entry)
   "Handle a left click on stall ENTRY, something the client put on the windowsill.
@@ -674,11 +673,11 @@ For a guest the deal is made by the driver."
                        (incf *money* price)
                        (settle-items) (refresh-seats) (save-interior)
                        (log-event (if (eq kind :buyer) :sold :delivered) :price price :town town :money *money* :dist (round *dist*))
-                       (cond ((eq kind :buyer) (client-leave (format nil "Продали за ~d р." price)))
+                       (cond ((eq kind :buyer) (client-leave (format nil "Продали за ~/kiosk-trip::rub/" price)))
                              ((plusp (parcels-for town))
                               (setf (getf *client* :left) 70.0 (getf *client* :reach) 1.2)
-                              (say (format nil "Посылка вручена: +~d р. В ~a есть ещё — ставь следующую" price (town-name town))))
-                             (t (client-leave (format nil "Посылка вручена: +~d р. Спасибо!" price))))))
+                              (say (format nil "Посылка вручена: +~/kiosk-trip::rub/ В ~a есть ещё — ставь следующую" price (town-name town))))
+                             (t (client-leave (format nil "Посылка вручена: +~/kiosk-trip::rub/ Спасибо!" price))))))
                    (setf (getf *client* :reach) 1.2))))))))
 
 ;;; Music for coins
@@ -693,7 +692,7 @@ For a guest the deal is made by the driver."
         (when (< (cdr got) pot)
           (incf (cdr got)) (incf *money*)
           (when (= (cdr got) 1) (log-event :busk :dist (round *dist*) :money *money*))
-          (say (if (< (cdr got) pot) "Котам нравится музыка: +1 р." "Котам нравится музыка: +1 р. Больше тут не накидают")))))))
+          (say (if (< (cdr got) pot) "Котам нравится музыка: +5 коп." "Котам нравится музыка: +5 коп. Больше тут не накидают")))))))
 
 ;;; Intro hints: one step at a time, once the previous message has faded
 
@@ -705,7 +704,7 @@ For a guest the deal is made by the driver."
              (say "В кузове три посылки и молоко. Бензина — только до рынка в Заречном") (setf *onboard* 1)))
         (1 (say "M — карта: выбери город, грузовик поедет сам. S — остановить. V — вид изнутри") (setf *onboard* 2))
         (2 (when market
-             (say "Заглохли у рынка. Здесь же заправка: R — бензин на 10 р.") (setf *onboard* 3)))
+             (say "Заглохли у рынка. Здесь же заправка: R — бензин на 50 коп.") (setf *onboard* 3)))
         (3 (when market
              (say "V — внутрь. Раздвинь окно: E по стеклу. Колокольчик в проёме зовёт клиентов") (setf *onboard* 4)))
         (4 (when (and market (> *window-k* .9))
@@ -739,11 +738,11 @@ These are the bell in the slid-open window (E) and what the client put on the wi
                              (lambda ()
                                (cond ((eq (third entry) :coins)
                                       (if (and *carry* (null (cdr *carry*)) (wanted-p (car *carry*)))
-                                          (format nil "ЛКМ — отдать за ~d р." (good-price (car *carry*) (getf *client* :price)))
-                                          (format nil "Покупатель ищет ~a, даёт ~d р.: возьми с полки (ЛКМ)" (good-name (client-good)) (getf *client* :price))))
+                                          (format nil "ЛКМ — отдать за ~/kiosk-trip::rub/" (good-price (car *carry*) (getf *client* :price)))
+                                          (format nil "Покупатель ищет ~a, даёт ~/kiosk-trip::rub/: возьми с полки (ЛКМ)" (good-name (client-good)) (getf *client* :price))))
                                      (t (if sender
-                                   (format nil "ЛКМ — взять посылку в ~a · платит ~d р." (town-name (fourth entry)) (getf *client* :price))
-                                   (format nil "ЛКМ — купить ~a за ~d р. · у тебя ~d р." (good-name (third entry)) (getf *client* :price) *money*)))))
+                                   (format nil "ЛКМ — взять посылку в ~a · платит ~/kiosk-trip::rub/" (town-name (fourth entry)) (getf *client* :price))
+                                   (format nil "ЛКМ — купить ~a за ~/kiosk-trip::rub/ · у тебя ~/kiosk-trip::rub/" (good-name (third entry)) (getf *client* :price) *money*)))))
                              (lambda () (take-from-stall entry))
                              :hand)))))))
 

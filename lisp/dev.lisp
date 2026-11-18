@@ -102,7 +102,7 @@ Return T when the key was ours."
 (defparameter *cheat-plan*
   '((:paws "Fast paws x6" 60 78 :switch) (:truck "Fast truck x6" 60 104 :switch)
     (:fuel "Endless fuel" 60 130 :switch) (:noon "Always noon" 60 156 :switch)
-    (:money "+100 rub" 60 196) (:tank "Full tank" 60 222) (:daily "Reset once-a-day limits" 60 248)
+    (:money "+5 rub" 60 196) (:tank "Full tank" 60 222) (:daily "Reset once-a-day limits" 60 248)
     (:next "Next place (PageDown)" 250 78) (:prev "Previous place (PageUp)" 250 104)
     (:weather "Weather: next" 250 130) (:season "Season: next" 250 156) (:night "Night / day" 250 182)
     (:milk "Give milk" 250 222) (:fish "Give fish" 250 248) (:coal "Give coal" 250 274)

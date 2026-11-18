@@ -33,6 +33,7 @@
 ;;; Stove
 
 (defparameter *plank-burn* 75.0 "The number of seconds one plank burns.")
+(defparameter *paper-burn* 35.0 "The number of seconds a bundle of waste paper burns: half a plank, but it lies by every bus stop.")
 
 ;;; Speeds
 
@@ -109,8 +110,8 @@ of weathers or NIL for any; COUNT is how many grow at one stop a day.")
 (defparameter *fine-ignore* 3 "The fine for not showing the papers.")
 
 ;;; Father's debt (debt.lisp)
-(defparameter *debt-total* 10000 "The number of rubles father left us owing.")
-(defparameter *debt-chunk* 500 "The most rubles one payment at the savings bank takes: the rest stays for fuel.")
+(defparameter *debt-total* 200000 "What father left us owing, in units of money: ten thousand rubles.")
+(defparameter *debt-chunk* 2000 "The most one payment at the savings bank takes, in units of money: a hundred rubles.")
 
 ;;; Market glut, parcels, the train (logic changes of 16.11.2026)
 (defparameter *glut-step* .12 "The price shift for each recent deal in the same good in the same town.")

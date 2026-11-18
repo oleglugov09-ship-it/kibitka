@@ -31,8 +31,8 @@
 (defvar *sleep* nil "The sleep state: (previous time scale) while we sleep, else NIL.")
 (defvar *doze* 0.0 "The number of seconds we have been sitting on the bunk at night.")
 (defvar *cook* '() "What is cooking right now: ((item-record . seconds-left) ...).")
-(defparameter *camera-at* '(1.44 1.55 1.72))
-(defparameter *radio-at* '(1.36 1.45 2.25))
+(defparameter *camera-at* '(1.44 1.82 1.62))
+(defparameter *radio-at* '(1.14 1.45 2.38) "The dial and the knob of the radio: on the front of the radiogram (jukebox.lisp).")
 (defparameter *guitar-at* '(1.22 1.35 2.74))
 (defparameter *stove-top* .77 "The height of the stove top above the floor, level with the washstand: things are put on it to cook.")
 
@@ -244,6 +244,7 @@ A window, building mode or the outside view lowers it."
   (setf *radio-on* (and on t) *radio-timer* 6.0)
   (let ((p (un :radio-player)))
     (when p (if on (object-call p "play") (object-call p "stop"))))
+  (when *music* (object-set *music* "stream_paused" (and on t)))            ; one cabinet, one loudspeaker: the record waits while the radio talks
   (when (un :radio-dial) (object-set (un :radio-dial) "visible" *radio-on*)))
 
 (defvar *radio-fillers* '()
@@ -497,16 +498,13 @@ In the swamp a mosquito flies into the wagon: it whines, circles around the head
         (shape g :cyl '(.04 .04 .05 10) "#16161a" -.05 0 0 :rot (list 0 0 (/ pi 2)))
         (shape g :box '(.03 .03 .05) "#8a8e92" 0 .07 .04 :metal .6 :rough .4)
         (shape g :box '(.01 .22 .01) "#5a3e26" .02 .16 0 :shadow nil)))
-    ;; the shelf with the radio
+    ;; the radio is the front of the radiogram (jukebox.lisp): here are only its lit dial and its knob
     (destructuring-bind (x y z) *radio-at*
       (let ((g (group c x (+ f y) z)))
-        (shape g :box '(.22 .025 .5) "#8a6440" 0 -.115 0)
-        (shape g :box '(.14 .2 .36) "#6a3a2e" 0 0 0)
-        (shape g :box '(.01 .12 .2) "#c8b890" -.072 0 -.05 :shadow nil)
-        (shape g :cyl '(.025 .025 .02 8) "#d8d4c4" -.075 -.03 .12 :rot (list 0 0 (/ pi 2)) :shadow nil)
-        (shape g :box '(.008 .3 .008) "#8a8e92" .04 .25 .15 :rot (list .25 0 0) :shadow nil)
+        (shape g :cyl '(.025 .025 .02 8) "#d8d4c4" -.005 -.06 .1 :rot (list 0 0 (/ pi 2)) :shadow nil)
+        (shape g :box '(.01 .05 .2) "#2a2a2e" 0 .0 0 :shadow nil)
         (setf (getf *uyut* :radio-dial)
-              (shape g :box '(.012 .03 .16) "#ffd890" -.074 .06 -.05 :emit "#ffc060" :energy 2.0 :shadow nil))))
+              (shape g :box '(.012 .035 .18) "#ffd890" -.004 0 0 :emit "#ffc060" :energy 2.0 :shadow nil))))
     ;; the guitar on the wall by the door
     (destructuring-bind (x y z) *guitar-at*
       (let ((g (group c x (+ f y) z)))
@@ -563,7 +561,7 @@ In the swamp a mosquito flies into the wagon: it whines, circles around the head
      (list (usable (first *swatter-at*) (second *swatter-at*) (third *swatter-at*)
                    (lambda () (if *mosquito* "E — прихлопнуть комара" "Мухобойка: комаров пока нет")) #'swat)))
    (when (and *mosquito-on* *at-station* (in-swamp-p *dist*) (not *swatter*))
-     (flet ((label () (format nil "E — купить мухобойку за ~d р." *swatter-price*)))
+     (flet ((label () (format nil "E — купить мухобойку за ~/kiosk-trip::rub/" *swatter-price*)))
        (list (usable (+ *half-width* .02) 1.55 .75 #'label #'buy-swatter)        ; from the wagon window
              ;; and where the 'FLY SWATTERS' sign is at the gas station: get out, walk up, buy
              (road-usable 7.6 (- (first *extra-stations*) 9.0) 1.8 #'label #'buy-swatter 3.2))))

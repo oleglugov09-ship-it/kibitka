@@ -92,7 +92,7 @@ Each paper is its own card; a missing one is an empty slot with a dotted outline
     (dolist (k '((:coal :coal-slot :coal) (:air :air-slot :air) (:honor :honor-slot :honor)))
       (show (first k) (member (third k) *licenses*)) (show (second k) (not (member (third k) *licenses*))))
     (show :fine *fines*)
-    (text :fine-text (if *fines* (format nil "~d р.~:[~; (~d шт.)~]" (reduce #'+ *fines*) (> (length *fines*) 1) (length *fines*)) ""))
+    (text :fine-text (if *fines* (format nil "~/kiosk-trip::rub/~:[~; (~d шт.)~]" (reduce #'+ *fines*) (> (length *fines*) 1) (length *fines*)) ""))
     (text :quest-text
           (if *quest*
               (destructuring-bind (key license title what need reward) (assoc (car *quest*) *quests*)
@@ -163,7 +163,7 @@ If all is clean he wishes a good trip; if we carry restricted goods he writes a 
   (let ((bad (violations)) (owed (length *fines*)))
     (dolist (b bad) (push (cdr b) *fines*))
     (log-event :check :bad (length bad) :fines (length *fines*))
-    (end-check (cond (bad (format nil "Милиция: ~{~a~^, ~} без лицензии. Штраф ~d р. — оплатить в участке, Октябрьский"
+    (end-check (cond (bad (format nil "Милиция: ~{~a~^, ~} без лицензии. Штраф ~/kiosk-trip::rub/ — оплатить в участке, Октябрьский"
                                   (mapcar #'car bad) (reduce #'+ (mapcar #'cdr bad))))
                      ((plusp owed) "Милиция: документы в порядке, но за вами неоплаченный штраф. Не тяните")
                      (t "Милиция: документы в порядке. Счастливого пути!")))))
@@ -190,7 +190,7 @@ and ask for a licence. Travelling light, we are never stopped."
           ((eq (first *check*) :waiting)
            (when (< (decf (fourth *check*) delta) 0)
              (push *fine-ignore* *fines*)
-             (end-check (format nil "Милиция не дождалась документов: штраф ~d р. за неподчинение" *fine-ignore*)))))))
+             (end-check (format nil "Милиция не дождалась документов: штраф ~/kiosk-trip::rub/ за неподчинение" *fine-ignore*)))))))
 
 ;;; ------------------------------------------------------------------ the police station and the town council quests
 
@@ -199,7 +199,7 @@ and ask for a licence. Travelling light, we are never stopped."
         (t (let ((sum (reduce #'+ *fines*)))
              (when (pay sum)
                (setf *fines* '()) (save-papers) (log-event :fines-paid :sum sum :money *money*)
-               (say-all (format nil "Штрафы оплачены: −~d р. Квитанция — в папке" sum)))))))
+               (say-all (format nil "Штрафы оплачены: −~/kiosk-trip::rub/ Квитанция — в папке" sum)))))))
 
 (defun quest-label ()
   (cond ((and *quest* (>= (cdr *quest*) (fifth (assoc (car *quest*) *quests*))))
@@ -247,5 +247,5 @@ and ask for a licence. Travelling light, we are never stopped."
 ;; the militia station: fines are paid here
 (defbooth 13
   :shelf '("#2c4a7a" "#d8d0b8" "#2a2c30")
-  :label (lambda () (if *fines* (format nil "E — оплатить штрафы: ~d р." (reduce #'+ *fines*)) "Участок: штрафов за вами нет"))
+  :label (lambda () (if *fines* (format nil "E — оплатить штрафы: ~/kiosk-trip::rub/" (reduce #'+ *fines*)) "Участок: штрафов за вами нет"))
   :use #'pay-fines)

@@ -129,8 +129,8 @@
   "Album of the Region"
  "снять пять ориентиров фотоаппаратом"
   "photograph five landmarks"
- "почётная грамота и 15 р."
-  "certificate of honour and 15 rub."
+ "почётная грамота и 75 коп."
+  "certificate of honour and 75 kop."
  "ШАШЛЫЧНАЯ"
   "SHASHLIK"
  "ЧАЙНАЯ"
@@ -419,7 +419,7 @@ H — спрятать приборы
 U — застрял
 Tab — кто в игре и код комнаты
 F2 — лобби
-F8 — чит: +100 р., F9 — чит: полный бак
+F8 — чит: +5 р., F9 — чит: полный бак
 Карта, галочка «Чит: телепорт» — щелчок переносит на любой участок дороги
 F11 — полный экран
 Esc — пауза и настройки (клавиши переназначаются)
@@ -439,7 +439,7 @@ H — hide the HUD
 U — stuck
 Tab — who is playing and the room code
 F2 — lobby
-F8 — cheat: +100 rub., F9 — cheat: full tank
+F8 — cheat: +5 rub., F9 — cheat: full tank
 Map, checkbox «Cheat: teleport» — a click takes you to any stretch of road
 F11 — fullscreen
 Esc — pause and settings (keys can be rebound)
@@ -531,8 +531,8 @@ In the folder: G — this booklet, A and D or arrows — turn pages."
   "A dinner party"
  "продать пять готовых блюд"
   "sell five cooked dishes"
- "благодарность горсовета и 60 р."
-  "the town council's thanks and 60 rub."
+ "благодарность горсовета и 3 р."
+  "the town council's thanks and 3 rub."
  "Блины: молоко на горячую печку — через полминуты готово. Продавай там, где ищут молоко: дадут вдвое."
   "Pancakes: milk on the hot stove — ready in half a minute. Sell them where milk is wanted: they pay double."
  "Совет шофёра: бак заливай в городе, а не на перегоне. До следующей заправки может не хватить."

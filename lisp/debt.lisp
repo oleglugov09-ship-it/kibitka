@@ -18,7 +18,7 @@
   "Read the debt from the save. If the whole debt has been changed since, what was paid still counts."
   (let ((f (get-save :debt)))
     (when (and (fits f '(integer (:member :intro :owing :free :done) &optional integer)) (<= 0 (first f) 10000000))
-      (destructuring-bind (left stage &optional (total 300)) f               ; saves without the total are from the 300-ruble days
+      (destructuring-bind (left stage &optional (total 300)) f               ; saves without the total are from the days of a debt of 300
         (setf *story-stage* stage
               *debt* (if (and (/= total *debt-total*) (member stage '(:intro :owing)))
                          (max 0 (- *debt-total* (- total left)))
@@ -38,7 +38,7 @@
   "Return the line about the debt for the corner of the screen, or NIL."
   (unless (net-guest-p)
     (case *story-stage*
-      (:owing (format nil "Долг отца: ~d р." *debt*))
+      (:owing (format nil "Долг отца: ~/kiosk-trip::rub/" *debt*))
       (:free "Долг выплачен. Билет — в сберкассе"))))
 
 ;;; ------------------------------------------------------------------ cards over a dark screen
@@ -89,19 +89,19 @@
   (setf *story-stage* :owing)
   (save-debt)
   (log-event :intro-seen)
-  (say (format nil "Долг отца: ~d р. Гасят его в сберкассе — она в городе ~a" *debt* (town-name 0))))
+  (say (format nil "Долг отца: ~/kiosk-trip::rub/ Гасят его в сберкассе — она в городе ~a" *debt* (town-name 0))))
 
 ;;; ------------------------------------------------------------------ the savings bank
 
 (defun debt-share ()
-  "Return the number of rubles the next payment takes."
-  (min *debt-chunk* *debt*))
+  "Return what the next payment takes: no more than a payment, than the debt, or than there is in the purse."
+  (min *debt-chunk* *debt* (max 0 *money*)))
 
 (defun bank-label ()
   (case *story-stage*
     (:free "E — купить билет и уехать к отцу, за границу. Это конец истории")
     (:done "Сберкасса: долгов за вами нет")
-    (t (format nil "E — внести ~d р. в счёт долга · осталось ~d р." (debt-share) *debt*))))
+    (t (format nil "E — внести ~/kiosk-trip::rub/ в счёт долга · осталось ~/kiosk-trip::rub/" (debt-share) *debt*))))
 
 (defun pay-debt (sum)
   "Take SUM rubles off the debt; when nothing is left, the way out opens.
@@ -116,12 +116,13 @@ Return what is left."
   (cond (*actor* (say "Долг записан на водителя: платит он"))
         ((eq *story-stage* :done) (say "Сберкасса: долгов за вами нет"))
         ((eq *story-stage* :free) (start-ending))
-        (t (let ((sum (debt-share)))
+        ((and (not *dev*) (<= *money* 0)) (say "Платить нечем: в кошельке пусто"))
+        (t (let ((sum (if *dev* (min *debt-chunk* *debt*) (debt-share))))
              (when (pay sum)
                (log-event :debt :paid sum :left (pay-debt sum) :money *money*)
                (if (zerop *debt*)
                    (say-all "Долг закрыт! Кассирша ставит штамп «ПОГАШЕНО». Теперь в этом окне продают билет к отцу — E, когда будете готовы")
-                   (say (format nil "Внесли ~d р. Осталось ~d р." sum *debt*))))))))
+                   (say (format nil "Внесли ~/kiosk-trip::rub/ Осталось ~/kiosk-trip::rub/" sum *debt*))))))))
 
 ;; the savings bank is a booth like the others (DEFBOOTH, prikol.lisp)
 (defbooth 14 :label #'bank-label :use #'bank-use :shelf '("#4a6a52" "#d8d0b8" "#c9a13a"))

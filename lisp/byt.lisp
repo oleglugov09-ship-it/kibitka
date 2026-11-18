@@ -337,6 +337,9 @@ a wing with a ring for the kettle, and planks that stick out of the firebox whil
       (shape g :box (list .56 body .48) iron 0 mid 0 :metal .4 :rough .7)
       (shape g :box '(.64 .04 .54) "#2a2a30" 0 (- top .02) 0 :metal .4 :rough .6)
       (shape g :box '(.04 .24 .22) "#2a2a30" .29 mid 0)                           ; the firebox, its door open
+      (shape g :box '(.03 .07 .18) "#2a2a30" .29 (+ legs .06) 0 :shadow nil)       ; the ash door: paper goes here
+      (shape g :box '(.05 .018 .035) "#b03a2c" .2 (+ top .01) -.66 :shadow nil)    ; a box of matches on the wing
+      (shape g :box '(.052 .006 .037) "#e8d060" .2 (+ top .022) -.66 :shadow nil)
       (setf *stove-glow* (shape g :box '(.045 .14 .16) "#ff8030" .295 mid 0 :emit "#ff6010" :energy 3.0 :shadow nil))
       ;; the planks in the fire: one for every plank's worth of burning left, the last thrown in burns away first
       (setf *stove-planks*
@@ -376,6 +379,13 @@ The stove is shared."
     (setf *carry* nil *carry-from* nil *fire* (min 600.0 (+ *fire* (* *coal-burn* *plank-burn*))) *cold-told* nil)
     (show-carry) (save-interior)
     (say "Уголь в печке: гореть будет долго")))
+
+(defshared burn-paper :paper ()
+  "Put a bundle of waste paper into the stove. The bundles are the driver's count, so the driver does it."
+  (cond ((<= *papers* 0) (say "Макулатуры нет: связки лежат у остановок и заправок"))
+        (t (decf *papers*) (save-finds)
+           (setf *fire* (min 300.0 (+ *fire* *paper-burn*)) *cold-told* nil)
+           (say (format nil "Связка макулатуры в печке: полминуты огня. Осталось связок: ~d" *papers*)))))
 
 (defun feed-stove ()
   (cond ((and *carry* (eq (car *carry*) :coal)) (burn-coal))
@@ -449,6 +459,10 @@ These are the map, the stove, the light switch, the ladder, the window and the b
            (usable (+ (first *stove-at*) .3) (* *stove-top* .5) (second *stove-at*)
                    (lambda () (if (> *planks* 0) (format nil "E — подбросить доску · осталось ~d" *planks*) "Досок нет — купи на заправке (P)"))
                    #'feed-stove)
+           ;; the ash door under the firebox: waste paper goes in here
+           (usable (+ (first *stove-at*) .3) .14 (second *stove-at*)
+                   (lambda () (format nil "E — сжечь связку макулатуры: полминуты огня · связок ~d" *papers*))
+                   #'burn-paper nil 2.6 .13)
            (usable (first *switch-at*) (second *switch-at*) (third *switch-at*)
                    (lambda () (if *lights-on* "E — выключить свет" "E — включить свет"))
                    (lambda () (setf *lights-on* (not *lights-on*)) (apply-lights)))
@@ -686,7 +700,7 @@ the map."
       (hud-label d "р" 607 311 12 '(.42 .30 .06))
       (let ((money (gdext:make-object "Label")))
         (node-add-child d money)
-        (object-set money "position" (vector2 566 337)) (object-set money "size" (vector2 60 14))
+        (object-set money "position" (vector2 546 337)) (object-set money "size" (vector2 80 14))
         (object-set money "horizontal_alignment" 2)
         (object-call money "add_theme_font_size_override" "font_size" 12)
         (object-call money "add_theme_constant_override" "outline_size" 3)
@@ -700,7 +714,7 @@ the map."
   (destructuring-bind (&key needle money cross) *dash-parts*
     (dolist (c cross) (object-set c "visible" (and (not (outside-p)) (not *lobby-open*) (not *map-open*))))
     (object-set needle "rotation" (* 1.05 (- (* 2 *fuel*) 1)))
-    (object-set money "text" (format nil "~d" *money*))))
+    (godot:object-set money "text" (multiple-value-bind (rub kop) (floor (* *money* *kopecks*) 100) (cl:format nil "~d,~2,'0d" rub kop)))))
 
 (defun hud-text ()
   (format nil "~{~a~^~%~}"

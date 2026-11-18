@@ -127,13 +127,13 @@ The recipient pays as for a hand-delivered parcel and the post office keeps its 
         (let ((answer (story-delivered addr t))) (when answer (say-later answer)))
         (log-event :airmail :to addr :fee fee :money *money*)
         (setf *next-plane* 0.0)                                        ; the plane takes off with it right away
-        (say-all (format nil "Посылка в ~a улетела самолётом: +~d р. (почта удержала ~d)" (town-name (parcel-town addr)) pay fee)))))
+        (say-all (format nil "Посылка в ~a улетела самолётом: +~/kiosk-trip::rub/ (почта удержала ~/kiosk-trip::rub/)" (town-name (parcel-town addr)) pay fee)))))
 
 (defun dalny-usables ()
   (let ((place (walk-place)))
     (when (and place (eq (first place) :airmail))
       (list (road-usable 11.9 (second place) 1.3
                          (lambda () (if (and *carry* (cdr *carry*))
-                                        (format nil "E — отправить посылку в ~a самолётом: получишь ~d р. вместо ~d" (town-name (parcel-town (cdr *carry*))) (- (delivery-pay) (airmail-fee (cdr *carry*))) (delivery-pay))
+                                        (format nil "E — отправить посылку в ~a самолётом: получишь ~/kiosk-trip::rub/ вместо ~/kiosk-trip::rub/" (town-name (parcel-town (cdr *carry*))) (- (delivery-pay) (airmail-fee (cdr *carry*))) (delivery-pay))
                                         "Авиапочта: принеси посылку в руках — улетит сама"))
                          #'send-airmail 3.2 .7)))))

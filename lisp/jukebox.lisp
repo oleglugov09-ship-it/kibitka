@@ -1,13 +1,13 @@
-;;;; The record player: a small box on the bottom shelf of the rack on the left, with a crate of
-;;;; discs next to it. The discs are every .wav and .mp3 in project/discs/ (your own go there too;
+;;;; The radiogram: one cabinet on the shelf by the window wall that is both the radio (its dial and
+;;;; knob are on the front, uyut.lisp) and the record player (the turntable under the lid), with a rack
+;;;; of records in sleeves next to it. The discs are every .wav and .mp3 in project/discs/ (your own go there too;
 ;;;; reread them with (live:discs)). While it plays, notes rise above the player.
 
 (in-package #:kiosk-trip)
 
-(defparameter *jukebox-at* '(-1.12 -2.5) "The x and z of the record player.")
-(defparameter *crate-at* '(-.6 -2.5) "The x and z of the crate of discs.")
-(defparameter *jukebox-y* .55 "The height of the shelf they stand on.")
-(defparameter *jukebox-scale* .6 "The scale of the record player, which is compact: a 36 cm box.")
+(defparameter *jukebox-at* '(1.3 2.25) "The x and z of the radiogram.")
+(defparameter *crate-at* '(1.3 1.86) "The x and z of the rack of records.")
+(defparameter *jukebox-y* 1.33 "The height of the shelf they stand on.")
 (defparameter *disc-colors* '("#e05050" "#50b0e0" "#e0c040" "#60c070" "#c070e0" "#e08a40" "#f0f0f0" "#40d0c0"))
 
 (defvar *jukebox* nil "The record player node (a part of the wagon).")
@@ -48,28 +48,28 @@
     g))
 
 (defun make-jukebox (cart)
-  "Build the record player box and the crate of discs in the front left corner of CART."
+  "Build under CART the shelf by the window wall, the radiogram on it and the rack of records beside it."
   (destructuring-bind (jx jz) *jukebox-at*
-    (let ((g (group cart jx (+ *floor* *jukebox-y*) jz)))
-      (node-3d-set-scale g (v3 *jukebox-scale* *jukebox-scale* *jukebox-scale*))
-      (shape g :box '(.6 .6 .6) "#5a3a22" 0 .3 0)
-      (dolist (c '((-1 -1) (-1 1) (1 -1) (1 1)))           ; lighter edges, as in Minecraft
-        (shape g :box '(.08 .62 .08) "#8a5a34" (* (first c) .27) .3 (* (second c) .27)))
-      (shape g :box '(.62 .06 .62) "#7a4e2c" 0 .6 0)
-      (shape g :box '(.42 .02 .07) "#120c0a" 0 .635 0)       ; the disc slot
-      (dolist (s '(-1 1))
-        (shape g :box '(.36 .36 .01) "#6a4428" 0 .3 (* s .306)))
-      (setf *slot-node* nil *jukebox* g *notes* '()
-            *music* (player g (wav-stream (sound-path "step-1")) :positional t :y .5 :db -14.0 :bus "Музыка" :play nil))
-      (when *playing* (play-disc *playing*))))
+    (let ((f *floor*) (wood "#6a3a2e"))
+      (shape cart :box '(.36 .03 .96) "#8a6440" jx (+ f *jukebox-y* -.015) (- jz .15))            ; the shelf under both
+      (dolist (dz '(-.55 .25)) (shape cart :box '(.3 .16 .03) "#5a3e26" (+ jx .02) (+ f *jukebox-y* -.11) (+ jz dz)))
+      (let ((g (group cart jx (+ f *jukebox-y*) jz)))
+        (shape g :box '(.3 .24 .56) wood 0 .12 0)                                                 ; the cabinet
+        (shape g :box '(.012 .15 .3) "#c8b890" -.152 .14 -.1 :shadow nil)                         ; the cloth of the loudspeaker
+        (shape g :box '(.26 .012 .5) "#2a2a2e" 0 .246 0 :shadow nil)                              ; the deck
+        (shape g :cyl '(.11 .11 .012 16) "#3a3a40" -.02 .256 -.08 :shadow nil)                    ; the turntable
+        (shape g :box '(.012 .012 .2) "#b0b4b8" .09 .27 .1 :rot '(0 .5 0) :metal .7 :shadow nil)  ; the tone arm
+        (shape g :box '(.02 .3 .56) wood .15 .39 0)                                               ; the lid, propped open against the wall
+        (shape g :box '(.008 .3 .008) "#8a8e92" .12 .55 .26 :rot (list .2 0 0) :shadow nil)       ; the aerial
+        (setf *slot-node* nil *jukebox* g *notes* '()
+              *music* (player g (wav-stream (sound-path "step-1")) :positional t :y .3 :db -14.0 :bus "Музыка" :play nil))
+        (when *playing* (play-disc *playing*)))))
   (destructuring-bind (cx cz) *crate-at*
     (setf *crate-node* (group cart cx (+ *floor* *jukebox-y*) cz))
-    (node-3d-set-scale *crate-node* (v3 .8 .8 .8))
+    (node-3d-set-rotation *crate-node* (v3 0 (/ pi 2) 0))                    ; the sleeves stand in a row along the wall
     (let ((g *crate-node*))
-      (shape g :box '(.5 .04 .32) "#7a5a3a" 0 .02 0)
-      (dolist (s '(-1 1))
-        (shape g :box '(.5 .22 .03) "#7a5a3a" 0 .11 (* s .15))
-        (shape g :box '(.03 .22 .32) "#7a5a3a" (* s .235) .11 0))))
+      (shape g :box '(.44 .02 .26) "#7a5a3a" 0 .01 0)
+      (dolist (s '(-1 1)) (shape g :box '(.02 .14 .26) "#7a5a3a" (* s .21) .07 0))))
   (show-discs))
 
 (defun show-discs ()
@@ -77,8 +77,10 @@
   (when *crate-node*
     (loop for child across (node-get-children *crate-node*)
           when (object-call child "has_meta" "disc") do (node-queue-free child))
-    (loop for i in *crate* for k from 0
-          do (let ((d (disc-mesh *crate-node* (third (nth i *discs*)) :x (+ -.19 (* k .055)) :y .17)))
+    (loop for i in *crate* for k from 0                                    ; a record in its sleeve: a square of coloured card
+          do (let ((d (group *crate-node* (+ -.17 (* k .05)) .13 0)))
+               (shape d :box '(.012 .24 .24) (third (nth i *discs*)) 0 0 0 :shadow nil)
+               (shape d :cyl '(.05 .05 .014 10) "#141418" 0 0 0 :rot (list 0 0 (/ pi 2)) :shadow nil)
                (object-call d "set_meta" "disc" t))))
   (when *held-node* (node-queue-free *held-node*) (setf *held-node* nil))
   (when (and *held* *camera*)
@@ -86,13 +88,14 @@
   (when *slot-node* (node-queue-free *slot-node*) (setf *slot-node* nil))
   (let ((jb *jukebox*))
     (when (and *playing* jb)
-      (setf *slot-node* (disc-mesh jb (third (nth *playing* *discs*)) :rot (list (/ pi 2) 0 0) :y .66)))))
+      (setf *slot-node* (disc-mesh jb (third (nth *playing* *discs*)) :rot (list 0 0 0) :x -.02 :y .27 :z -.08)))))   ; on the turntable
 
 (defun play-disc (i)
   (let ((m *music*))
     (setf *playing* i)
     (if i
-        (progn (object-set m "stream" (audio-stream (second (nth i *discs*)) :loop t)) (object-call m "play"))
+        (progn (when *radio-on* (set-radio nil))                             ; one cabinet: a record takes the loudspeaker from the radio
+               (object-set m "stream" (audio-stream (second (nth i *discs*)) :loop t)) (object-call m "play"))
         (object-call m "stop"))
     (show-discs)))
 
@@ -103,7 +106,7 @@
       (when (<= *note-timer* 0)
         (setf *note-timer* (+ .5 (random .4)))
         (let ((c (nth (random (length *fairy*)) *fairy*)) (x (- (random .3) .15)) (z (- (random .3) .15)))
-          (push (list (shape jb :box '(.05 .05 .01) c x .7 z :emit c :energy 2 :shadow nil :unshaded t) 0.0 x .7 z)
+          (push (list (shape jb :box '(.05 .05 .01) c x .45 z :emit c :energy 2 :shadow nil :unshaded t) 0.0 x .45 z)
                 *notes*))))
     (setf *notes*
           (remove-if (lambda (n)

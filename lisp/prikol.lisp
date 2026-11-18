@@ -38,7 +38,7 @@ in their paws.")
   "Pay SUM roubles.
 Return NIL and show a hint if there is not enough money."
   (cond (*dev* t)                                                        ; on the dev polygon everything is free
-        ((< *money* sum) (say (format nil "Нужно ~d р., а у нас ~d" sum *money*)) nil)
+        ((< *money* sum) (say (format nil "Нужно ~/kiosk-trip::rub/, а у нас ~/kiosk-trip::rub/" sum *money*)) nil)
         (t (decf *money* sum) t)))
 
 (defun give-good (kind text)
@@ -170,15 +170,15 @@ Return T if a train ride was pending (GO-TO-TOWN then does nothing itself)."
 (defbooth 1
   :shelf '("#e8e0d0" "#a3262c" "#3c4638")
   :spot '(10.7 4.2 1.3)
-  :label (lambda () (format nil "E — тир: пять выстрелов за ~d р. Целиться самому" *range-price*))
+  :label (lambda () (format nil "E — тир: пять выстрелов за ~/kiosk-trip::rub/ Целиться самому" *range-price*))
   :use (lambda () (when (pay *range-price*) (begin-play :tir)))
   :build (lambda (g) (unless (member "nopond" *dev-flags* :test #'string=) (build-range g)) (dolist (z '(2.6 3.4 4.2)) (shape g :cyl '(.3 .3 .04 12) "#e8e0d0" 12.8 1.6 z :rot (list 0 0 (/ pi 2))) (shape g :cyl '(.1 .1 .05 8) "#a3262c" 12.76 1.6 z :rot (list 0 0 (/ pi 2)) :shadow nil))))
 
 ;; the hardware shop: the lid for the frying pan
 (defbooth 2
   :shelf '("#1e1e22" "#8a8e92" "#a3262c")
-  :label (lambda () (if *lid* (format nil "E — ~d банки с крышками за ~d р. · у вас пустых: ~d" (first *jar-deal*) (second *jar-deal*) *jars*)
-           (format nil "E — купить чугунную крышку для сковородки за ~d р.: под ней жарится вдвое быстрее" *lid-price*)))
+  :label (lambda () (if *lid* (format nil "E — ~d банки с крышками за ~/kiosk-trip::rub/ · у вас пустых: ~d" (first *jar-deal*) (second *jar-deal*) *jars*)
+           (format nil "E — купить чугунную крышку для сковородки за ~/kiosk-trip::rub/: под ней жарится вдвое быстрее" *lid-price*)))
   :use (lambda () (cond (*lid* (when (pay (second *jar-deal*)) (incf *jars* (first *jar-deal*)) (save-home) (show-home)
                                         (say (format nil "Купили банки. Пустых теперь ~d: закатывают у ящика под умывальником" *jars*))))
              ((pay *lid-price*) (setf *lid* t) (save-prikol) (show-lid) (log-event :lid :money *money*)
@@ -228,7 +228,7 @@ Return T if a train ride was pending (GO-TO-TOWN then does nothing itself)."
 ;; window no. 3: the stamp
 (defbooth 6
   :shelf '("#e8e0d0" "#8a8070" "#6a3a2e")
-  :label (lambda () (if *stamp* "Печать уже стоит: за посылки платят вдвое" (format nil "E — получить печать за ~d р.: посылки вдвое дороже" *stamp-price*)))
+  :label (lambda () (if *stamp* "Печать уже стоит: за посылки платят вдвое" (format nil "E — получить печать за ~/kiosk-trip::rub/: посылки вдвое дороже" *stamp-price*)))
   :use (lambda () (cond (*stamp* (say "Печать уже стоит"))
              ((pay *stamp-price*) (setf *stamp* t) (save-prikol) (log-event :stamp)
               (say "Справка с круглой печатью! Теперь за посылки платят вдвое")))))
@@ -246,14 +246,14 @@ Return T if a train ride was pending (GO-TO-TOWN then does nothing itself)."
 (defbooth 9
   :shelf '("#7ab0c8" "#e8e0d0" "#3f6f73")
   :spot '(10.4 2.6 1.0)
-  :label (lambda () (format nil "E — стакан минеральной воды за ~d р.: бодрит" *water-price*))
+  :label (lambda () (format nil "E — стакан минеральной воды за ~/kiosk-trip::rub/: бодрит" *water-price*))
   :use (lambda () (when (pay *water-price*) (setf *boost-until* (+ *time* *water-time*)) (say "Нарзан! В нос шибает. Пять минут бегаешь быстрее")))
   :build (lambda (g) (shape g :cyl '(.5 .6 1.0 10) "#e8e4d8" 7.2 .5 -2.6) (shape g :cyl '(.06 .06 .5 6) "#7ab0c8" 7.2 1.2 -2.6 :alpha .6)))
 
 ;; the flatcar: the wagon goes by train
 (defbooth 10
   :shelf '("#7a5a50" "#d8d0b8" "#2a2c30")
-  :label (lambda () (format nil "E — погрузить кибитку на платформу: до любого города, ~,1f р. за километр" *rail-per-km*))
+  :label (lambda () (format nil "E — погрузить кибитку на платформу: до любого города, ~/kiosk-trip::rub/ за километр" *rail-per-km*))
   :use (lambda () (cond (*actor* (say "На платформу кибитку ставит водитель: маршрут — его дело"))
               (t (setf *rail-ticket* t) (open-map)
                  (say "Кибитка на платформе. Выбери город на карте — поезд довезёт; чем дальше, тем дороже"))))
@@ -263,7 +263,7 @@ Return T if a train ride was pending (GO-TO-TOWN then does nothing itself)."
 (defbooth 11
   :shelf '("#c8a060" "#8a6440" "#5a3e26")
   :spot '(10.4 2.6 .8)
-  :label (lambda () (format nil "E — ~d досок за ~d р." (first *carpenter-deal*) (second *carpenter-deal*)))
+  :label (lambda () (format nil "E — ~d досок за ~/kiosk-trip::rub/" (first *carpenter-deal*) (second *carpenter-deal*)))
   :use (lambda () (when (pay (second *carpenter-deal*)) (incf *planks* (first *carpenter-deal*))
           (say (format nil "Плотник отсыпал ~d досок. В печку: ~d" (first *carpenter-deal*) *planks*))))
   :build (lambda (g) (dotimes (i 6) (shape g :box '(2.4 .06 .22) "#c8a060" 7.2 (+ .04 (* i .065)) (+ 2.4 (* .03 i)))) (shape g :box '(1.6 .8 .7) "#8a6440" 7.2 .4 -2.6)))
@@ -300,6 +300,18 @@ a lit room, a counter, shelves with the goods of this booth (its :SHELF colours)
     (let ((cat (group g 10.25 .16 (if (evenp index) .35 -.35))))
       (node-3d-set-rotation cat (v3 0 (- (/ pi 2)) 0))
       (make-cat cat (+ 3 (* 5 index))))))
+
+(defun tube-sign (g title x y h)
+  "Put the sign TITLE on booth G at (X Y): letters of glowing tubes, each on its own, of height H.
+As on any old sign, one letter has burnt out and one more flickers; which ones depends on the title."
+  (let* ((text (tr title)) (n (length text)) (step (* h .64))
+         (letters (loop for i below n unless (char= (char text i) #\Space) collect i))
+         (dead (and (> (length letters) 3) (nth (mod (* 7 n) (length letters)) letters)))
+         (weak (and (> (length letters) 5) (nth (mod (+ 3 (* 5 n)) (length letters)) letters))))
+    (dolist (i letters)
+      (let ((letter (sign g "" x y (* step (- i (/ (1- n) 2))) :h h :rgb (if (eql i dead) "#3c3e44" "#ffe9b0"))))
+        (plain-text letter (string (char text i)))                 ; one letter: past the translation, it is already done
+        (when (and (eql i weak) (not (eql i dead))) (moving letter :blink 2.3))))))
 
 (defun booth-yard (g index)
   "Build under G what stands around booth INDEX: an awning, price cards, a boardwalk, an urn, a lamp post,
@@ -344,7 +356,7 @@ differ from booth to booth so that no two yards are alike."
     (shape g :box '(4.6 .25 5.2) "#4c4e52" 11.0 2.95 0 :rot '(0 0 -.06))
     (shape g :box '(.6 .08 1.8) "#8a6440" 8.7 1.05 0)
     (shape g :box '(.2 .7 4.4) "#2a2c30" 8.9 3.5 0 :shadow nil)
-    (sign g title 8.78 3.5 0 :h (if (> (length title) 14) .3 .45) :rgb "#f0ece0")
+    (tube-sign g title 8.78 3.5 (if (> (length title) 14) .3 .45))
     (flood g 7.5 3.0 0 :range 14.0)
     (let ((build (booth index :build))) (when build (funcall build g)))      ; every booth has its own landmark
     g))

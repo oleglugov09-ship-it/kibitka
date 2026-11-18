@@ -64,6 +64,25 @@ A string is translated; in a list (an enumeration of goods or towns) every eleme
       (apply #'cl:format destination (tr control) (mapcar #'tr-arg args))
       (apply #'cl:format destination control args)))
 
+;;; Money. The game counts in one whole unit, and the unit is *KOPECKS* kopecks: prices read as in a Soviet
+;;; price list (milk 25 kop., a tank of petrol 2 rub. 40 kop.). Every sum shown to the player goes through
+;;; RUB, the format directive ~/kiosk-trip::rub/, so the tables and the arithmetic stay in whole units.
+
+(defparameter *kopecks* 5 "The number of kopecks in one unit of the game's money.")
+
+(defun money-text (units)
+  "Return the sum of UNITS as text: rubles and kopecks, in the game language."
+  (multiple-value-bind (rub kop) (floor (round (* units *kopecks*)) 100)
+    (let ((en (eq *lang* :en)))
+      (cond ((zerop kop) (cl:format nil (if en "~d rub." "~d р.") rub))
+            ((zerop rub) (cl:format nil (if en "~d kop." "~d коп.") kop))
+            (t (cl:format nil (if en "~d rub. ~d kop." "~d р. ~d коп.") rub kop))))))
+
+(defun rub (stream units &optional colon at)
+  "Print the sum of UNITS as rubles and kopecks: the format directive ~/kiosk-trip::rub/."
+  (declare (ignore colon at))
+  (write-string (if (realp units) (money-text units) (princ-to-string units)) stream))
+
 (defvar *untranslated* '() "The strings that had no translation and were shown in Russian in English mode (inspect from the REPL).")
 
 (defvar *actor* nil "The guest on whose behalf the driver is performing a shared action right now (sync.lisp).

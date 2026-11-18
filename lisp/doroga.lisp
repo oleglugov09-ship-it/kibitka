@@ -161,7 +161,7 @@ At a fork one can thus see where the other road goes. At most two new ribbons ar
 (setf *kc* '(:body "#2f4a3c" :trim "#b9a24a" :roof "#6a6e70" :roof2 "#5e6264" :wood "#8a6440" :dark "#4a3020"
              :floor "#a07a50" :cloth "#8a5a44" :inside "#c4b894" :carpet "#8a1a22" :carpet2 "#e0b050" :carpet3 "#2a3a7a"))
 
-(defparameter *cab-rgb* "#56707c" "The color of the cab.")
+(defparameter *cab-rgb* "#6f9cb4" "The color of the cab: the pale blue of a Soviet lorry.")
 (defvar *wheels* '() "The wheel nodes, which turn by the distance traveled.")
 (defvar *wheel-spin* 0.0)
 (defvar *headlight* nil "The headlight, which shines in the dark.")
@@ -193,13 +193,23 @@ It has a frame, wheels, a cab with a hood, headlights and crates on the cab roof
     (shape c :box '(2.6 .95 1.6) cab 0 (+ f 1.68) (- zf .9))
     (shape c :box '(2.72 .12 1.85) cab 0 (+ f 2.2) (- zf .95))
     (shape c :box '(2.3 .7 .06) glass 0 (+ f 1.7) (- zf 1.73) :rough .2)       ; windshield
+    (shape c :box '(.07 .72 .08) cab 0 (+ f 1.7) (- zf 1.74) :shadow nil)       ; in two halves, with a post between them
+    (shape c :cyl '(1.36 1.36 1.6 12) cab 0 (+ f 2.02) (- zf .9) :rot (list (/ pi 2) 0 0) :scale '(1 .2 1))   ; the rounded roof
+    (shape c :box '(2.74 .08 1.9) "#e8e4d8" 0 (+ f 1.2) (- zf 1.05) :shadow nil)                              ; the white belt under the windows
     (dolist (sx '(-1 1)) (shape c :box '(.06 .62 1.0) glass (* sx 1.31) (+ f 1.72) (- zf 1.0) :rough .2))
     (shape c :box '(.5 .75 .3) "#2c2e34" -.6 (+ f 1.5) (- zf 1.0))            ; the driver - a silhouette behind the glass
     (shape c :ball '(.19 8 5) "#2c2e34" -.6 (+ f 2.0) (- zf 1.05))
     (dolist (sx '(-1 1)) (shape c :box '(.08 .3 .2) dark (* sx 1.5) (+ f 1.75) (- zf 1.7)))   ; mirrors
     ;; hood, grille, bumper, headlights
     (shape c :box '(2.3 1.0 1.5) cab 0 (+ f .5) (- zf 2.75))
-    (shape c :box '(1.5 .7 .08) dark 0 (+ f .48) (- zf 3.52))
+    (shape c :cyl '(1.15 1.15 1.5 12) cab 0 (+ f .98) (- zf 2.75) :rot (list (/ pi 2) 0 0) :scale '(1 .22 1))   ; the hood is rounded on top
+    ;; the face of the lorry: a wide white grille with bars, the lamps set into its ends, a bright bumper
+    (shape c :box '(2.34 .62 .08) "#e8e4d8" 0 (+ f .5) (- zf 3.52))
+    (dolist (y '(-.2 -.07 .06 .19)) (shape c :box '(1.4 .05 .09) dark 0 (+ f .5 y) (- zf 3.53) :shadow nil))
+    (shape c :box '(.5 .09 .1) "#b03a2c" 0 (+ f .9) (- zf 3.53) :shadow nil)                                  ; the maker's plate
+    (dolist (sx '(-1 1))                                                                                       ; round wings over the front wheels
+      (shape c :cyl '(.62 .62 .5 10) cab (* sx 1.3) (- f .12) (- zf 2.75) :rot (list 0 0 (/ pi 2)) :scale '(1 1 .6))
+      (shape c :cyl '(.07 .07 .06 8) "#e8a030" (* sx 1.2) (+ f .86) (- zf 3.5) :rot (list (/ pi 2) 0 0) :emit "#e08020" :energy .8 :shadow nil))
     (shape c :box '(2.8 .24 .22) "#b8b4a8" 0 (- f .05) (- zf 3.62) :metal .4 :rough .5)
     (dolist (sx '(-1 1))
       (push (shape c :cyl '(.19 .19 .08 10) "#ffe9b0" (* sx .92) (+ f .55) (- zf 3.54) :rot (list (/ pi 2) 0 0)

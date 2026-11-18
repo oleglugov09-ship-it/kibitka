@@ -135,7 +135,7 @@ The action is shared: once one player picks it up, it is gone for everyone."
         (t (let ((sum (+ (* *bottle-price* *bottles*) (* *paper-price* *papers*))))
              (incf *money* sum)
              (log-event :recycled :bottles *bottles* :papers *papers* :money *money*)
-             (say-all (format nil "Сдали ~d бутылок и ~d связок: +~d р." *bottles* *papers* sum))
+             (say-all (format nil "Сдали ~d бутылок и ~d связок: +~/kiosk-trip::rub/" *bottles* *papers* sum))
              (note-quest :clean (+ *bottles* *papers*))
              (setf *bottles* 0 *papers* 0)
              (save-finds)))))
@@ -209,6 +209,6 @@ It has a booth with a window, crates of bottles, bales of paper and scales. Retu
                             #'take-spyglass))))
      (when (and place (eq (first place) :depot))
        (list (road-usable 12.9 (second place) 1.3
-                          (lambda () (format nil "E — сдать бутылки (~d) и макулатуру (~d): +~d р."
+                          (lambda () (format nil "E — сдать бутылки (~d) и макулатуру (~d): +~/kiosk-trip::rub/"
                                              *bottles* *papers* (+ (* *bottle-price* *bottles*) (* *paper-price* *papers*))))
                           #'sell-finds 3.2 .7))))))

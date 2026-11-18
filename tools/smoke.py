@@ -219,8 +219,8 @@ def solo():
           "(T (:FISH))")
     ev(p, f"(progn (when {K}*client* ({K}client-leave)) (setf {K}*carry* nil) ({K}show-carry) 1)")
     # the rack: slots
-    check("полка с проигрывателем занята, верхняя свободна",
-          ev(p, f"(list ({K}shelf-slot -1.0 -2.5 0.55 :box) (and ({K}shelf-slot 0.0 -2.5 1.65 :box) t))"), "(NIL T)")
+    check("слева на нижней полке место есть (проигрыватель переехал), верхняя свободна",
+          ev(p, f"(list (and ({K}shelf-slot -1.0 -2.5 0.55 :box) t) (and ({K}shelf-slot 0.0 -2.5 1.65 :box) t))"), "(T T)")
     # music for coins
     ev(p, "(live:disc 0)")
     ev(p, f"(defparameter cl-user::*m0* {K}*money*)")

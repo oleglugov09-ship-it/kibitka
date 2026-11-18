@@ -30,8 +30,15 @@
         (shape g :box (list (- w .08) .02 (- w .08)) "#c8ccd0" 0 (- (second *fridge-shelves*) .01) 0 :metal .5 :rough .4 :shadow nil)
         (shape g :box (list (- w .1) .18 (- w .08)) "#d0d8e0" -.02 (- h .13) 0 :shadow nil)   ; the freezer box under the top
         (shape hinge :box (list .04 (- h .04) w) white .02 (/ h 2) half)                   ; the door
-        (shape hinge :box '(.02 .22 .03) "#b0b4b8" .05 (* h .62) (- w .06) :metal .7 :rough .3 :shadow nil)
-        (shape hinge :box '(.006 .05 .2) "#3f6f73" .042 (* h .86) half :shadow nil)        ; the name plate
+        ;; the look of the old ZIL: rounded edges, a chrome lever for a handle, the name in chrome letters
+        (dolist (z (list .0 w)) (shape hinge :cyl (list .04 .04 (- h .04) 8) white .0 (/ h 2) z :shadow nil))
+        (shape hinge :cyl (list .04 .04 w 8) white .0 (- h .02) half :rot (list (/ pi 2) 0 0) :shadow nil)
+        (shape g :cyl (list .05 .05 w 8) white (- half .05) (- h .03) 0 :rot (list (/ pi 2) 0 0) :shadow nil)
+        (shape hinge :box '(.03 .05 .05) "#b0b4b8" .055 (* h .66) (- w .07) :metal .8 :rough .25 :shadow nil)     ; the pivot
+        (shape hinge :box '(.025 .24 .03) "#c8ccd0" .075 (* h .56) (- w .07) :metal .8 :rough .25 :shadow nil)    ; the lever
+        (shape hinge :box '(.008 .012 .26) "#b0b4b8" .042 (* h .8) half :metal .8 :rough .25 :shadow nil)
+        (let ((name (sign hinge "" .048 (* h .86) half :h .07 :rgb "#c8ccd0" :yaw (/ pi 2))))
+          (godot:object-set name "text" "ЗИЛ"))
         (setf *fridge-door* hinge)
         (apply-fridge))))
   (make-dryer c))
