@@ -24,8 +24,12 @@ That is TOWN if given, otherwise the town nearest to the wagon."
       0))
 
 (defun trade-good (kind town)
-  "Return the good a client of KIND brings (a seller) or wants (a buyer) in TOWN."
-  (let ((list (if (eq kind :seller) (town-makes (trade-town town)) (town-wants (trade-town town)))))
+  "Return the good a client of KIND brings (a seller: the shop's surplus) or wants (a buyer: what is short) in TOWN.
+The plan decides (plan.lisp); when it has nothing to say, the town's nature does."
+  (let* ((town (trade-town town))
+         (list (if (eq kind :seller)
+                   (or (surplus-goods town) (town-makes town))
+                   (or (short-goods town) (town-wants town)))))
     (when (member kind '(:buyer :seller)) (nth (random (length list)) list))))
 
 (defun rush-p (&optional (town (trade-town)))
@@ -35,32 +39,16 @@ The shift is leaving the factory: buyers are many and they pay more."
 
 (defun trade-price (good kind town)
   "Return the price of GOOD for a client of KIND in TOWN.
-A seller's price is low (the good is made here), a buyer's is high (the good is missing here)."
-  (let* ((range (if (eq kind :seller) *sell-range* *buy-range*))
-         (k (+ (first range) (random (- (second range) (first range))))))
-    (max 1 (round (* (good-base good) k
-                     (glut-factor good kind (trade-town town))               ; the market is glutted, so the price has sagged
-                     (if (and (eq kind :buyer) (rush-p (trade-town town))) *rush-bonus* 1))))))
-
-;;; Market glut: the more of a good we have sold in a town, the less it fetches there; the more we have
-;;; bought up, the more they ask. With time the market settles. One and the same run stops being golden.
-
-(defvar *glut* '() "The recent deals: entries of ((town good side) . count), sold (:sold) or bought (:bought).")
-
-(defun glut-factor (good kind town)
-  (let ((n (or (cdr (assoc (list town good (if (eq kind :buyer) :sold :bought)) *glut* :test #'equal)) 0)))
-    (if (eq kind :buyer) (max *glut-floor* (- 1 (* *glut-step* n))) (+ 1 (* *glut-step* n)))))
+A seller is the shop: the list price, the same everywhere. A buyer gives an agreed price: the emptier
+the shop here, the more."
+  (if (eq kind :seller) (list-price good) (agreed-price (trade-town town) good)))
 
 (defun note-trade (good side)
-  "Record a deal: SIDE :sold means we sold GOOD in this town, :bought means we bought it."
-  (let* ((key (list (trade-town (and *client* (getf *client* :town))) (raw-of good) side))
-         (cell (or (assoc key *glut* :test #'equal) (first (push (cons key 0.0) *glut*)))))
-    (incf (cdr cell) 1.0)
-    (when (and (eq side :sold) (dish-p good)) (note-quest :cook))))             ; the town council's dinner quest counts dishes sold
-
-(defun step-glut (delta)
-  (dolist (c *glut*) (setf (cdr c) (max 0.0 (- (cdr c) (/ delta *glut-rest*)))))
-  (setf *glut* (remove-if (lambda (c) (<= (cdr c) 0.0)) *glut*)))
+  "Record a deal in the shop's books: SIDE :sold means the town got one GOOD from us, :bought means we took one."
+  (let ((town (trade-town (and *client* (getf *client* :town)))) (raw (raw-of good)))
+    (set-stock town raw (+ (stock town raw) (if (eq side :sold) 1 -1)))
+    (save-plan)
+    (when (and (eq side :sold) (dish-p good)) (note-quest :cook))))             ; the town council's dinner quest counts dishes sold             ; the town council's dinner quest counts dishes sold
 
 (defun delivery-pay ()
   "Return the pay from the recipient for a delivered parcel (more with the town council stamp)."
@@ -83,9 +71,11 @@ That is the good sought or a dish made from it (blini will do for milk)."
     (and want (or (eq kind want) (eq (raw-of kind) want)))))
 
 (defun market-note (i)
-  "Return one line saying what town I sells and what it looks for."
-  (format nil "~a: продают ~{~a~^, ~}; ищут ~{~a~^, ~}" (town-name i)
-          (mapcar #'good-name (town-makes i)) (mapcar #'good-name (town-wants i))))
+  "Return one line saying what the shop in town I has plenty of and what it has not been sent."
+  (let ((plenty (surplus-goods i)) (short (short-goods i)))
+    (format nil "~a: завезли ~:[всего понемногу~;~:*~{~a~^, ~}~]; не завезли ~:[ничего такого~;~:*~{~a~^, ~}~]" (town-name i)
+            (mapcar #'good-name (subseq plenty 0 (min 3 (length plenty))))
+            (mapcar #'good-name (subseq short 0 (min 3 (length short)))))))
 
 (defvar *market-told* nil "The market that has already been announced.")
 

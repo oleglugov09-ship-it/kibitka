@@ -422,7 +422,9 @@ He climbs the steps over the last third of the walk."
     (sign g (ecase kind
               (:buyer (format nil "КУПЛЮ ~a · ~/kiosk-trip::rub/" (string-upcase (good-name (or good :milk))) price))
               (:seller (format nil "ПРОДАЮ ~a · ~/kiosk-trip::rub/" (string-upcase (good-name (or good :milk))) price))
-              (:sender (format nil "ПОСЫЛКА В ~a · ПЛАЧУ ~/kiosk-trip::rub/" (string-upcase (town-name dest)) price))
+              (:sender (if good
+                           (format nil "НАРЯД: ~a В ~a · ТАРИФ ~/kiosk-trip::rub/" (string-upcase (plan-name good)) (string-upcase (town-name dest)) price)
+                           (format nil "ПОСЫЛКА В ~a · ПЛАЧУ ~/kiosk-trip::rub/" (string-upcase (town-name dest)) price)))
               (:recipient (format nil "ЖДУ ПОСЫЛКУ В ~a" (string-upcase (town-name town)))))
           0 1.42 0 :h .13 :yaw 0.0)
     g))
@@ -451,12 +453,13 @@ It is near Z, but not on an item of ours and not on one of his own (TAKEN)."
 The driver keeps count; guests are sent a description, see CLIENT-VIEW."
   (let* ((story (and (eq kind :sender) (story-sender town)))   ; a sender from a story (istorii.lisp): he has his own addressee
          (regular (and (member kind '(:buyer :seller)) (story-regular town)))     ; a regular: he recognised us and asks
-         (dest (when (eq kind :sender)                       ; where the parcel goes: by the story, or to any other town
-                 (if story
-                     (first story)
-                     (let ((others (remove town (loop for tw in *towns* collect (town-index tw)))))
-                       (nth (random (length others)) others)))))
-         (good (trade-good kind town))                       ; what he sells or looks for depends on the town (goods.lisp)
+         (cargo (and (eq kind :sender) (not story) (plan-cargo (trade-town town))))   ; the plan's cargo: a surplus here that is short elsewhere
+         (dest (when (eq kind :sender)                       ; where the parcel goes: by the story, by the plan, or to any other town
+                 (cond (story (first story))
+                       (cargo (first cargo))
+                       (t (let ((others (remove town (loop for tw in *towns* collect (town-index tw)))))
+                            (nth (random (length others)) others))))))
+         (good (if cargo (second cargo) (trade-good kind town)))   ; what he sells or looks for depends on the town's plan (goods.lisp)
          (price (ecase kind
                   (:buyer (trade-price good :buyer town))
                   (:seller (trade-price good :seller town))
@@ -466,7 +469,9 @@ The driver keeps count; guests are sent a description, see CLIENT-VIEW."
          (goods (ecase kind                                   ; (Z KIND ADDR): what he puts on the windowsill
                   (:buyer (list (list 0.0 :coins good)))              ; for coins the address field holds which goods he wants
                   (:seller (loop for z in (subseq '(-.5 0.0 .5) 0 (1+ (random 3))) collect (list z good nil)))
-                  (:sender (list (list 0.0 :box (if story (parcel-addr dest (fourth story) (fifth story)) dest))))   ; a story parcel has its own address
+                  (:sender (list (list 0.0 :box (cond (story (parcel-addr dest (fourth story) (fifth story)))
+                                                      (cargo (plan-addr dest (second cargo)))    ; the crate remembers what is in it
+                                                      (t dest)))))   ; a story parcel has its own address
                   (:recipient '()))))
     ;; at a bus stop one cat leaves the queue: he is the one standing at the window
     (when (and stop (second stop))
@@ -602,7 +607,9 @@ he now has in hand, whether that changed, and what to say."
                    (t (values holding nil (format nil "Он ищет ~a: возьми с полки (ЛКМ) и принеси к окну" (good-name (client-good)))))))
             (holding (values holding nil "Руки заняты — сначала поставь то, что несёшь"))
             ((and (not sender) (< *money* price)) (values nil nil "Денег не хватает. Включи музыку — слушатели накидают"))
-            (t (if sender (incf *money* (ceiling price 2)) (decf *money* price))   ; the sender pays a deposit, half; the rest on delivery
+            (t (cond ((and sender (parcel-good addr)) (incf *credit* (ceiling price 2)))     ; the plan pays by transfer, to the account
+                     (sender (incf *money* (ceiling price 2)))                           ; a sender pays a deposit, half; the rest on delivery
+                     (t (decf *money* price)))
                (unless sender (note-trade kind :bought))
                (when (and sender (getf *client* :story)) (apply #'story-taken (getf *client* :story)))   ; the story is on its way
                (stop-flying (list node))
@@ -670,7 +677,9 @@ For a guest the deal is made by the driver."
                          (let ((answer (story-delivered (sixth (car it))))) (when answer (say-later answer))))   ; they reply to this very parcel
                        (fly (cdr it) (paws-point (fourth (car it))) :dur .4 :free t)   ; reaches out a paw and takes it
                        (setf *items* (remove it *items*))
-                       (incf *money* price)
+                       (if (and (eq kind :recipient) (parcel-good (sixth (car it))))       ; the plan's crate: into the shop, pay to the account
+                           (progn (setf price (+ price (deliver-cargo (sixth (car it))))) (incf *credit* price) (save-plan))
+                           (incf *money* price))
                        (settle-items) (refresh-seats) (save-interior)
                        (log-event (if (eq kind :buyer) :sold :delivered) :price price :town town :money *money* :dist (round *dist*))
                        (cond ((eq kind :buyer) (client-leave (format nil "Продали за ~/kiosk-trip::rub/" price)))

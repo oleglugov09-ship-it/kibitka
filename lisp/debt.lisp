@@ -95,7 +95,7 @@
 
 (defun debt-share ()
   "Return what the next payment takes: no more than a payment, than the debt, or than there is in the purse."
-  (min *debt-chunk* *debt* (max 0 *money*)))
+  (min *debt-chunk* *debt* (max 0 (+ *money* *credit*))))                  ; the bank takes a transfer from the account first
 
 (defun bank-label ()
   (case *story-stage*
@@ -116,9 +116,9 @@ Return what is left."
   (cond (*actor* (say "Долг записан на водителя: платит он"))
         ((eq *story-stage* :done) (say "Сберкасса: долгов за вами нет"))
         ((eq *story-stage* :free) (start-ending))
-        ((and (not *dev*) (<= *money* 0)) (say "Платить нечем: в кошельке пусто"))
+        ((and (not *dev*) (<= (+ *money* *credit*) 0)) (say "Платить нечем: в кошельке пусто"))
         (t (let ((sum (if *dev* (min *debt-chunk* *debt*) (debt-share))))
-             (when (pay sum)
+             (when (pay-by-transfer sum)
                (log-event :debt :paid sum :left (pay-debt sum) :money *money*)
                (if (zerop *debt*)
                    (say-all "Долг закрыт! Кассирша ставит штамп «ПОГАШЕНО». Теперь в этом окне продают билет к отцу — E, когда будете готовы")

@@ -469,10 +469,10 @@ when they are *CITY-AHEAD* away and removed as a whole."
   "Fill up for *FUEL-CHUNK* roubles, or for as much as the money and the room in the tank allow.
 The wallet is shared, so anyone can refuel."
   (when *at-station*
-    (let* ((room (ceiling (* *tank-price* (- 1 *fuel*)))) (pay (min *fuel-chunk* *money* room)))
+    (let* ((room (ceiling (* *tank-price* (- 1 *fuel*)))) (pay (min *fuel-chunk* (+ *money* *credit*) room)))
       (cond ((<= room 0) (say "Бак полный"))
             ((<= pay 0) (say "Денег нет. Развези посылки"))
-            (t (decf *money* pay) (setf *fuel* (min 1.0 (+ *fuel* (/ pay *tank-price*))) *fuel-told* nil)
+            (t (pay-by-transfer pay) (setf *fuel* (min 1.0 (+ *fuel* (/ pay *tank-price*))) *fuel-told* nil)
                (log-event :fuel :pay pay :fuel *fuel* :money *money* :dist (round *dist*))
                (say-all (format nil "Залили на ~/kiosk-trip::rub/ Хватит ещё на ~,1f км" pay (* *fuel* *tank-km*))))))))
 

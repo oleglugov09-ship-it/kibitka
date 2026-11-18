@@ -24,7 +24,7 @@
 (defun net-guest-p () nil) (defun put-save (key form) (declare (ignore key)) form) (defun get-save (key) (declare (ignore key)) nil)
 (defun say-all (text) text)
 
-(dolist (f '("delo" "tverd" "random" "economy" "land" "karta" "razmetka" "goods" "istorii" "places" "prikol" "bumagi" "debt"))
+(dolist (f '("delo" "tverd" "random" "economy" "land" "karta" "razmetka" "goods" "plan" "istorii" "places" "prikol" "bumagi" "debt"))
   (load (merge-pathnames (concatenate 'string f ".lisp") cl-user::*here*)))
 
 ;; the content lives in mods: the core ships none. INCLUDE here is plain LOAD from the mod's folder
@@ -177,10 +177,33 @@
   (check "всё, что делают, где-то ищут" (subsetp made wanted))
   (check "город не ищет то, что сам делает" (loop for i below 12 never (intersection (town-makes i) (town-wants i))))
   (check "у каждого товара есть цена и имя" (every (lambda (k) (and (second (assoc k *goods*)) (plusp (good-base k)))) made)))
-(check "везти выгодно: покупатель всегда даёт больше, чем просит продавец" (> (first *buy-range*) (second *sell-range*)))
-(check "насыщение не роняет цену ниже пола"
-       (let ((*glut* (list (cons (list 3 :milk :sold) 50.0)))) (>= (glut-factor :milk :buyer 3) *glut-floor*)))
-(check "насыщенный рынок всё ещё не убыточен для первой сделки" (> (* (first *buy-range*) *glut-floor*) .5))
+
+
+(format t "План~%")
+(reset-plan 0)
+(let ((short-by-day '()) (surplus-by-day '()) (cargo-by-day '()) (first-short (loop for tw below 12 collect (short-goods tw))))
+  (loop for day from 0 below 30
+        do (run-plan-to (1+ day))
+           (push (loop for tw below 12 sum (length (short-goods tw))) short-by-day)
+           (push (loop for tw below 12 sum (length (surplus-goods tw))) surplus-by-day)
+           (push (loop for tw below 12 count (plan-cargo tw)) cargo-by-day))
+  (format t "  нехватки по дням: ~{~d~^ ~}~%  излишки по дням:  ~{~d~^ ~}~%  городов с нарядом: ~{~d~^ ~}~%"
+          (reverse short-by-day) (reverse surplus-by-day) (reverse cargo-by-day))
+  (dotimes (tw 3) (format t "  ~a~%" (substitute #\Space #\Newline (supply-sheet tw))))
+  (check "каждый день где-то чего-то не хватает" (every (lambda (n) (>= n 8)) short-by-day))
+  (check "каждый день где-то есть излишки" (every (lambda (n) (>= n 6)) surplus-by-day))
+  (check "наряды есть хотя бы в трёх городах в любой день" (every (lambda (n) (>= n 3)) cargo-by-day))
+  (check "нехватка не всеобщая: план в целом почти сходится" (every (lambda (n) (<= n 70)) short-by-day))
+  (check "за месяц расклад нехваток меняется больше чем в половине городов"
+         (>= (loop for tw below 12 for was in first-short count (not (equal was (short-goods tw)))) 7))
+  (check "договорная цена не ниже прейскуранта и не выше тройной"
+         (loop for tw below 12 always (every (lambda (g) (<= (list-price g) (agreed-price tw g) (* 3 (list-price g)))) (plan-goods))))
+  (check "ящик по наряду закрывает дыру и даёт премию"
+         (let* ((tw (position-if #'plan-cargo (loop for i below 12 collect i))) (cargo (plan-cargo tw))
+                (before (stock (first cargo) (second cargo))))
+           (and (= (deliver-cargo (plan-addr (first cargo) (second cargo))) *plan-premium*)
+                (= (stock (first cargo) (second cargo)) (min *stock-cap* (+ before *crate-units*)))
+                (eq (parcel-good (plan-addr 3 :bread)) :bread) (null (parcel-good 3)) (null (parcel-good 1203))))))
 
 (format t "Форма данных~%")
 (check "fits: кортеж нужной длины и типов" (and (fits '(1 2.5 "a" :k) '(integer real string keyword)) (not (fits '(1 2) '(integer real string)))))

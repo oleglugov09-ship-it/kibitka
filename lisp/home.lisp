@@ -260,6 +260,7 @@ that could be lost. A jar opened and left waits for the same good."
 (defparameter *calendar-at* '(.68 1.5 2.76) "The calendar on the back wall by the door: x, height above the floor, z.")
 (defparameter *diary-at* '(.68 1.12 2.76) "The diary on a nail under the calendar.")
 (defparameter *roll-at* '(1.46 1.02 1.5) "The roll of paper for sealing the window, on the window wall.")
+(defparameter *sheet-at* '(-1.46 1.42 .65) "The supply sheet: a clipboard on the carpet wall above the fridge.")
 (defparameter *hook-at* '(-.66 1.72 2.76) "The hook for the door quilt, on the back wall to the right of the door.")
 
 (defun show-home ()
@@ -289,6 +290,12 @@ that could be lost. A jar opened and left waits for the same good."
       (shape c :box '(.14 .12 .03) "#f6f2e8" x (+ f y -.07) (- z .02) :shadow nil)
       (shape c :box '(.14 .02 .034) "#a3262c" x (+ f y -.02) (- z .02) :shadow nil)
       (setf leaf (sign c "" x (+ f y -.08) (- z .04) :h .07 :rgb "#2a2a2e" :yaw pi)))
+    ;; the supply sheet: a clipboard with typed sheets, on the carpet wall above the fridge
+    (destructuring-bind (x y z) *sheet-at*
+      (shape c :box '(.015 .34 .24) "#6a5038" x (+ f y) z :shadow nil)
+      (shape c :box '(.01 .3 .2) "#f0ece0" (+ x .012) (+ f y -.01) z :shadow nil)
+      (dotimes (i 6) (shape c :box '(.004 .008 .15) "#3a3a40" (+ x .019) (+ f y .1 (* i -.04)) z :shadow nil))
+      (shape c :box '(.02 .03 .1) "#8a8e92" (+ x .012) (+ f y .155) z :metal .6 :rough .4 :shadow nil))
     ;; the diary: a school notebook on a nail
     (destructuring-bind (x y z) *diary-at*
       (shape c :box '(.16 .2 .015) "#4a6a52" x (+ f y) z :rot '(0 0 .06) :shadow nil)
@@ -322,10 +329,20 @@ that could be lost. A jar opened and left waits for the same good."
     (setf *home* (list :leaf leaf :strips strips :quilt quilt :jars jars :can can)))
   (show-home))
 
+(defun use-sheet ()
+  "Read the supply sheets: the town at hand first, then the two nearest by road, as the co-operative was told them."
+  (let* ((here (trade-town))
+         (near (sort (loop for tw in *towns* unless (= (town-index tw) here)
+                           collect (cons (or (plan-way (town-stop-d tw)) 1e9) (town-index tw)))
+                     #'< :key #'car)))
+    (open-show (mapcar #'supply-sheet (cons here (mapcar #'cdr (subseq near 0 (min 2 (length near)))))) (lambda ()))))
+
 (defun home-usables ()
   "Return the things to press for the calendar, the diary, the winter things and the jars."
   (list (usable (first *calendar-at*) (second *calendar-at*) (third *calendar-at*) #'calendar-label #'use-calendar nil 2.6 .15)
         (usable (first *diary-at*) (second *diary-at*) (third *diary-at*) (lambda () "E — дневник поездки") #'use-diary nil 2.6 .13)
+        (usable (first *sheet-at*) (second *sheet-at*) (third *sheet-at*)
+                (lambda () (format nil "E — ведомость снабжения: ~a и соседи" (town-name (trade-town)))) #'use-sheet nil 2.6 .16)
         (usable (first *roll-at*) (second *roll-at*) (third *roll-at*)
                 (lambda () (if (member :window *insulation*) "E — отклеить бумагу с окна"
                                (format nil "E — заклеить окно на зиму: ~d связки макулатуры · у нас ~d" *seal-papers* *papers*)))
