@@ -194,8 +194,44 @@ Return what is left."
                    (say-all (format nil "Ночью заходили люди Аркадия Семёновича: забрали ~a в счёт процентов. Он сидит в комиссионном, в Первомайске"
                                     (good-name (first best))))))))))))
 
-;; the savings bank is a booth like the others (DEFBOOTH, prikol.lisp)
-(defbooth 14 :label #'bank-label :use #'bank-use :shelf '("#4a6a52" "#d8d0b8" "#c9a13a"))
+;;; The wage. A co-operative may pay its members a wage from its account (the law of 1988): at the savings
+;;; bank's side door the whole account comes out in cash, with nothing kept back, but once a week only.
+;;; Arkady Semyonovich gives cash any day, for his share.
+
+(defparameter *wage-days* 7 "How many game days must pass between two wages at the savings bank.")
+(defvar *wage-day* nil "The game day of the last wage, or NIL.")
+
+(defun wage-wait ()
+  "Return how many game days are left before the next wage: 0 when it can be taken now."
+  (if *wage-day* (max 0 (- (+ *wage-day* *wage-days*) (today))) 0))
+
+(defun wage-label ()
+  (cond ((plusp (wage-wait)) (format nil "Зарплата кооператива: следующая через ~d дн. · на счёте ~/kiosk-trip::rub/" (wage-wait) *credit*))
+        ((<= *credit* 0) "Зарплата кооператива: на счёте пусто, его пополняют наряды")
+        (t (format nil "E — получить зарплату: весь счёт на руки, ~/kiosk-trip::rub/ Следующая — через ~d дн." *credit* *wage-days*))))
+
+(defshared take-wage :wage ()
+  "Take the whole co-operative's account in cash, once a week."
+  (cond ((plusp (wage-wait)) (say (format nil "Кассирша: «Зарплату выдаём раз в неделю. Приходите через ~d дн.»" (wage-wait))))
+        ((<= *credit* 0) (say "Кассирша: «На счёте кооператива пусто»"))
+        (t (let ((sum *credit*))
+             (incf *money* sum)
+             (setf *credit* 0 *wage-day* (today))
+             (save-plan) (save-wage)
+             (log-event :wage :sum sum :money *money*)
+             (say-all (format nil "Кассирша отсчитала зарплату: ~/kiosk-trip::rub/ на руки. Следующая — через ~d дн." sum *wage-days*))))))
+
+(defun save-wage () (unless (net-guest-p) (put-save :wage (list *wage-day*))))
+(defstate :wage
+  :clear (lambda () (setf *wage-day* nil))
+  :load (lambda () (let ((f (get-save :wage))) (when (fits f '(t)) (setf *wage-day* (and (integerp (first f)) (first f))))))
+  :save #'save-wage)
+
+;; the savings bank is a booth like the others (DEFBOOTH, prikol.lisp); the wage is paid at its side door
+(defbooth 14 :label #'bank-label :use #'bank-use :shelf '("#4a6a52" "#d8d0b8" "#c9a13a")
+  :spot '(9.1 -2.75 1.1) :side (list #'wage-label #'take-wage)
+  :build (lambda (g) (shape g :box '(.1 2.0 .9) "#5a4a3a" 9.0 1.0 -2.75) (shape g :ball '(.05 6 4) "#d8a840" 8.93 1.0 -2.45 :metal .6)
+           (sign g "ЗАРПЛАТА" 8.93 2.15 -2.75 :h .16 :rgb "#e8e0d0" :yaw (- (/ pi 2)))))
 
 ;;; ------------------------------------------------------------------ the ending
 
