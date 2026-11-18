@@ -105,34 +105,37 @@ The driver calls it; if a guest was performing the action, the guest's name is p
 The request carries what we hold in our paws: the action may take it or hand something over. Return T."
   (if *remote-wait*
       (say "Погоди, ещё не закончил")
-      (guest-send (list :a :do key args (car *carry*) (cdr *carry*))))
+      (guest-send (list :a :do key args (car *carry*) (cdr *carry*) *carry-props*)))
   t)
 
-(defun carry-ok-p (kind addr)
-  (and (or (null kind) (good-p kind) (member kind '(:box :crate))) (or (null addr) (integerp addr) (keywordp addr))))
+(defun carry-ok-p (kind addr &optional props)
+  (and (or (null kind) (good-p kind) (member kind '(:box :crate))) (or (null addr) (integerp addr) (keywordp addr))
+       (props-ok-p props)))
 
-(defun run-as (p carry thunk)
-  "Run THUNK as the driver on behalf of guest P, with the guest's paws holding CARRY.
+(defun run-as (p carry thunk &optional props)
+  "Run THUNK as the driver on behalf of guest P, with the guest's paws holding CARRY with PROPS.
 Reply to the guest with what is now in its paws and what was said to it."
   (when (member p *net-peers*)
-    (let ((*actor* p) (*carry* (and (car carry) carry)) (*carry-from* nil) (*carry-cut* nil) (*said* '()) (*pending* nil))   ; the guest's paws, not ours
+    (let ((*actor* p) (*carry* (and (car carry) carry)) (*carry-from* nil) (*carry-props* props) (*said* '()) (*pending* nil))   ; the guest's paws, not ours
       (funcall thunk)
-      (peer-send p (list :r (car *carry*) (cdr *carry*) (mapcar #'clean-text (reverse *said*)) *pending*)))))
+      (peer-send p (list :r (car *carry*) (cdr *carry*) (mapcar #'clean-text (reverse *said*)) *pending* (and *carry* *carry-props*))))))
 
 (defun host-do (p request)
-  "Handle, as the driver, the REQUEST of guest P for an action: (key args kind-in-paws address)."
-  (when (and (listp request) (= (length request) 4))
-    (destructuring-bind (key args kind addr) request
+  "Handle, as the driver, the REQUEST of guest P for an action: (key args kind-in-paws address properties)."
+  (when (and (listp request) (= (length request) 5))
+    (destructuring-bind (key args kind addr props) request
       (let ((op (assoc key *shared-ops*)))
         (when (and op (listp args) (<= (length args) 3) (every (lambda (a) (or (integerp a) (keywordp a))) args)
-                   (carry-ok-p kind addr))
-          (run-as p (cons kind addr) (lambda () (apply (cdr op) args))))))))
+                   (carry-ok-p kind addr props))
+          (run-as p (cons kind addr) (lambda () (apply (cdr op) args)) props))))))
 
 (defun guest-done (reply)
-  "Handle, as a guest, the REPLY to our finished action: (kind address said still-waiting)."
-  (when (and (listp reply) (= (length reply) 4))
-    (destructuring-bind (kind addr said pending) reply
-      (when (and (carry-ok-p kind addr) (listp said) (every #'stringp said))
+  "Handle, as a guest, the REPLY to our finished action: (kind address said still-waiting properties).
+The same thing still in the paws keeps the properties we know: a long job answers without them."
+  (when (and (listp reply) (= (length reply) 5))
+    (destructuring-bind (kind addr said pending props) reply
+      (when (and (carry-ok-p kind addr props) (listp said) (every #'stringp said))
+        (unless (and *carry* (eq kind (car *carry*)) (eql addr (cdr *carry*)) (null props)) (setf *carry-props* props))
         (setf *carry* (and kind (cons kind addr)) *carry-from* nil *remote-wait* (and pending t))
         (show-carry)
         (dolist (text said) (say text))))))

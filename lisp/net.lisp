@@ -317,10 +317,9 @@ Type 1 is a connect, 2 a disconnect, 3 an incoming packet."
           (:do (host-do p (cddr msg)))                        ; a shared action on behalf of the guest, see sync.lisp
           (:ran (host-ran p (third msg)))                     ; the reply to a live edit
           (:bell (ring-bell))
-          (:take (destructuring-bind (z kind addr) (cddr msg)
-                   (when (and (realp z) (or (null kind) (good-p kind) (member kind '(:box :crate)))
-                              (or (null addr) (integerp addr) (keywordp addr)))        ; for coins the address is the wanted good
-                     (host-deal p z kind addr))))))
+          (:take (destructuring-bind (z kind addr props) (cddr msg)
+                   (when (and (realp z) (carry-ok-p kind addr props))               ; for coins the address is the wanted good
+                     (host-deal p z kind addr props))))))
     (:e (destructuring-bind (base specs fold planks-delta took fed) (rest msg)
           (when (and (specs-ok-p specs) (integerp planks-delta) (<= -12 planks-delta 12)
                      (integerp fed) (<= 0 fed 5) (or (null took) (spec-ok-p took)))
@@ -546,7 +545,7 @@ stand on the windowsill, the same as by hand."
   (case (first msg)
     (:no (setf *net-refused* (if (stringp (second msg)) (second msg) "другая") *net-lost* t)
          (say "У водителя другая версия игры. Нужна одинаковая сборка"))
-    (:g (destructuring-bind (changed kind addr words) (rest msg) (guest-dealt changed kind addr words)))
+    (:g (destructuring-bind (changed kind addr words props) (rest msg) (guest-dealt changed kind addr words props)))
     (:x (if (eq (second msg) :drop)
             (progn (setf *carry* nil *carry-from* nil) (show-carry) (say "Эту вещь уже забрали"))
             (setf *edit-rejected* t)))

@@ -89,7 +89,7 @@ with the last one written would look unchanged."
                   (trip-day day) (tr (nth (mod (1- (trip-day day)) 7) *weekdays*)) (tr (getf *season-names* *season*))
                   (if (zerop left) (tr " — последний день") (format nil (tr " · до смены сезона дней: ~d") left)))
           (format nil "~a~%~%~a"
-                  (if *calendar-notes* (tr (nth (mod day (length *calendar-notes*)) *calendar-notes*)) "")
+                  (if *calendar-notes* (fill-text (nth (mod day (length *calendar-notes*)) *calendar-notes*)) "")
                   (if omens (tr (nth (mod day (length omens)) omens)) "")))))
 
 (defun calendar-label ()
@@ -241,7 +241,7 @@ that could be lost. A jar opened and left waits for the same good."
          (when (>= (cdr *can*) *can-turns*)
            (let ((dish (jar-of (car *can*))))
              (setf *can* nil)
-             (setf *carry* (cons dish nil) *carry-from* nil *carry-cut* nil)
+             (setf *carry* (cons dish nil) *carry-from* nil *carry-props* '())
              (show-carry) (show-home) (save-interior)
              (log-event :canned :dish dish)
              (say (format nil "Закатано: ~a. Не испортится, а зимой стоит дороже" (second (assoc dish *kinds*)))))))
@@ -329,13 +329,17 @@ that could be lost. A jar opened and left waits for the same good."
     (setf *home* (list :leaf leaf :strips strips :quilt quilt :jars jars :can can)))
   (show-home))
 
-(defun use-sheet ()
-  "Read the supply sheets: the town at hand first, then the two nearest by road, as the co-operative was told them."
+(defun sheet-towns ()
+  "Return the towns of the supply sheet: the one at hand first, then the two nearest by road."
   (let* ((here (trade-town))
          (near (sort (loop for tw in *towns* unless (= (town-index tw) here)
                            collect (cons (or (plan-way (town-stop-d tw)) 1e9) (town-index tw)))
                      #'< :key #'car)))
-    (open-show (mapcar #'supply-sheet (cons here (mapcar #'cdr (subseq near 0 (min 2 (length near)))))) (lambda ()))))
+    (cons here (mapcar #'cdr (subseq near 0 (min 2 (length near)))))))
+
+(defun use-sheet ()
+  "Read the supply sheets as the co-operative was told them; a guest reads the same ones (the common thing :PLAN)."
+  (open-show (mapcar #'supply-sheet (sheet-towns)) (lambda ())))
 
 (defun home-usables ()
   "Return the things to press for the calendar, the diary, the winter things and the jars."

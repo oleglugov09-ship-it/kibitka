@@ -188,7 +188,7 @@
 
 (defun chopping-p ()
   "Return true if what we carry is the good whose cutting is in hand."
-  (and *chop* *carry* (null (cdr *carry*)) (eq (car *carry*) (car *chop*)) (not *carry-cut*)))
+  (and *chop* *carry* (null (cdr *carry*)) (eq (car *carry*) (car *chop*)) (not (carry-prop :cut))))
 
 (defun show-chop ()
   "Show on the board as many slices as there were strokes."
@@ -204,19 +204,19 @@
   "Answer E on the cutting board: one stroke of the knife at what we carry."
   (cond ((null *carry*) (say "Разделочная доска. Принеси продукт и режь: E — удар ножа"))
         ((or (cdr *carry*) (not (cuttable-p (car *carry*)))) (say "Это не режут: режут рыбу, хлеб, грибы, яблоки, тушёнку"))
-        (*carry-cut* (say "Уже нарезано"))
+        ((carry-prop :cut) (say "Уже нарезано"))
         (t (unless (chopping-p) (setf *chop* (cons (car *carry*) 0)))             ; another good, or the first stroke
            (incf (cdr *chop*))
            (setf *chop-dip* .18)
            (when (audio :steps) (object-call (audio :steps) "play"))            ; a knock on the board
            (cond ((< (cdr *chop*) *chops*) (show-chop))
-                 (t (setf *chop* nil *carry-cut* t)
+                 (t (setf *chop* nil (carry-prop :cut) t)
                     (show-chop) (show-carry) (save-interior)
                     (say "Нарезано. На сковородке приготовится вдвое быстрее"))))))
 
 (defun board-label ()
   (cond ((chopping-p) (format nil "E — резать: ~d из ~d" (cdr *chop*) *chops*))
-        ((and *carry* (null (cdr *carry*)) (cuttable-p (car *carry*)) (not *carry-cut*)) (format nil "E — резать: 0 из ~d" *chops*))
+        ((and *carry* (null (cdr *carry*)) (cuttable-p (car *carry*)) (not (carry-prop :cut))) (format nil "E — резать: 0 из ~d" *chops*))
         (t "Разделочная доска")))
 
 (defun step-chop (delta)

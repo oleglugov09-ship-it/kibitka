@@ -184,17 +184,11 @@
 (defparameter *heat-limit* 3 "The number of resales of shop goods after which the inspectors start stopping the wagon.")
 (defparameter *fine-resale* 60 "The fine for each resale of a shop good that the inspectors count, in units of money.")
 
-(defvar *shop-bought* '() "The goods in the wagon that came from a shop at the list price: entries of (good . count).")
 (defvar *heat* 0 "The number of resales of shop goods the inspectors have not fined yet.")
 
-(defun note-shop-buy (good) "Remember that one GOOD came from a shop."
-  (let ((cell (or (assoc good *shop-bought*) (first (push (cons good 0) *shop-bought*))))) (incf (cdr cell))))
-
-(defun note-resale (good)
-  "Remember that one GOOD was sold at an agreed price; return true if it was a shop good, that is, speculation."
-  (let ((cell (assoc good *shop-bought*)))
-    (when (and cell (plusp (cdr cell)))
-      (decf (cdr cell)) (incf *heat*) t)))
+(defun note-resale ()
+  "Remember that a thing bought in a shop was sold at an agreed price: speculation. Return T."
+  (incf *heat*) t)
 
 ;;; ------------------------------------------------------------------ the powers of the towns
 ;;; Every town has someone who answers for its supply (*FORCES*, from mods): a director, a chairman, a
@@ -279,14 +273,14 @@
     (put-save :plan (list *plan-day* *credit*
                           (loop for key being the hash-keys of *stocks* using (hash-value v)
                                 collect (list (car key) (cdr key) (round v)))
-                          (copy-tree *shop-bought*) *heat* (copy-tree *deeds*) (list *shark* *shark-day* *shark-paid-day*)))))
+                          nil *heat* (copy-tree *deeds*) (list *shark* *shark-day* *shark-paid-day*)))))
 
 (defun load-plan ()
   (let ((f (get-save :plan)))
     (when (fits f '((:or integer null) integer (:each (integer keyword real)) &optional (:each cons) integer (:each cons) (integer (:or integer null) integer)))
       (destructuring-bind (day credit stocks &optional bought (heat 0) deeds (shark (list *shark-total* nil 0))) f
-        (setf *shop-bought* (remove-if-not (lambda (c) (and (keywordp (car c)) (integerp (cdr c)))) bought)
-              *heat* (max 0 heat)
+        (declare (ignore bought))                         ; the old count of shop goods: now each thing carries its own mark
+        (setf *heat* (max 0 heat)
               *deeds* (remove-if-not (lambda (c) (and (integerp (car c)) (integerp (cdr c)))) deeds)
               *shark* (max 0 (first shark)) *shark-day* (second shark) *shark-paid-day* (third shark))
         (clrhash *stocks*)
@@ -297,7 +291,7 @@
 (defstate :plan
   :clear (lambda ()
            (clrhash *stocks*)
-           (setf *plan-day* nil *credit* 0 *shop-bought* '() *heat* 0 *deeds* '()
+           (setf *plan-day* nil *credit* 0 *heat* 0 *deeds* '()
                  *shark* *shark-total* *shark-day* nil *shark-paid-day* (if (boundp '*day-t*) (today) 0)))
   :load #'load-plan :save #'save-plan)
 
@@ -309,13 +303,21 @@
       (grow-shark day)
       (save-plan))))
 
-;; a guest sees the driver's books for the town at hand, and the co-operative's account
+;; a guest sees the driver's books: the co-operative's account, how every town stands to us, and the stocks
+;; of the towns on the supply sheet (the one at hand and its two neighbours). The value is kept flat - the
+;; towns in one list, their stocks one after another in the next: a message may nest lists only so deep
+;; (TEXT-SAFE-P, net.lisp), and this one already travels inside four.
 (defcommon :plan
-  :value (let ((town (trade-town))) (list town *credit* (mapcar (lambda (g) (round (stock town g))) (plan-goods)) (deeds town) *shark* *heat*))
-  :spec '(integer integer (:each integer) integer integer integer) :driver t
+  :value (let ((towns (sheet-towns)))
+           (list *credit* *shark* *heat* (loop for town below (plan-size) collect (deeds town)) towns
+                 (loop for town in towns append (mapcar (lambda (g) (round (stock town g))) (plan-goods)))))
+  :spec '(integer integer integer (:each integer) (:each integer) (:each integer)) :driver t
   :accept (lambda (v)
-            (destructuring-bind (town credit stocks deeds shark heat) v
-              (setf *credit* (max 0 credit) *shark* (max 0 shark) *heat* (max 0 heat)
-                    *deeds* (cons (cons town deeds) (remove town *deeds* :key #'car)))
-              (when (and (< -1 town (plan-size)) (= (length stocks) (length (plan-goods))))
-                (loop for good in (plan-goods) for n in stocks do (set-stock town good n))))))
+            (destructuring-bind (credit shark heat deeds towns stocks) v
+              (setf *credit* (max 0 credit) *shark* (max 0 shark) *heat* (max 0 heat))
+              (when (= (length deeds) (plan-size))
+                (setf *deeds* (loop for town from 0 for n in deeds unless (zerop n) collect (cons town n))))
+              (when (and (every (lambda (town) (< -1 town (plan-size))) towns)
+                         (= (length stocks) (* (length towns) (length (plan-goods)))))
+                (dolist (town towns)
+                  (dolist (good (plan-goods)) (set-stock town good (pop stocks))))))))

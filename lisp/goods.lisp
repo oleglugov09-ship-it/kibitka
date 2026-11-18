@@ -49,20 +49,28 @@ more. The town's power moves both for its own and for those it has quarrelled wi
                            (t (list-price good))))))))
 
 (defun note-trade (good side &optional from-shop)
-  "Record a deal: SIDE :sold means the town got one GOOD from us, :bought means we took one, FROM-SHOP at the list price.
+  "Record a deal: SIDE :sold means the town got one GOOD from us, :bought means we took one.
+FROM-SHOP says that the thing sold carries the mark of a shop (the property :shop).
 The shop's books change; a sale of what the town is short of is a deed in our favour with its power, and
 a resale of a shop good is speculation: a deed against us, and one more for the inspectors."
   (let* ((town (trade-town (and *client* (getf *client* :town)))) (raw (raw-of good)) (turn nil))
     (cond ((eq side :sold)
            (let ((needed (>= (shortage town raw) .25)))
              (set-stock town raw (+ (stock town raw) 1))
-             (cond ((and (not (dish-p good)) (note-resale good)) (setf turn (add-deeds town -1)))
+             (cond (from-shop (note-resale) (setf turn (add-deeds town -1)))
                    (needed (setf turn (add-deeds town 1))))))
-          (t (set-stock town raw (- (stock town raw) 1))
-             (when from-shop (note-shop-buy good))))
+          (t (set-stock town raw (- (stock town raw) 1))))
     (save-plan)
     (when turn (say-standing turn))
     (when (and (eq side :sold) (dish-p good)) (note-quest :cook))))             ; the town council's dinner quest counts dishes sold             ; the town council's dinner quest counts dishes sold             ; the town council's dinner quest counts dishes sold
+
+(defun way-pay (way)
+  "Return what a private sender pays for a parcel that goes WAY metres by road: the farther, the more."
+  (round (+ *parcel-base* (* *parcel-per-km* (/ way 1000)))))
+
+(defun cargo-tariff (way)
+  "Return the tariff of a plan's crate that goes WAY metres: a transfer, on the scale of an enterprise's money."
+  (* *transfer-scale* (way-pay way)))
 
 (defun delivery-pay ()
   "Return the pay from the recipient for a delivered parcel (more with the town council stamp)."
@@ -108,11 +116,35 @@ That is the good sought or a dish made from it (blini will do for milk)."
 (defparameter *cut-dish-rgb* '((:fried "#b8782c"))
   "The dishes that keep the look of slices when cooked from a cut good, and the colour of the slices: (dish colour).")
 
-;;; A good that was cut on the board is marked in its record. The record has no field of its own for that, so
-;;; the mark lives in the turn field (the fifth), which goods do not use: 2 means cut. Ask and set it only
-;;; through these two; when a record gets a field for properties, only they change.
-(defun spec-cut-p (spec) "Return true if the item record SPEC is a good that was cut." (eql (fifth spec) 2))
-(defun cut-turn (cut) "Return the value of the turn field for a good that is CUT or not." (if cut 2 0))
+;;; The record of a thing is (kind x height z spin [address [properties]]). The properties are a list of
+;;; alternating keys and values that says what happened to this very thing: it was cut on the board, it
+;;; came from a shop. A new property needs a line in *PROP-KEYS* and nothing else: the record, the save,
+;;; the paws and the messages between players carry whatever is listed there.
+(defparameter *prop-keys* '(:cut :shop)
+  "The properties a thing may have, in the order they are written: :cut - cut on the board, :shop - bought in a shop at the list price.")
+
+(defun clean-props (props)
+  "Return PROPS with only the known keys that are true, in the order of *PROP-KEYS*: equal things get equal records."
+  (loop for key in *prop-keys* when (getf props key) append (list key t)))
+
+(defun props-ok-p (props)
+  "Return true if PROPS is a properly written list of properties."
+  (and (listp props) (ignore-errors (equal props (clean-props props)))))
+
+(defun make-spec (kind x y z spin &optional addr props)
+  "Return the record of a thing; the address and the properties are written only when there are any."
+  (let ((props (clean-props props)))
+    (append (list kind x y z spin) (cond (props (list addr props)) (addr (list addr))))))
+
+(defun spec-props (spec) "Return the properties of the item record SPEC." (seventh spec))
+(defun spec-prop (spec key) "Return the property KEY of the item record SPEC." (getf (seventh spec) key))
+(defun spec-cut-p (spec) "Return true if the item record SPEC is a good that was cut." (spec-prop spec :cut))
+
+(defun old-cut-spec (spec)
+  "Return SPEC as it is written now: saves made before things had properties marked a cut good by a half turn."
+  (if (and (= (length spec) 5) (eql (fifth spec) 2) (cut-look (first spec)))
+      (make-spec (first spec) (second spec) (third spec) (fourth spec) 0 nil '(:cut t))
+      spec))
 
 (defun cuttable-p (kind) (and (assoc kind *cut-rgb*) t))
 

@@ -42,9 +42,9 @@ A thing with a town number is a parcel.")
   (destructuring-bind (w h d) (third (assoc kind *kinds*))
     (if (oddp spin) (values d h w) (values w h d))))
 
-(defun build-item (parent kind x y z spin &optional addr)
+(defun build-item (parent kind x y z spin &optional addr props)
   "Build a thing of KIND under PARENT at X and Z, its bottom at height Y above the floor.
-SPIN is its rotation in quarter turns and ADDR the town number on the side of a crate.
+SPIN is its rotation in quarter turns, ADDR the town number on the side of a crate, PROPS its properties.
 Return the node."
   (let ((g (group parent x (+ *floor* y) z)) (wood "#8a6440") (dark "#5a3e26"))
     (node-3d-set-rotation g (v3 0 (* spin (/ pi 2)) 0))
@@ -101,7 +101,8 @@ Return the node."
       ((:fish :bread :coal :tools :books :cans :water :honey :berry :fried :jam :toast :stew
         :mushroom :toadstool :apple :herb :shroomfry :creamfry :charlotte :dried
         :nut :sandwich :berrypie :soup :bakedapple :brittle :driedapple :driedherb :pickled :jarcompote :cannedfish)
-       (if (and (eql spin (cut-turn t)) (cut-look kind)) (build-cut g kind) (build-good g kind)))    ; cut on the board: slices   ; the towns' goods - goods.lisp
+       (if (and (getf props :cut) (cut-look kind)) (build-cut g kind) (build-good g kind))
+       (when (getf props :shop) (shape g :box '(.045 .03 .004) "#f0ede4" .05 .03 .075 :shadow nil)))   ; a shop's price tag    ; cut on the board: slices   ; the towns' goods - goods.lisp
       (:blin
        (shape g :cyl '(.1 .1 .012 12) "#e4e0d4" 0 .006 0)
        (dotimes (i 5) (shape g :cyl (list (- .08 (* i .003)) .08 .014 10) (if (evenp i) "#d8a040" "#c88a30") (* .004 (- i 2)) (+ .02 (* i .014)) 0 :shadow nil))
@@ -122,15 +123,11 @@ Return the node."
   ;; what is in the paws right now is saved as standing where it was taken from (or by the window): quit the game - nothing lost
   (ignore-errors
    (put-save :interior
-              (append (mapcar #'car *items*)
-                      (when *carry*
-                        (let ((spec (or *carry-from*
-                                        (append (list (car *carry*) .6 0.0 .8 0) (when (cdr *carry*) (list (cdr *carry*)))))))
-                          (list (if *carry-cut* (list* (first spec) (second spec) (third spec) (fourth spec) (cut-turn t) (nthcdr 5 spec)) spec))))))))   ; cut stays cut
+              (append (mapcar #'car *items*) (when *carry* (list (carry-spec)))))))
 
 (defun spec-ok-p (it)
-  "Return true if the thing IT is recorded correctly: (kind x height z spin [town-number])."
-  (and (listp it) (<= 5 (length it) 6) (assoc (first it) *kinds*)
+  "Return true if the thing IT is recorded correctly: (kind x height z spin [town-number [properties]])."
+  (and (listp it) (<= 5 (length it) 7) (props-ok-p (seventh it)) (assoc (first it) *kinds*)
        (every (lambda (v) (and (realp v) (< -6 v 6))) (subseq it 1 4))
        (member (fifth it) '(0 1 2 3))
        (or (null (sixth it)) (and (integerp (sixth it)) (<= 0 (sixth it) 99999)))))
@@ -154,7 +151,7 @@ an old save still has them at the old places.")
   "Return the saved arrangement, or the starting one if the save is missing or damaged."
   (let ((specs (get-save :interior)))
     (if (and specs (specs-ok-p specs))
-        (sublis-specs *moved-furniture* specs)
+        (mapcar #'old-cut-spec (sublis-specs *moved-furniture* specs))
         (address-crates *start-interior*))))                          ; the world is permanent: addresses are town numbers, leave them alone
 
 (defun set-items (specs)
@@ -168,8 +165,8 @@ an old save still has them at the old places.")
   "Return the seats on beds and crates, all facing the big window.
 One can sit on a mattress and on a floor-level crate with nothing standing on it."
   (flet ((clear-p (x y z)
-           (notany (lambda (it) (destructuring-bind (k ix iy iz sp &optional addr) (car it)
-                                  (declare (ignore k sp addr))
+           (notany (lambda (it) (destructuring-bind (k ix iy iz sp &optional addr props) (car it)
+                                  (declare (ignore k sp addr props))
                                   (and (< (abs (- ix x)) .4) (< (abs (- iz z)) .45) (> iy y))))
                    *items*)))
     (loop for ((kind x y z)) in *items*
@@ -207,8 +204,8 @@ Return NIL when looking past everything."
               do (let ((cx cx) (cz cz) (w w) (d d))
                    (try top (lambda (px pz) (and (< (abs (- px cx)) (/ w 2)) (< (abs (- pz cz)) (/ d 2)))) nil)))
         (dolist (it *items*)
-          (destructuring-bind (kind x y z spin &optional addr) (car it)
-            (declare (ignorable addr))
+          (destructuring-bind (kind x y z spin &optional addr props) (car it)
+            (declare (ignorable addr props))
             (multiple-value-bind (w h d) (item-size kind spin)
               (try (+ y h) (lambda (px pz) (and (< (abs (- px x)) (/ w 2)) (< (abs (- pz z)) (/ d 2)))) it))))))
     ;; the ray ran into the side of a thing (the floor point ended up under it) - so we are looking at that thing:
@@ -216,15 +213,15 @@ Return NIL when looking past everything."
     (when best
       (loop
         (let ((over (find-if (lambda (it)
-                               (destructuring-bind (kind x y z spin &optional addr) (car it)
-            (declare (ignorable addr))
+                               (destructuring-bind (kind x y z spin &optional addr props) (car it)
+            (declare (ignorable addr props))
                                  (multiple-value-bind (w h d) (item-size kind spin)
                                    (and (< (abs (- (first best) x)) (/ w 2)) (< (abs (- (second best) z)) (/ d 2))
                                         (<= y (third best)) (< (third best) (+ y h))))))
                              *items*)))
           (if over
-              (destructuring-bind (kind x y z spin &optional addr) (car over)
-                (declare (ignorable addr))
+              (destructuring-bind (kind x y z spin &optional addr props) (car over)
+                (declare (ignorable addr props))
                 (declare (ignore x z))
                 (setf best (list (first best) (second best) (+ y (nth-value 1 (item-size kind spin))) over)))
               (return)))))

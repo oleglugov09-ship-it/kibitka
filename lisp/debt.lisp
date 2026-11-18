@@ -7,6 +7,11 @@
 
 (in-package #:kiosk-trip)
 
+;; the sums the cards and the calendar may name: {долг}, {цеховик}, {города}
+(setf *text-values* (list (cons "долг" (lambda () (money-text *debt-total*)))
+                          (cons "цеховик" (lambda () (money-text *shark-total*)))
+                          (cons "города" (lambda () (length *town-trade*)))))
+
 (defvar *intro-cards* '() "The cards of the intro, shown one by one: a list of strings.")
 (defvar *credits* '() "The lines of the closing credits: a list of strings.")
 (defvar *debt* 0 "The number of rubles of father's debt still to be paid.")
@@ -72,7 +77,7 @@
 (defun open-show (cards then)
   "Show CARDS one by one over a dark screen and call THEN after the last one."
   (unless *show-ui* (make-show))
-  (setf *show* (list :cards cards :then then) *show-down* t)
+  (setf *show* (list :cards (mapcar #'fill-text cards) :then then) *show-down* t)
   (show-card))
 
 (defun step-show ()

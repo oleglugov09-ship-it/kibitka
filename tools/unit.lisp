@@ -218,10 +218,17 @@
   (check "своим продают дешевле и берут дороже, поссорившимся наоборот"
          (and (< (standing-factor 2 :seller) 1 (standing-factor 2 :buyer)) (> (standing-factor 4 :seller) 1 (standing-factor 4 :buyer))
               (zerop (standing-factor 4 :premium)))))
-(let ((*shop-bought* '()) (*heat* 0))
-  (note-shop-buy :bread) (note-shop-buy :bread)
-  (check "перепродажа магазинного считается, своё — нет"
-         (and (note-resale :bread) (not (note-resale :fish)) (note-resale :bread) (not (note-resale :bread)) (= *heat* 2))))
+(check "свойства пишутся в одном порядке, лишнее и ложное выпадает"
+       (and (equal (clean-props '(:shop t :junk 1 :cut t)) '(:cut t :shop t)) (null (clean-props '(:cut nil)))
+            (props-ok-p '(:cut t)) (props-ok-p '()) (not (props-ok-p '(:shop t :cut t))) (not (props-ok-p '(:cut))) (not (props-ok-p 5))))
+(check "запись вещи: адрес и свойства только когда есть"
+       (and (equal (make-spec :bread 1 0 2 0) '(:bread 1 0 2 0)) (equal (make-spec :crate 1 0 2 1 7) '(:crate 1 0 2 1 7))
+            (equal (make-spec :bread 1 0 2 0 nil '(:shop t)) '(:bread 1 0 2 0 nil (:shop t)))
+            (spec-cut-p (make-spec :fish 1 0 2 0 nil '(:cut t))) (not (spec-cut-p '(:fish 1 0 2 0)))
+            (spec-prop '(:bread 1 0 2 0 nil (:shop t)) :shop)))
+(check "старая пометка «нарезано» поворотом читается как свойство, мебель с тем же поворотом — нет"
+       (and (equal (old-cut-spec '(:fish 1 0 2 2)) '(:fish 1 0 2 0 nil (:cut t))) (equal (old-cut-spec '(:crate 1 0 2 2)) '(:crate 1 0 2 2))
+            (equal (old-cut-spec '(:bread 1 0 2 0)) '(:bread 1 0 2 0))))
 (let ((*shark* 10000) (*shark-day* 0) (*shark-paid-day* 0))
   (grow-shark 10)
   (check "частный долг растёт на процент в день" (< 11000 *shark* 11100))
@@ -337,10 +344,57 @@
        (let ((dishes (mapcar #'second *recipes*))) (= (length dishes) (length (remove-duplicates dishes)))))
 (check "у календаря есть заметки и приметы на каждую погоду"
        (and (> (length *calendar-notes*) 7) (every (lambda (w) (getf *omens* w)) '(:rain :fog :cloudy :clear :snow))))
+(check "числа в текстах берутся из параметров: {долг} — это ссуда, незнакомое имя остаётся как есть"
+       (and (string= (fill-text "Ссуда — {долг}.") (format nil "Ссуда — ~a." (money-text *debt-total*)))
+            (string= (fill-text "{нет такого} и {обрыв") "{нет такого} и {обрыв") (string= (fill-text "просто") "просто")
+            (notany (lambda (card) (search "тысяч" card)) *intro-cards*)))
 (check "у вступления и титров есть текст" (and *intro-cards* *credits* (every #'stringp *intro-cards*) (every #'stringp *credits*)))
 (check "на каждый запрещённый товар есть задание с лицензией"
        (every (lambda (r) (find (second r) *quests* :key #'second)) *restricted*))
 (check "запрещённые товары существуют" (every (lambda (r) (assoc (first r) *goods*)) *restricted*))
+
+;;; A player drives the ring for two months and lives by the plan's cargo alone: how long until the man is paid
+;;; off, and the bank? It is a rough count, not the game: one crate offered at every stop that has cargo, six
+;;; crates aboard at most, 7 m/s on the road and a minute and a half in a town; the man first (he grows), in
+;;; cash turned from the account, then the bank. It tells whether the numbers are of the right order.
+(format t "Баланс: месяц на нарядах~%")
+(unless (boundp '*day-len*) (defparameter *day-len* 1200.0))   ; sky.lisp needs the engine; the length of a game day, in seconds
+(defun ride-on-cargo (days)
+  "Return (day-the-man-is-paid day-the-bank-is-paid earned crates) for DAYS of driving the ring on the plan's cargo."
+  (reset-plan 0)
+  (let* ((*deeds* '()) (ring (ring-length))
+         (stops (sort (loop for tw in *towns* collect (cons (town-stop-d tw) (town-index tw))) #'< :key #'car))
+         (at 0) (clock 0.0) (day 0) (aboard '()) (credit 0) (earned 0) (crates 0)
+         (shark *shark-total*) (debt *debt-total*) (shark-day nil) (debt-day nil))
+    (loop while (and (< day days) (not debt-day))
+          do (let* ((here (nth at stops)) (next (nth (mod (1+ at) (length stops)) stops)) (town (cdr here))
+                    (way (mod (- (car next) (car here)) ring)))
+               (dolist (addr (remove town aboard :key (lambda (a) (mod a 100)) :test-not #'eql))   ; hand over what came here
+                 (let ((pay (+ (delivery-pay) (deliver-cargo addr)))) (incf credit pay) (incf earned pay) (incf crates)))
+               (setf aboard (remove town aboard :key (lambda (a) (mod a 100))))
+               (let ((cargo (plan-cargo town)))                                            ; take the cargo waiting here
+                 (when (and cargo (< (length aboard) 6))
+                   (let ((pay (ceiling (cargo-tariff (mod (- (car (find (first cargo) stops :key #'cdr)) (car here)) ring)) 2)))
+                     (incf credit pay) (incf earned pay))
+                   (set-stock town (second cargo) (- (stock town (second cargo)) *crate-units*))
+                   (push (plan-addr (first cargo) (second cargo)) aboard)))
+               (decf credit (min credit (ceiling (* *tank-price* (/ way 1000 *tank-km*)))))   ; petrol for the next leg
+               (cond ((plusp shark) (let ((cash (floor (* *cash-share* credit)))) (decf shark (min shark cash)) (setf credit 0)
+                                      (when (and (<= shark 0) (not shark-day)) (setf shark-day day))))
+                     (t (decf debt (min debt credit)) (setf credit 0)
+                        (when (<= debt 0) (setf debt-day day))))
+               (incf clock (+ 90.0 (/ way 7.0)))
+               (loop while (>= clock *day-len*)
+                     do (decf clock *day-len*) (incf day) (run-plan-day day)
+                        (when (plusp shark) (setf shark (ceiling (* shark (+ 1 *shark-rate*))))))
+               (setf at (mod (1+ at) (length stops)))))
+    (list shark-day debt-day earned crates day)))
+(destructuring-bind (shark-day debt-day earned crates days) (ride-on-cargo 240)
+  (format t "  кольцо ~d м, игровой день ~d мин · за ~d дн. довезено ящиков: ~d, заработано ~a~%  цеховик закрыт на день ~a, ссуда — на день ~a (~,1f ч игры)~%"
+          (round (ring-length)) (round *day-len* 60) days crates (money-text earned) shark-day debt-day
+          (and debt-day (/ (* debt-day *day-len*) 3600.0)))
+  (check "на одних нарядах цеховик закрывается за первые игровые дни, но не сразу" (and shark-day (<= 1 shark-day 15)))
+  (check "ссуду можно выплатить, и это не час и не сто часов игры" (and debt-day (<= 20 debt-day 200))))
 
 (format t "~%~d проверок, ~:[всё сошлось~;провалов: ~:*~d~]~%" *checks* (and *fails* (length *fails*)))
 (ext:quit (if *fails* 1 0))

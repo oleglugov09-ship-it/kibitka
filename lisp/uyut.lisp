@@ -365,8 +365,8 @@ What stands on the hot stove turns into dishes (STOVE-JOBS); each job has its ow
             (let ((left (remove-if (lambda (spec) (member spec others :test #'equal)) (mapcar #'car *items*))))
               (set-items (if (eq dish :ruined)
                              (remove first-raw left :test #'equal)
-                             ;; a dish from a cut good stays cut: it is put down turned half round, like the good was
-                             (substitute (list dish (second first-raw) (third first-raw) (fourth first-raw) (cut-turn (spec-cut-p first-raw)))
+                             ;; a dish from a cut good stays cut; the shop's mark does not pass to the dish
+                             (substitute (make-spec dish (second first-raw) (third first-raw) (fourth first-raw) 0 nil (and (spec-cut-p first-raw) '(:cut t)))
                                          first-raw left :test #'equal))))
             (setf *cook* (remove c *cook*))
             (save-interior)

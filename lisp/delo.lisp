@@ -78,6 +78,23 @@ A string is translated; in a list (an enumeration of goods or towns) every eleme
             ((zerop rub) (cl:format nil (if en "~d kop." "~d коп.") kop))
             (t (cl:format nil (if en "~d rub. ~d kop." "~d р. ~d коп.") rub kop))))))
 
+(defvar *text-values* '()
+  "The numbers a written text may name: entries of (name . function). A card or a note says {name}, and
+FILL-TEXT puts there what the function returns now, so the text follows the parameter and not the other way.")
+
+(defun fill-text (text)
+  "Return TEXT in the game language with every {name} replaced by its value from *TEXT-VALUES*; an unknown name stays."
+  (let ((text (tr text)))
+    (if (not (stringp text))
+        text
+        (with-output-to-string (out)
+          (loop with at = 0
+                do (let* ((open (position #\{ text :start at)) (close (and open (position #\} text :start open)))
+                          (value (and close (cdr (assoc (subseq text (1+ open) close) *text-values* :test #'string=)))))
+                     (cond ((null close) (write-string text out :start at) (return))
+                           (value (write-string text out :start at :end open) (princ (funcall value) out) (setf at (1+ close)))
+                           (t (write-string text out :start at :end (1+ close)) (setf at (1+ close))))))))))
+
 (defun rub (stream units &optional colon at)
   "Print the sum of UNITS as rubles and kopecks: the format directive ~/kiosk-trip::rub/."
   (declare (ignore colon at))

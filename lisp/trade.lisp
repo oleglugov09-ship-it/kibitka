@@ -87,15 +87,23 @@ PLACE is the rounded path coordinate of the stay.")
       (format nil "посылку в ~a~@[ (от: ~a)~]" (town-name (parcel-town (cdr carry))) (parcel-from (cdr carry)))
       (good-name (car carry))))
 
-(defvar *carry-cut* nil "True when the good in the paws was cut on the board: it will cook faster (it is put down turned half round).")
+(defvar *carry-props* '() "The properties of the thing in the paws, as in its record: see *PROP-KEYS* in goods.lisp.")
+
+(defun carry-prop (key) "Return the property KEY of the thing in the paws." (getf *carry-props* key))
+(defun (setf carry-prop) (value key) (setf *carry-props* (clean-props (list* key value *carry-props*))) value)
+
+(defun carry-spec ()
+  "Return the record of the thing in the paws as it would stand: where it was taken from, or by the window."
+  (destructuring-bind (x y z spin) (if *carry-from* (subseq *carry-from* 1 5) '(.6 0.0 .8 0))
+    (make-spec (car *carry*) x y z spin (cdr *carry*) *carry-props*)))
 
 (defun show-carry ()
-  (unless *carry* (setf *carry-cut* nil))
+  (unless *carry* (setf *carry-props* '()))
   (when *actor* (return-from show-carry nil))          ; an action on behalf of a guest: nothing changes in our own paws
   (when *carry-node* (node-queue-free *carry-node*) (setf *carry-node* nil))
   (when (and *carry* *camera*)
     (let ((g (group *camera* 0 -.27 -.42)))                                ; in the middle of the view, below the crosshair
-      (node-3d-set-scale (build-item g (car *carry*) 0 (- *floor*) 0 (cut-turn *carry-cut*) (cdr *carry*))
+      (node-3d-set-scale (build-item g (car *carry*) 0 (- *floor*) 0 0 (cdr *carry*) *carry-props*)
                          (if (cdr *carry*) (v3 .45 .45 .45) (v3 1 1 1)))
       (dolist (sx '(-.07 .07))                                              ; our own paws under it
         (shape g :ball '(.04 6 4) (nth (mod *fur* (length *cat-furs*)) *cat-furs*) sx -.02 .05 :scale '(1 .7 1.5) :shadow nil))
@@ -164,9 +172,9 @@ A shelf is scanned lengthwise: the rack along x, the upper shelves and windowsil
 (defun stack-here (kind x z level &optional cut)
   "Return how many things of KIND stand on one another at the place (X Z) of the shelf LEVEL.
 With CUT, count the cut ones (slices on a board) instead of the whole ones: the two do not stack together."
-  (count-if (lambda (it) (destructuring-bind (ikind ix iy iz spin &rest more) (car it)
+  (count-if (lambda (it) (destructuring-bind (ikind ix iy iz &rest more) (car it)
                            (declare (ignore more))
-                           (and (eq ikind kind) (eq (and cut t) (eql spin (cut-turn t)))
+                           (and (eq ikind kind) (eq (and cut t) (and (spec-cut-p (car it)) t))
                                 (< (abs (- ix x)) .03) (< (abs (- iz z)) .03) (< -.02 (- iy level) *level-room*))))
             *items*))
 
@@ -174,7 +182,7 @@ With CUT, count the cut ones (slices on a board) instead of the whole ones: the 
   "Return true if the whole thing of KIND that we carry may go on top of the stack of its own kind at (X Z) on LEVEL.
 Cut goods do not stack, and nothing is stacked on them."
   (let ((high (second (assoc kind *stackable*))))
-    (and high (not *carry-cut*) (zerop (stack-here kind x z level t)) (< 0 (stack-here kind x z level) high))))
+    (and high (not (carry-prop :cut)) (zerop (stack-here kind x z level t)) (< 0 (stack-here kind x z level) high))))
 
 (defun stack-rise (kind x z level)
   "Return how far above LEVEL the next thing of KIND stands at (X Z): the height of the stack there."
@@ -271,8 +279,8 @@ Return T if something was done."
          (let* ((spot (put-spot)) (problem (and spot (spot-problem spot))))
            (cond (problem (say problem))
                  (spot
-                  (let ((spec (append (list (car *carry*) (float (first spot) 1.0) (float (third spot) 1.0) (float (second spot) 1.0) (cut-turn *carry-cut*))
-                                      (when (cdr *carry*) (list (cdr *carry*))))))
+                  (let ((spec (make-spec (car *carry*) (float (first spot) 1.0) (float (third spot) 1.0) (float (second spot) 1.0) 0
+                                         (cdr *carry*) *carry-props*)))
                     (let ((node (apply #'build-item *cart* spec)))
                       (push (cons spec node) *items*)
                       (fly node (node-3d-get-position node) :from (hand-point)))      ; from hand to its place
@@ -286,24 +294,75 @@ Return T if something was done."
                (fly (cdr it) (hand-point) :dur .2 :free t)                           ; from its place into hand
                (setf *items* (remove it *items*) *carry* (cons (first (car it)) (sixth (car it))) *carry-from* (car it)
                      *took* (car it)
-                     *carry-cut* (and (good-p (first (car it))) (spec-cut-p (car it))))
+                     *carry-props* (spec-props (car it)))
                (show-carry) (settle-items) (refresh-seats) (save-interior)
                t)))))
+
+;;; The kinds of client at the window. What a kind says and shows is declared here in one place; a new kind
+;;; needs a DEFCLIENT, its price and what it puts on the windowsill in CLIENT-COME, and, if the deal itself
+;;; is new, a branch in STALL-DEAL. The functions take the price, the good, the town and the destination.
+
+(defvar *client-kinds* '() "The kinds of client: entries of (kind . plist), see DEFCLIENT.")
+
+(defmacro defclient (kind &rest plist)
+  "Declare the client KIND: :sign over his head, :hint while he waits, :words when he has come up, :coming
+(a text, or a function of the town), :gone when he gave up, :wait - his own patience in seconds."
+  `(setf *client-kinds* (cons (list ,kind ,@plist) (remove ,kind *client-kinds* :key #'car))))
+
+(defun client-kind (kind key) "Return what is declared under KEY for the client KIND." (getf (rest (assoc kind *client-kinds*)) key))
+
+(defclient :buyer
+  :sign (lambda (price good town dest) (declare (ignore town dest))
+          (format nil "КУПЛЮ ~a · ~/kiosk-trip::rub/" (string-upcase (good-name (or good :milk))) price))
+  :hint (lambda (price good town dest) (declare (ignore town dest))
+          (if *carry*
+              (format nil "Покупатель ищет ~a: ЛКМ по монетам на подоконнике — отдать" (good-name good))
+              (format nil "Покупатель ищет ~a, даёт ~/kiosk-trip::rub/: возьми с полки (ЛКМ) и принеси к окну" (good-name good) price)))
+  :words (lambda (price good town dest) (declare (ignore town dest))
+           (format nil "Покупатель ищет ~a: даст ~/kiosk-trip::rub/ — возьми с полки и принеси к окну" (good-name good) price))
+  :coming "Идёт покупатель" :gone "Покупатель не дождался и ушёл")
+
+(defclient :seller
+  :sign (lambda (price good town dest) (declare (ignore town dest))
+          (format nil (if (> price (list-price (or good :milk))) "СВЕРХ ПЛАНА: ~a · ~/kiosk-trip::rub/" "МАГАЗИН: ~a · ~/kiosk-trip::rub/")
+                  (string-upcase (plan-name (or good :milk))) price))
+  :hint (lambda (price good town dest) (declare (ignore town dest))
+          (format nil "Продавец: ~a по ~/kiosk-trip::rub/ — ЛКМ по товару на подоконнике" (good-name good) price))
+  :words (lambda (price good town dest) (declare (ignore town dest))
+           (format nil "Продавец: ~a по ~/kiosk-trip::rub/ — бери с подоконника (ЛКМ)" (good-name good) price))
+  :coming "Идёт продавец" :gone "Продавец собрал товар и ушёл")
+
+(defclient :sender
+  :sign (lambda (price good town dest) (declare (ignore town))
+          (if good
+              (format nil "НАРЯД: ~a В ~a · ТАРИФ ~/kiosk-trip::rub/" (string-upcase (plan-name good)) (string-upcase (town-name dest)) price)
+              (format nil "ПОСЫЛКА В ~a · ПЛАЧУ ~/kiosk-trip::rub/" (string-upcase (town-name dest)) price)))
+  :hint (lambda (price good town dest) (declare (ignore good town dest))
+          (format nil "Отправитель платит ~/kiosk-trip::rub/: ЛКМ по посылке на подоконнике" price))
+  :words (lambda (price good town dest) (declare (ignore good town))
+           (format nil "Отправитель: посылка в ~a, платит ~/kiosk-trip::rub/ — возьми её с подоконника (ЛКМ)" (town-name dest) price))
+  :coming "Идёт отправитель с посылкой" :gone "Отправитель унёс посылку")
+
+(defclient :recipient
+  :sign (lambda (price good town dest) (declare (ignore price good dest))
+          (format nil "ЖДУ ПОСЫЛКУ В ~a" (string-upcase (town-name town))))
+  :hint (lambda (price good town dest) (declare (ignore price good dest))
+          (format nil "Получатель ждёт посылку в ~a: возьми её с полки (ЛКМ) и поставь на подоконник" (town-name town)))
+  :words (lambda (price good town dest) (declare (ignore price good dest))
+           (format nil "Получатель ждёт посылку в ~a — поставь её на подоконник" (town-name town)))
+  :coming (lambda (town)
+            (let ((who (some (lambda (it) (let ((a (sixth (car it))))      ; a story parcel is awaited: its addressee comes
+                                            (and a (eql (parcel-town a) town) (parcel-to a))))
+                             *items*)))
+              (if who (format nil "Идёт получатель: ~a" who) "Идёт получатель")))
+  :gone "Получатель отошёл. Позвони в колокольчик — вернётся" :wait 70.0)
 
 (defun client-hint ()
   "Return the hint on what to do with the client at the window.
 It is shown while we are not looking at anything specific."
   (when (and *client* (> (getf *client* :arrive 0.0) 0)) (return-from client-hint "Клиент идёт к окну"))
   (when *client*
-    (let ((price (getf *client* :price)))
-      (ecase (getf *client* :kind)
-        (:buyer (if *carry*
-                    (format nil "Покупатель ищет ~a: ЛКМ по монетам на подоконнике — отдать" (good-name (client-good)))
-                    (format nil "Покупатель ищет ~a, даёт ~/kiosk-trip::rub/: возьми с полки (ЛКМ) и принеси к окну" (good-name (client-good)) price)))
-        (:seller (format nil "Продавец: ~a по ~/kiosk-trip::rub/ — ЛКМ по товару на подоконнике" (good-name (client-good)) price))
-        (:sender (format nil "Отправитель платит ~/kiosk-trip::rub/: ЛКМ по посылке на подоконнике" price))
-        (:recipient (format nil "Получатель ждёт посылку в ~a: возьми её с полки (ЛКМ) и поставь на подоконник"
-                            (town-name (getf *client* :town))))))))
+    (funcall (client-kind (getf *client* :kind) :hint) (getf *client* :price) (client-good) (getf *client* :town) (getf *client* :dest))))
 
 (defun reconcile-carry (specs)
   "Reconcile what a guest holds after the driver sent a layout SPECS that differs from the guest's own.
@@ -316,14 +375,15 @@ driver's, so it returns to the hands, or it would be lost."
         ((and (not *carry*) *last-put* (< (- *time* (second *last-put*)) 3.0)
               (not (member (first *last-put*) specs :test #'equal))
               (not (and (third *last-put*) (member (third *last-put*) specs :test #'equal))))   ; unless it has returned to its old place
-         (setf *carry* (cons (first (first *last-put*)) (sixth (first *last-put*))) *carry-from* nil *last-put* nil)
+         (setf *carry* (cons (first (first *last-put*)) (sixth (first *last-put*))) *carry-props* (spec-props (first *last-put*))
+               *carry-from* nil *last-put* nil)
          (show-carry)
          (say "Поставить не вышло — вещь снова в руках"))))
 
 (defun stow-carry ()
   "Return what is in hand to where it was taken from (or to the window) before joining another game."
   (when *carry*
-    (let ((spec (or *carry-from* (append (list (car *carry*) .6 0.0 .8 0) (when (cdr *carry*) (list (cdr *carry*)))))))
+    (let ((spec (carry-spec)))
       (push (cons spec (apply #'build-item *cart* spec)) *items*))
     (setf *carry* nil *carry-from* nil)
     (show-carry) (refresh-seats) (save-interior)))
@@ -356,8 +416,8 @@ It is (:market PATH TOWN-INDEX) at a market or (:stop STOP) at a bus stop with c
 (defun parcel-pay (town)
   "Return what is paid for a parcel from here to town TOWN: the farther, the more."
   (let ((tw (find town *towns* :key #'town-index)))
-    (round (* (if *stamp* *stamp-factor* 1)                         ; with the town council stamp it is doubled
-              (+ *parcel-base* (* *parcel-per-km* (/ (plan-way (town-stop-d tw)) 1000)))))))   ; by the real road, not by the path coordinate
+    (* (if *stamp* *stamp-factor* 1)                                ; with the town council stamp it is doubled
+       (way-pay (plan-way (town-stop-d tw))))))                     ; by the real road, not by the path coordinate
 
 ;;; Clients
 
@@ -419,14 +479,7 @@ He climbs the steps over the last third of the walk."
   (let ((g (group *cart* (+ *half-width* .68) (+ *step-y* .04) 0)))
     (node-3d-set-rotation g (v3 0 (- (/ pi 2)) 0))
     (node-3d-set-scale (first (make-cat g look)) (v3 .72 .72 .72))
-    (sign g (ecase kind
-              (:buyer (format nil "КУПЛЮ ~a · ~/kiosk-trip::rub/" (string-upcase (good-name (or good :milk))) price))
-              (:seller (format nil (if (> price (list-price (or good :milk))) "СВЕРХ ПЛАНА: ~a · ~/kiosk-trip::rub/" "МАГАЗИН: ~a · ~/kiosk-trip::rub/")
-                               (string-upcase (plan-name (or good :milk))) price))
-              (:sender (if good
-                           (format nil "НАРЯД: ~a В ~a · ТАРИФ ~/kiosk-trip::rub/" (string-upcase (plan-name good)) (string-upcase (town-name dest)) price)
-                           (format nil "ПОСЫЛКА В ~a · ПЛАЧУ ~/kiosk-trip::rub/" (string-upcase (town-name dest)) price)))
-              (:recipient (format nil "ЖДУ ПОСЫЛКУ В ~a" (string-upcase (town-name town)))))
+    (sign g (funcall (client-kind kind :sign) price good town dest)
           0 1.42 0 :h .13 :yaw 0.0)
     g))
 
@@ -487,25 +540,16 @@ The driver keeps count; guests are sent a description, see CLIENT-VIEW."
                            ;; what lay on the windowsill before the buyer came is not for him: he will not take it himself (see SILL-ITEM)
                            :ignore (and (eq kind :buyer) (mapcar #'car (remove-if-not #'on-sill-p *items*)))
                            :story (and story (cdddr story))
-                           :price price :look look :left (if (eq kind :recipient) 70.0 *patience*) :reach 1.2
+                           :price price :look look :left (or (client-kind kind :wait) *patience*) :reach 1.2
                            :arrive *walk-time* :from from :goods goods :stall '()))
       (node-3d-set-position (getf *client* :node) (client-spot 1.0 from)))
     (log-event :client :kind kind :price price :town town :dist (round *dist*))
     (cond (story (say-all (format nil "~a: «~a»" (second story) (third story))))
           (regular (say-all regular))
-          (t (say (ecase kind
-                    (:buyer "Идёт покупатель") (:seller "Идёт продавец") (:sender "Идёт отправитель с посылкой")
-                    (:recipient (let ((who (some (lambda (it) (let ((a (sixth (car it))))      ; a story parcel is awaited: its addressee comes
-                                                                (and a (eql (parcel-town a) town) (parcel-to a))))
-                                                 *items*)))
-                                  (if who (format nil "Идёт получатель: ~a" who) "Идёт получатель")))))))))
+          (t (let ((coming (client-kind kind :coming))) (say (if (functionp coming) (funcall coming town) coming)))))))
 
 (defun client-words (kind price town dest)
-  (ecase kind
-    (:buyer (format nil "Покупатель ищет ~a: даст ~/kiosk-trip::rub/ — возьми с полки и принеси к окну" (good-name (client-good)) price))
-    (:seller (format nil "Продавец: ~a по ~/kiosk-trip::rub/ — бери с подоконника (ЛКМ)" (good-name (client-good)) price))
-    (:sender (format nil "Отправитель: посылка в ~a, платит ~/kiosk-trip::rub/ — возьми её с подоконника (ЛКМ)" (town-name dest) price))
-    (:recipient (format nil "Получатель ждёт посылку в ~a — поставь её на подоконник" (town-name town)))))
+  (funcall (client-kind kind :words) price (client-good) town dest))
 
 ;;; The client over the network: the driver sends guests a description, guests draw the same one and send their actions
 
@@ -532,7 +576,7 @@ It is (KIND PRICE TOWN DEST LOOK ((Z KIND ADDR) ...))."
         (when (or new (null view)) (client-off *client*)))
       (cond ((null view) (setf *client* nil))
             (t (destructuring-bind (kind price town dest look goods &optional good) view
-                 (when (and (member kind '(:buyer :seller :sender :recipient)) (integerp price) (integerp look) (listp goods)
+                 (when (and (assoc kind *client-kinds*) (integerp price) (integerp look) (listp goods)
                             (or (null good) (keywordp good)))
                    (setf *client* (list :kind kind :price price :town town :dest dest :look look :left 99.0 :reach 9.0
                                         :from (list 7.4 -6.0)
@@ -587,17 +631,17 @@ coins with the left mouse button."
 (defun on-sill-p (it)
   (and (< 1.15 (second (car it)) 2.3) (< (abs (- (third (car it)) .95)) .1)))
 
-(defun stall-deal (entry holding)
+(defun stall-deal (entry holding &optional props)
   "Make a deal at the windowsill over stall ENTRY (the driver keeps count).
-HOLDING is what the player who clicked has in hand: (KIND . ADDR) or NIL. Return three values: what
-he now has in hand, whether that changed, and what to say."
+HOLDING is what the player who clicked has in hand: (KIND . ADDR) or NIL, and PROPS its properties.
+Return four values: what he now has in hand, whether that changed, what to say, and the properties of the new thing."
   (destructuring-bind (node z kind addr) entry
     (declare (ignore z))
     (let ((price (getf *client* :price)) (sender (eq (getf *client* :kind) :sender)))
       (cond ((eq kind :coins)
              (cond ((and holding (null (cdr holding)) (wanted-p (car holding)))
                     (let ((price (good-price (car holding) price)))
-                      (note-trade (car holding) :sold)
+                      (note-trade (car holding) :sold (getf props :shop))
                       (incf *money* price)
                       (log-event :sold :price price :money *money* :dist (round *dist*))
                       (client-leave)
@@ -612,7 +656,7 @@ he now has in hand, whether that changed, and what to say."
             (t (cond ((and sender (parcel-good addr)) (incf *credit* (ceiling price 2)))     ; the plan pays by transfer, to the account
                      (sender (incf *money* (ceiling price 2)))                           ; a sender pays a deposit, half; the rest on delivery
                      (t (decf *money* price)))
-               (unless sender (note-trade kind :bought (<= price (list-price kind))))   ; at the list price it is the shop's: not for resale
+               (unless sender (note-trade kind :bought))
                (when (and sender (getf *client* :story)) (apply #'story-taken (getf *client* :story)))   ; the story is on its way
                (stop-flying (list node))
                (fly node (v3 (- *half-width* .3) (+ *floor* 1.0) (second entry)) :dur .22 :free t)   ; through the window, to us
@@ -622,28 +666,29 @@ he now has in hand, whether that changed, and what to say."
                (values (cons kind addr) t
                        (if sender
                            (format nil "Взяли посылку в ~a: задаток ~/kiosk-trip::rub/, при вручении ещё ~/kiosk-trip::rub/ Поставь её на полку" (town-name (parcel-town addr)) (ceiling price 2) (delivery-pay))
-                           (format nil "Купили ~a за ~/kiosk-trip::rub/" (good-name kind) price))))))))
+                           (format nil "Купили ~a за ~/kiosk-trip::rub/" (good-name kind) price))
+                       (and (not sender) (<= price (list-price kind)) '(:shop t))))))))   ; at the list price it is the shop's: not for resale
 
 (defun take-from-stall (entry)
   "Handle a left click on stall ENTRY, something the client put on the windowsill.
 For a guest the deal is made by the driver."
   (cond ((net-guest-p)
-         (guest-send (list :a :take (second entry) (car *carry*) (cdr *carry*))))
-        (t (multiple-value-bind (carry changed words) (stall-deal entry *carry*)
-             (when changed (setf *carry* carry *carry-from* nil) (show-carry))
+         (guest-send (list :a :take (second entry) (car *carry*) (cdr *carry*) *carry-props*)))
+        (t (multiple-value-bind (carry changed words props) (stall-deal entry *carry* *carry-props*)
+             (when changed (setf *carry* carry *carry-from* nil *carry-props* props) (show-carry))
              (say words)))))
 
-(defun host-deal (p z kind addr)
-  "Handle, on the driver, guest P clicking the windowsill item at position Z while holding (KIND . ADDR)."
+(defun host-deal (p z kind addr props)
+  "Handle, on the driver, guest P clicking the windowsill item at position Z while holding (KIND . ADDR) with PROPS."
   (let ((entry (and *client* (find z (getf *client* :stall) :key #'second :test (lambda (a b) (< (abs (- a b)) .05))))))
     (when entry
-      (multiple-value-bind (carry changed words) (stall-deal entry (and kind (cons kind addr)))
-        (peer-send p (list :g (and changed t) (car carry) (cdr carry) words))))))
+      (multiple-value-bind (carry changed words new-props) (stall-deal entry (and kind (cons kind addr)) props)
+        (peer-send p (list :g (and changed t) (car carry) (cdr carry) words new-props))))))
 
-(defun guest-dealt (changed kind addr words)
+(defun guest-dealt (changed kind addr words props)
   "Handle, on a guest, the driver's answer to our deal."
   (when changed
-    (setf *carry* (and kind (cons kind addr)) *carry-from* nil)
+    (setf *carry* (and kind (cons kind addr)) *carry-from* nil *carry-props* (and (props-ok-p props) props))
     (show-carry))
   (when (stringp words) (say words)))
 
@@ -659,11 +704,7 @@ For a guest the deal is made by the driver."
     (let ((kind (getf *client* :kind)))
       (cond ((> *speed* .6) (client-leave "Тронулись — клиент остался"))
             ((<= (decf (getf *client* :left) delta) 0)
-             (client-leave (ecase kind
-                             (:buyer "Покупатель не дождался и ушёл")
-                             (:seller "Продавец собрал товар и ушёл")
-                             (:sender "Отправитель унёс посылку")
-                             (:recipient "Получатель отошёл. Позвони в колокольчик — вернётся"))))
+             (client-leave (client-kind kind :gone)))
             ((member kind '(:buyer :recipient))
              (let* ((town (getf *client* :town))
                     (it (and (> *window-k* .9) *client*
@@ -673,7 +714,7 @@ For a guest the deal is made by the driver."
                (if it
                    (when (<= (decf (getf *client* :reach) delta) 0)       ; reaches out a paw for a second and takes it
                      (let ((price (if (eq kind :buyer) (good-price (first (car it)) (getf *client* :price)) (delivery-pay))))   ; the recipient pays for the delivery
-                       (when (eq kind :buyer) (note-trade (first (car it)) :sold))
+                       (when (eq kind :buyer) (note-trade (first (car it)) :sold (spec-prop (car it) :shop)))
                        (when (eq kind :recipient)
                          (award-pennant town) (note-quest :post)
                          (let ((answer (story-delivered (sixth (car it))))) (when answer (say-later answer))))   ; they reply to this very parcel
