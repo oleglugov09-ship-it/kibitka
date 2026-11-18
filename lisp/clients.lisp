@@ -158,11 +158,51 @@ He climbs the steps over the last third of the walk."
                         (list node z k addr))))
   (say (client-words (getf *client* :kind) (getf *client* :price) (getf *client* :town) (getf *client* :dest))))
 
-(defun client-figure (kind price town dest look &optional good)
-  "Build a client cat on the step by the window, facing us, with a sign overhead saying what he wants."
-  (let ((g (group *cart* (+ *half-width* .68) (+ *step-y* .04) 0)))
+(defun person-dress (g head marks)
+  "Put the MARKS of a person we know by name on a cat: G is its body group, HEAD its head.
+They are what tells the director from the fixer at a glance: a tie, a hat, a kerchief, spectacles."
+  (dolist (mark marks)
+    (case mark
+      (:tie (shape g :box '(.2 .07 .03) "#f0ece0" 0 .93 .2 :shadow nil)
+            (shape g :box '(.07 .3 .03) "#7a1c22" 0 .76 .235 :rot '(-.14 0 0) :shadow nil))
+      (:hat (shape head :cyl '(.42 .42 .025 14) "#3a342e" 0 .23 0)
+            (shape head :cyl '(.24 .27 .2 12) "#3a342e" 0 .34 0)
+            (shape head :cyl '(.275 .275 .05 12) "#16120e" 0 .27 0 :shadow nil))
+      (:folder (shape g :box '(.05 .26 .34) "#6a4a2a" .3 .5 .08)
+               (shape g :box '(.06 .03 .08) "#c9a13a" .3 .6 .2 :shadow nil))
+      (:glasses (dolist (sx '(-1 1))
+                  (shape head :cyl '(.085 .085 .012 10) "#c8dce8" (* sx .125) .03 .34 :rot (list (/ pi 2) 0 0) :alpha .4 :shadow nil)
+                  (shape head :box '(.02 .02 .3) "#101014" (* sx .22) .05 .2 :shadow nil))
+                (shape head :box '(.34 .018 .018) "#101014" 0 .11 .335 :shadow nil))
+      (:shades (shape head :box '(.36 .09 .02) "#101014" 0 .03 .34 :shadow nil))
+      (:bun (shape head :ball '(.13 8 6) "#5a4636" 0 .3 -.2))
+      (:bow (shape head :box '(.2 .1 .05) "#c22a22" 0 .32 .05 :shadow nil) (shape head :ball '(.04 6 4) "#8a1c22" 0 .32 .08 :shadow nil))
+      (:white (shape g :cyl '(.2 .33 .9 10) "#eef0ec" 0 .47 0)                                  ; a white coat over everything
+              (shape head :cyl '(.25 .27 .1 12) "#eef0ec" 0 .3 0))                              ; and a cap
+      ((:kerchief :kerchief-white)
+       (let ((rgb (if (eq mark :kerchief) "#8a2a3a" "#eef0ec")))
+         (shape head :ball '(.33 10 6) rgb 0 .08 -.09 :scale '(1.2 .95 .95))
+         (shape head :box '(.1 .1 .06) rgb 0 -.27 .2 :shadow nil)
+         (when (eq mark :kerchief) (dotimes (i 5) (shape head :ball '(.03 5 3) "#e8c040" (* .12 (- i 2)) .33 (- (* .03 (abs (- i 2))) .02) :shadow nil)))))
+      (:cap (shape head :ball '(.3 10 6) "#2c5a8a" 0 .16 0 :scale '(1.08 .6 1.05))
+            (shape head :box '(.24 .025 .2) "#2c5a8a" 0 .2 .32 :rot '(.15 0 0)))
+      (:book (shape g :box '(.05 .2 .26) "#2c4a7a" -.3 .55 .08) (shape g :box '(.04 .18 .24) "#e8e0d0" -.3 .55 .09 :shadow nil))
+      (:officer (shape head :cyl '(.33 .28 .1 12) "#4a5a3a" 0 .29 -.02)
+                (shape head :cyl '(.275 .275 .05 12) "#a3262c" 0 .23 -.02 :shadow nil)
+                (shape head :box '(.24 .025 .15) "#101014" 0 .2 .29 :rot '(.25 0 0))
+                (shape head :ball '(.03 6 4) "#c9a13a" 0 .3 .27 :metal .6 :rough .3)
+                (shape g :cyl '(.16 .31 .92 10) "#4a5a3a" 0 .46 0)                              ; the tunic
+                (dolist (sx '(-1 1)) (shape g :box '(.14 .03 .1) "#c9a13a" (* sx .2) .93 0 :shadow nil))))))   ; shoulder boards
+
+(defun client-figure (kind price town dest look &optional good who)
+  "Build a client cat on the step by the window, facing us, with a sign overhead saying what he wants.
+WHO is the key of a person we know by name (people.lisp): he comes as himself, not as one of the crowd."
+  (let* ((g (group *cart* (+ *half-width* .68) (+ *step-y* .04) 0))
+         (face (and who (getf (rest (assoc who *people*)) :look)))
+         (cat (if face (make-cat g (first face) (second face)) (make-cat g look))))
     (node-3d-set-rotation g (v3 0 (- (/ pi 2)) 0))
-    (node-3d-set-scale (first (make-cat g look)) (v3 .72 .72 .72))
+    (node-3d-set-scale (first cat) (v3 .72 .72 .72))
+    (when face (person-dress (first cat) (second cat) (third face)))
     (sign g (funcall (client-kind kind :sign) price good town dest)
           0 1.42 0 :h .13 :yaw 0.0)
     g))
@@ -196,6 +236,7 @@ The driver keeps count; guests are sent a description, see CLIENT-VIEW."
          (cargo (and (eq kind :sender) (not story) (plan-cargo (trade-town town))))   ; the plan's cargo: a surplus here that is short elsewhere
          (person (and (not story) (not regular) (or cargo (not (eq kind :sender)))      ; someone we know by name (people.lisp): a line a day
                       (person-speaks (list :window kind) (trade-town town))))
+         (who (and person *person-spoke*))
          (dest (when (eq kind :sender)                       ; where the parcel goes: by the story, by the plan, or to any other town
                  (cond (story (first story))
                        (cargo (first cargo))
@@ -228,7 +269,7 @@ The driver keeps count; guests are sent a description, see CLIENT-VIEW."
       (setf goods (loop for (z k addr) in goods
                         collect (let ((free (stall-z z taken))) (push free taken) (list free k addr)))))
     (let ((from (if stop (list 5.2 1.0) (list 7.4 -6.0))))        ; from the bus stop or from the market stalls
-      (setf *client* (list :kind kind :node (client-figure kind price town dest look good) :good good :stop nil :town town :dest dest
+      (setf *client* (list :kind kind :node (client-figure kind price town dest look good who) :who who :good good :stop nil :town town :dest dest
                            ;; what lay on the windowsill before the buyer came is not for him: he will not take it himself (see SILL-ITEM)
                            :ignore (and (eq kind :buyer) (mapcar #'car (remove-if-not #'on-sill-p *items*)))
                            :story (and story (cdddr story))
@@ -252,7 +293,8 @@ It is (KIND PRICE TOWN DEST LOOK ((Z KIND ADDR) ...))."
   (when *client*
     (list (getf *client* :kind) (getf *client* :price) (getf *client* :town) (getf *client* :dest) (getf *client* :look)
           (loop for (nil z k addr) in (getf *client* :stall) collect (list z k addr))
-          (getf *client* :good))))                               ; what he sells or looks for, for the sign
+          (getf *client* :good)                                  ; what he sells or looks for, for the sign
+          (getf *client* :who))))                                ; someone we know by name: he looks like himself
 
 (defvar *client-seen* nil "The last client description a guest received from the driver.")
 
@@ -268,13 +310,13 @@ It is (KIND PRICE TOWN DEST LOOK ((Z KIND ADDR) ...))."
         (setf (getf *client* :stall) '())
         (when (or new (null view)) (client-off *client*)))
       (cond ((null view) (setf *client* nil))
-            (t (destructuring-bind (kind price town dest look goods &optional good) view
+            (t (destructuring-bind (kind price town dest look goods &optional good who) view
                  (when (and (assoc kind *client-kinds*) (integerp price) (integerp look) (listp goods)
-                            (or (null good) (keywordp good)))
+                            (or (null good) (keywordp good)) (or (null who) (keywordp who)))
                    (setf *client* (list :kind kind :price price :town town :dest dest :look look :left 99.0 :reach 9.0
                                         :from (list 7.4 -6.0)
                                         :arrive (if (and *client* (not new)) (getf *client* :arrive 0.0) *walk-time*)
-                                        :node (if (and *client* (not new)) (getf *client* :node) (client-figure kind price town dest look good))
+                                        :node (if (and *client* (not new)) (getf *client* :node) (client-figure kind price town dest look good who))
                                         :stall (loop for (z k addr) in goods
                                                      when (and (realp z) (or (member k '(:coins :box)) (good-p k)))
                                                        collect (list (stall-node k addr z) z k addr))))

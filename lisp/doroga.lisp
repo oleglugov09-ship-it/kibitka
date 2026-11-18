@@ -186,7 +186,6 @@ It has a frame, wheels, a cab with a hood, headlights and crates on the cab roof
     (dolist (sx '(-1 1))
       (truck-wheel c (* sx 1.28) (- zf 2.75))                                 ; front axle
       (truck-wheel c (* sx 1.3) 1.15) (truck-wheel c (* sx 1.3) 2.35)         ; rear ones
-      (shape c :box '(.5 .12 1.5) dark (* sx 1.3) (min (+ (* 2 *wheel-r*) .12) (- f .12)) (- zf 2.75))        ; fenders - below the floor, not sticking inside
       (shape c :box '(.5 .1 2.7) dark (* sx 1.3) (min (+ (* 2 *wheel-r*) .1) (- f .12)) 1.75))
     ;; cab
     (shape c :box '(2.7 1.2 1.9) cab 0 (+ f .6) (- zf 1.05))
@@ -207,8 +206,13 @@ It has a frame, wheels, a cab with a hood, headlights and crates on the cab roof
     (shape c :box '(2.34 .62 .08) "#e8e4d8" 0 (+ f .5) (- zf 3.52))
     (dolist (y '(-.2 -.07 .06 .19)) (shape c :box '(1.4 .05 .09) dark 0 (+ f .5 y) (- zf 3.53) :shadow nil))
     (shape c :box '(.5 .09 .1) "#b03a2c" 0 (+ f .9) (- zf 3.53) :shadow nil)                                  ; the maker's plate
-    (dolist (sx '(-1 1))                                                                                       ; round wings over the front wheels
-      (shape c :cyl '(.62 .62 .5 10) cab (* sx 1.3) (- f .12) (- zf 2.75) :rot (list 0 0 (/ pi 2)) :scale '(1 1 .6))
+    (dolist (sx '(-1 1))
+      ;; a wing over each front wheel: an arch of five plates a hand above the tyre. It used to be a whole
+      ;; disc, which swallowed the upper half of the wheel and hung in front of it
+      (let ((r (+ *wheel-r* .13)))
+        (dolist (a '(-1.25 -.62 0.0 .62 1.25))
+          (shape c :box (list .56 .07 (* r .72)) cab (* sx 1.3) (+ *wheel-r* (* r (cos a))) (+ (- zf 2.75) (* r (sin a)))
+                 :rot (list a 0 0))))
       (shape c :cyl '(.07 .07 .06 8) "#e8a030" (* sx 1.2) (+ f .86) (- zf 3.5) :rot (list (/ pi 2) 0 0) :emit "#e08020" :energy .8 :shadow nil))
     (shape c :box '(2.8 .24 .22) "#b8b4a8" 0 (- f .05) (- zf 3.62) :metal .4 :rough .5)
     (dolist (sx '(-1 1))

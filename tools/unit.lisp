@@ -482,6 +482,11 @@
                                      (and (every (lambda (k) (stringp (getf p k))) '(:acting :exile :fired-end :promoted :promoted-end))
                                           (member (person-mark (getf p :answers)) '(-1 0 1)))))))
               *people*))
+(check "у каждого, кто подходит к окну, своя внешность, и двух одинаковых нет"
+       (let ((faces (loop for e in *people*
+                          when (and (consp (getf (rest e) :at)) (eq (first (getf (rest e) :at)) :window)) collect (getf (rest e) :look))))
+         (and (every (lambda (f) (and (integerp (first f)) (<= 0 (second f) 4) (listp (third f)))) faces)
+              (= (length faces) (length (remove-duplicates faces :test #'equal))))))
 (check "слова отчёта и запасные реплики замещающих на месте"
        (and (>= (length *acting-lines*) 4) (every (lambda (k) (stringp (getf *report-lines* k))) '(:title :fired :promoted :quiet :stays))))
 (format t "  по местам: окно ~d, будки ~d, заправка ~d, лагерь ~d~%"

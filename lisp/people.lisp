@@ -173,6 +173,8 @@ Return NIL if we have already spoken today or there is nothing left to say."
              (eq at place))
          (or (null (getf p :when)) (person-cond-p (getf p :when) (or town 0))))))
 
+(defvar *person-spoke* nil "The key of the person who spoke last through PERSON-SPEAKS, or NIL for an acting official or nobody.")
+
 (defun exile-line (key)
   "Return what the dismissed person KEY says when met away from the post, once; then they are gone for good."
   (let ((p (rest (assoc key *people*))) (rec (person-record key)))
@@ -196,10 +198,13 @@ The one tied to this very town goes before the ones met anywhere. Where the post
 speaks instead. A dismissed person may be met once more among the buyers or on the fishing stage."
   (let* ((posts (remove-if-not (lambda (e) (person-here-p (rest e) place town)) *people*))
          (here (remove-if-not (lambda (e) (and (person-in-post-p (first e)) (/= (fourth (person-record (first e))) (person-day)))) posts)))
+    (setf *person-spoke* nil)
     (or (and (or (equal place '(:window :buyer)) (equal place '(:booth 0)))
-             (some (lambda (f) (and (eq (second f) :fired) (exile-line (first f)))) *people-fate*))
+             (some (lambda (f) (and (eq (second f) :fired)
+                                    (let ((line (exile-line (first f)))) (when line (setf *person-spoke* (first f)) line))))
+                   *people-fate*))
         (loop for e in (stable-sort (copy-list here) (lambda (a b) (and (getf (rest a) :town) (not (getf (rest b) :town)))))
-              do (let ((line (person-line (first e) (or town 0)))) (when line (return line))))
+              do (let ((line (person-line (first e) (or town 0)))) (when line (setf *person-spoke* (first e)) (return line))))
         (some (lambda (e) (and (not (person-in-post-p (first e))) (acting-line (first e)))) posts))))
 
 (defun save-people ()

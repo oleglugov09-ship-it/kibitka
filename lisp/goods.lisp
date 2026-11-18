@@ -169,8 +169,9 @@ That is the good sought or a dish made from it (blini will do for milk)."
                 (shape g :box '(.05 .012 .02) "#d8d2c0" 0 .13 0 :shadow nil))
     (:pickled (jar-model g 0 0 0 "#8a6a4a"))                                                ; jars closed at the crate (home.lisp)
     (:jarcompote (jar-model g 0 0 0 "#d8a040"))
-    (:cannedfish (shape g :cyl '(.06 .06 .05 12) "#b0b4b8" 0 .025 0 :metal .7 :rough .3)     ; a flat tin
-                 (shape g :cyl '(.062 .062 .025 12) "#2c4a7a" 0 .025 0 :shadow nil))
+    ;; a label stands a centimetre proud of its tin: closer than that the two surfaces flicker
+    (:cannedfish (shape g :cyl '(.056 .056 .05 12) "#b0b4b8" 0 .025 0 :metal .7 :rough .3)   ; a flat tin
+                 (shape g :cyl '(.066 .066 .025 12) "#2c4a7a" 0 .025 0 :shadow nil))
     (:nut (shape g :cone '(.07 .1 6) "#d8d2c0" 0 .05 0 :rot (list pi 0 0))                 ; nuts in a paper cone
           (dotimes (i 5) (shape g :ball '(.022 6 4) "#8a5a34" (* .03 (cos (* i 1.3))) .115 (* .03 (sin (* i 1.3))) :shadow nil)))
     (:sandwich (shape g :cyl '(.1 .1 .012 12) "#e4e0d4" 0 .006 0)
@@ -234,11 +235,11 @@ That is the good sought or a dish made from it (blini will do for milk)."
             (shape g :box '(.155 .037 .215) "#2c4a7a" .003 .057 0 :rot '(0 .05 0))
             (shape g :box '(.15 .03 .21) "#e8e0d0" .004 .019 .003 :shadow nil)
             (shape g :box '(.012 .082 .225) "#d8d2c0" 0 .041 0 :shadow nil))
-    (:cans (shape g :cyl '(.055 .055 .11 12) "#b0aa98" 0 .055 0 :metal .7 :rough .3)       ; one can, a plain cylinder: it stacks
-           (shape g :cyl '(.057 .057 .06 12) "#a3262c" 0 .055 0 :shadow nil)
-           (shape g :cyl '(.058 .058 .008 12) "#8a8e92" 0 .108 0 :metal .7 :rough .3 :shadow nil))
+    (:cans (shape g :cyl '(.048 .048 .098 12) "#b0aa98" 0 .049 0 :metal .7 :rough .3)      ; one can, a plain cylinder: it stacks
+           (shape g :cyl '(.058 .058 .06 12) "#a3262c" 0 .052 0 :shadow nil)                 ; the label, a centimetre proud
+           (shape g :cyl '(.052 .052 .012 12) "#8a8e92" 0 .104 0 :metal .7 :rough .3 :shadow nil))   ; the lid is the top: nothing lies in its plane
     (:water (shape g :cyl '(.04 .045 .2 8) "#7ab0c8" 0 .1 0 :alpha .7 :rough .2) (shape g :cyl '(.02 .035 .07 6) "#7ab0c8" 0 .235 0 :alpha .7)
-            (shape g :cyl '(.046 .046 .06 8) "#e8e0d0" 0 .1 0 :shadow nil))
+            (shape g :cyl '(.056 .056 .06 8) "#e8e0d0" 0 .1 0 :shadow nil))
     (:honey (shape g :cyl '(.07 .06 .13 10) "#d89a20" 0 .065 0 :rough .3) (shape g :cyl '(.075 .075 .03 10) "#e8e0d0" 0 .145 0)
             (shape g :box '(.08 .05 .005) "#f0ece0" 0 .07 .068 :shadow nil))
     (:berry (shape g :cyl '(.085 .06 .07 10) "#b08a50" 0 .035 0)                         ; a wicker basket heaped with cranberries
