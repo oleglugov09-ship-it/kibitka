@@ -3,9 +3,10 @@
 # linked with ECL for the web into a GDExtension side module,
 # project/bin/libgdecl.wasm. Then `make web` exports with the release template.
 #
-#   web/build.sh            optimized (-O2), the default
-#   OPT=-O0 web/build.sh    if the optimized build misbehaves (ECL's notes say
-#                           its GC needs -O0 with --spill-pointers; test it)
+#   web/build.sh            -O0, the default: ECL's GC needs it with --spill-pointers. With -O2
+#                           a build started with "memory access out of bounds" every time (18.11),
+#                           and earlier ones corrupted memory in play
+#   OPT=-O2 web/build.sh    faster code, but see above
 #
 # Needs: ECL for the web built with Emscripten 4.0.20 (Godot 4.7's) and
 # -fPIC -fno-exceptions -sSUPPORT_LONGJMP=wasm (ECL_WASM), that Emscripten
@@ -17,7 +18,7 @@ GDECL=${GDECL:-$HOME/src/gdecl-live/gdecl}
 ECL_WASM=${ECL_WASM:-$HOME/src/ecl-godot-web/ecl-wasm}
 HOST_ECL=${HOST_ECL:-$HOME/src/wecl-spike/ecl/ecl-host/bin/ecl}
 EMSDK=${EMSDK:-$HOME/src/emsdk-godot}
-OPT=${OPT:--O2}
+OPT=${OPT:--O0}   # -O2 broke the heap: a crash at launch, players' worlds wiped (18.11); -O0 passes ?torture
 source "$EMSDK/emsdk_env.sh" >/dev/null 2>&1
 mkdir -p "$ROOT/build-web"
 # ASDF's fasl cache for pass A of build-web.lisp: compiled with wasm32's sizes,

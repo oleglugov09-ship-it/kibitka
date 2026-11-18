@@ -374,13 +374,50 @@ It carries the traffic oncoming to those driving forward.")
 (defun side-x (off) "Convert OFF, to the right of the wagon, to the offset sideways from the path axis." (+ (lane) (* off *dir*)))
 (defun turning-p () (> (abs (- *yaw-now* (if (> *dir* 0) 0.0 pi))) .03))
 
+(defparameter *turn-legs* '((1 80) (-1 20) (1 80))
+  "The U-turn of a lorry on a road too narrow to turn in one go: forward with the wheel to the left, back
+with it to the right, forward to the left again. Each leg is (direction degrees): the heading turns the
+same way on every leg, by so many degrees, along an arc.")
+(defparameter *turn-speed* 1.8 "The speed of the truck during a U-turn, m/s.")
+(defparameter *turn-pause* .5 "The pause between the legs of a U-turn, s: the driver changes gear.")
+(defvar *u-turn* nil "The U-turn under way: (radius sign leg turned pause), or NIL.")
+
+(defun turn-shift ()
+  "Return the sideways shift a whole U-turn of radius 1 makes, along the legs of *TURN-LEGS*."
+  (let ((th 0.0) (shift 0.0))
+    (loop for (dir deg) in *turn-legs*
+          do (let ((a (* deg (/ pi 180))))
+               (incf shift (* dir (- (cos th) (cos (+ th a)))))
+               (incf th a)))
+    shift))
+
 (defun step-turn (delta)
-  "Perform the U-turn: the wagon finishes turning and moves to its own lane within a couple of seconds."
-  (let* ((want (if (> *dir* 0) 0.0 pi))
-         (diff (- (mod (+ (- want *yaw-now*) pi) (* 2 pi)) pi)) (step (* 1.25 delta)))
-    (setf *yaw-now* (if (< (abs diff) step) want (+ *yaw-now* (* step (signum diff)))))
-    (let ((dl (- (lane) *lane-now*)) (ls (* 1.8 delta)))
-      (setf *lane-now* (if (< (abs dl) ls) (lane) (+ *lane-now* (* ls (signum dl))))))))
+  "Perform the U-turn: the truck drives along arcs, as a lorry turns on a narrow road (*TURN-LEGS*): the
+heading turns only while it moves, and it moves from its lane to the other one. Only the driver moves
+the truck along the road; guests are told where it stands."
+  (let ((want (if (> *dir* 0) 0.0 pi)))
+    (cond ((not (turning-p)) (setf *u-turn* nil *yaw-now* want)
+           (let ((dl (- (lane) *lane-now*)) (ls (* 1.8 delta)))       ; the last few centimetres
+             (setf *lane-now* (if (< (abs dl) ls) (lane) (+ *lane-now* (* ls (signum dl)))))))
+          (t (unless *u-turn*
+               ;; the heading turns the way that takes the first leg forward towards the other lane
+               (let* ((shift (- (lane) *lane-now*)) (sign (* (if (minusp shift) -1 1) (if (minusp (cos *yaw-now*)) -1 1))))
+                 (setf *u-turn* (list (max 2.0 (/ (abs shift) (turn-shift))) sign 0 0.0 0.0))))
+             (destructuring-bind (r sign leg turned pause) *u-turn*
+               (let ((spec (nth leg *turn-legs*)))
+                 (cond ((plusp pause) (setf (fifth *u-turn*) (max 0.0 (- pause delta))))
+                       ((null spec) (setf *yaw-now* want *lane-now* (lane) *u-turn* nil))
+                       (t (destructuring-bind (dir deg) spec
+                            (let* ((left (- (* deg (/ pi 180)) turned))
+                                   (da (min left (/ (* *turn-speed* delta) r))) (ds (* r da)) (th *yaw-now*))
+                              ;; heading TH from the road: forward it moves along the road by cos TH and towards *LANE-X* by sin TH
+                              (setf *yaw-now* (+ th (* sign da)))
+                              (incf *lane-now* (* dir ds (sin th)))
+                              (unless (net-guest-p) (incf *dist* (* dir ds (cos th))))
+                              (if (>= da left)
+                                  (setf (third *u-turn*) (1+ leg) (fourth *u-turn*) 0.0 (fifth *u-turn*) *turn-pause*)
+                                  (setf (fourth *u-turn*) (+ turned da)))))))))))))
+
 (defvar *spans* (make-hash-table :test 'equal) "The table of what is already built on the grid: key → (first . last) grid node number.")
 (defvar *listed* (make-hash-table :test 'equal) "The table of what is already built by the list: key → (path-coordinate . reach).")
 
