@@ -173,6 +173,7 @@ That is the body, the truck under it, everything bolted on inside, the things an
               (step-trip delta))
           (save-game delta)
           (step-saves delta)
+          (step-copies)
           (step-map)
           (step-log delta))
       (error (e) (note-error e "кадр")))))
