@@ -421,7 +421,8 @@ He climbs the steps over the last third of the walk."
     (node-3d-set-scale (first (make-cat g look)) (v3 .72 .72 .72))
     (sign g (ecase kind
               (:buyer (format nil "КУПЛЮ ~a · ~/kiosk-trip::rub/" (string-upcase (good-name (or good :milk))) price))
-              (:seller (format nil "ПРОДАЮ ~a · ~/kiosk-trip::rub/" (string-upcase (good-name (or good :milk))) price))
+              (:seller (format nil (if (> price (list-price (or good :milk))) "СВЕРХ ПЛАНА: ~a · ~/kiosk-trip::rub/" "МАГАЗИН: ~a · ~/kiosk-trip::rub/")
+                               (string-upcase (plan-name (or good :milk))) price))
               (:sender (if good
                            (format nil "НАРЯД: ~a В ~a · ТАРИФ ~/kiosk-trip::rub/" (string-upcase (plan-name good)) (string-upcase (town-name dest)) price)
                            (format nil "ПОСЫЛКА В ~a · ПЛАЧУ ~/kiosk-trip::rub/" (string-upcase (town-name dest)) price)))
@@ -460,10 +461,11 @@ The driver keeps count; guests are sent a description, see CLIENT-VIEW."
                        (t (let ((others (remove town (loop for tw in *towns* collect (town-index tw)))))
                             (nth (random (length others)) others))))))
          (good (if cargo (second cargo) (trade-good kind town)))   ; what he sells or looks for depends on the town's plan (goods.lisp)
+         (maker (and (eq kind :seller) (member good (town-makes (trade-town town))) (< (random 1.0) .5)))   ; the maker itself, above the plan
          (price (ecase kind
                   (:buyer (trade-price good :buyer town))
-                  (:seller (trade-price good :seller town))
-                  (:sender (parcel-pay dest))
+                  (:seller (trade-price good :seller town maker))
+                  (:sender (if cargo (* *transfer-scale* (parcel-pay dest)) (parcel-pay dest)))   ; the plan pays by transfer, on its own scale
                   (:recipient 0)))
          (look (random 36))
          (goods (ecase kind                                   ; (Z KIND ADDR): what he puts on the windowsill
@@ -610,7 +612,7 @@ he now has in hand, whether that changed, and what to say."
             (t (cond ((and sender (parcel-good addr)) (incf *credit* (ceiling price 2)))     ; the plan pays by transfer, to the account
                      (sender (incf *money* (ceiling price 2)))                           ; a sender pays a deposit, half; the rest on delivery
                      (t (decf *money* price)))
-               (unless sender (note-trade kind :bought))
+               (unless sender (note-trade kind :bought (<= price (list-price kind))))   ; at the list price it is the shop's: not for resale
                (when (and sender (getf *client* :story)) (apply #'story-taken (getf *client* :story)))   ; the story is on its way
                (stop-flying (list node))
                (fly node (v3 (- *half-width* .3) (+ *floor* 1.0) (second entry)) :dur .22 :free t)   ; through the window, to us

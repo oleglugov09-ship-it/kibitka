@@ -134,9 +134,11 @@ they stop us and ask for a licence."
 (defun violations ()
   "Return what we will be fined for.
 The result is (NAME . AMOUNT) for each kind of goods carried in bulk without a licence."
-  (loop for (nil license name) in (bulk-cargo)
-        unless (member license *licenses*)
-          collect (cons name *fine-cargo*)))
+  (append (loop for (nil license name) in (bulk-cargo)
+                unless (member license *licenses*)
+                  collect (cons (format nil "~a без лицензии" name) *fine-cargo*))
+          (when (plusp *heat*)                                           ; resales of shop goods: speculation (plan.lisp)
+            (list (cons (format nil "спекуляция, перепродаж: ~d" *heat*) (* *heat* *fine-resale*))))))
 
 (defun show-officer (on)
   (when *officer* (node-queue-free *officer*) (setf *officer* nil))
@@ -162,8 +164,9 @@ If all is clean he wishes a good trip; if we carry restricted goods he writes a 
   (unless (and *check* (eq (first *check*) :waiting)) (return-from show-papers nil))
   (let ((bad (violations)) (owed (length *fines*)))
     (dolist (b bad) (push (cdr b) *fines*))
+    (when (plusp *heat*) (setf *heat* 0) (add-deeds 6 -2) (save-plan))      ; fined for speculation: the count is cleared, the town council remembers
     (log-event :check :bad (length bad) :fines (length *fines*))
-    (end-check (cond (bad (format nil "Милиция: ~{~a~^, ~} без лицензии. Штраф ~/kiosk-trip::rub/ — оплатить в участке, Октябрьский"
+    (end-check (cond (bad (format nil "Проверка: ~{~a~^, ~}. Штраф ~/kiosk-trip::rub/ — оплатить в участке, Октябрьский"
                                   (mapcar #'car bad) (reduce #'+ (mapcar #'cdr bad))))
                      ((plusp owed) "Милиция: документы в порядке, но за вами неоплаченный штраф. Не тяните")
                      (t "Милиция: документы в порядке. Счастливого пути!")))))
@@ -178,7 +181,7 @@ and ask for a licence. Travelling light, we are never stopped."
   (unless (net-guest-p)
     (cond ((null *check*)
            (when (and *auto* (not *dev*) (> *speed* 4.0) (not (town-at *dist*)) (not (bare-at *dist*)) (not *meta*)
-                      (bulk-cargo)                                        ; only those loaded with coal or air cargo are stopped
+                      (or (bulk-cargo) (>= *heat* *heat-limit*))           ; those loaded with coal or air cargo, and those the inspectors have counted
                       (< (decf *check-in* delta) 0))
              (setf *check* (list :stopping *auto* *way*) *auto* nil)       ; autopilot is off: the wagon brakes by itself
              (say-all "Впереди милиция: машут жезлом. Останавливаемся")))

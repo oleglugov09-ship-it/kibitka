@@ -37,18 +37,32 @@ The plan decides (plan.lisp); when it has nothing to say, the town's nature does
 The shift is leaving the factory: buyers are many and they pay more."
   (and (eql town *rush-town*) (< (first *rush-hours*) (day-phase *day-t*) (second *rush-hours*))))
 
-(defun trade-price (good kind town)
+(defun trade-price (good kind town &optional maker)
   "Return the price of GOOD for a client of KIND in TOWN.
-A seller is the shop: the list price, the same everywhere. A buyer gives an agreed price: the emptier
-the shop here, the more."
-  (if (eq kind :seller) (list-price good) (agreed-price (trade-town town) good)))
+A seller is the shop, with the list price, the same everywhere, or with MAKER the maker itself, which
+sells above the plan at an agreed price. A buyer gives an agreed price: the emptier the shop here, the
+more. The town's power moves both for its own and for those it has quarrelled with."
+  (let ((town (trade-town town)))
+    (max 1 (round (* (standing-factor town kind)
+                     (cond ((eq kind :buyer) (agreed-price town good))
+                           (maker (* *maker-markup* (list-price good)))
+                           (t (list-price good))))))))
 
-(defun note-trade (good side)
-  "Record a deal in the shop's books: SIDE :sold means the town got one GOOD from us, :bought means we took one."
-  (let ((town (trade-town (and *client* (getf *client* :town)))) (raw (raw-of good)))
-    (set-stock town raw (+ (stock town raw) (if (eq side :sold) 1 -1)))
+(defun note-trade (good side &optional from-shop)
+  "Record a deal: SIDE :sold means the town got one GOOD from us, :bought means we took one, FROM-SHOP at the list price.
+The shop's books change; a sale of what the town is short of is a deed in our favour with its power, and
+a resale of a shop good is speculation: a deed against us, and one more for the inspectors."
+  (let* ((town (trade-town (and *client* (getf *client* :town)))) (raw (raw-of good)) (turn nil))
+    (cond ((eq side :sold)
+           (let ((needed (>= (shortage town raw) .25)))
+             (set-stock town raw (+ (stock town raw) 1))
+             (cond ((and (not (dish-p good)) (note-resale good)) (setf turn (add-deeds town -1)))
+                   (needed (setf turn (add-deeds town 1))))))
+          (t (set-stock town raw (- (stock town raw) 1))
+             (when from-shop (note-shop-buy good))))
     (save-plan)
-    (when (and (eq side :sold) (dish-p good)) (note-quest :cook))))             ; the town council's dinner quest counts dishes sold             ; the town council's dinner quest counts dishes sold
+    (when turn (say-standing turn))
+    (when (and (eq side :sold) (dish-p good)) (note-quest :cook))))             ; the town council's dinner quest counts dishes sold             ; the town council's dinner quest counts dishes sold             ; the town council's dinner quest counts dishes sold
 
 (defun delivery-pay ()
   "Return the pay from the recipient for a delivered parcel (more with the town council stamp)."

@@ -15,4 +15,5 @@
 (include "lines.lisp")
 (include "story.lisp")
 (include "calendar.lisp")
+(include "forces.lisp")
 (include "en.lisp")

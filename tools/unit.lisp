@@ -205,6 +205,28 @@
                 (= (stock (first cargo) (second cargo)) (min *stock-cap* (+ before *crate-units*)))
                 (eq (parcel-good (plan-addr 3 :bread)) :bread) (null (parcel-good 3)) (null (parcel-good 1203))))))
 
+(check "у каждого города есть сила, и соперники названы взаимно"
+       (and (= (length *forces*) 12)
+            (every (lambda (f) (or (null (fourth f)) (eql (fourth (assoc (fourth f) *forces*)) (first f)))) *forces*)))
+(let ((*deeds* '()))
+  (check "чужой, пока дел мало" (eq (standing 2) :stranger))
+  (dotimes (i *deeds-friend*) (add-deeds 2 1))
+  (check "восемь дел — и свой; сопернику это записано в минус"
+         (and (eq (standing 2) :friend) (= (deeds 4) (- *rival-cost*)) (eq (standing 4) :stranger)))
+  (add-deeds 4 -3)
+  (check "дальше в минус — ссора" (eq (standing 4) :feud))
+  (check "своим продают дешевле и берут дороже, поссорившимся наоборот"
+         (and (< (standing-factor 2 :seller) 1 (standing-factor 2 :buyer)) (> (standing-factor 4 :seller) 1 (standing-factor 4 :buyer))
+              (zerop (standing-factor 4 :premium)))))
+(let ((*shop-bought* '()) (*heat* 0))
+  (note-shop-buy :bread) (note-shop-buy :bread)
+  (check "перепродажа магазинного считается, своё — нет"
+         (and (note-resale :bread) (not (note-resale :fish)) (note-resale :bread) (not (note-resale :bread)) (= *heat* 2))))
+(let ((*shark* 10000) (*shark-day* 0) (*shark-paid-day* 0))
+  (grow-shark 10)
+  (check "частный долг растёт на процент в день" (< 11000 *shark* 11100))
+  (check "три дня без платежа — просрочка" (and (shark-overdue-p 3) (not (shark-overdue-p 2)))))
+
 (format t "Форма данных~%")
 (check "fits: кортеж нужной длины и типов" (and (fits '(1 2.5 "a" :k) '(integer real string keyword)) (not (fits '(1 2) '(integer real string)))))
 (check "fits: не тот тип, не список, точечная пара — нет" (and (not (fits '(1 "x") '(integer integer))) (not (fits 5 '(integer))) (not (fits '(1 . 2) '(integer integer)))))

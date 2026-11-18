@@ -27,7 +27,8 @@
 (defparameter *surplus-days* 7 "The days of norm in stock above which the shop has a surplus to sell.")
 (defparameter *deal-markup* 2.0 "How far above the list price a buyer goes when the shop is empty: list × (1 + this).")
 (defparameter *crate-units* 5 "The number of units of a good in one crate of the plan's cargo.")
-(defparameter *plan-premium* 10 "The premium, in units of money, for a crate that reaches a town while it is short.")
+(defparameter *plan-premium* 2000 "The premium, in units of money, for a crate that reaches a town while it is short: a hundred rubles by transfer.")
+(defparameter *transfer-scale* 20 "How many times a tariff paid by transfer is bigger than a private sender's pay: an enterprise's money is large, and buys little.")
 
 (defvar *stocks* (make-hash-table :test 'equal) "The table from (town . good) to the stock in that town's shop.")
 (defvar *plan-day* nil "The game day up to which the plan has been run, or NIL before the first run.")
@@ -145,15 +146,16 @@
     (if good
         (let ((short (>= (shortage town good) .25)))
           (set-stock town good (+ (stock town good) *crate-units*))
-          (if short *plan-premium* 0))
+          (add-deeds town 2)                                             ; the town's power sees who closed the gap
+          (if short (* *plan-premium* (standing-factor town :premium)) 0))
         0)))
 
 (defun plan-name (good) "Return the name of GOOD for the supply sheet." (or (second (assoc good *kinds*)) (good-name good)))
 
 (defun supply-sheet (town)
-  "Return the supply sheet of TOWN as text: every good with its stock, its norm and how things stand."
-  (format nil "~a · ведомость снабжения~%~%~{~a~^~%~}"
-          (town-name town)
+  "Return the supply sheet of TOWN as text: its power and how it stands to us, then every good with its stock and norm."
+  (format nil "~a · ведомость снабжения~%~a~%~{~a~^~%~}"
+          (town-name town) (or (standing-line town) "")
           (loop for good in (sort (copy-list (plan-goods)) #'> :key (lambda (g) (shortage town g)))
                 when (plusp (norm town good))
                   collect (let ((have (round (stock town good))) (n (norm town good)))
@@ -172,25 +174,131 @@
              (decf *money* (- sum from-account))
              t))))
 
+;;; ------------------------------------------------------------------ whose goods: the shop's or our own
+;;; A co-operative may sell at an agreed price what it bought from a maker above the plan, what it gathered and
+;;; what it cooked. What it bought in a state shop at the list price it may not resell dearer: that is
+;;; speculation, and the department against the theft of socialist property keeps count. We keep count too:
+;;; how many of each good in the wagon came from a shop. Selling such a one raises the heat.
+
+(defparameter *maker-markup* 1.4 "How far above the list price a maker sells what it made above the plan.")
+(defparameter *heat-limit* 3 "The number of resales of shop goods after which the inspectors start stopping the wagon.")
+(defparameter *fine-resale* 60 "The fine for each resale of a shop good that the inspectors count, in units of money.")
+
+(defvar *shop-bought* '() "The goods in the wagon that came from a shop at the list price: entries of (good . count).")
+(defvar *heat* 0 "The number of resales of shop goods the inspectors have not fined yet.")
+
+(defun note-shop-buy (good) "Remember that one GOOD came from a shop."
+  (let ((cell (or (assoc good *shop-bought*) (first (push (cons good 0) *shop-bought*))))) (incf (cdr cell))))
+
+(defun note-resale (good)
+  "Remember that one GOOD was sold at an agreed price; return true if it was a shop good, that is, speculation."
+  (let ((cell (assoc good *shop-bought*)))
+    (when (and cell (plusp (cdr cell)))
+      (decf (cdr cell)) (incf *heat*) t)))
+
+;;; ------------------------------------------------------------------ the powers of the towns
+;;; Every town has someone who answers for its supply (*FORCES*, from mods): a director, a chairman, a
+;;; commander. What we bring to a town that is short, and the plan's cargo we deliver there, are deeds in
+;;; our favour; enough of them and we are one of their own: the shop sells to us cheaper, buyers give more,
+;;; the premium for cargo doubles. But the towns share one allocation, labour and funds, so the friend of one
+;;; is counted against its rival; fall far enough there and it is a quarrel: dear to buy, cheap to sell, no premium.
+
+(defvar *forces* '() "The powers: entries of (town what-it-is who rival-town-or-NIL), from mods.")
+(defparameter *deeds-friend* 8 "The number of deeds in a town's favour that make us one of its own.")
+(defparameter *deeds-feud* -6 "The count of deeds at or below which a town has quarrelled with us.")
+(defparameter *rival-cost* 4 "What becoming one town's own takes off our count with its rival.")
+(defvar *deeds* '() "Our count with the towns: entries of (town . deeds).")
+
+(defun deeds (town) (or (cdr (assoc town *deeds*)) 0))
+(defun standing (town)
+  "Return how TOWN's power stands to us: :FRIEND, :FEUD or :STRANGER."
+  (cond ((>= (deeds town) *deeds-friend*) :friend) ((<= (deeds town) *deeds-feud*) :feud) (t :stranger)))
+
+(defun add-deeds (town n)
+  "Add N deeds to our count with TOWN (N may be negative); return what changed as (town . new-standing), or NIL."
+  (let* ((was (standing town))
+         (cell (or (assoc town *deeds*) (first (push (cons town 0) *deeds*)))))
+    (setf (cdr cell) (max -12 (min 12 (+ (cdr cell) n))))
+    (let ((now (standing town)))
+      (unless (eq now was)
+        (when (eq now :friend)                                          ; the rival counts it against us
+          (let ((rival (fourth (assoc town *forces*)))) (when rival (add-deeds rival (- *rival-cost*)))))
+        (cons town now)))))
+
+(defun standing-factor (town side)
+  "Return the factor TOWN's power puts on a price: SIDE is :SELLER (we buy), :BUYER (we sell) or :PREMIUM."
+  (ecase (standing town)
+    (:friend (ecase side (:seller .85) (:buyer 1.15) (:premium 2)))
+    (:feud (ecase side (:seller 1.3) (:buyer .8) (:premium 0)))
+    (:stranger 1)))
+
+(defun standing-line (town)
+  "Return the line of the supply sheet about TOWN's power, or NIL if the town has none."
+  (let ((force (assoc town *forces*)))
+    (when force
+      (format nil "~a, ~a: ~a (~d из ~d)" (second force) (third force)
+              (ecase (standing town) (:friend "мы тут свои") (:feud "с нами в ссоре") (:stranger "мы тут чужие"))
+              (deeds town) *deeds-friend*))))
+
+(defun say-standing (turn)
+  "Tell everyone that a town's power has changed its mind about us: TURN is (town . new-standing)."
+  (let ((force (assoc (car turn) *forces*)))
+    (when force
+      (say-all (format nil (ecase (cdr turn)
+                             (:friend "~a (~a): «Свой человек». В городе ~a нам теперь продают дешевле, берут дороже, премия за наряд двойная")
+                             (:feud "~a (~a): «С этими дел не иметь». В городе ~a нам теперь продают дороже, берут дешевле, премий нет")
+                             (:stranger "~a (~a) больше не выделяет нас среди прочих. Город ~a"))
+                       (third force) (second force) (town-name (car turn)))))))
+
+;;; ------------------------------------------------------------------ the other debt
+;;; Besides the bank, father owed a man: money lent without papers, at a percent a day, taken only in cash.
+;;; He also turns the co-operative's account into cash, for a share: there is no other way to pay him.
+
+(defparameter *shark-total* 10000 "What father owed the man, in units of money: five hundred rubles.")
+(defparameter *shark-rate* .01 "The share by which the man's debt grows every day.")
+(defparameter *shark-patience* 3 "The number of days without a payment after which his people come for goods.")
+(defparameter *cash-share* .7 "The share of a transfer that the man gives in cash.")
+(defparameter *cash-chunk* 2000 "The most that is turned into cash in one go, in units of money.")
+
+(defvar *shark* 0 "What we still owe the man, in units of money.")
+(defvar *shark-day* nil "The day the man's debt was last counted.")
+(defvar *shark-paid-day* 0 "The day of the last payment to the man.")
+
+(defun grow-shark (day)
+  "Bring the man's debt up to DAY: a percent for every day gone."
+  (when (and (plusp *shark*) *shark-day* (> day *shark-day*))
+    (dotimes (i (min 60 (- day *shark-day*))) (setf *shark* (ceiling (* *shark* (+ 1 *shark-rate*))))))
+  (setf *shark-day* day))
+
+(defun shark-overdue-p (day) (and (plusp *shark*) (>= (- day *shark-paid-day*) *shark-patience*)))
+
 ;;; ------------------------------------------------------------------ in the game: the day, the save, the guests
 
 (defun save-plan ()
   (unless (net-guest-p)
     (put-save :plan (list *plan-day* *credit*
                           (loop for key being the hash-keys of *stocks* using (hash-value v)
-                                collect (list (car key) (cdr key) (round v)))))))
+                                collect (list (car key) (cdr key) (round v)))
+                          (copy-tree *shop-bought*) *heat* (copy-tree *deeds*) (list *shark* *shark-day* *shark-paid-day*)))))
 
 (defun load-plan ()
   (let ((f (get-save :plan)))
-    (when (fits f '((:or integer null) integer (:each (integer keyword real))))
-      (destructuring-bind (day credit stocks) f
+    (when (fits f '((:or integer null) integer (:each (integer keyword real)) &optional (:each cons) integer (:each cons) (integer (:or integer null) integer)))
+      (destructuring-bind (day credit stocks &optional bought (heat 0) deeds (shark (list *shark-total* nil 0))) f
+        (setf *shop-bought* (remove-if-not (lambda (c) (and (keywordp (car c)) (integerp (cdr c)))) bought)
+              *heat* (max 0 heat)
+              *deeds* (remove-if-not (lambda (c) (and (integerp (car c)) (integerp (cdr c)))) deeds)
+              *shark* (max 0 (first shark)) *shark-day* (second shark) *shark-paid-day* (third shark))
         (clrhash *stocks*)
         (loop for (town good value) in stocks
               do (when (and (< -1 town (plan-size)) (assoc good *goods*)) (set-stock town good value)))
         (setf *plan-day* day *credit* (max 0 credit))))))
 
 (defstate :plan
-  :clear (lambda () (clrhash *stocks*) (setf *plan-day* nil *credit* 0))
+  :clear (lambda ()
+           (clrhash *stocks*)
+           (setf *plan-day* nil *credit* 0 *shop-bought* '() *heat* 0 *deeds* '()
+                 *shark* *shark-total* *shark-day* nil *shark-paid-day* (if (boundp '*day-t*) (today) 0)))
   :load #'load-plan :save #'save-plan)
 
 (defun step-plan ()
@@ -198,14 +306,16 @@
   (let ((day (today)))
     (unless (eql day *plan-day*)
       (run-plan-to day)
+      (grow-shark day)
       (save-plan))))
 
 ;; a guest sees the driver's books for the town at hand, and the co-operative's account
 (defcommon :plan
-  :value (let ((town (trade-town))) (list town *credit* (mapcar (lambda (g) (round (stock town g))) (plan-goods))))
-  :spec '(integer integer (:each integer)) :driver t
+  :value (let ((town (trade-town))) (list town *credit* (mapcar (lambda (g) (round (stock town g))) (plan-goods)) (deeds town) *shark* *heat*))
+  :spec '(integer integer (:each integer) integer integer integer) :driver t
   :accept (lambda (v)
-            (destructuring-bind (town credit stocks) v
-              (setf *credit* (max 0 credit))
+            (destructuring-bind (town credit stocks deeds shark heat) v
+              (setf *credit* (max 0 credit) *shark* (max 0 shark) *heat* (max 0 heat)
+                    *deeds* (cons (cons town deeds) (remove town *deeds* :key #'car)))
               (when (and (< -1 town (plan-size)) (= (length stocks) (length (plan-goods))))
                 (loop for good in (plan-goods) for n in stocks do (set-stock town good n))))))

@@ -63,13 +63,14 @@ Return true if the good was given."
 
 (defvar *booths* '() "The booths by number: entries of (number . plist of :label :use :build :spot :daily :shelf).")
 
-(defmacro defbooth (number &key label use build spot daily shelf)
+(defmacro defbooth (number &key label use build spot daily shelf side)
   "Declare what the booth NUMBER does.
 LABEL is the hint at its window: a string or a function returning one. USE is a function called on E.
 BUILD is a function of the booth group that adds its landmark. SPOT is (sideways along-the-road height):
 where else, besides the window, it answers to E. With DAILY its free thing is given once a game day.
-SHELF is a list of colours: what stands on the shelves behind the seller."
-  `(progn (setf *booths* (cons (list ,number :label ,label :use ,use :build ,build :spot ,spot :daily ,daily :shelf ,shelf)
+SHELF is a list of colours: what stands on the shelves behind the seller. SIDE is (label-function
+action-function) for a booth whose SPOT is a side door with business of its own."
+  `(progn (setf *booths* (cons (list ,number :label ,label :use ,use :build ,build :spot ,spot :daily ,daily :shelf ,shelf :side ,side)
                                (remove ,number *booths* :key #'first)))
           ,number))
 
@@ -394,7 +395,11 @@ booth to booth, and a gas station next door does not switch them off."
             append (let ((i i) (d d) (spot (booth i :spot)))
                      (flet ((press (x at up) (road-usable x at up (lambda () (gimmick-label i)) (lambda () (gimmick-use i)) 4.5 1.2)))
                        (cons (press 11.9 d 1.3)
-                             (when spot (list (press (first spot) (+ d (second spot)) (third spot))))))))))
+                             (when spot
+                               (list (if (booth i :side)                            ; a side door with business of its own
+                                         (road-usable (first spot) (+ d (second spot)) (third spot)
+                                                      (first (booth i :side)) (second (booth i :side)) 4.5 .8)
+                                         (press (first spot) (+ d (second spot)) (third spot)))))))))))
 
 (defun step-prikol ()
   (when (and *wait* (> *time* (job-until *wait*)))                    ; the wait is over: fish, coal

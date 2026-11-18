@@ -37,9 +37,12 @@
 (defun debt-hud ()
   "Return the line about the debt for the corner of the screen, or NIL."
   (unless (net-guest-p)
-    (case *story-stage*
-      (:owing (format nil "Долг отца: ~/kiosk-trip::rub/" *debt*))
-      (:free "Долг выплачен. Билет — в сберкассе"))))
+    (format nil "~{~a~^~%~}"
+            (remove nil (list (case *story-stage*
+                                (:owing (format nil "Ссуда в банке: ~/kiosk-trip::rub/" *debt*))
+                                (:free (if (plusp *shark*) "Ссуда выплачена. Остался Аркадий Семёнович" "Долги выплачены. Билет — в сберкассе")))
+                              (and (plusp *shark*) (member *story-stage* '(:owing :free))
+                                   (format nil "Аркадию Семёновичу: ~/kiosk-trip::rub/, растёт" *shark*)))))))
 
 ;;; ------------------------------------------------------------------ cards over a dark screen
 
@@ -115,6 +118,8 @@ Return what is left."
   "Answer E at the savings bank window: pay a part of the debt, or leave once it is paid."
   (cond (*actor* (say "Долг записан на водителя: платит он"))
         ((eq *story-stage* :done) (say "Сберкасса: долгов за вами нет"))
+        ((and (eq *story-stage* :free) (plusp *shark*))
+         (say "Кассирша качает головой: «За вами ещё частный долг. Уедете — найдут». Аркадий Семёнович сидит в комиссионном, Первомайск"))
         ((eq *story-stage* :free) (start-ending))
         ((and (not *dev*) (<= (+ *money* *credit*) 0)) (say "Платить нечем: в кошельке пусто"))
         (t (let ((sum (if *dev* (min *debt-chunk* *debt*) (debt-share))))
@@ -123,6 +128,66 @@ Return what is left."
                (if (zerop *debt*)
                    (say-all "Долг закрыт! Кассирша ставит штамп «ПОГАШЕНО». Теперь в этом окне продают билет к отцу — E, когда будете готовы")
                    (say (format nil "Внесли ~/kiosk-trip::rub/ Осталось ~/kiosk-trip::rub/" sum *debt*))))))))
+
+;;; The man father owed sits in the commission shop in the port. At its window his debt is paid, in cash
+;;; only; at its side door the co-operative's account is turned into cash for his share. If no payment
+;;; comes for *SHARK-PATIENCE* days, his people call at the wagon at dawn and take the dearest thing on board.
+
+(defun shark-label ()
+  (cond ((<= *shark* 0) "Комиссионный. Аркадий Семёнович: «Мы в расчёте. Отцу привет»")
+        (t (format nil "E — отдать Аркадию Семёновичу наличными ~/kiosk-trip::rub/ · за нами ~/kiosk-trip::rub/, процент в день"
+                   (min *money* *shark* *debt-chunk*) *shark*))))
+
+(defun shark-use ()
+  "Pay the man in cash: as much as there is, no more than a payment."
+  (cond (*actor* (say "Аркадий Семёнович говорит только с тем, на ком долг"))
+        ((<= *shark* 0) (say "Аркадий Семёнович: «Мы в расчёте»"))
+        ((and (not *dev*) (<= *money* 0)) (say "Аркадий Семёнович берёт только наличными, а их нет. Со счёта обналичат у боковой двери"))
+        (t (let ((sum (if *dev* (min *shark* *debt-chunk*) (min *money* *shark* *debt-chunk*))))
+             (unless *dev* (decf *money* sum))
+             (setf *shark* (- *shark* sum) *shark-paid-day* (today))
+             (save-plan)
+             (log-event :shark :paid sum :left *shark*)
+             (say-all (if (plusp *shark*)
+                          (format nil "Отдали ~/kiosk-trip::rub/ Аркадий Семёнович: «За вами ещё ~/kiosk-trip::rub/»" sum *shark*)
+                          "Аркадий Семёнович пересчитал и убрал тетрадь: «В расчёте. Отцу привет»"))))))
+
+(defun cash-label ()
+  (format nil "E — обналичить со счёта: за ~/kiosk-trip::rub/ дадут ~/kiosk-trip::rub/ · на счёте ~/kiosk-trip::rub/"
+          (min *credit* *cash-chunk*) (floor (* *cash-share* (min *credit* *cash-chunk*))) *credit*))
+
+(defshared cash-out :cash ()
+  "Turn a part of the co-operative's account into cash, for the man's share."
+  (let ((sum (min *credit* *cash-chunk*)))
+    (cond ((<= sum 0) (say "На счёте пусто: его пополняют наряды"))
+          (t (decf *credit* sum) (incf *money* (floor (* *cash-share* sum)))
+             (save-plan)
+             (log-event :cash :sum sum :money *money*)
+             (say-all (format nil "Обналичили ~/kiosk-trip::rub/: на руки ~/kiosk-trip::rub/" sum (floor (* *cash-share* sum))))))))
+
+(defbooth 15 :label #'shark-label :use #'shark-use :spot '(9.1 -2.75 1.1) :side (list #'cash-label #'cash-out)
+  :shelf '("#5a2a5a" "#c9a13a" "#2c4a7a" "#e8e0d0")
+  :build (lambda (g) (shape g :box '(.1 2.0 .9) "#3a2a1e" 9.0 1.0 -2.75) (shape g :ball '(.05 6 4) "#d8a840" 8.93 1.0 -2.45 :metal .6)))
+
+(defvar *seize-day* nil "The day up to which the man's people have been counted.")
+
+(defun step-shark ()
+  "At dawn, if the man has waited too long, his people take the dearest thing on board against the percent."
+  (unless (net-guest-p)
+    (let ((day (today)))
+      (cond ((or (null *seize-day*) (< day *seize-day*)) (setf *seize-day* day))
+            ((> day *seize-day*)
+             (setf *seize-day* day)
+             (when (shark-overdue-p day)
+               (let ((best (first (sort (remove-if-not (lambda (spec) (and (good-p (first spec)) (null (sixth spec)))) (mapcar #'car *items*))
+                                        #'> :key (lambda (spec) (good-base (raw-of (first spec))))))))
+                 (when best
+                   (set-items (remove best (mapcar #'car *items*) :test #'equal :count 1))
+                   (save-interior)
+                   (setf *shark* (max 0 (- *shark* (good-base (raw-of (first best))))) *shark-paid-day* day)
+                   (save-plan)
+                   (say-all (format nil "Ночью заходили люди Аркадия Семёновича: забрали ~a в счёт процентов. Он сидит в комиссионном, в Первомайске"
+                                    (good-name (first best))))))))))))
 
 ;; the savings bank is a booth like the others (DEFBOOTH, prikol.lisp)
 (defbooth 14 :label #'bank-label :use #'bank-use :shelf '("#4a6a52" "#d8d0b8" "#c9a13a"))
@@ -190,4 +255,5 @@ Return what is left."
           (setf *story-stage* :owing)                                        ; nothing to show: straight to the debt
           (open-show *intro-cards* #'end-intro))))
   (step-show)
+  (step-shark)
   (step-ending delta))
