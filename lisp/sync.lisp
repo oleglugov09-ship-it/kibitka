@@ -49,7 +49,7 @@
                                                (node-queue-free (getf c :node)) t))
                                 *cars*))
         (dolist (e cars)
-          (when (fits e '(integer real real (:member 1 -1) (:member nil :fire :ambulance :police :runaway)))
+          (when (fits e '(integer real real (:member 1 -1) (:member nil :fire :ambulance :police :runaway :milk :bread :lavka :army)))
             (let ((c (find (first e) *cars* :key (lambda (c) (getf c :n)))))
               (cond (c (when (> (abs (- (getf c :d) (second e))) 6.0) (setf (getf c :d) (second e))))   ; drifted apart: correct it
                     (t (multiple-value-bind (node blink) (make-car (first e) (fifth e))

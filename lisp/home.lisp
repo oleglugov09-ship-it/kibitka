@@ -85,9 +85,11 @@ with the last one written would look unchanged."
   (let* ((tomorrow (day-weather (1+ day) (season-in 1)))
          (omens (getf *omens* tomorrow))
          (left (season-days-left)))
-    (list (format nil "~d-й день пути~%~%~a~%~%~a~a"
-                  (trip-day day) (tr (nth (mod (1- (trip-day day)) 7) *weekdays*)) (tr (getf *season-names* *season*))
-                  (if (zerop left) (tr " — последний день") (format nil (tr " · до смены сезона дней: ~d") left)))
+    (list (format nil "~a~@[~%~%~a~]"
+                  (format nil "~d-й день пути~%~%~a~%~%~a~a"
+                          (trip-day day) (tr (nth (mod (1- (trip-day day)) 7) *weekdays*)) (tr (getf *season-names* *season*))
+                          (if (zerop left) (tr " — последний день") (format nil (tr " · до смены сезона дней: ~d") left)))
+                  (and (holiday) (tr (fourth (holiday)))))            ; a red-letter day
           (format nil "~a~%~%~a"
                   (if *calendar-notes* (fill-text (nth (mod day (length *calendar-notes*)) *calendar-notes*)) "")
                   (if omens (tr (nth (mod day (length omens)) omens)) "")))))

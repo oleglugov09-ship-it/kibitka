@@ -13,7 +13,8 @@
 (setf *landmark-plan*
       '((1 .35 1 :windmill) (2 .50 -1 :plane) (3 .42 1 :church) (4 .12 1 :pumpjacks) (4 .82 -1 :mast)
     (5 .36 1 :elevator) (6 .60 1 :wheel) (7 .36 1 :pylons) (7 .72 1 :watchtower) (8 .50 -1 :oldbus)
-    (9 .45 1 :radar) (2 .62 1 :farm) (11 .36 1 :rocket)))
+    (9 .45 1 :radar) (2 .62 1 :farm) (11 .36 1 :rocket)
+    (3 .60 1 :camp)))                                     ; the pioneer camp in the pine wood, open in summer
 
 ;;; The roadside diners on the right, each as (stretch, fraction, sign text, kind, color).
 (setf *diner-plan*

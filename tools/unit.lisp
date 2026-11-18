@@ -216,6 +216,40 @@
          (loop for tw below 12 always (every (lambda (g) (and (>= (shortage tw g) .25) (>= (stock tw g) 1) (state-good-p g))) (rationed-goods tw))))
   (format t "  городов, где что-то отпускают по талонам: ~d из 12~%" (loop for tw below 12 count (rationed-goods tw))))
 
+(check "у каждого сезона свой расход, и товары в таблице настоящие"
+       (and (every (lambda (s) (getf *season-use* s)) '(:winter :spring :summer :autumn))
+            (loop for (nil entries) on *season-use* by #'cddr always (every (lambda (e) (and (assoc (first e) *goods*) (plusp (second e)))) entries))))
+(let ((*season* :winter))
+  (check "зимой угля уходит больше нормы, воды меньше, рыбы — по норме"
+         (and (> (day-use 3 :coal) (norm 3 :coal)) (< (day-use 3 :water) (norm 3 :water)) (= (day-use 3 :fish) (norm 3 :fish)))))
+(flet ((coal-short (season)
+         (let ((*season* season)) (reset-plan 0) (loop for d from 1 to 6 do (run-plan-day d))
+           (loop for tw below 12 sum (shortage tw :coal)))))
+  (let ((winter (coal-short :winter)) (summer (coal-short :summer)))
+    (format t "  нехватка угля по всем городам за шесть дней: зимой ~,1f, летом ~,1f~%" winter summer)
+    (check "зимой угля не хватает сильнее, чем летом" (> winter summer))))
+(let ((by-year '()))
+  (reset-plan 0)
+  (dotimes (year 3)
+    (push (loop for season in '(:spring :summer :autumn :winter) for q from 0
+                collect (let ((*season* season))
+                          (loop for d from 1 to 2 do (run-plan-day (+ d (* 2 q) (* 8 year))))
+                          (loop for tw below 12 sum (length (short-goods tw)))))
+          by-year))
+  (format t "  нехваток к концу сезона (весна лето осень зима), три года подряд: ~{~{~d~^ ~}~^ · ~}~%" (reverse by-year))
+  (check "сезонный расход не копится из года в год: на третий год нехваток не больше, чем в первый, плюс десять"
+         (every (lambda (first third) (<= third (+ first 10))) (third by-year) (first by-year))))
+(check "праздники: сезон и день есть у каждого, товары настоящие, ключи разные"
+       (and (>= (length *holidays*) 4)
+            (every (lambda (h) (and (member (first h) '(:winter :spring :summer :autumn)) (member (second h) '(0 1)) (keywordp (third h))
+                                    (stringp (fourth h)) (every (lambda (g) (assoc g *goods*)) (fifth h))))
+                   *holidays*)
+            (= (length *holidays*) (length (remove-duplicates *holidays* :key #'third)))))
+(let ((*season* :winter) (*holidays* '((:winter 0 :test "Проверка" (:honey)))))
+  (check "в праздник за праздничный товар дают больше"
+         (> (trade-price :honey :buyer 3) (let ((*holidays* '())) (trade-price :honey :buyer 3)))))
+(reset-plan 0)
+
 (check "у каждого города есть сила, и соперники названы взаимно"
        (and (= (length *forces*) 12)
             (every (lambda (f) (or (null (fourth f)) (eql (fourth (assoc (fourth f) *forces*)) (first f)))) *forces*)))

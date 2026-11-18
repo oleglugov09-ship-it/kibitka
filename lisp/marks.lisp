@@ -14,7 +14,8 @@
           (ecase kind
             (:windmill (mark-windmill g)) (:plane (mark-plane g)) (:church (mark-church g)) (:pumpjacks (mark-pumpjacks g))
             (:mast (mark-mast g)) (:elevator (mark-elevator g)) (:wheel (mark-ferris-wheel g)) (:watchtower (mark-watchtower g))
-            (:oldbus (mark-old-bus g)) (:radar (mark-radar g)) (:farm (mark-farm g)) (:rocket (mark-rocket g)))
+            (:oldbus (mark-old-bus g)) (:radar (mark-radar g)) (:farm (mark-farm g)) (:rocket (mark-rocket g))
+            (:camp (mark-camp g)))                                   ; the pioneer camp: life.lisp
           g))))
 
 (defun mark-windmill (g)

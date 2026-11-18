@@ -27,9 +27,10 @@ That is TOWN if given, otherwise the town nearest to the wagon."
   "Return the good a client of KIND brings (a seller: the shop's surplus) or wants (a buyer: what is short) in TOWN.
 The plan decides (plan.lisp); when it has nothing to say, the town's nature does."
   (let* ((town (trade-town town))
-         (list (if (eq kind :seller)
-                   (or (surplus-goods town) (town-makes town))
-                   (or (short-goods town) (town-wants town)))))
+         (feast (and (eq kind :buyer) (< (random 1.0) *holiday-chance*) (holiday-goods)))   ; on a holiday they come for its goods
+         (list (cond (feast feast)
+                     ((eq kind :seller) (or (surplus-goods town) (town-makes town)))
+                     (t (or (short-goods town) (town-wants town))))))
     (when (member kind '(:buyer :seller)) (nth (random (length list)) list))))
 
 (defun rush-p (&optional (town (trade-town)))
@@ -44,7 +45,7 @@ sells above the plan at an agreed price. A buyer gives an agreed price: the empt
 more. The town's power moves both for its own and for those it has quarrelled with."
   (let ((town (trade-town town)))
     (max 1 (round (* (standing-factor town kind)
-                     (cond ((eq kind :buyer) (agreed-price town good))
+                     (cond ((eq kind :buyer) (* (agreed-price town good) (if (member good (holiday-goods)) *holiday-markup* 1)))
                            (maker (* *maker-markup* (list-price good)))
                            (t (list-price good))))))))
 

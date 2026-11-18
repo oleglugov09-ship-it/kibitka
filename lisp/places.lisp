@@ -16,7 +16,7 @@ The right side is the side of the window.")
   '(:windmill (38 13 2.5 30) :plane (22 8 .3 14) :church (64 17 9.0 50) :pumpjacks (40 22 0.0 22)
     :mast (72 10 1.0 25) :elevator (50 26 0.0 25) :wheel (62 24 0.0 30) :pylons nil
     :watchtower (30 8 3.0 22) :oldbus (17 7 -.25 10) :radar (78 19 13.0 60) :farm (46 28 0.0 25)
-    :rocket (26 9 .3 14))
+    :rocket (26 9 .3 14) :camp (26 22 0.0 25))
   "A plist from a landmark kind to the numbers of its pad.
 They are (offset sideways from the road, pad radius, pad height above the road, transition margin).")
 
@@ -170,6 +170,7 @@ It is called before the land is built."
     ;; landmarks
     (loop for (i f side kind) in *landmark-plan*
           do (let ((d (gap-d i f)) (spec (getf *landmark-kinds* kind)) (side side) (kind kind))
+               (when (eq kind :camp) (push (list (- d 23) (+ d 23)) *bare*))     ; nothing grows in front of the camp's gates
                (when spec
                  (destructuring-bind (x r y m) spec
                    (level (- d r) (+ d r))

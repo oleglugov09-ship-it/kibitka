@@ -53,6 +53,33 @@
         ((state-good-p good) *norm-other*)
         (t 0)))
 
+;;; The year turns, and with it what the towns use up: coal in winter, tools at sowing time. The plan's
+;;; output is drawn up once and does not follow the seasons, so each season has its own shortage.
+(defvar *season-use* '()
+  "How much more of a good the towns use in a season, from mods: a plist of season and entries of (good factor).")
+
+(defun day-use (town good)
+  "Return what TOWN uses of GOOD a day in the season that is on: its norm, more of some goods in their season."
+  (* (norm town good) (or (second (assoc good (getf *season-use* *season*))) 1)))
+
+;;; Red-letter days, from mods. A season is two game days long; a holiday is one of them. On a holiday the
+;;; towns dress up (life.lisp) and buyers come for the holiday's goods and pay more.
+(defvar *speaker-lines* '() "What the loudspeaker at a market says, from mods: a plist of :morning, :day, :evening and lists of lines.")
+(defvar *holidays* '() "The holidays: entries of (season day-of-season key name goods-wanted).")
+(defparameter *holiday-markup* 1.4 "How much more a buyer gives for a holiday's good on that holiday.")
+(defparameter *holiday-chance* .6 "The chance that a buyer on a holiday comes for one of its goods.")
+
+(defun season-day ()
+  "Return which day of the season it is, counting from zero."
+  (if (and (boundp '*season-clock*) (boundp '*day-len*))
+      (floor (symbol-value '*season-clock*) (symbol-value '*day-len*))
+      0))
+
+(defun holiday () "Return today's holiday as its entry in *HOLIDAYS*, or NIL."
+  (find-if (lambda (h) (and (eq (first h) *season*) (eql (second h) (season-day)))) *holidays*))
+(defun holiday-key () (third (holiday)))
+(defun holiday-goods () (fifth (holiday)))
+
 (defun output (town good)
   "Return what TOWN makes of GOOD a day: the makers together cover *PLAN-COVER* of all the norms."
   (if (member good (town-makes town))
@@ -86,12 +113,12 @@
       (dolist (tw makers)                                                ; a maker keeps its own norm and a little over, the rest is shipped
         (let ((ship (max 0.0 (- (output tw good) (norm tw good) .5))))
           (incf pool ship)
-          (set-stock tw good (+ (stock tw good) (- (output tw good) ship (norm tw good))))))
+          (set-stock tw good (+ (stock tw good) (- (output tw good) ship (day-use tw good))))))
       (let ((weights (loop for tw in others sum (share tw good day))))
         (dolist (tw others)
           (set-stock tw good (+ (stock tw good)
                                 (if (plusp weights) (* pool (/ (share tw good day) weights)) 0.0)
-                                (- (norm tw good))))))
+                                (- (day-use tw good))))))
       (dolist (tw towns) (write-off tw good)))))
 
 (defun reset-plan (&optional (day 0))

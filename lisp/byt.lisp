@@ -495,7 +495,7 @@ These are the map, the stove, the light switch, the ladder, the window and the b
   "Return everything that can be pressed right now.
 The order matters: the first one that fits the crosshair is the one that fires."
   (unless *meta*
-    (append (trade-usables) (kettle-usables) (fridge-usables) (curtain-usables) (home-usables) (table-usables) (seat-usables) (uyut-usables) (stars-usables) (finds-usables) (dalny-usables) (prikol-usables) (gnome-usables) (bumagi-usables) (fixture-usables))))
+    (append (trade-usables) (kettle-usables) (fridge-usables) (curtain-usables) (home-usables) (table-usables) (seat-usables) (uyut-usables) (stars-usables) (finds-usables) (dalny-usables) (prikol-usables) (life-usables) (gnome-usables) (bumagi-usables) (fixture-usables))))
 
 (defun window-label () (if *window-open* "E — закрыть окно" "E — раздвинуть окно"))
 

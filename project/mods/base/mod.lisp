@@ -16,4 +16,5 @@
 (include "story.lisp")
 (include "calendar.lisp")
 (include "forces.lisp")
+(include "seasons.lisp")
 (include "en.lisp")
