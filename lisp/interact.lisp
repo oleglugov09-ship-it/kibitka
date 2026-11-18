@@ -102,7 +102,6 @@ Discs are handled by hand too."
              (*meta* (if *meta-curtains-shut* "E — открыть шторы · Q — назад в кибитку" "Q — назад в кибитку"))
              (*seat* "E — встать")
              ((and *meta* (seat-near)) "E — сесть")
-             ((spell-ready-p) "Q — заклинание")
              (t "")))))
 
 ;;; What is said goes three ways. A message about what we did is a toast in the middle of the screen: it
