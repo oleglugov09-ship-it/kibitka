@@ -17,4 +17,5 @@
 (include "calendar.lisp")
 (include "forces.lisp")
 (include "seasons.lisp")
+(include "people.lisp")
 (include "en.lisp")

@@ -474,7 +474,8 @@ The wallet is shared, so anyone can refuel."
             ((<= pay 0) (say "Денег нет. Развези посылки"))
             (t (pay-by-transfer pay) (setf *fuel* (min 1.0 (+ *fuel* (/ pay *tank-price*))) *fuel-told* nil)
                (log-event :fuel :pay pay :fuel *fuel* :money *money* :dist (round *dist*))
-               (say-all (format nil "Залили на ~/kiosk-trip::rub/ Хватит ещё на ~,1f км" pay (* *fuel* *tank-km*))))))))
+               (say-all (format nil "Залили на ~/kiosk-trip::rub/ Хватит ещё на ~,1f км" pay (* *fuel* *tank-km*)))
+               (let ((line (person-speaks :fuel))) (when line (say-later line 5.0))))))))                       ; the dispatcher on the air, a driver at the next pump
 
 (defun buy-fuel () "Buy fuel on R at a gas station; return T if we are at one." (when *at-station* (pour-fuel) t))
 

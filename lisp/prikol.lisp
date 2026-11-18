@@ -106,7 +106,9 @@ The goat, the fishing and the mine each give theirs once per day cycle."
   "Do what E does at booth I."
   (let ((use (booth i :use)))
     (cond ((not (booth-at-hand-p i)) (say "Будка далеко"))                  ; a guest's message may name any booth: the driver checks
-          ((and use (not (and (booth i :daily) (spent-p i)))) (funcall use)))))
+          ((and use (not (and (booth i :daily) (spent-p i))))
+           (funcall use)
+           (let ((line (person-speaks (list :booth i) (trade-town)))) (when line (say-later line 4.0)))))))   ; whoever sits in this booth has a word
 
 (defun rail-ride (tw)
   "Travel by train to town TW: instantly, for money.

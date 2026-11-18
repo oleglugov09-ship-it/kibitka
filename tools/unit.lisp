@@ -24,7 +24,7 @@
 (defun net-guest-p () nil) (defun put-save (key form) (declare (ignore key)) form) (defun get-save (key) (declare (ignore key)) nil)
 (defun say-all (text) text)
 
-(dolist (f '("delo" "tverd" "random" "economy" "land" "karta" "razmetka" "goods" "plan" "istorii" "places" "prikol" "bumagi" "debt"))
+(dolist (f '("delo" "tverd" "random" "economy" "land" "karta" "razmetka" "goods" "plan" "istorii" "places" "prikol" "bumagi" "debt" "people"))
   (load (merge-pathnames (concatenate 'string f ".lisp") cl-user::*here*)))
 
 ;; the content lives in mods: the core ships none. INCLUDE here is plain LOAD from the mod's folder
@@ -397,6 +397,50 @@
 (check "на каждый запрещённый товар есть задание с лицензией"
        (every (lambda (r) (find (second r) *quests* :key #'second)) *restricted*))
 (check "запрещённые товары существуют" (every (lambda (r) (assoc (first r) *goods*)) *restricted*))
+
+(format t "Люди~%")
+(check "людей не меньше двадцати, у каждого имя, место, реплики о мире и своя история"
+       (and (>= (length *people*) 20)
+            (every (lambda (e) (let ((p (rest e)))
+                                 (and (keywordp (first e)) (stringp (getf p :who)) (getf p :world) (>= (length (getf p :life)) 2)
+                                      (or (null (getf p :town)) (< -1 (getf p :town) 12))
+                                      (let ((at (getf p :at)))
+                                        (or (member at '(:fuel :camp))
+                                            (and (eq (first at) :window) (rest at) (subsetp (rest at) '(:buyer :seller :sender :ration :recipient)))
+                                            (and (eq (first at) :booth) (assoc (second at) *gimmick-plan*)))))))
+                   *people*)))
+(check "условия реплик понятны игре в любом городе, и запасная реплика есть у каждого"
+       (every (lambda (e)
+                (let ((p (rest e)))
+                  (and (find :always (getf p :world) :key (lambda (w) (first (first w))))
+                       (loop for tw below 12
+                             always (every (lambda (w) (progn (person-cond-p (first w) tw) (stringp (second w)))) (getf p :world)))
+                       (or (null (getf p :when)) (progn (person-cond-p (getf p :when) 0) t)))))
+              *people*))
+(check "сидящие в будках живут в городе своей будки"
+       (every (lambda (e) (let ((at (getf (rest e) :at)))
+                            (or (not (and (consp at) (eq (first at) :booth)))
+                                (eql (getf (rest e) :town) (fifth (assoc (second at) *gimmick-plan*))))))
+              *people*))
+(let ((*people-met* '()) (*season* :summer) (*heat* 0) (*deeds* '()))
+  (reset-plan 0)
+  (let* ((first-line (person-line :granny 3)) (again (person-line :granny 3)))
+    (check "человек говорит раз в день" (and (stringp first-line) (null again))))
+  (let ((heard '()))
+    (dotimes (day 12)
+      (setf (fourth (person-record :storekeeper)) -1)                    ; a new day
+      (let ((line (person-line :storekeeper 10))) (when line (push line heard))))
+    (check "за несколько встреч человек рассказывает всю свою историю, не повторяясь, а потом говорит дежурное"
+           (and (every (lambda (life) (find-if (lambda (h) (search life h)) heard)) (getf (rest (assoc :storekeeper *people*)) :life))
+                (= (length heard) 12)
+                (<= (length (remove-duplicates heard :test #'string=)) 8))))
+  (check "инспектор приходит, только когда за нами числится перепродажа"
+         (and (null (person-speaks '(:window :buyer) 7))                   ; nobody tied to Dalny; granny spoke today, the inspector stays away
+              (let ((*heat* 2) (*people-met* '())) (search "Кривцов" (or (person-speaks '(:window :buyer) 7) ""))))))
+(format t "  по местам: окно ~d, будки ~d, заправка ~d, лагерь ~d~%"
+        (count-if (lambda (e) (and (consp (getf (rest e) :at)) (eq (first (getf (rest e) :at)) :window))) *people*)
+        (count-if (lambda (e) (and (consp (getf (rest e) :at)) (eq (first (getf (rest e) :at)) :booth))) *people*)
+        (count :fuel *people* :key (lambda (e) (getf (rest e) :at))) (count :camp *people* :key (lambda (e) (getf (rest e) :at))))
 
 ;;; A player drives the ring for two months and lives by the plan's cargo alone: how long until the man is paid
 ;;; off, and the bank? It is a rough count, not the game: one crate offered at every stop that has cargo, six

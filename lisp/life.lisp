@@ -495,7 +495,8 @@ Its x points to the right of the road and its z backwards along the path."
                  (save-plan) (save-interior)
                  (log-event :camp :good kind :pay pay)
                  (say-all (format nil "Завхоз расписался: ~a для столовой, ~/kiosk-trip::rub/ на счёт. Шефы с завода это запомнят" (good-name kind) pay))
-                 (when turn (say-standing turn))))))))
+                 (when turn (say-standing turn))
+                 (let ((line (person-speaks :camp))) (when line (say-later line 4.0)))))))))
 
 (defun life-usables ()
   "Return the things to press outside that belong to the life of the roadside: the camp's gates."

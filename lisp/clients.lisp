@@ -194,6 +194,8 @@ The driver keeps count; guests are sent a description, see CLIENT-VIEW."
   (let* ((story (and (eq kind :sender) (story-sender town)))   ; a sender from a story (istorii.lisp): he has his own addressee
          (regular (and (member kind '(:buyer :seller)) (story-regular town)))     ; a regular: he recognised us and asks
          (cargo (and (eq kind :sender) (not story) (plan-cargo (trade-town town))))   ; the plan's cargo: a surplus here that is short elsewhere
+         (person (and (not story) (not regular) (or cargo (not (eq kind :sender)))      ; someone we know by name (people.lisp): a line a day
+                      (person-speaks (list :window kind) (trade-town town))))
          (dest (when (eq kind :sender)                       ; where the parcel goes: by the story, by the plan, or to any other town
                  (cond (story (first story))
                        (cargo (first cargo))
@@ -236,6 +238,7 @@ The driver keeps count; guests are sent a description, see CLIENT-VIEW."
     (log-event :client :kind kind :price price :town town :dist (round *dist*))
     (cond (story (say-all (format nil "~a: «~a»" (second story) (third story))))
           (regular (say-all regular))
+          (person (say-all person))
           (t (let ((coming (client-kind kind :coming))) (say (if (functionp coming) (funcall coming town) coming)))))))
 
 (defun client-words (kind price town dest)
