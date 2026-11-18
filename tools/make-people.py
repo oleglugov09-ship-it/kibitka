@@ -181,20 +181,141 @@ person(':major',"майор Когтев","major Kogtev",1,"(:window :sender :bu
   ("Рапорт на увольнение написал. Лежит в столе. Пусть полежит","I wrote my resignation. It lies in the drawer. Let it lie")])
 assert len(P)>=20, len(P)
 
+# ---- where everyone ends up. STAYED is the line of the credits for one who is still at the post.
+# Those who answer for something may leave at a quarterly report: ANSWERS is what for, ACTING is who stands
+# in afterwards, EXILE is what the dismissed one says when met once more, PROMOTED is the farewell, and the
+# two -END lines are for the credits.
+STAYED={
+ ':director':("всё ещё директор. План выполнен на сто и две десятых","still the director. The plan is fulfilled by a hundred point two"),
+ ':foreman':("у того же станка. Учит двоих","at the same lathe. Teaching two apprentices"),
+ ':pusher':("в дороге. Говорят, видели его в порту с чемоданом","on the road. They say he was seen at the port with a suitcase"),
+ ':storekeeper':("на базе. Гвозди наконец сошлись","at the depot. The nails have finally tallied"),
+ ':shopkeeper':("в том же магазине. Недостач по-прежнему нет","in the same shop. Still not one shortfall"),
+ ':salesgirl':("за прилавком. Фильм показали по второй программе","behind the counter. The film was shown on channel two"),
+ ':dispatcher':("на связи. Грузовик приняли обратно без единой царапины","on the air. The truck was taken back without a scratch"),
+ ':trucker':("на кольце. На своём «Москвиче»","on the ring. In his own Moskvich"),
+ ':chairman':("в колхозе. Пасеку так и не отобрали","on the farm. The apiary was never taken back"),
+ ':milkmaid':("с коровами. Зорьку всё-таки повесили на доску","with the cows. Zorka made it onto the board after all"),
+ ':inspector':("работает по обеим инструкциям","works by both instructions"),
+ ':sergeant':("на посту. До пенсии год","at his post. A year to the pension"),
+ ':cashier':("в сберкассе. Ковёр висит","at the savings bank. The carpet hangs"),
+ ':banker':("завёл для кооперативов отдельную графу","has opened a separate column for co-operatives"),
+ ':shark':("в тени. Там мебель","in the shadow. The furniture is there"),
+ ':spiv':("председатель кооператива «Импорт»","chairman of the «Import» co-operative"),
+ ':secretary':("печатает. Копирки хватило","typing. The carbon paper lasted"),
+ ':granny':("смотрит съезд. Цветной","watching the congress. In colour"),
+ ':student':("экономист. Пока без работы","an economist. Out of work so far"),
+ ':quartermaster':("закрыла смену. Без недостачи","closed the session. Without a shortfall"),
+ ':major':("служит. Рапорт в столе","serving. The resignation is in the drawer"),
+}
+LEAVE={
+ ':director':dict(answers="(:supply 2)",acting=("и. о. директора","the acting director"),
+   exile=("Сняли за срыв плана. А металл мне так и не дали. Клюёт сегодня, кстати","Dismissed for failing the plan. And the metal I never got. They are biting today, by the way"),
+   fired_end=("снят. Рыбачит в Заречном, не жалуется","dismissed. Fishing in Zarechny, not complaining"),
+   promoted=("Забирают в министерство. Тридцать лет у этого окна — и на тебе","They are taking me to the ministry. Thirty years by this window — and there you are"),
+   promoted_end=("в министерстве. Спускает планы сверху","at the ministry. Sending plans down from above")),
+ ':pusher':dict(answers="(:cargo)",acting=("новый снабженец","the new supply man"),
+   exile=("Списали меня: говорят, толкачи больше не нужны, теперь хозрасчёт. Посмотрим","They wrote me off: they say fixers are not needed any more, it is self-financing now. We shall see"),
+   fired_end=("не у дел. Пишет воспоминания, никто не печатает","out of work. Writing his memoirs, nobody prints them"),
+   promoted=("Зовут в Москву, в Госснаб. Буду оттуда доставать то же самое","They call me to Moscow, to the State Supply. I will be getting the same things from there"),
+   promoted_end=("в Госснабе. Достаёт","at the State Supply. Getting things")),
+ ':storekeeper':dict(answers="(:stock 10)",acting=("и. о. кладовщика","the acting storekeeper"),
+   exile=("Сняли за излишки. За излишки! Стою теперь в очереди, как все","Dismissed for a surplus. For a surplus! Now I stand in the queue like everyone"),
+   fired_end=("снята за излишки. Дочка говорит, это закономерно","dismissed for a surplus. Her daughter says it figures"),
+   promoted=("Переводят на областную базу. Там вагонами считают","I am being moved to the regional depot. They count in wagons there"),
+   promoted_end=("на областной базе. Считает вагонами","at the regional depot. Counting in wagons")),
+ ':shopkeeper':dict(answers="(:stock 6)",acting=("и. о. завмага","the acting shop manager"),
+   exile=("Тридцать лет без недостачи, а сняли за затоваривание. Что завезли, то и лежало","Thirty years without a shortfall, and dismissed for overstocking. What they delivered just lay there"),
+   fired_end=("снята. Бухгалтер в кооперативном кафе","dismissed. The bookkeeper at a co-operative café"),
+   promoted=("Забирают в торг, в область. Буду распределять то, чего нет","They are taking me to the regional trade board. I will allocate what there is not"),
+   promoted_end=("в областном торге. Распределяет","at the regional trade board. Allocating")),
+ ':dispatcher':dict(answers="(:cargo)",acting=("диспетчер автобазы","the motor depot dispatcher"),
+   exile=("Автобазу сократили вдвое, меня первым. Машины раздали в аренду — таким, как вы","The depot was cut by half, me first. The trucks were leased out — to the likes of you"),
+   fired_end=("сокращён. Водит арендованный грузовик","made redundant. Drives a leased truck"),
+   promoted=("Автобаза — кооперативу: перевожусь в управление. Грузовик берегите","Motor depot to the co-operative: I am moving to the directorate. Look after the truck"),
+   promoted_end=("в управлении. На связь не выходит","at the directorate. Does not come on the air")),
+ ':chairman':dict(answers="(:supply 4)",acting=("и. о. председателя","the acting chairman"),
+   exile=("Сняли. За пасеку или за план — не сказали. Торгую вот своим, с огорода","Dismissed. For the apiary or for the plan — they did not say. I sell my own now, from the garden"),
+   fired_end=("снят. Арендовал ту самую пасеку","dismissed. Leased that very apiary"),
+   promoted=("Забирают в район, в агропром. Колхоз жалко","They are taking me to the district agro-industry board. I am sorry for the farm"),
+   promoted_end=("в агропроме. Пишет колхозу планы","at the agro-industry board. Writing plans for the farm")),
+ ':inspector':dict(answers="(:order)",acting=("новый инспектор","the new inspector"),
+   exile=("Отдел расформировали. Говорят, спекуляции больше нет, есть рынок","The department was disbanded. They say there is no speculation any more, there is a market"),
+   fired_end=("отдел расформирован. Охраняет кооперативное кафе","the department disbanded. Guards a co-operative café"),
+   promoted=("Переводят в столицу. Там воруют вагонами, интереснее","I am being moved to the capital. They steal by the wagon there, more interesting"),
+   promoted_end=("в столице. Ловит вагонами","in the capital. Catching by the wagon")),
+ ':sergeant':dict(answers="(:order)",acting=("новый сержант","the new sergeant"),
+   exile=("Проводили на пенсию на два года раньше. Не просился. Клюёт?","They saw me off to my pension two years early. I did not ask. Any bites?"),
+   fired_end=("на пенсии раньше срока. Завёл пасеку","retired ahead of time. Keeps an apiary"),
+   promoted=("Дали лейтенанта и перевели в область. Занавески ваши буду помнить","They made me a lieutenant and moved me to the region. I will remember your curtains"),
+   promoted_end=("лейтенант, в области","a lieutenant, in the region")),
+ ':banker':dict(answers="(:loan)",acting=("и. о. управляющего","the acting manager"),
+   exile=("Сняли за ссуду кооперативу. За вашу. Невозврат, говорят, — а вы же платили?","Dismissed for a loan to a co-operative. Yours. A bad debt, they say — but you were paying, were you not?"),
+   fired_end=("снят за ссуду кооперативу. За нашу","dismissed for a loan to a co-operative. Ours"),
+   promoted=("Меня берут в новый банк, коммерческий. Вы — мой лучший пример","I am being taken into a new bank, a commercial one. You are my best example"),
+   promoted_end=("в коммерческом банке. Показывает нашу ссуду как пример","at a commercial bank. Shows our loan as an example")),
+ ':spiv':dict(answers="(:deficit 5)",acting=("какой-то новенький","some newcomer"),
+   exile=("Всё завезли, представляешь? Жвачка в магазине лежит. Чем жить человеку","They delivered everything, can you imagine? Chewing gum lies in the shop. What is a man to live on"),
+   fired_end=("прогорел: в магазинах всё появилось","went bust: everything turned up in the shops"),
+   promoted=("Уезжаю в столицу. Там дефицит настоящий, не чета здешнему","I am off to the capital. The shortage there is the real thing, no match for ours"),
+   promoted_end=("в столице. Кооператив «Импорт-2»","in the capital. The «Import-2» co-operative")),
+ ':secretary':dict(answers="(:supply 6)",acting=("новая секретарь","the new secretary"),
+   exile=("Сократили вместе с должностью. Машинку оставили себе. Стою вот за сахаром","Made redundant together with the post. They kept the typewriter. Here I stand for sugar"),
+   fired_end=("сокращена. Печатает на дому","made redundant. Types at home"),
+   promoted=("Председатель идёт наверх и берёт меня. Кто-то же должен знать, что он обещал","The chairman is going up and taking me along. Somebody has to know what he promised"),
+   promoted_end=("в области, при председателе. Помнит всё","in the region, with the chairman. Remembers everything")),
+ ':major':dict(answers="(:supply 1)",acting=("и. о. командира","the acting commander"),
+   exile=("Уволили в запас. Рапорт и не понадобился. Бойцов жалко, а так — рыбалка","Discharged to the reserve. The resignation was not even needed. Sorry for the men, otherwise — fishing"),
+   fired_end=("в запасе. Рыбачит","in the reserve. Fishing"),
+   promoted=("Перевод в округ, в штаб. Часть оставляю сытой — и на том спасибо","A transfer to the district staff. I leave the garrison fed — thanks for that much"),
+   promoted_end=("в штабе округа. Подполковник","at the district staff. A lieutenant colonel")),
+}
+ACTING=[("Я тут временно. Ничего не подписываю","I am here for the time being. I sign nothing"),
+ ("Прежний всё в голове держал. У меня только папка","The last one kept it all in his head. I only have a folder"),
+ ("Мне сказали ничего не менять. Не меняю","I was told to change nothing. I change nothing"),
+ ("Зайдите после отчёта. Или после следующего","Come after the report. Or after the next one"),
+ ("Вы с ним дружили? Со мной не обязательно","You were friends with him? No need to be with me"),
+ ("Исполняю обязанности. Права не дали","I perform the duties. The rights were not given")]
+REPORT=dict(title=("КВАРТАЛЬНЫЙ ОТЧЁТ ПО ОБЛАСТИ~%~%Квартал ~d из четырёх. Выплачена ещё четверть ссуды — область подводит итоги","THE REGION'S QUARTERLY REPORT~%~%Quarter ~d of four. One more quarter of the loan is paid — the region sums up"),
+ fired=("ОСВОБОЖДЕНИЕ ОТ ДОЛЖНОСТИ~%~%~a — за невыполнение. На место назначен исполняющий обязанности","RELIEVED OF THE POST~%~%~a — for failing the plan. An acting official is appointed in place"),
+ promoted=("ПЕРЕВОД НАВЕРХ~%~%~a — за перевыполнение. Сюда не вернётся","MOVED UP~%~%~a — for beating the plan. Will not come back here"),
+ quiet=("Все остались на своих местах. Пока","Everyone has stayed where they were. So far"),
+ stays=("Люди дороги","The people of the road"))
+assert set(STAYED)==set(p['key'] for p in P) and set(LEAVE)<=set(STAYED)
+
 def q(s): return '"'+s.replace('\\','\\\\').replace('"','\\"')+'"'
-out=[''';;;; The people of the road (lisp/people.lisp): one or two for every link in how the country feeds itself.
+NL=chr(10)
+out=[""";;;; The people of the road (lisp/people.lisp): one or two for every link in how the country feeds itself.
 ;;;; :who - the name with the trade; :town - the town number, or NIL for someone met anywhere; :at - where:
 ;;;; (:window client-kind ...), (:booth number), :fuel (at the pump) or :camp; :when - a condition for turning
 ;;;; up at all; :world - lines about the world, each with its condition (the first that holds and is new is
-;;;; said); :life - the person's own story, a line a meeting, in order.
+;;;; said); :life - the person's own story, in order, a step for each quarter of our loan; :stayed - the line
+;;;; of the credits. One who :answers for something may leave at a quarterly report: :acting stands in,
+;;;; :exile is said when the dismissed one is met once more, :promoted is the farewell, the -end lines are
+;;;; for the credits.
 ;;;; This file is written by tools/make-people.py together with the pairs for en.lisp: edit the table there.
 
+(setf *acting-lines* '(""" + (NL+'                       ').join(q(ru) for ru,en in ACTING) + """))
+
+(setf *report-lines*
+      (list """ + (NL+'            ').join(':'+k+' '+q(v[0]) for k,v in REPORT.items()) + """))
+
 (setf *people*
-      (list''']
+      (list"""]
 for p in P:
-    out.append(f'''       (list {p['key']} :who {q(p['who'])} :town {p['town'] if p['town'] is not None else 'nil'} :at '{p['at']}{" :when '"+p['when'] if p['when'] else ''}
-             :world '({(chr(10)+'                      ').join('('+c+' '+q(ru)+')' for c,ru,en in p['world'])})
-             :life '({(chr(10)+'                     ').join(q(ru) for ru,en in p['life'])}))''')
+    lv=LEAVE.get(p['key'])
+    extra=''
+    if lv:
+        extra=(NL+"             :answers '"+lv['answers']+" :acting "+q(lv['acting'][0])
+               +NL+"             :exile "+q(lv['exile'][0])
+               +NL+"             :fired-end "+q(lv['fired_end'][0])
+               +NL+"             :promoted "+q(lv['promoted'][0])
+               +NL+"             :promoted-end "+q(lv['promoted_end'][0]))
+    out.append("       (list "+p['key']+" :who "+q(p['who'])+" :town "+(str(p['town']) if p['town'] is not None else 'nil')+" :at '"+p['at']
+               +((" :when '"+p['when']) if p['when'] else '')
+               +NL+"             :world '("+(NL+'                      ').join('('+c+' '+q(ru)+')' for c,ru,en in p['world'])+")"
+               +NL+"             :life '("+(NL+'                     ').join(q(ru) for ru,en in p['life'])+")"
+               +NL+"             :stayed "+q(STAYED[p['key']][0])+extra+")")
 out.append('       ))\n')
 open('project/mods/base/people.lisp','w',encoding='utf-8').write('\n'.join(out))
 pairs=[]
@@ -202,12 +323,19 @@ for p in P:
     pairs.append((p['who'],p['who_en']))
     for c,ru,en in p['world']: pairs.append((ru,en))
     for ru,en in p['life']: pairs.append((ru,en))
+    pairs.append(STAYED[p['key']])
+    lv=LEAVE.get(p['key'])
+    if lv:
+        for k in ('acting','exile','fired_end','promoted','promoted_end'): pairs.append(lv[k])
+pairs+=ACTING+list(REPORT.values())
+seen=set(); pairs=[x for x in pairs if not (x[0] in seen or seen.add(x[0]))]
 E='project/mods/base/en.lisp'; s=open(E,encoding='utf-8').read()
 a='\n ;; the people of the road\n'
-if a in s: s=s[:s.index(a)]+s[s.index('\n ;; end of the people\n')+len('\n ;; end of the people\n'):]
+if a in s: s=s[:s.index(a)+1]+s[s.rindex(' ;; end of the people\n')+len(' ;; end of the people\n'):]
+assert ';; the people of the road' not in s
 anchor=' "Чего в городе не хватает, то в магазине по талонам'
 assert s.count(anchor)==1
-block=a.lstrip('\n')+''.join(f' {q(ru)}\n  {q(en)}\n' for ru,en in pairs)+' ;; end of the people\n'
+block=a.lstrip('\n')+''.join(' '+q(ru)+'\n  '+q(en)+'\n' for ru,en in pairs)+' ;; end of the people\n'
 s=s.replace(anchor,block+anchor)
 open(E,'w',encoding='utf-8').write(s)
 print(len(P),'персонажей,',len(pairs),'строк')

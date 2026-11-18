@@ -181,6 +181,7 @@
           (set-stock town good (+ (stock town good) *crate-units*))
           (add-deeds town 2)                                             ; the town's power sees who closed the gap
           (when short (incf *talons* (crate-talons town)))               ; and its council hands out coupons
+          (when (boundp '*cargo-day*) (incf (symbol-value '*cargo-day*)))  ; and those who answer for the haulage have a good day
           (if short (* *plan-premium* (standing-factor town :premium)) 0))
         0)))
 
@@ -343,7 +344,9 @@
     (unless (eql day *plan-day*)
       (run-plan-to day)
       (grow-shark day)
-      (save-plan))))
+      (save-plan)
+      (when (fboundp 'people-day) (funcall 'people-day)))                 ; a day in the count of those who answer for something
+    (when (fboundp 'step-report) (funcall 'step-report))))
 
 ;; a guest sees the driver's books: the co-operative's account, how every town stands to us, and the stocks
 ;; of the towns on the supply sheet (the one at hand and its two neighbours). The value is kept flat - the

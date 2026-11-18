@@ -199,7 +199,7 @@ Return what is left."
 
 ;;; ------------------------------------------------------------------ the ending
 
-(defparameter *ending-time* 64.0 "The length of the closing credits, in seconds.")
+(defparameter *ending-time* 92.0 "The length of the closing credits, in seconds.")
 (defvar *ending* nil "The number of seconds since the ending started, or NIL.")
 (defvar *ending-ui* nil "The parts of the credits screen: a plist of :root :text :music.")
 
@@ -217,11 +217,16 @@ Return what is left."
       (setf *ending-ui* (list :root root :text text
                               :music (and (file-here-p path) (player *root* (wav-stream path) :db -6.0 :bus "Музыка" :play nil)))))))
 
+(defun credit-lines ()
+  "Return the lines of the credits: the mod's own, with where the people of the road ended up put in before the last block."
+  (let* ((lines (mapcar #'tr *credits*)) (cut (max 0 (- (length lines) 6))))
+    (append (subseq lines 0 cut) (if (fboundp 'people-epilogue) (funcall 'people-epilogue) '()) (subseq lines cut))))
+
 (defun start-ending ()
   "Leave for the country father went to: drive into the sunset under the credits and the final tune."
   (unless *ending-ui* (make-ending))
   (destructuring-bind (&key root text music) *ending-ui*
-    (object-set text "text" (format nil "~{~a~^~%~}" (mapcar #'tr *credits*)))
+    (object-set text "text" (format nil "~{~a~^~%~}" (credit-lines)))
     (object-set root "visible" t)
     (when music (object-call music "play")))
   (setf *ending* 0.0)
@@ -249,7 +254,7 @@ Return what is left."
                        (first *dusk*) -40.0 (* k (+ 40.0 (* .7 (- (second *dusk*) (first *dusk*)))))))
       ;; the credits rise from under the screen and leave over its top; the last line stops in the middle
       (object-set (getf *ending-ui* :text) "position"
-                  (vector2 120 (- 360.0 (* k (+ 185.0 (* 17.0 (length *credits*))))))))
+                  (vector2 120 (- 360.0 (* k (+ 185.0 (* 17.0 (length (credit-lines)))))))))
     (when (> *ending* (+ *ending-time* 6.0)) (stop-ending))))
 
 (defun step-story (delta)

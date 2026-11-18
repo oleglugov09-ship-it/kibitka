@@ -426,7 +426,14 @@
   (reset-plan 0)
   (let* ((first-line (person-line :granny 3)) (again (person-line :granny 3)))
     (check "человек говорит раз в день" (and (stringp first-line) (null again))))
-  (let ((heard '()))
+  (let ((*story-stage* :owing) (*debt* *debt-total*))
+    (setf (fourth (person-record :storekeeper)) -1)
+    (person-line :storekeeper 10) (setf (fourth (person-record :storekeeper)) -1) (person-line :storekeeper 10)
+    (setf (fourth (person-record :storekeeper)) -1) (person-line :storekeeper 10)
+    (check "пока ссуда не тронута, история человека дальше первого шага не идёт"
+           (= (third (person-record :storekeeper)) 1))
+    (setf *people-met* (remove :storekeeper *people-met* :key #'first)))
+  (let ((heard '()) (*story-stage* :owing) (*debt* 0))
     (dotimes (day 12)
       (setf (fourth (person-record :storekeeper)) -1)                    ; a new day
       (let ((line (person-line :storekeeper 10))) (when line (push line heard))))
@@ -437,6 +444,46 @@
   (check "инспектор приходит, только когда за нами числится перепродажа"
          (and (null (person-speaks '(:window :buyer) 7))                   ; nobody tied to Dalny; granny spoke today, the inspector stays away
               (let ((*heat* 2) (*people-met* '())) (search "Кривцов" (or (person-speaks '(:window :buyer) 7) ""))))))
+(let ((*people-met* '()) (*people-fate* '()) (*people-score* '()) (*quarter-done* 0) (*story-stage* :owing) (*debt* *debt-total*)
+      (*cargo-day* 0) (*loan-seen* nil) (*heat* 0) (*deeds* '()))
+  (reset-plan 0)
+  (check "до первого платежа кварталов нет" (zerop (debt-quarter)))
+  (dotimes (d 5) (people-day))                                             ; five days without a crate and without a payment
+  (check "кто отвечает за наряды, за пять дней без единого ящика набирает пять плохих дней"
+         (= (cdr (assoc :pusher *people-score*)) -5))
+  (setf *debt* (round (* .7 *debt-total*)))
+  (check "выплачена четверть — пора отчёт" (= (debt-quarter) 1))
+  (let* ((cards (hold-report)) (fired (find :fired *people-fate* :key #'second)) (up (find :promoted *people-fate* :key #'second)))
+    (format t "  первый отчёт без наших нарядов: снят ~a, в столицу ~a~%" (first fired) (first up))
+    (check "на отчёте худшего снимают, лучшего забирают, счёт начинается заново"
+           (and fired up (not (eq (first fired) (first up))) (>= (length cards) 3) (null *people-score*) (= *quarter-done* 1)))
+    (check "снятый больше не на посту, вместо него говорит исполняющий обязанности"
+           (let* ((p (rest (assoc (first fired) *people*))) (at (getf p :at))
+                  (line (person-speaks (if (consp at) (list (first at) (second at)) at) (getf p :town))))
+             (and (not (person-in-post-p (first fired))) (or (null line) (not (search (getf p :who) line))))))
+    (check "снятого можно встретить ещё один раз, и только один"
+           (let ((once (exile-line (first fired))) (twice (exile-line (first fired)))) (and (stringp once) (null twice))))
+    (check "в титрах про каждого сказано, где он оказался; про ушедших — своё"
+           (let ((lines (people-epilogue)))
+             (and (= (length lines) (+ 4 (length *people*)))
+                  (find-if (lambda (l) (search (getf (rest (assoc (first fired) *people*)) :fired-end) l)) lines)
+                  (find-if (lambda (l) (search (getf (rest (assoc (first up) *people*)) :promoted-end) l)) lines)))))
+  (setf *debt* 0)
+  (loop while (< *quarter-done* (debt-quarter)) do (dotimes (d 4) (people-day)) (hold-report))
+  (format t "  за четыре отчёта ушли: ~{~a~^, ~}; остались ~d из ~d~%"
+          (mapcar (lambda (f) (format nil "~(~a~) (~(~a~))" (first f) (second f))) (reverse *people-fate*))
+          (count-if #'person-in-post-p *people* :key #'first) (length *people*))
+  (check "за всю игру уходит не больше восьми, никто — дважды"
+         (and (<= (length *people-fate*) 8) (= (length *people-fate*) (length (remove-duplicates *people-fate* :key #'first))))))
+(check "у каждого есть строка для титров; у тех, кто может уйти, — и прощание, и обе концовки, и замена"
+       (every (lambda (e) (let ((p (rest e)))
+                            (and (stringp (getf p :stayed))
+                                 (or (null (getf p :answers))
+                                     (and (every (lambda (k) (stringp (getf p k))) '(:acting :exile :fired-end :promoted :promoted-end))
+                                          (member (person-mark (getf p :answers)) '(-1 0 1)))))))
+              *people*))
+(check "слова отчёта и запасные реплики замещающих на месте"
+       (and (>= (length *acting-lines*) 4) (every (lambda (k) (stringp (getf *report-lines* k))) '(:title :fired :promoted :quiet :stays))))
 (format t "  по местам: окно ~d, будки ~d, заправка ~d, лагерь ~d~%"
         (count-if (lambda (e) (and (consp (getf (rest e) :at)) (eq (first (getf (rest e) :at)) :window))) *people*)
         (count-if (lambda (e) (and (consp (getf (rest e) :at)) (eq (first (getf (rest e) :at)) :booth))) *people*)

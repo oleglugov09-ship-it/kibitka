@@ -58,6 +58,16 @@ and state returning the node. STEP, if given, is called every frame with node, k
       (let ((step (fifth (assoc (first e) *life-kinds*))))
         (when step (funcall step (fourth e) (second e) (third e) (fifth e)))))))
 
+;;; ------------------------------------------------------------------ the quarterly report on the screen
+
+(defun step-report ()
+  "Hold a quarterly report as soon as one more quarter of the loan is paid: cards for us, a line for the guests."
+  (when (and (< *quarter-done* (debt-quarter)) (null *show*) (not (and (boundp '*ending*) *ending*)))
+    (let ((cards (hold-report)))
+      (log-event :report :quarter *quarter-done*)
+      (say-all (format nil "~a" (substitute #\Space #\Newline (format nil "~{~a~^ · ~}" (rest cards)))))
+      (open-show cards (lambda ())))))
+
 ;;; ------------------------------------------------------------------ helpers
 
 (defun town-spots () "Return the markets of the towns as spots: (town-number path-coordinate)."

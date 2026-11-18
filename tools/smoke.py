@@ -214,9 +214,13 @@ def solo():
                  ({K}take-from-stall (first (getf {K}*client* :stall))) (list (> {K}*money* m) {K}*carry* {K}*client*))"""),
           "(T NIL NIL)")
     check("продавец приходит", bring(p, ":SELLER"), True)
-    check("покупаем у продавца местное — в Заречном это рыба",
-          ev(p, f"""(let ((m {K}*money*)) ({K}take-from-stall (first (getf {K}*client* :stall))) (list (< {K}*money* m) {K}*carry*))"""),
-          "(T (:FISH))")
+    check("покупаем у продавца то, что здесь в излишке или делают сами (по талонам — с талоном)",
+          ev(p, f"""(let* ((m {K}*money*) (offer ({K}client-good))
+                        (local (and (member offer (append ({K}surplus-goods 0) ({K}town-makes 0) ({K}rationed-goods 0))) t)))   ; before the deal: it changes the stock
+                 (setf {K}*talons* (max 1 {K}*talons*))
+                 ({K}take-from-stall (first (getf {K}*client* :stall)))
+                 (list (< {K}*money* m) (eq (car {K}*carry*) offer) local))"""),
+          "(T T T)")
     ev(p, f"(progn (when {K}*client* ({K}client-leave)) (setf {K}*carry* nil) ({K}show-carry) 1)")
     # the rack: slots
     check("слева на нижней полке место есть (проигрыватель переехал), верхняя свободна",
