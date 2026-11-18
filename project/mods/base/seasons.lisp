@@ -10,6 +10,10 @@
         :summer ((:water 2.0) (:milk 1.5) (:coal .5) (:honey .6) (:books .6))     ; the heat; the pioneer camps
         :autumn ((:cans 1.6) (:bread 1.4))))                                      ; stocking up; everyone is out on the potatoes
 
+;;; The sleeves of the three records that come with the wagon: (file name, title).
+(setf *disc-titles*
+      '(("placeholder-1" "Дорожная") ("placeholder-2" "Весёлый шофёр") ("placeholder-3" "Вечер в Заречном")))
+
 ;;; The holidays: (season, day of the season from zero, key, name, the goods buyers come for).
 ;;; The keys are what life.lisp dresses the towns by.
 (setf *holidays*

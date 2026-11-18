@@ -37,6 +37,14 @@
 
 (defun disc-name (i) (first (nth i *discs*)))
 
+(defvar *disc-titles* '()
+  "What is written on the sleeves of the records that come with the game, from mods: entries of (file-name title).
+A record of your own, dropped into project/discs/, is called by its file name.")
+
+(defun disc-title (i)
+  "Return the title on the sleeve of disc I, in the game language."
+  (let ((name (disc-name i))) (tr (or (second (assoc name *disc-titles* :test #'string=)) name))))
+
 ;;; Models: record player, crate, disc
 
 (defun disc-mesh (parent color &key (rot (list 0 0 (/ pi 2))) (x 0.0) (y 0.0) (z 0.0))
