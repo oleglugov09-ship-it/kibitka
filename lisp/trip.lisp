@@ -121,7 +121,6 @@ That is the body, the truck under it, everything bolted on inside, the things an
   (make-docs root)
   (load-world)                                            ; every part of the state comes from the save (delo.lisp)
   (make-map root)
-  (make-play root)
   (make-bell-sound root)
   ;; a probe of live editing: can this build run code sent to it (in the browser, through the interpreter).
   ;; A line in the log at every launch; it shows whether (live:everyone ...) will work for the player
@@ -203,7 +202,7 @@ That is the body, the truck under it, everything bolted on inside, the things an
     (step-check delta)
     (step-gnomes)
     (unless (net-guest-p) (step-stories))
-    (step-play delta) (step-act delta) (step-story delta)
+    (step-act delta) (step-story delta)
     (unless (net-guest-p) (step-plan))
     (step-stars)
     (step-aurora)

@@ -155,7 +155,7 @@ the gas station).")
 (defun action-down (name)
   "Return true if the action NAME is held down.
 While the lobby is open, keys go to its fields, not to the game."
-  (and (not *lobby-open*) (not *map-open*) (not *look-open*) (not *play*) (not *show*)
+  (and (not *lobby-open*) (not *map-open*) (not *look-open*) (not *show*)
        (object-call (gdext:singleton "Input") "is_action_pressed" (action-name name) nil)))
 
 (defun action-p (event name)
@@ -298,7 +298,6 @@ The meta room and waiting at the bus stop are not remembered."
 (defun press-unstuck () (unstuck) t)
 
 (defun handle-input (event)
-  (when *play* (return-from handle-input nil))                          ; a booth game is on — the mouse and keys are its own
   (when *look-open* (look-key event) (return-from handle-input nil))   ; the profile is open — the game does not listen to keys
   (when *scope* (scope-input event) (return-from handle-input nil))    ; looking through the big telescope
   (when *docs-open* (docs-key event) (return-from handle-input nil))   ; the documents folder is open

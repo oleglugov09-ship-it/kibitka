@@ -53,7 +53,7 @@ net: ~a~@[ · room ~a~] · peers ~d
 scenes built ~d of ~d · land chunks ~d · solid cells ~d
 mods: ~:[none~;~:*~{~a~^, ~}~] · stories ~d"
                *dev* (round (object-call (gdext:singleton "Engine") "get_frames_per_second")) *lang* *view*
-               (and *play* (getf *play* :kind))
+               (and *act* (getf *act* :kind))
                *dist* (if (ring-d-p *dist*) "ring" "spoke through the Crossroads") *speed* *dir* *lane-now* (cdr *auto*) (length *way*)
                (if tw (let ((name (town-name (position tw *towns*)))) (or (gethash name *en*) name)) "—") (if near (cl:format nil "~a (~d m)" (cdr near) (round (- (car near) *dist*))) "—")
                (vector3-x *pos*) (vector3-z *pos*) *eye-now* (or (car *carry*) "—") (or (first place) "—")

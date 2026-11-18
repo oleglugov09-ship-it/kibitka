@@ -233,7 +233,7 @@ Take the tool; with that same tool in the paw, hang it back; with another one, s
 (defun step-tool ()
   "Keep the tool raised while the right mouse button is held.
 A window, building mode or the outside view lowers it."
-  (let ((want (and *tool* (not *build*) (not *play*) (not *meta*) (not (outside-p)) (= (input-get-mouse-mode) 2)
+  (let ((want (and *tool* (not *build*) (not *meta*) (not (outside-p)) (= (input-get-mouse-mode) 2)
                    (object-call (gdext:singleton "Input") "is_mouse_button_pressed" 2))))
     (unless (eq (and want t) *tool-up*) (raise-tool want))
     (when (and *tool-node* (not *tool-up*)) (object-set *tool-node* "visible" (not (outside-p))))))
