@@ -11,8 +11,9 @@
 ;;;; Both are common to everyone in the wagon (DEFCOMMON at the end of the file): one kettle, one pan. While
 ;;;; someone carries the kettle, the others see it gone (:AWAY) and know who has it, so when that cat leaves
 ;;;; the kettle is back on the table. The driver decides when it has boiled.
-;;;; Neither is saved: after a restart, a new game or a visit to somebody's wagon the kettle is empty on the
-;;;; table and the pan is on its nail (DEFSTATE :KITCHEN below).
+;;;; Both are saved with the world (DEFSTATE :KITCHEN below): where the kettle stands, the water or the tea in
+;;;; it, whether the pan is on the stove. A kettle that was in a paw is back on the table, and water that was
+;;;; heating starts from cold. A new game empties the kettle and hangs the pan on its nail.
 
 (in-package #:kiosk-trip)
 
@@ -282,6 +283,7 @@
 Everyone counts the heat for their own hint; the driver alone decides that it has boiled."
   (when (and (eq *kettle-at* :away) (not (player-here-p *kettle-holder*)))   ; whoever carried it has left: it is back on the table
     (setf *kettle-at* :table *kettle-holder* nil) (show-kettle))
+  (save-kitchen)                                                            ; it writes only what has changed
   (when (and (eq *kettle-at* :stove) *kettle-water* (> *fire* 0))
     (when (and (>= (incf *kettle-heat* delta) *boil-time*) (not (net-guest-p)))
       (setf *kettle-water* nil *kettle-heat* 0.0 *kettle-tea* *kettle-cups*)
@@ -313,8 +315,22 @@ Everyone counts the heat for their own hint; the driver alone decides that it ha
 (defcommon :pan :value (and *pan-on* t) :spec '(:member t nil)
   :accept (lambda (on) (unless (eq on (and *pan-on* t)) (setf *pan-on* on) (show-kettle))))
 
+(defun save-kitchen ()
+  "Write the kettle and the pan into the save. PUT-SAVE leaves the file alone while nothing has changed."
+  (unless (net-guest-p)
+    (put-save :kitchen (list (if (member *kettle-at* '(:paw :away)) :table *kettle-at*)       ; carried: it will be found on the table
+                             (and *kettle-water* t) *kettle-tea* *kettle-brew* (and *pan-on* t)))))
+
+(defun load-kitchen ()
+  (let ((f (get-save :kitchen)))
+    (when (fits f '((:member :table :stove) (:member t nil) integer symbol (:member t nil)))
+      (destructuring-bind (at water tea brew pan) f
+        (setf *kettle-at* at *kettle-water* water *kettle-tea* (max 0 (min *kettle-cups* tea))
+              *kettle-brew* (and (find brew *brews* :key #'second) brew) *pan-on* pan)))))
+
 (defstate :kitchen
   :clear (lambda ()
            (setf *kettle-at* :table *kettle-holder* nil *kettle-water* nil *kettle-heat* 0.0 *kettle-tea* 0 *kettle-brew* nil
                  *pan-on* nil *chop* nil *chop-dip* 0.0 *trip-until* 0.0))
+  :load #'load-kitchen :save #'save-kitchen
   :show (lambda () (show-kettle) (when *chop-nodes* (show-chop))))
