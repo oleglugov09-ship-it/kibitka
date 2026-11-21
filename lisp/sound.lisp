@@ -12,6 +12,7 @@
 (defparameter *walls-bus* "_Стены" "The name of the hidden bus through which the wagon walls muffle the street.")
 
 (defparameter *outside-noise* nil "Whether to play the constant street noise.")
+(defparameter *engine-hum* nil "Whether the engine hums while we drive. Off: the author found a noise that never stops tiring.")
 (defvar *audio* '() "An alist from a name to its player: :outside :water :wheels :steps.")
 (defvar *walls* nil "The index of the hidden walls bus.")
 (defvar *lowpass* nil "The low-pass filter of the hidden walls bus.")
@@ -159,7 +160,7 @@ Also load the discs from project/discs/ and make the hint."
       (let ((rain (wx :rain)))
         (object-set (audio :rain) "volume_db" (if (< rain .02) -80.0 (+ -8 (* 20 (log rain 10))))))
       (let ((w (audio :wheels)) (sp (abs *speed*)))
-        (object-set w "volume_db" (if (or *meta* (< sp .1)) -80.0 (+ -24 (* 7 (min 1 (/ sp 7))))))   ; an engine hum is kept low: it never stops
+        (object-set w "volume_db" (if (or (not *engine-hum*) *meta* (< sp .1)) -80.0 (+ -24 (* 7 (min 1 (/ sp 7))))))   ; an engine hum is kept low: it never stops
         (object-set w "pitch_scale" (max .7 (min 1.5 (+ .7 (* .09 sp)))))))
     ;; birds: one at a time, out of step, by day and without rain or snow
     (when (<= (decf *bird-timer* delta) 0)
