@@ -325,5 +325,6 @@ The driver reads a card, everyone gets a line; the percent and his patience coun
           (setf *story-stage* :owing)                                        ; nothing to show: straight to the debt
           (open-show *intro-cards* #'end-intro))))
   (step-show)
+  (step-paper-note delta)
   (step-shark)
   (step-ending delta))

@@ -124,6 +124,10 @@ locale/fallback="ru"
 
 [gui]
 common/drop_mouse_on_gui_input_disabled=true
+; Текст — точками, без сглаживания: картинка 640x360, сглаженные буквы в 7 точек расплываются.
+theme/default_font_antialiasing=0
+theme/default_font_hinting=2
+theme/default_font_subpixel_positioning=0
 
 [maaacks_menus_template]
 disable_update_check=true

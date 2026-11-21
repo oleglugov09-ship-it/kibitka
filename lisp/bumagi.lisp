@@ -48,6 +48,7 @@ Return true if the paper is new."
   (unless (or (net-guest-p) (member key *licenses*))
     (push key *licenses*) (save-papers)
     (pushnew key *papers-new*) (show-folder-corner)
+    (funcall 'note-paper key)                              ; a bookmark in the corner of the screen: where to look
     (log-event :paper :key key)
     (when (and card (boundp '*show*) (not (symbol-value '*show*)))
       (funcall 'open-show (list (format nil "~a~%~%~a" card (tr "Бумага легла в папку под картой: E по папке."))) (lambda ())))
@@ -146,9 +147,11 @@ Each paper is its own card; a missing one is an empty slot with a dotted outline
     (text :badge (if *badge* "К папке приколот значок «Меткий стрелок»" "")))
   (object-set (getf *docs-panel* :layer) "visible" t)
   (funcall 'show-tabs)
+  (funcall 'note-paper nil)
   (when *papers-new* (funcall 'open-paper (first *papers-new*))))             ; a new paper: straight to it
 
 (defun close-docs ()
+  (funcall 'folder-seen)                                   ; what was open has been read
   (setf *docs-open* nil)
   (object-set (getf *docs-panel* :layer) "visible" nil))
 

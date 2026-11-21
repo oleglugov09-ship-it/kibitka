@@ -30,6 +30,8 @@
   "Write the home state. The diary is copied: its pages are changed in place, and a save that shares them
 with the last one written would look unchanged."
   (unless (net-guest-p)
+    ;; What we were told (*SAID-LOG*) is not saved: it would take the world file past four thousand characters
+    ;; within minutes, and a file that long does not always read back (see HANDOFF, the loss of worlds).
     (put-save :home (list *calendar-day* (copy-tree (subseq *diary* 0 (min 14 (length *diary*)))) *insulation* *jars* *trip-day0*))))
 
 (defun clean-page (page)
@@ -170,8 +172,12 @@ with the last one written would look unchanged."
 
 (defun use-diary ()
   "Open the diary: today's page first, then back through the last week."
-  (let ((pages (subseq *diary* 0 (min 7 (length *diary*)))))
-    (open-show (if pages (mapcar #'diary-page pages) (list (tr "Тетрадь пуста: дорога только началась"))) (lambda ()))))
+  (open-diary))
+
+(defun open-diary ()
+  "Open the folder at the bookmark of the diary."
+  (unless *docs-open* (open-docs))
+  (funcall 'open-paper :diary))
 
 ;;; ------------------------------------------------------------------ for the winter: the window and the door
 

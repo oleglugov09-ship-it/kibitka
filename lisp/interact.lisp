@@ -117,6 +117,8 @@ Discs are handled by hand too."
 (defvar *speech-label* nil)
 (defvar *said-log* '() "The notebook: entries of (day . text), the newest first.")
 (defparameter *said-keep* 90 "The number of entries the notebook keeps.")
+(defvar *said-n* 0 "How many entries the notebook has taken in all.")
+(defvar *said-seen* 0 "The value of *SAID-N* when the diary was last closed: what came after it has not been read.")
 (defparameter *toast-least* 1.2 "The seconds a message stays at the least before the next one may take its place.")
 
 (defun read-time (text) "Return the seconds TEXT stays on the screen: longer for a longer one." (max 2.5 (min 10.0 (/ (length text) 12.0))))
@@ -125,6 +127,7 @@ Discs are handled by hand too."
 (defun note-said (text)
   (unless (equal text (cdr (first *said-log*)))
     (push (cons (if (fboundp 'trip-day) (funcall 'trip-day) 0) text) *said-log*)
+    (incf *said-n*)
     (when (> (length *said-log*) *said-keep*) (setf *said-log* (subseq *said-log* 0 *said-keep*)))))
 
 (defun say (text)
@@ -154,10 +157,9 @@ not to the driver."
 
 (defun press-notebook ()
   "Open the notebook: everything that was said, the newest first."
-  (cond ((null *said-log*) (say "В блокноте пока пусто") t)
-        ((and (boundp '*show*) (symbol-value '*show*)) nil)
+  (cond ((and (boundp '*show*) (symbol-value '*show*)) nil)
         (t (funcall 'log-event :notebook :n (length *said-log*))
-           (funcall 'open-show (notebook-cards) (lambda ())) t)))
+           (funcall 'open-diary) t)))                                       ; the notebook is the diary's bookmark in the folder
 
 (defun make-hint (root)
   (let ((layer (gdext:make-object "CanvasLayer")) (l (gdext:make-object "Label")))
