@@ -66,7 +66,13 @@ a resale of a shop good is speculation: a deed against us, and one more for the 
     (cond ((eq side :sold)
            (let ((needed (>= (shortage town raw) .25)))
              (set-stock town raw (+ (stock town raw) 1))
-             (cond (from-shop (note-resale) (setf turn (add-deeds town -1)))
+             (cond ((and from-shop (fboundp 'grant-paper)                    ; the first resale is forgiven: the rule comes on paper
+                         (funcall 'grant-paper :obhss
+                                  "У окна — человек в сером плаще. Кладёт на подоконник листок: «ПРЕДУПРЕЖДЕНИЕ. Товар из магазина, с ценником, перепродавать дороже нельзя: спекуляция. На первый раз — без последствий. Своё продавайте смело. ОБХСС»."
+                                  "ОБХСС предупредил: магазинное с ценником дороже не перепродают. На первый раз простили — подробности в папке, закладка «ОБХСС»")))
+                   (from-shop (note-resale) (setf turn (add-deeds town -1))
+                              (when (< *heat* *heat-limit*)
+                                (say-all (format nil "Магазинное продали дороже прейскуранта. У ОБХСС на нас сигналов: ~d из ~d" *heat* *heat-limit*))))
                    (needed (setf turn (add-deeds town 1))))))
           (t (set-stock town raw (- (stock town raw) 1))))
     (save-plan)

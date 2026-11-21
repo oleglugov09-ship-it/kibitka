@@ -117,7 +117,12 @@ Pressing the same key again switches it off."
   (when (and (integerp town) (< -1 town 12) (not (logbitp town *pennants*)))
     (setf *pennants* (logior *pennants* (ash 1 town)))
     (show-pennants) (save-wall)
-    (say (format nil "Вымпел города ~a — над окном. Собрано ~d из 12" (town-name town) (logcount *pennants*)))))
+    (say (format nil "Вымпел города ~a — над окном. Собрано ~d из 12" (town-name town) (logcount *pennants*)))
+    (when (and (>= (logcount *pennants*) 2) (not (net-guest-p)) (not (paper-p :order)))        ; two towns have had their parcels: the plan's cargo
+      (when (grant-paper :order
+                         "РАДИОГРАММА. Автобаза № 3 — «Кибитке». Посылки возите исправно — допускаю к госгрузу: ящик по наряду оттуда, где лишнее, туда, где не хватает. Платят больше, чем за посылку. Вывеска у окна — «НАРЯД». Диспетчер Рычагов"
+                         "Радиограмма с автобазы: нас допустили к госгрузу. У окна теперь бывают ящики по наряду — подробности в папке, закладка «НАРЯД»")
+        (setf *first-crate* t)))))
 
 ;;; ------------------------------------------------------------------ camera
 

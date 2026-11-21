@@ -387,14 +387,14 @@ Bus stops come in seventeen kinds — just like on real roads."
 
 Лицензии дают за задания горсовета в Октябрьском (будка «ГОРСОВЕТ: ЗАДАНИЯ»): почтовый рейс, чистый город, альбом области.
 
-Налегке милиция не останавливает. Гружёную углём или авиагрузом кибитку изредка тормозят на трассе и спрашивают лицензию: нет её — штраф. Платят его в участке в Октябрьском; пока не оплатишь, он лежит в папке."
+Налегке милиция не останавливает — если на тебя нет сигналов ОБХСС. Гружёную углём или авиагрузом кибитку изредка тормозят на трассе и спрашивают лицензию: нет её — штраф. Платят его в участке в Октябрьском; пока не оплатишь, он лежит в папке."
   "In this folder: driving licence, trading permit, licences, fines and your current task.
 
 You may trade anything. But coal and air cargo (cranberries from Dalny) without a licence — no more than two of each: that's «for yourself». More is wholesale, and that takes a licence.
 
 Licences are given for town council tasks in Oktyabrsky (the «TOWN COUNCIL: TASKS» booth): mail run, clean town, album of the region.
 
-Travelling light, the militia leaves you alone. A wagon loaded with coal or air cargo is now and then pulled over on the highway and asked for a licence: no licence — a fine. Pay it at the station in Oktyabrsky; until you do, it stays in the folder."
+Travelling light, the militia leaves you alone — unless the inspectors have reports on you. A wagon loaded with coal or air cargo is now and then pulled over on the highway and asked for a licence: no licence — a fine. Pay it at the station in Oktyabrsky; until you do, it stays in the folder."
  "ВДВОЁМ И БОЛЬШЕ"
   "TWO CATS OR MORE"
  "F2 — лобби: открыть свою комнату (водитель) или войти по коду (гость).
@@ -418,6 +418,7 @@ R — бензин, P — доски (на заправке)
 F — фонарик; Shift+F — посветить себе под морду
 I — профиль и одежда
 B — стройка
+N — блокнот: всё, что тебе говорили
 Shift — бегом, пробел — прыжок
 H — спрятать приборы
 U — застрял
@@ -428,7 +429,7 @@ F8 — чит: +5 р., F9 — чит: полный бак
 F11 — полный экран
 Esc — пауза и настройки (клавиши переназначаются)
 
-В папке: G — эта книжка, A и D или стрелки — листать."
+В папке: цифры — закладки бумаг, G — эта книжка, A и D или стрелки — листать."
   "M — map and autopilot (M again — close)
 S — hold the truck
 V — outside / inside view
@@ -438,6 +439,7 @@ R — fuel, P — planks (at a gas station)
 F — flashlight; Shift+F — light up your own face
 I — profile and clothes
 B — build mode
+N — notebook: everything you were told
 Shift — run, Space — jump
 H — hide the HUD
 U — stuck
@@ -448,7 +450,7 @@ Map, checkbox «Cheat: teleport» — a click takes you to any stretch of road
 F11 — fullscreen
 Esc — pause and settings (keys can be rebound)
 
-In the folder: G — this booklet, A and D or arrows — turn pages."
+In the folder: digits — the bookmarks of the papers, G — this booklet, A and D or arrows — turn pages."
  "Радио: передаём концерт по заявкам водителей"
   "Radio: now playing the drivers' request concert"
  "Радио: на рынках молоко берут охотно, блины — ещё охотнее"
@@ -557,8 +559,8 @@ In the folder: G — this booklet, A and D or arrows — turn pages."
   "A parcel with the town council's stamp pays double. The stamp is given in Oktyabrsky, window no. 3."
  "Козинаки: орехи и мёд на сковородку. Орехи растут в лесу осенью."
   "Nut brittle: nuts and honey on the pan. Nuts grow in a wood in autumn."
- "Совет шофёра: ночью включи свет в кибитке — с дороги видно, что лавка открыта."
-  "A driver's tip: at night switch the light on in the wagon — from the road they see the shop is open."
+ "Совет шофёра: бумаги держи в папке под картой. Что кому должен и что тебе положено — всё там."
+  "A driver's tip: keep your papers in the folder under the map. What you owe and what you are due — it is all there."
  "Загадка: сидит дед, во сто шуб одет. Ответ на завтрашнем листке: лук."
   "A riddle: an old man sits in a hundred coats. The answer is on tomorrow's leaf: an onion."
  "Компот из сухофруктов: сушёные яблоки в чайник с водой. Греет вдвое лучше чая."
@@ -908,8 +910,8 @@ In the folder: G — this booklet, A and D or arrows — turn pages."
   "cashier Klavdia Petrovna"
  "Половину погасили. Отец ваш и трети не внёс"
   "Half is paid off. Your father did not bring in a third"
- "На счёте у вас много, а наличных не выдам: лимит кассы"
-  "There is a lot on your account, but I will not give cash: the till limit"
+ "На счёте у вас много. Зарплату выдаю раз в неделю, в боковую дверь — весь счёт на руки"
+  "There is a lot on your account. I pay the wage once a week, at the side door — the whole account in cash"
  "Со счёта спишу сразу. Наличные пересчитаю дважды. Следующий!"
   "From the account I take it at once. Cash I count twice. Next!"
  "Безналичные и наличные — это разные деньги. На одни покупает завод, на другие — человек"
@@ -1149,10 +1151,10 @@ In the folder: G — this booklet, A and D or arrows — turn pages."
   "All his life father was a fixer — he got the factory what the allocation had not given it. In spring the law on co-operatives came out, and he registered the co-operative «Kibitka»: he leased a lorry from motor depot no. 3 and took a loan at the bank."
  "На складе к двери приколота записка: «Малыш. Дело не пошло. Кооператив и ссуду переписал на тебя — так вышло. Я уехал за границу. Не держи зла»."
   "At the depot a note is pinned to the door: «Kid. The business did not take off. I put the co-operative and the loan in your name — it just came to that. I have gone abroad. Don't think ill of me»."
- "Отец оставил ссуду в {долг} — сберкасса в Заречном принимает её частями: со счёта кооператива и наличными."
-  "Father left a loan of {долг} — the savings bank in Zarechny takes it in parts: from the co-operative's account and in cash."
- "По кольцу двенадцать городов. В одни завезли лишнего, в другие забыли: смотри ведомость над холодильником. Вози наряды, торгуй через окно. Выплатишь — купишь билет и поедешь за отцом."
-  "Twelve towns around the ring. Some were sent too much, others were forgotten: see the supply sheet above the fridge. Carry the plan's cargo, trade through the window. Pay it off, buy the ticket and go after father."
+ "Отец оставил ссуду в {долг} — сберкасса в Заречном принимает её частями."
+  "Father left a loan of {долг} — the savings bank in Zarechny takes it in parts."
+ "По кольцу двенадцать городов. В кузове три посылки: развези их, торгуй через окно. Выплатишь ссуду — купишь билет и поедешь за отцом."
+  "Twelve towns around the ring. Three parcels in the back: deliver them, trade through the window. Pay the loan off — buy a ticket and go after father."
  "КОМИССИОННЫЙ"
   "COMMISSION SHOP"
  "сберкасса: здесь гасят ссуду, а потом берут билет"

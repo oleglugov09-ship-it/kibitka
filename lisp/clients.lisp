@@ -229,12 +229,15 @@ It is near Z, but not on an item of ours and not on one of his own (TAKEN)."
 (defun client-come (kind &key stop town)
   "Bring a client of KIND to the window.
 The driver keeps count; guests are sent a description, see CLIENT-VIEW."
-  (when (and (eq kind :seller) (rationed-goods (trade-town town)) (< (random 1.0) *ration-chance*))
+  (when (and (eq kind :seller) (or *dev* (plusp *talons*))          ; with no coupon in the purse the sign would only puzzle
+             (rationed-goods (trade-town town)) (< (random 1.0) *ration-chance*))
     (setf kind :ration))                                      ; the shop brings what is short here: against a coupon
-  (let* ((story (and (eq kind :sender) (story-sender town)))   ; a sender from a story (istorii.lisp): he has his own addressee
+  (let* ((story (and (eq kind :sender)
+                     (not (and *first-crate* (plan-cargo (trade-town town))))   ; the order has just come: its first crate goes before a story
+                     (story-sender town)))                     ; a sender from a story (istorii.lisp): he has his own addressee
          (regular (and (member kind '(:buyer :seller)) (story-regular town)))     ; a regular: he recognised us and asks
          (camp (and (eq kind :sender) (not story) (camp-open-p) (camp-d) (< (random 1.0) *camp-parcel-chance*)))   ; parents send to the pioneer camp
-         (cargo (and (eq kind :sender) (not story) (not camp) (plan-cargo (trade-town town))))   ; the plan's cargo: a surplus here that is short elsewhere
+         (cargo (and (eq kind :sender) (not story) (not camp) (paper-p :order) (plan-cargo (trade-town town))))   ; the plan's cargo: a surplus here that is short elsewhere
          (person (and (not story) (not regular) (or cargo (not (eq kind :sender)))      ; someone we know by name (people.lisp): a line a day
                       (person-speaks (list :window kind) (trade-town town))))
          (who (and person *person-spoke*))
@@ -393,10 +396,13 @@ Return four values: what he now has in hand, whether that changed, what to say, 
                     (values nil nil "Отдаём с подоконника"))
                    (t (values holding nil (format nil "Он ищет ~a: возьми с полки (ЛКМ) и принеси к окну" (good-name (client-good)))))))
             (holding (values holding nil "Руки заняты — сначала поставь то, что несёшь"))
+            ((and (not sender) (< *money* price) (plusp *credit*))            ; money there is, but on the account
+             (log-event :no-cash :price price :money *money* :credit *credit*)
+             (values nil nil (format nil "Наличных не хватает. Счёт кооператива у окна не берут — наличными его выдают в сберкассе: ~a, дверь «ЗАРПЛАТА»" (town-name 0))))
             ((and (not sender) (< *money* price)) (values nil nil "Денег не хватает. Включи музыку — слушатели накидают"))
             ((and ration (< *talons* 1) (not *dev*))
              (values nil nil "Без талона не отпустят. Талоны даёт горсовет за ящик по наряду, довезённый туда, где его ждут"))
-            (t (cond ((and sender (parcel-good addr)) (incf *credit* (ceiling price 2)))     ; the plan pays by transfer, to the account
+            (t (cond ((and sender (parcel-good addr)) (coop-pay (ceiling price 2)) (setf *first-crate* nil))   ; the plan pays to the account, once there is one
                      (sender (incf *money* (ceiling price 2)))                           ; a sender pays a deposit, half; the rest on delivery
                      (t (decf *money* price) (when (and ration (plusp *talons*)) (decf *talons*))))
                (unless sender (note-trade kind :bought))
@@ -407,9 +413,16 @@ Return four values: what he now has in hand, whether that changed, what to say, 
                (log-event (if sender :parcel-taken :bought) :price price :to addr :money *money* :dist (round *dist*))
                (unless (getf *client* :stall) (client-leave))
                (values (cons kind addr) t
-                       (if sender
-                           (format nil "Взяли посылку в ~a: задаток ~/kiosk-trip::rub/, при вручении ещё ~/kiosk-trip::rub/ Поставь её на полку" (place-name (parcel-town addr)) (ceiling price 2) (delivery-pay))
-                           (format nil "Купили ~a за ~/kiosk-trip::rub/" (good-name kind) price))
+                       (cond
+                         ((and sender (parcel-good addr))
+                          (format nil (if (paper-p :account)
+                                          "Взяли ящик по наряду: ~a, везти в ~a. Задаток ~/kiosk-trip::rub/ — на счёт кооператива. Довезём, пока там не хватает, — премия ~/kiosk-trip::rub/ Поставь его на полку"
+                                          "Взяли ящик по наряду: ~a, везти в ~a. Задаток ~/kiosk-trip::rub/ Довезём, пока там не хватает, — премия ~/kiosk-trip::rub/ Поставь его на полку")
+                                  (good-name (parcel-good addr)) (place-name (parcel-town addr)) (ceiling price 2)
+                                  (* *plan-premium* (standing-factor (parcel-town addr) :premium))))
+                         (sender
+                           (format nil "Взяли посылку в ~a: задаток ~/kiosk-trip::rub/, при вручении ещё ~/kiosk-trip::rub/ Поставь её на полку" (place-name (parcel-town addr)) (ceiling price 2) (delivery-pay)))
+                         (t (format nil "Купили ~a за ~/kiosk-trip::rub/" (good-name kind) price)))
                        (and (not sender) (or ration (<= price (list-price kind))) '(:shop t))))))))   ; at the list price it is the shop's: not for resale
 
 (defun take-from-stall (entry)
@@ -456,7 +469,8 @@ For a guest the deal is made by the driver."
                                             (lambda (spec) (and (sixth spec) (eql (parcel-town (sixth spec)) town))))))))
                (if it
                    (when (<= (decf (getf *client* :reach) delta) 0)       ; reaches out a paw for a second and takes it
-                     (let ((price (if (eq kind :buyer) (good-price (first (car it)) (getf *client* :price)) (delivery-pay))))   ; the recipient pays for the delivery
+                     (let ((price (if (eq kind :buyer) (good-price (first (car it)) (getf *client* :price)) (delivery-pay)))   ; the recipient pays for the delivery
+                           (done nil))                                                       ; what to say about a parcel handed over
                        (when (eq kind :buyer) (note-trade (first (car it)) :sold (spec-prop (car it) :shop)))
                        (when (eq kind :recipient)
                          (award-pennant town) (note-quest :post)
@@ -464,16 +478,30 @@ For a guest the deal is made by the driver."
                        (fly (cdr it) (paws-point (fourth (car it))) :dur .4 :free t)   ; reaches out a paw and takes it
                        (setf *items* (remove it *items*))
                        (if (and (eq kind :recipient) (parcel-good (sixth (car it))))       ; the plan's crate: into the shop, pay to the account
-                           (let ((had *talons*))
-                             (setf price (+ price (deliver-cargo (sixth (car it)))))
-                             (incf *credit* price) (save-plan)
-                             (when (> *talons* had) (say-later (format nil "Горсовет выдал талоны: ~d. Теперь у нас ~d" (- *talons* had) *talons*))))
-                           (incf *money* price))
+                           (let ((had *talons*) (premium (deliver-cargo (sixth (car it)))))
+                             (setf price (+ price premium))
+                             ;; the fourth town on the wall and a crate handed over: from now on the state pays by transfer
+                             (when (and (>= (logcount *pennants*) 4) (not (paper-p :account)))
+                               (grant-paper :account
+                                            "Вместе с накладной получатель протягивает конверт. ИЗВЕЩЕНИЕ сберкассы: кооперативу «Кибитка» открыт расчётный счёт. За госгруз теперь платят не в руки, а переводом. Бензин и ссуда спишутся со счёта сами; наличными его выдают в сберкассе, дверь «ЗАРПЛАТА», раз в неделю."
+                                            "Кооперативу открыли счёт: за ящики по наряду теперь платят переводом. Подробности — в папке, закладка «СЧЁТ»"))
+                             (coop-pay price) (save-plan)
+                             (setf done (cond ((and (plusp premium) (paper-p :account))
+                                               (format nil "Наряд сдан: ~/kiosk-trip::rub/ на счёт кооператива, из них премия ~/kiosk-trip::rub/" price premium))
+                                              ((plusp premium) (format nil "Наряд сдан: +~/kiosk-trip::rub/, из них премия ~/kiosk-trip::rub/" price premium))
+                                              (t (format nil "Наряд сдан: +~/kiosk-trip::rub/ В ~a этого уже хватает — премии нет. Где не хватает — в ведомости над холодильником" price (town-name town)))))
+                             (when (> *talons* had)
+                               (or (grant-paper :talons
+                                                "Секретарь горсовета отрывает от листа талон: «За снабжение. С талоном в магазине отпустят то, чего в городе мало: один в руки, по прейскуранту»."
+                                                "Горсовет выдал талон за ящик, которого ждали. Что с ним делать — в папке, закладка «ТАЛОНЫ»")
+                                   (say-later (format nil "Горсовет выдал талоны: ~d. Теперь у нас ~d" (- *talons* had) *talons*)))))
+                           (progn (incf *money* price)
+                                  (setf done (format nil "Посылка вручена: +~/kiosk-trip::rub/" price))))
                        (settle-items) (refresh-seats) (save-interior)
                        (log-event (if (eq kind :buyer) :sold :delivered) :price price :town town :money *money* :dist (round *dist*))
                        (cond ((eq kind :buyer) (client-leave (format nil "Продали за ~/kiosk-trip::rub/" price)))
                              ((plusp (parcels-for town))
                               (setf (getf *client* :left) 70.0 (getf *client* :reach) 1.2)
-                              (say (format nil "Посылка вручена: +~/kiosk-trip::rub/ В ~a есть ещё — ставь следующую" price (town-name town))))
-                             (t (client-leave (format nil "Посылка вручена: +~/kiosk-trip::rub/ Спасибо!" price))))))
+                              (say (format nil "~a В ~a есть ещё — ставь следующую" done (town-name town))))
+                             (t (client-leave done)))))
                    (setf (getf *client* :reach) 1.2))))))))

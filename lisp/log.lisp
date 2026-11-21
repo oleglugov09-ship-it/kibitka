@@ -79,14 +79,15 @@ Each distinct error text goes to the log only once."
   (object-set *log-http* "timeout" 20.0)
   (node-add-child root *log-http*)
   ;; along the way: two numbers of the world layout; desktop and browser must agree on them (own generator, random.lisp)
-  (log-event :start :web (and (os-has-feature "web") t)
+  (log-event :start :web (and (os-has-feature "web") t) :dev (and *dev* t)
                     :town3 (round (town-stop-d (third *towns*))) :town12 (round (town-stop-d (car (last *towns*))))))
 
 (defun pulse ()
   (log-event :pulse :dist (round *dist*) :speed *speed* :fuel *fuel* :money *money* :planks *planks*
                :parcels (reduce #'+ (mapcar #'cdr (parcels-left))) :items (length *items*)
                :fps (round (object-call (gdext:singleton "Engine") "get_frames_per_second"))
-               :view *view* :role *net-role* :others (length *net-others*) :season *season* :weather *weather*))
+               :view *view* :role *net-role* :others (length *net-others*) :season *season* :weather *weather*
+               :credit *credit* :debt *debt* :shark *shark* :met (shark-met-p) :talons *talons* :heat *heat* :pennants (logcount *pennants*)))
 
 (defun step-log (delta)
   (when (<= (decf *pulse-timer* delta) 0) (setf *pulse-timer* *pulse-every*) (pulse))

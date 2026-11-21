@@ -43,11 +43,8 @@
   "Return the line about the debt for the corner of the screen, or NIL."
   (unless (net-guest-p)
     (format nil "~{~a~^~%~}"
-            (remove nil (list (case *story-stage*
-                                (:owing (format nil "Ссуда в банке: ~/kiosk-trip::rub/" *debt*))
-                                (:free (if (plusp *shark*) "Ссуда выплачена. Остался Аркадий Семёнович" "Долги выплачены. Билет — в сберкассе")))
-                              (and (plusp *shark*) (member *story-stage* '(:owing :free))
-                                   (format nil "Аркадию Семёновичу: ~/kiosk-trip::rub/, растёт" *shark*)))))))
+            (remove nil (list (case *story-stage*                                ; what is owed lives on the papers in the folder
+                                (:free (if (plusp *shark*) "Ссуда выплачена. Остался Аркадий Семёнович" "Долги выплачены. Билет — в сберкассе"))))))))
 
 ;;; ------------------------------------------------------------------ cards over a dark screen
 
@@ -97,7 +94,7 @@
   (setf *story-stage* :owing)
   (save-debt)
   (log-event :intro-seen)
-  (say (format nil "Долг отца: ~/kiosk-trip::rub/ Гасят его в сберкассе — она в городе ~a" *debt* (town-name 0))))
+  (say (format nil "Ссуда отца: ~/kiosk-trip::rub/ Сперва развези посылки. Бумаги — в папке под картой" *debt*)))
 
 ;;; ------------------------------------------------------------------ the savings bank
 
@@ -132,20 +129,40 @@ Return what is left."
                (log-event :debt :paid sum :left (pay-debt sum) :money *money*)
                (if (zerop *debt*)
                    (say-all "Долг закрыт! Кассирша ставит штамп «ПОГАШЕНО». Теперь в этом окне продают билет к отцу — E, когда будете готовы")
-                   (say (format nil "Внесли ~/kiosk-trip::rub/ Осталось ~/kiosk-trip::rub/" sum *debt*))))))))
+                   (say (format nil "Внесли ~/kiosk-trip::rub/ Осталось ~/kiosk-trip::rub/" sum *debt*)))
+               (when (and (not (shark-met-p)) (paper-p :account))                ; the first payment of a co-operative with an account: the other debt shows itself
+                 (meet-shark "Кассирша вместе с квитанцией протягивает сложенный листок: «Вам просили передать».")))))))
+
+;;; Father's other debt keeps quiet until we have met the man: no percent, nobody at the door at night. We
+;;; meet him at the first payment into the bank made once the co-operative has an account, or the first time
+;;; we press E at his shop. From that day his clock runs (*SHARK-DAY* is NIL until then), and his note of
+;;; hand lies in the folder.
+
+(defun meet-shark (how)
+  "Bring the man's debt into the open: HOW is the sentence about the way his note reached us.
+The driver reads a card, everyone gets a line; the percent and his patience count from today."
+  (unless (or (net-guest-p) (shark-met-p))
+    (setf *shark-day* (today) *shark-paid-day* (today))
+    (save-plan)
+    (grant-paper :iou
+                 (format nil "~a~%~%~a" how
+                         (tr "«Ваш батюшка взял у меня {цеховик} на первый рейс — банк тогда кооперативам не давал. Процент — рубль с сотни в день, только наличными. Три дня не зайдёте — мои люди зайдут сами. Первомайск, комиссионный. А. С.»"))
+                 (format nil "За отцом ещё частный долг: Аркадию Семёновичу, ~/kiosk-trip::rub/ — процент в день, только наличными. Расписка — в папке, закладка «РАСПИСКА»" *shark*))))
 
 ;;; The man father owed sits in the commission shop in the port. At its window his debt is paid, in cash
 ;;; only; at its side door the co-operative's account is turned into cash for his share. If no payment
 ;;; comes for *SHARK-PATIENCE* days, his people call at the wagon at dawn and take the dearest thing on board.
 
 (defun shark-label ()
-  (cond ((<= *shark* 0) "Комиссионный. Аркадий Семёнович: «Мы в расчёте. Отцу привет»")
+  (cond ((not (shark-met-p)) "E — зайти в комиссионный")
+        ((<= *shark* 0) "Комиссионный. Аркадий Семёнович: «Мы в расчёте. Отцу привет»")
         (t (format nil "E — отдать Аркадию Семёновичу наличными ~/kiosk-trip::rub/ · за нами ~/kiosk-trip::rub/, процент в день"
                    (min *money* *shark* *debt-chunk*) *shark*))))
 
 (defun shark-use ()
   "Pay the man in cash: as much as there is, no more than a payment."
   (cond (*actor* (say "Аркадий Семёнович говорит только с тем, на ком долг"))
+        ((not (shark-met-p)) (meet-shark "Человек за прилавком комиссионного молча кладёт перед тобой листок из тетради."))
         ((<= *shark* 0) (say "Аркадий Семёнович: «Мы в расчёте»"))
         ((and (not *dev*) (<= *money* 0)) (say "Аркадий Семёнович берёт только наличными, а их нет. Со счёта обналичат у боковой двери"))
         (t (let ((sum (if *dev* (min *shark* *debt-chunk*) (min *money* *shark* *debt-chunk*))))
@@ -158,13 +175,17 @@ Return what is left."
                           "Аркадий Семёнович пересчитал и убрал тетрадь: «В расчёте. Отцу привет»"))))))
 
 (defun cash-label ()
+  (if (not (paper-p :account))
+      "Боковая дверь комиссионного: заперто"
   (format nil "E — обналичить со счёта: за ~/kiosk-trip::rub/ дадут ~/kiosk-trip::rub/ · на счёте ~/kiosk-trip::rub/"
-          (min *credit* *cash-chunk*) (floor (* *cash-share* (min *credit* *cash-chunk*))) *credit*))
+          (min *credit* *cash-chunk*) (floor (* *cash-share* (min *credit* *cash-chunk*))) *credit*)))
 
 (defshared cash-out :cash ()
   "Turn a part of the co-operative's account into cash, for the man's share."
   (let ((sum (min *credit* *cash-chunk*)))
-    (cond ((<= sum 0) (say "На счёте пусто: его пополняют наряды"))
+    (when (paper-p :account) (meet-shark "У боковой двери комиссионного вместе с деньгами суют листок из тетради."))
+    (cond ((not (paper-p :account)) (say "Дверь заперта. За ней кто-то есть, но не открывают"))
+          ((<= sum 0) (say "На счёте пусто: его пополняют наряды"))
           (t (decf *credit* sum) (incf *money* (floor (* *cash-share* sum)))
              (save-plan)
              (log-event :cash :sum sum :money *money*)
@@ -183,7 +204,7 @@ Return what is left."
       (cond ((or (null *seize-day*) (< day *seize-day*)) (setf *seize-day* day))
             ((> day *seize-day*)
              (setf *seize-day* day)
-             (when (shark-overdue-p day)
+             (when (and (shark-met-p) (shark-overdue-p day))
                (let ((best (first (sort (remove-if-not (lambda (spec) (and (good-p (first spec)) (null (sixth spec)))) (mapcar #'car *items*))
                                         #'> :key (lambda (spec) (good-base (raw-of (first spec))))))))
                  (when best
@@ -191,6 +212,7 @@ Return what is left."
                    (save-interior)
                    (setf *shark* (max 0 (- *shark* (good-base (raw-of (first best))))) *shark-paid-day* day)
                    (save-plan)
+                   (log-event :seized :good (first best) :left *shark*)
                    (say-all (format nil "Ночью заходили люди Аркадия Семёновича: забрали ~a в счёт процентов. Он сидит в комиссионном, в Первомайске"
                                     (good-name (first best))))))))))))
 
@@ -206,13 +228,15 @@ Return what is left."
   (if *wage-day* (max 0 (- (+ *wage-day* *wage-days*) (today))) 0))
 
 (defun wage-label ()
-  (cond ((plusp (wage-wait)) (format nil "Зарплата кооператива: следующая через ~d дн. · на счёте ~/kiosk-trip::rub/" (wage-wait) *credit*))
+  (cond ((not (paper-p :account)) "Дверь «ЗАРПЛАТА»: для кооперативов со счётом в сберкассе")
+        ((plusp (wage-wait)) (format nil "Зарплата кооператива: следующая через ~d дн. · на счёте ~/kiosk-trip::rub/" (wage-wait) *credit*))
         ((<= *credit* 0) "Зарплата кооператива: на счёте пусто, его пополняют наряды")
         (t (format nil "E — получить зарплату: весь счёт на руки, ~/kiosk-trip::rub/ Следующая — через ~d дн." *credit* *wage-days*))))
 
 (defshared take-wage :wage ()
   "Take the whole co-operative's account in cash, once a week."
-  (cond ((plusp (wage-wait)) (say (format nil "Кассирша: «Зарплату выдаём раз в неделю. Приходите через ~d дн.»" (wage-wait))))
+  (cond ((not (paper-p :account)) (say "Кассирша: «Счёта у вашего кооператива нет. Выдавать нечего»"))
+        ((plusp (wage-wait)) (say (format nil "Кассирша: «Зарплату выдаём раз в неделю. Приходите через ~d дн.»" (wage-wait))))
         ((<= *credit* 0) (say "Кассирша: «На счёте кооператива пусто»"))
         (t (let ((sum *credit*))
              (incf *money* sum)

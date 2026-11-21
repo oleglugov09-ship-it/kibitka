@@ -321,6 +321,11 @@ A mod that brings a clash is told to rename the newcomer."
     (dotimes (i (min 60 (- day *shark-day*))) (setf *shark* (ceiling (* *shark* (+ 1 *shark-rate*))))))
   (setf *shark-day* day))
 
+(defun shark-met-p ()
+  "Return true once the man has made himself known (MEET-SHARK, debt.lisp): until then his debt neither grows nor shows.
+On the dev polygon he is known from the start."
+  (and (or *dev* *shark-day*) t))
+
 (defun shark-overdue-p (day) (and (plusp *shark*) (>= (- day *shark-paid-day*) *shark-patience*)))
 
 ;;; ------------------------------------------------------------------ in the game: the day, the save, the guests
@@ -358,7 +363,7 @@ A mod that brings a clash is told to rename the newcomer."
     (unless (eql day *plan-day*)
       (run-plan-to day)
       (when (fboundp 'abroad-day) (funcall 'abroad-day day))              ; abroad: a shipment out, a steamer in
-      (grow-shark day)
+      (when (shark-met-p) (grow-shark day))                               ; his clock starts when we meet him
       (save-plan)
       (when (fboundp 'people-day) (funcall 'people-day)))                 ; a day in the count of those who answer for something
     (when (fboundp 'step-report) (funcall 'step-report))))

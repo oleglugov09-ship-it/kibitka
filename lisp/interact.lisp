@@ -156,7 +156,8 @@ not to the driver."
   "Open the notebook: everything that was said, the newest first."
   (cond ((null *said-log*) (say "В блокноте пока пусто") t)
         ((and (boundp '*show*) (symbol-value '*show*)) nil)
-        (t (funcall 'open-show (notebook-cards) (lambda ())) t)))
+        (t (funcall 'log-event :notebook :n (length *said-log*))
+           (funcall 'open-show (notebook-cards) (lambda ())) t)))
 
 (defun make-hint (root)
   (let ((layer (gdext:make-object "CanvasLayer")) (l (gdext:make-object "Label")))

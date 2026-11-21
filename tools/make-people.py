@@ -51,7 +51,7 @@ person(':shopkeeper',"завмаг Усачёва","shop manager Usachova",6,"(:
   ("Меня спрашивают, куда девается колбаса. А её не привозят","They ask me where the sausage goes. It is simply not delivered"),
   ("Просилась в кооперативное кафе. Сказали: вы слишком честная","I asked to join a co-operative café. They said: you are too honest"),
   ("Взяли всё-таки. Бухгалтером","They took me after all. As the bookkeeper")])
-person(':salesgirl',"продавщица Люся","salesgirl Lyusya",None,"(:window :seller :ration)",[
+person(':salesgirl',"продавщица Люся","salesgirl Lyusya",None,"(:window :ration)",[
  ("(:no-talons)","Ой, ну без талона не могу, хоть ты плачь. Меня же с работы снимут","Oh, without a coupon I just cannot, cry as you may. They would sack me, you know"),
  ("(:talons)","Ой, с талончиком — пожалуйста! Один в руки, не обижайтесь","Oh, with a coupon — you are welcome! One to a customer, no offence"),
  ("(:season :winter)","Очередь с шести утра, на морозе. Я им чай выношу","The queue stands from six in the morning, in the frost. I bring them tea"),
@@ -112,7 +112,7 @@ person(':sergeant',"сержант Усов","sergeant Usov",6,"(:booth 13)",[
 # ---- the bank
 person(':cashier',"кассирша Клавдия Петровна","cashier Klavdia Petrovna",0,"(:booth 14)",[
  ("(:debt-half)","Половину погасили. Отец ваш и трети не внёс","Half is paid off. Your father did not bring in a third"),
- ("(:rich)","На счёте у вас много, а наличных не выдам: лимит кассы","There is a lot on your account, but I will not give cash: the till limit"),
+ ("(:rich)","На счёте у вас много. Зарплату выдаю раз в неделю, в боковую дверь — весь счёт на руки","There is a lot on your account. I pay the wage once a week, at the side door — the whole account in cash"),
  ("(:always)","Со счёта спишу сразу. Наличные пересчитаю дважды. Следующий!","From the account I take it at once. Cash I count twice. Next!")],
  [("Безналичные и наличные — это разные деньги. На одни покупает завод, на другие — человек","Transfers and cash are different money. A factory buys with one, a person with the other"),
   ("У меня весь город на книжках. Знаю, кто копит на «Жигули», а кто на похороны","I have the whole town on savings books. I know who saves for a Zhiguli and who for a funeral"),

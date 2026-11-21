@@ -128,7 +128,7 @@ The forms: (:always), (:short [good]), (:plenty [good]), (:rationed), (:season s
       (:friend (eq (standing town) :friend))
       (:feud (eq (standing town) :feud))
       (:heat (plusp *heat*))
-      (:shark (plusp *shark*))
+      (:shark (and (shark-met-p) (plusp *shark*)))
       (:shark-paid (zerop *shark*))
       (:debt-half (<= *debt* (/ *debt-total* 2)))
       (:talons (plusp *talons*))

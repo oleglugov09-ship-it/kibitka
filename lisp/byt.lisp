@@ -732,9 +732,7 @@ the map."
 
 (defun hud-text ()
   (format nil "~{~a~^~%~}"
-          (remove nil (list (debt-hud)
-                            (and (plusp *credit*) (format nil "На счёте кооператива: ~/kiosk-trip::rub/" *credit*))
-                            (and (plusp *talons*) (format nil "Талоны: ~d" *talons*))
+          (remove nil (list (debt-hud)                                      ; the loan, the account, the coupons: on the papers in the folder
                             (let ((net (net-hud))) (and (plusp (length net)) net))
                             (and *auto* (format nil "Автопилот → ~a · ~,1f км" (cdr *auto*) (/ (max 0 (way-to (car *auto*))) 1000)))))))
 

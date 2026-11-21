@@ -469,12 +469,16 @@ when they are *CITY-AHEAD* away and removed as a whole."
   "Fill up for *FUEL-CHUNK* roubles, or for as much as the money and the room in the tank allow.
 The wallet is shared, so anyone can refuel."
   (when *at-station*
-    (let* ((room (ceiling (* *tank-price* (- 1 *fuel*)))) (pay (min *fuel-chunk* (+ *money* *credit*) room)))
+    (let* ((room (ceiling (* *tank-price* (- 1 *fuel*)))) (pay (min *fuel-chunk* (+ *money* *credit*) room))
+           (from-account nil))                                             ; true if the account paid, wholly or in part
       (cond ((<= room 0) (say "Бак полный"))
             ((<= pay 0) (say "Денег нет. Развези посылки"))
-            (t (pay-by-transfer pay) (setf *fuel* (min 1.0 (+ *fuel* (/ pay *tank-price*))) *fuel-told* nil)
+            (t (setf from-account (and (not *dev*) (plusp (min *credit* pay))))
+               (pay-by-transfer pay) (setf *fuel* (min 1.0 (+ *fuel* (/ pay *tank-price*))) *fuel-told* nil)
                (log-event :fuel :pay pay :fuel *fuel* :money *money* :dist (round *dist*))
-               (say-all (format nil "Залили на ~/kiosk-trip::rub/ Хватит ещё на ~,1f км" pay (* *fuel* *tank-km*)))
+               (say-all (if from-account
+                            (format nil "Залили на ~/kiosk-trip::rub/ — со счёта кооператива. Хватит ещё на ~,1f км" pay (* *fuel* *tank-km*))
+                            (format nil "Залили на ~/kiosk-trip::rub/ Хватит ещё на ~,1f км" pay (* *fuel* *tank-km*))))
                (let ((line (person-speaks :fuel))) (when line (say-later line 5.0))))))))                       ; the dispatcher on the air, a driver at the next pump
 
 (defun buy-fuel () "Buy fuel on R at a gas station; return T if we are at one." (when *at-station* (pour-fuel) t))

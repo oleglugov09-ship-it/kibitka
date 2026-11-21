@@ -22,14 +22,58 @@
 (defvar *officer* nil "The police officer at the window.")
 (defparameter *folder-at* '(1.45 .78 -1.77) "The position of the folder, which hangs under the map to the left of the window.")
 
+;;; The papers of the co-operative. The game starts as a plain game of its kind: parcels, the window, petrol,
+;;; one purse. What is peculiar to this world comes later, a portion at a time, and each portion comes as a
+;;; paper somebody hands us; it then lies in the folder under its own bookmark (guide.lisp), with the rule in
+;;; a few words and the live numbers. The papers we hold are also the state of the game: no order - no crates
+;;; of the plan; no account - everything is paid in cash; no note of hand - the man's debt keeps quiet.
+;;; They are kept in *LICENSES*, which is saved and already travels to the guests.
+
+(defparameter *folder-papers* '(:waybill :loan :order :account :iou :obhss :talons)
+  "The papers of the co-operative, in the order of their bookmarks in the folder.")
+(defvar *papers-new* '() "The papers that came and have not been opened yet: a white corner sticks out of the folder.")
+(defvar *folder-corner* nil "The white corner of a new paper sticking out of the folder on the wall, a node.")
+(defvar *first-crate* nil "True from the day the order came until the first crate is taken: a story's sender does not come before it.")
+
+(defun paper-p (key)
+  "Return true if we hold the paper KEY. On the dev polygon every paper is held."
+  (and (or *dev* (member key *licenses*)) t))
+
+(defun show-folder-corner ()
+  (when *folder-corner* (object-set *folder-corner* "visible" (and *papers-new* t))))
+
+(defun grant-paper (key &optional card line)
+  "Hand the co-operative the paper KEY, once: the driver reads CARD over the screen, everyone on board hears LINE.
+Return true if the paper is new."
+  (unless (or (net-guest-p) (member key *licenses*))
+    (push key *licenses*) (save-papers)
+    (pushnew key *papers-new*) (show-folder-corner)
+    (log-event :paper :key key)
+    (when (and card (boundp '*show*) (not (symbol-value '*show*)))
+      (funcall 'open-show (list (format nil "~a~%~%~a" card (tr "Бумага легла в папку под картой: E по папке."))) (lambda ())))
+    (when line (let ((*actor* nil)) (say-all line)))
+    t))
+
+(defun coop-pay (sum)
+  "Pay SUM for the plan's work: to the account once the co-operative has one, in cash until then."
+  (if (paper-p :account) (incf *credit* sum) (incf *money* sum)))
+
 (defun save-papers () (unless (net-guest-p) (put-save :papers (list *licenses* *fines* *quest*))))
 (defun load-papers ()
-  (let ((f (get-save :papers)))
+  (let ((f (get-save :papers)) (old t))                          ; OLD: the save knows nothing of the co-operative's papers
     (when (fits f '(list list t))
+      (setf old (not (member :waybill (first f))))
       (setf *licenses* (remove-if-not #'keywordp (first f)) *fines* (remove-if-not #'integerp (second f))
-            *quest* (and (consp (third f)) (keywordp (car (third f))) (integerp (cdr (third f))) (third f))))))
+            *quest* (and (consp (third f)) (keywordp (car (third f))) (integerp (cdr (third f))) (third f))))
+    ;; A world from before the papers has no waybill in its save, or no papers saved at all. If the man's clock
+    ;; already runs there (it used to start on the first day), that world has seen everything and holds every
+    ;; paper. A world begun with the papers saves them, the waybill among them, the day it meets the man.
+    (when old
+      (setf *licenses* (union *licenses* (if *shark-day* *folder-papers* '(:waybill :loan)))))))
 (defstate :papers
-  :clear (lambda () (setf *licenses* '() *fines* '() *quest* nil *check* nil *check-in* 420.0))
+  :clear (lambda () (setf *licenses* (list :waybill :loan) *papers-new* '() *first-crate* nil       ; a new trip starts with two papers
+                          *fines* '() *quest* nil *check* nil *check-in* 420.0)
+           (show-folder-corner))
   :load #'load-papers :save #'save-papers :show (lambda () (show-officer nil)))
 
 ;;; ------------------------------------------------------------------ the folder
@@ -76,7 +120,7 @@ Each paper is its own card; a missing one is an empty slot with a dotted outline
       (setf (getf parts :quest-text) (hud-label bg "" 232 240 7 ink)
             (getf parts :fine-text) (hud-label bg "" 482 240 9 '(.5 .1 .08))
             (getf parts :badge) (hud-label bg "" 430 318 7 '(.92 .88 .76)))
-      (hud-label bg "G — путеводитель по игре · E или Esc — убрать папку" 430 344 7 '(.8 .76 .64))
+      (hud-label bg "Цифры — закладки · G — книжка · E или Esc — убрать" 414 344 7 '(.8 .76 .64))
       (setf *docs-panel* parts)
       (make-guide bg))
     (object-set layer "visible" nil)))
@@ -84,6 +128,7 @@ Each paper is its own card; a missing one is an empty slot with a dotted outline
 (defun open-docs ()
   "Lay out the papers: show those we have and fill in the name, the fines and the quest progress."
   (setf *docs-open* t)
+  (log-event :docs)
   (flet ((show (key on) (object-set (getf *docs-panel* key) "visible" (and on t)))
          (text (key s) (object-set (getf *docs-panel* key) "text" s)))
     (text :name *net-name*)
@@ -99,7 +144,9 @@ Each paper is its own card; a missing one is an empty slot with a dotted outline
                 (format nil "«~a»~%~a~%сделано: ~d из ~d~%награда: ~a" title what (min need (cdr *quest*)) need reward))
               (format nil "Заданий нет.~%Доска — у горсовета~%в Октябрьском.")))
     (text :badge (if *badge* "К папке приколот значок «Меткий стрелок»" "")))
-  (object-set (getf *docs-panel* :layer) "visible" t))
+  (object-set (getf *docs-panel* :layer) "visible" t)
+  (funcall 'show-tabs)
+  (when *papers-new* (funcall 'open-paper (first *papers-new*))))             ; a new paper: straight to it
 
 (defun close-docs ()
   (setf *docs-open* nil)
@@ -116,7 +163,9 @@ Each paper is its own card; a missing one is an empty slot with a dotted outline
     (let ((g (group c x (+ *floor* y) z)))
       (shape g :box '(.03 .34 .26) "#6a3a2e" 0 0 0)
       (shape g :box '(.034 .05 .2) "#e8e0d0" 0 .08 0 :shadow nil)
-      (shape g :box '(.036 .36 .02) "#3a2a1e" 0 0 -.12 :shadow nil))))
+      (shape g :box '(.036 .36 .02) "#3a2a1e" 0 0 -.12 :shadow nil)
+      (setf *folder-corner* (shape g :box '(.03 .1 .12) "#f4f0e4" 0 .2 .04 :shadow nil :rot '(.25 0 0)))   ; a new paper sticks out
+      (show-folder-corner))))
 
 ;;; ------------------------------------------------------------------ the police
 

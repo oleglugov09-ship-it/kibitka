@@ -341,6 +341,7 @@ that could be lost. A jar opened and left waits for the same good."
 
 (defun use-sheet ()
   "Read the supply sheets as the co-operative was told them; a guest reads the same ones (the common thing :PLAN)."
+  (log-event :sheet :town (trade-town))
   (open-show (mapcar #'supply-sheet (sheet-towns)) (lambda ())))
 
 (defun home-usables ()

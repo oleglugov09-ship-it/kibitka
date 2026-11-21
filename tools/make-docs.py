@@ -60,14 +60,15 @@ class Scaled:
         real = globals()["font"](max(MIN_FONT, round(size * self.k)), 1)
         self.d.text((round(xy[0] * self.k), round(xy[1] * self.k)), text, font=real, fill=fill)
 
-def paper(w, h, rgb, seed, edge=None, show=None):
-    """Make a W×H sheet in its own units that takes SHOW pixels on the desk: paper texture, worn edges, a double border."""
+def paper(w, h, rgb, seed, edge=None, show=None, grain=1.0):
+    """Make a W×H sheet in its own units that takes SHOW pixels on the desk: paper texture, worn edges, a double border.
+    GRAIN scales the speckle of the paper: a sheet that carries small text written by the game wants almost none."""
     k = (show[0] / w) if show else 1.0
     pw, ph = (show if show else (w, h))
     rng = random.Random(seed); img = Image.new("RGB", (pw, ph), rgb); px = img.load()
     for y in range(ph):
         for x in range(pw):
-            f = rng.uniform(.95, 1.03) * (1 - .10 * (min(x, y, pw - 1 - x, ph - 1 - y) < 1))
+            f = (1 + grain * rng.uniform(-.05, .03)) * (1 - .10 * (min(x, y, pw - 1 - x, ph - 1 - y) < 1))
             px[x, y] = tuple(min(255, int(v * f)) for v in rgb)
     d = Scaled(ImageDraw.Draw(img), k); edge = edge or tuple(int(v * .5) for v in rgb)
     d.rectangle([4, 4, w - 5, h - 5], outline=edge)
@@ -165,7 +166,7 @@ def desk():
 
 def guide():
     """Draw an open guidebook: two pages and a fold down the middle."""
-    img, d = paper(600, 340, (226, 216, 190), 11, edge=(150, 120, 80))
+    img, d = paper(600, 340, (226, 216, 190), 11, edge=(150, 120, 80), grain=.08)   # the pages are read: 7-pixel text on them
     for i in range(10):
         v = 150 + i * 7
         d.line([(300 - i, 8), (300 - i, 331)], fill=(v, v - 10, v - 34)); d.line([(300 + i, 8), (300 + i, 331)], fill=(v, v - 10, v - 34))

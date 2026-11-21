@@ -47,6 +47,9 @@ The Crossroads is in the middle and north (-z) is at the top."
                               :fuel (let ((c (lobby-control "CheckBox" bg 400 22 118 18 "К ближайшей АЗС")))
                                       (object-call c "add_theme_font_size_override" "font_size" 7)
                                       c)
+                              :bank (let ((c (lobby-control "CheckBox" bg 186 22 100 18 "К сберкассе")))
+                                      (object-call c "add_theme_font_size_override" "font_size" 7)
+                                      c)
                               :tp (let ((c (lobby-control "CheckBox" bg 290 22 106 18 "Чит: телепорт")))
                                     (object-call c "add_theme_font_size_override" "font_size" 7)
                                     c)
@@ -125,6 +128,7 @@ This is a cheat. Return T if the wagon was moved."
 (defun open-map ()
   (setf *map-open* t *map-key* t)
   (object-set (getf *map-parts* :fuel) "button_pressed" (and *auto* (equal (cdr *auto*) "ближайшая АЗС") t))
+  (object-set (getf *map-parts* :bank) "button_pressed" (and *auto* (equal (cdr *auto*) "сберкасса") t))
   (object-set *map* "visible" t)
   (show-map)
   (input-set-mouse-mode 0))
@@ -212,6 +216,10 @@ but there is no room to turn around here, head for the nearest bus stop first an
                (say-all (format nil "Автопилот: едем в ~a, ~,1f км~:[~; — через Перекрёсток~]~:[~; · развернёмся на ближайшей остановке~]"
                             (town-title tw) (/ total 1000) hops later)))))))
 
+(defun bank-d ()
+  "Return the path coordinate of the savings bank (booth 14), or NIL."
+  (first (find 14 *gimmicks* :key #'second)))
+
 (defun step-map ()
   (when *map-open*
     (let ((down (some (lambda (a) (object-call (gdext:singleton "Input") "is_action_pressed" (action-name a) nil))
@@ -234,6 +242,19 @@ but there is no room to turn around here, head for the nearest bus stop first an
                            (close-map) (return-from step-map))
                      (t (object-set box "button_pressed" nil) (say "По этой дороге заправок нет")))))
             ((and (not (object-get box "button_pressed")) to-fuel) (setf *auto* nil))))
+    ;; checkbox: to the savings bank, where the loan is paid and the wage is given. A booth answers only with
+    ;; the wagon standing next to it, and the market, where a town's button takes us, is too far from this one
+    (let ((box (getf *map-parts* :bank)) (to-bank (and *auto* (equal (cdr *auto*) "сберкасса"))))
+      (cond ((and (object-get box "button_pressed") (not to-bank) (not (net-guest-p)))
+             (let* ((d (bank-d)) (len (and d (plan-way d (turn-place-p)))))
+               (cond ((and d (< (abs (- d *dist*)) 12))
+                      (object-set box "button_pressed" nil) (say "Мы уже у сберкассы: окно и дверь «ЗАРПЛАТА» — снаружи, E"))
+                     (len (let ((total (set-course d "сберкасса")))
+                            (log-event :auto :town :bank :from (round *dist*) :fuel *fuel*)
+                            (say-all (format nil "Автопилот: к сберкассе, ~a, ~,1f км" (town-name 0) (/ (or total len) 1000))))
+                          (close-map) (return-from step-map))
+                     (t (object-set box "button_pressed" nil) (say "К сберкассе отсюда дороги нет")))))
+            ((and (not (object-get box "button_pressed")) to-bank) (setf *auto* nil))))
     (loop for b in (getf *map-parts* :towns) for tw in *towns*
           do (when (object-get b "button_pressed")
                (object-set b "button_pressed" nil)

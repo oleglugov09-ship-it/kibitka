@@ -508,7 +508,7 @@ for the international session's children are handed to us.")
           ((>= (cdr *camp-fed*) *camp-daily*) (say "Завхоз: «На сегодня столовая сыта. Завтра приезжай»"))
           (t (let ((pay (round (* (if (dish-p kind) 12 6) (list-price (raw-of kind))))))   ; an organisation pays by transfer, on its own scale
                (incf (cdr *camp-fed*))
-               (incf *credit* pay)
+               (coop-pay pay)
                (setf *carry* nil *carry-from* nil)
                (show-carry)
                (let ((turn (add-deeds *rush-town* 1)))                              ; the factory keeps the camp: a deed with its director

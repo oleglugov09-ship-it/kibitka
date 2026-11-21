@@ -83,9 +83,10 @@ PLACE is the rounded path coordinate of the stay.")
 ;;; In hand
 
 (defun carry-name (carry)
-  (if (cdr carry)
-      (format nil "посылку в ~a~@[ (от: ~a)~]" (place-name (parcel-town (cdr carry))) (parcel-from (cdr carry)))
-      (good-name (car carry))))
+  (cond ((and (cdr carry) (parcel-good (cdr carry)))                       ; the plan's crate: it says what is in it
+         (format nil "ящик по наряду (~a) в ~a" (good-name (parcel-good (cdr carry))) (place-name (parcel-town (cdr carry)))))
+        ((cdr carry) (format nil "посылку в ~a~@[ (от: ~a)~]" (place-name (parcel-town (cdr carry))) (parcel-from (cdr carry))))
+        (t (good-name (car carry)))))
 
 (defvar *carry-props* '() "The properties of the thing in the paws, as in its record: see *PROP-KEYS* in goods.lisp.")
 
@@ -346,22 +347,23 @@ driver's, so it returns to the hands, or it would be lost."
 ;;; Intro hints: one step at a time, once the previous message has faded
 
 (defun step-onboard ()
-  (unless (or (net-guest-p) *lobby-open* (>= *onboard* 9) (and *toast* (> (cdr *toast*) 0)))
+  (unless (or (net-guest-p) *lobby-open* (>= *onboard* 9) (and *toast* (> (cdr *toast*) 0))
+              (and (boundp '*show*) (symbol-value '*show*)))                 ; a card is on the screen: a hint under it would be lost
     (let ((market (let ((p (place-here))) (and p (eq (first p) :market) (zerop (third p))))))
       (case *onboard*
         (0 (when (> *time* 2)
              (say "В кузове три посылки и молоко. Бензина — только до рынка в Заречном") (setf *onboard* 1)))
         (1 (say "M — карта: выбери город, грузовик поедет сам. S — остановить. V — вид изнутри") (setf *onboard* 2))
-        (2 (when market
-             (say "Заглохли у рынка. Здесь же заправка: R — бензин на 50 коп.") (setf *onboard* 3)))
+        (2 (when market (setf *onboard* 3)))                               ; the gas station at the market speaks for itself (city.lisp)
         (3 (when market
              (say "V — внутрь. Раздвинь окно: E по стеклу. Колокольчик в проёме зовёт клиентов") (setf *onboard* 4)))
         (4 (when (and market (> *window-k* .9))
              (say "ЛКМ — взять вещь с полки и поставить на подоконник. E — всё остальное") (setf *onboard* 5)))
-        (5 (when (and market (< *money* 5))
-             (say "Денег мало — включи музыку (диск в проигрыватель): слушатели накидают монет") (setf *onboard* 6)))
+        (5 (cond ((and market (< *money* 5))
+                  (say "Денег мало — включи музыку (диск в проигрыватель): слушатели накидают монет") (setf *onboard* 6))
+                 ((not market) (setf *onboard* 6))))                        ; never short of money here: on to the next hint all the same
         (6 (when (> *dist* (+ (town-stop-d (first *towns*)) 60))
-             (say "Куда везти посылки и сколько до городов — на карте у двери") (setf *onboard* 9)))))))
+             (say "Куда везти посылки — на карте у двери. Бумаги кооператива — в папке под картой. N — блокнот: всё, что тебе говорили") (setf *onboard* 9)))))))
 
 ;;; Every frame, and the things within reach
 
@@ -390,7 +392,9 @@ These are the bell in the slid-open window (E) and what the client put on the wi
                                           (format nil "ЛКМ — отдать за ~/kiosk-trip::rub/" (good-price (car *carry*) (getf *client* :price)))
                                           (format nil "Покупатель ищет ~a, даёт ~/kiosk-trip::rub/: возьми с полки (ЛКМ)" (good-name (client-good)) (getf *client* :price))))
                                      (t (if sender
-                                   (format nil "ЛКМ — взять посылку в ~a · платит ~/kiosk-trip::rub/" (town-name (fourth entry)) (getf *client* :price))
+                                   (if (parcel-good (fourth entry))
+                                       (format nil (if (paper-p :account) "ЛКМ — взять ящик по наряду: ~a в ~a · платит ~/kiosk-trip::rub/ на счёт" "ЛКМ — взять ящик по наряду: ~a в ~a · платит ~/kiosk-trip::rub/") (good-name (parcel-good (fourth entry))) (place-name (parcel-town (fourth entry))) (getf *client* :price))
+                                       (format nil "ЛКМ — взять посылку в ~a · платит ~/kiosk-trip::rub/" (place-name (parcel-town (fourth entry))) (getf *client* :price)))
                                    (format nil "ЛКМ — купить ~a за ~/kiosk-trip::rub/ · у тебя ~/kiosk-trip::rub/" (good-name (third entry)) (getf *client* :price) *money*)))))
                              (lambda () (take-from-stall entry))
                              :hand)))))))
