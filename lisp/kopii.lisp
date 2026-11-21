@@ -14,7 +14,9 @@ so a world gone wrong loses at most a day, and the oldest automatic copy is thre
 (defvar *auto-copy-day* nil "The game day of the last automatic copy.")
 (defvar *copy-ui* nil "The panel: (:layer :new button :rows (button ...)).")
 (defvar *copy-armed* nil "The copy clicked once and waiting for the second click: (slot . time).")
-(defvar *copy-list* '() "The copies on disk as (slot unix-time label), the newest first; read when the panel opens.")
+(defvar *copy-list* '() "The copies on disk as (slot unix-time label), the newest first.")
+(defvar *copies-read* nil "True once *COPY-LIST* has been read from the disk in this launch: after that it is kept by hand.")
+(defparameter *copy-index* "user://copies.sexp" "The list of the copies, a small file: so that nobody has to read the copies to list them.")
 
 (defun copy-path (slot) (cl:format nil "user://copy-~d.sexp" slot))
 
@@ -24,7 +26,21 @@ so a world gone wrong loses at most a day, and the oldest automatic copy is thre
     (and (fits f '(t real string t)) (eq (first f) :copy) (list slot (second f) (third f)))))
 
 (defun read-copies ()
-  (setf *copy-list* (sort (loop for i below (+ *copy-slots* *auto-slots*) for c = (copy-info i) when c collect c) #'> :key #'second)))
+  "Learn which copies there are, once a launch: from the index, or, where there is none yet, from the copies themselves.
+A copy is a whole world; reading eleven of them to list them took its time in the middle of a frame."
+  (unless *copies-read*
+    (let ((index (load-form *copy-index*)))
+      (setf *copy-list* (sort (if (fits index '(:each (integer real string)))
+                                  (remove-if-not (lambda (c) (< -1 (first c) (+ *copy-slots* *auto-slots*))) index)
+                                  (loop for i below (+ *copy-slots* *auto-slots*) for c = (copy-info i) when c collect c))
+                              #'> :key #'second)
+            *copies-read* t)
+      (unless index (save-form *copy-index* *copy-list*)))))
+
+(defun note-copy (slot time label)
+  "Remember that SLOT now holds the copy made at TIME and called LABEL, in the list and in the index."
+  (setf *copy-list* (sort (cons (list slot time label) (remove slot *copy-list* :key #'first)) #'> :key #'second))
+  (save-form *copy-index* *copy-list*))
 
 (defun copy-label ()
   "Return what a copy of the world now says about itself: when, which day of the game, money, debt."
@@ -36,16 +52,17 @@ so a world gone wrong loses at most a day, and the oldest automatic copy is thre
   "Copy the world as it is now into the free or the oldest slot; return T on success.
 With AUTO it goes to the slots of automatic copies, and the hand-made ones are left alone."
   (flush-saves)
+  (read-copies)
   (let* ((file (assoc :world *save-files*))
          (sections (loop for (key) in (cddr file) when (gethash key *saves*) collect key and collect (gethash key *saves*)))
          (from (if auto *copy-slots* 0)) (to (+ from (if auto *auto-slots* *copy-slots*)))
          (mine (remove-if-not (lambda (c) (<= from (first c) (1- to))) *copy-list*))
          (slot (or (loop for i from from below to unless (find i mine :key #'first) return i) (first (first (last mine)))))
-         (form (list :copy (object-call (gdext:singleton "Time") "get_unix_time_from_system")
-                     (if auto (format nil "авто · ~a" (copy-label)) (copy-label))
-                     (list :save *save-version* sections))))
+         (time (object-call (gdext:singleton "Time") "get_unix_time_from_system"))
+         (label (if auto (format nil "авто · ~a" (copy-label)) (copy-label)))
+         (form (list :copy time label (list :save *save-version* sections))))
     (when (and (form-reads-back-p form) (save-form (copy-path slot) form))
-      (read-copies)
+      (note-copy slot time label)
       (log-event :copy :slot slot)
       t)))
 
@@ -93,7 +110,6 @@ With AUTO it goes to the slots of automatic copies, and the hand-made ones are l
   (when (and (not (net-guest-p)) *cart* (> *time* 20.0) (not *lobby-open*)
              (not (eql *auto-copy-day* (today))))
     (setf *auto-copy-day* (today))
-    (read-copies)
     (make-copy t)))
 
 (defun step-copies ()

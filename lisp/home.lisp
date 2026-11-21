@@ -16,6 +16,7 @@
 (defvar *weekdays* '() "The names of the days of the week, from mods: seven strings, Monday first.")
 
 (defvar *calendar-day* nil "The day whose leaf is on top of the calendar, or NIL before the first look.")
+(defvar *said-saved* 0 "The value of *SAID-N* when the notebook last went into the save.")
 (defvar *trip-day0* 0 "The game day on which this trip began: the calendar and the diary count the days from it.")
 (defvar *weather-day* nil "The day for which the foretold weather has already been made.")
 (defvar *diary* '() "The trip diary: entries of (day . plist of what happened), the newest first.")
@@ -30,9 +31,8 @@
   "Write the home state. The diary is copied: its pages are changed in place, and a save that shares them
 with the last one written would look unchanged."
   (unless (net-guest-p)
-    ;; What we were told (*SAID-LOG*) is not saved: it would take the world file past four thousand characters
-    ;; within minutes, and a file that long does not always read back (see HANDOFF, the loss of worlds).
-    (put-save :home (list *calendar-day* (copy-tree (subseq *diary* 0 (min 14 (length *diary*)))) *insulation* *jars* *trip-day0*))))
+    (put-save :home (list *calendar-day* (copy-tree (subseq *diary* 0 (min 14 (length *diary*)))) *insulation* *jars* *trip-day0*
+                          (loop for (day . text) in *said-log* collect (list day text))))))        ; what we were told: the diary's other half
 
 (defun clean-page (page)
   "Return the diary page PAGE with only what a page may hold, or NIL if it is not a page at all."
@@ -46,8 +46,11 @@ with the last one written would look unchanged."
 
 (defun load-home ()
   (let ((f (get-save :home)))
-    (when (fits f '((:or integer null) (:each t) (:each t) integer &optional integer))
-      (destructuring-bind (day diary insulation jars &optional (day0 0)) f
+    (when (fits f '((:or integer null) (:each t) (:each t) integer &optional integer (:each t)))
+      (destructuring-bind (day diary insulation jars &optional (day0 0) said) f
+        (setf *said-log* (loop for e in said when (fits e '(integer string)) collect (cons (first e) (second e)))
+              *said-n* (length *said-log*) *said-seen* (length *said-log*)        ; what was there at the last launch has been read
+              *said-saved* (length *said-log*))
         (setf *calendar-day* day
               *diary* (remove nil (mapcar #'clean-page diary))
               *insulation* (intersection '(:window :door) insulation)
@@ -56,6 +59,7 @@ with the last one written would look unchanged."
 
 (defstate :home
   :clear (lambda ()
+           (setf *said-log* '() *said-n* 0 *said-seen* 0)                      ; a new trip: an empty notebook
            (setf *calendar-day* nil *weather-day* nil *diary* '() *insulation* '() *jars* *start-jars* *can* nil
                  *trip-day0* (today)))                                     ; a new trip starts its count of days today
   :load #'load-home :save #'save-home :show (lambda () (show-home)))
@@ -368,6 +372,9 @@ that could be lost. A jar opened and left waits for the same good."
 (defun step-home (delta)
   "Keep the calendar's promises about the weather and turn the seaming key."
   (step-weather-omen)
+  (unless (= *said-n* *said-saved*)                                         ; something new was said: the notebook goes into the save
+    (setf *said-saved* *said-n*)
+    (save-home))
   (unless *calendar-day* (setf *calendar-day* (today)) (show-home))          ; a new trip: the calendar starts at today's leaf
   (when (and *can* (getf *home* :can))
     (setf *can-dip* (max 0.0 (- *can-dip* delta)))
