@@ -19,6 +19,19 @@
 Anything missing from the table (and any non-string) is returned as is."
   (if (and (eq *lang* :en) (stringp text)) (or (gethash text *en*) text) text))
 
+;;; EXT:OCTETS-TO-STRING of this ECL (26.5.5) must not be called: on 4192 characters or more (the size of
+;;; its buffer) it adds a position where it means a count, takes its buffer for full for ever, and grows it
+;;; until the memory is gone. The game froze on it wherever a long text came in as bytes: a save file read
+;;; back, a message from another player. READ-SEQUENCE on the same bytes counts correctly.
+
+(defun utf8-text (octets)
+  "Return the string that the UTF-8 bytes OCTETS, a vector, spell; of any length."
+  (let* ((octets (coerce octets '(simple-array (unsigned-byte 8) (*))))
+         (text (make-string (length octets)))                             ; there are never more characters than bytes
+         (count (read-sequence text (ext:make-sequence-input-stream octets :external-format :utf-8))))
+    (let ((text (if (= count (length text)) text (subseq text 0 count))))
+      (if (every (lambda (c) (typep c 'base-char)) text) (coerce text 'simple-base-string) text))))   ; as the old one did
+
 (defun name-number (symbol range)
   "Return a number below RANGE that depends on the name of SYMBOL alone: the same on every machine, in every
 build, wherever the symbol stands in any list. Things that travel or are saved name a good or a story by it."

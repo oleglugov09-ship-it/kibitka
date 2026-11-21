@@ -222,10 +222,9 @@ It must match between the driver and a guest (tools/smoke.py compares it)."
 (defun hex-text (hex)
   "Return the text decoded from the hex string HEX, or NIL if HEX is not one."
   (when (and (stringp hex) (evenp (length hex)) (every (lambda (c) (digit-char-p c 16)) hex))
-    (ext:octets-to-string (coerce (loop for i from 0 below (length hex) by 2
-                                        collect (parse-integer hex :start i :end (+ i 2) :radix 16))
-                                  '(vector (unsigned-byte 8)))
-                          :external-format :utf-8)))
+    (utf8-text (coerce (loop for i from 0 below (length hex) by 2
+                                     collect (parse-integer hex :start i :end (+ i 2) :radix 16))
+                               '(vector (unsigned-byte 8))))))
 
 (defun run-text (text)
   "Evaluate the forms in TEXT one after another (in the game package).

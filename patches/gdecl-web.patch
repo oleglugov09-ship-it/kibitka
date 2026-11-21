@@ -100,3 +100,27 @@ index c3fed0e..bfe8be9 100644
  
  ;;;
  ;;; Enums
+diff --git a/lisp/types/strings.lisp b/lisp/types/strings.lisp
+index d190430..68840bd 100644
+--- a/lisp/types/strings.lisp
++++ b/lisp/types/strings.lisp
+@@ -9,10 +9,17 @@
+ 
+ (defun read-godot-string (pointer)
+   "The Godot String at POINTER as a Lisp string."
++  ;; Not EXT:OCTETS-TO-STRING: in ECL 26.5.5 it never returns for 4192 characters or more (it adds a position
++  ;; where it means a count and grows its buffer until the memory is gone). READ-SEQUENCE counts correctly.
+   (let* ((length (string-to-utf8-chars pointer (ffi:make-null-pointer :void) 0))
+-         (octets (make-array length :element-type '(unsigned-byte 8))))
++         (octets (make-array length :element-type '(unsigned-byte 8)))
++         (string (make-string length)))                        ; there are never more characters than bytes
+     (string-to-utf8-chars pointer (si:make-foreign-data-from-array octets) length)
+-    (ext:octets-to-string octets :external-format :utf-8)))
++    (let ((count (read-sequence string (ext:make-sequence-input-stream octets :external-format :utf-8))))
++      (let ((string (if (= count length) string (subseq string 0 count))))
++        (if (every (lambda (c) (typep c 'base-char)) string)  ; a base string where one will do, as before
++            (coerce string 'simple-base-string)
++            string)))))
+ 
+ (defun write-godot-string (pointer string)
+   "Construct a Godot String at POINTER, uninitialized memory, from the Lisp

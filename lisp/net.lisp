@@ -197,7 +197,7 @@ NAME is the driver's name for the lobby list."
   "Poll socket WS and return the strings that arrived."
   (object-call ws "poll")
   (loop while (> (object-call ws "get_available_packet_count") 0)
-        collect (or (ignore-errors (ext:octets-to-string (object-call ws "get_packet") :external-format :utf-8)) "")))
+        collect (or (ignore-errors (utf8-text (object-call ws "get_packet"))) "")))
 
 (defun ws-drop ()
   (when *net-ws*
@@ -808,7 +808,7 @@ trouble and waiting at a bus stop."
   "Return environment variable VAR as text: ECL hands out the UTF-8 bytes one by one."
   (let ((raw (ext:getenv var)))
     (when (and raw (plusp (length raw)))
-      (or (ignore-errors (ext:octets-to-string (map '(vector (unsigned-byte 8)) #'char-code raw) :external-format :utf-8))
+      (or (ignore-errors (utf8-text (map '(vector (unsigned-byte 8)) #'char-code raw)))
           raw))))
 
 (defun net-from-env ()

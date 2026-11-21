@@ -308,6 +308,13 @@
   (check "три дня без платежа — просрочка" (and (shark-overdue-p 3) (not (shark-overdue-p 2)))))
 
 (format t "Форма данных~%")
+(check "длинный текст из байтов читается: 4192 знака и больше, русский и латиница"
+       (loop for n in '(0 1 4191 4192 4193 5000 20000)
+             always (loop for sample in (list "a" "ж" "aж—«1 €")
+                          always (let ((text (make-string n)))
+                                   (dotimes (i n) (setf (char text i) (char sample (mod i (length sample)))))
+                                   (equal text (utf8-text (ext:string-to-octets text :external-format :utf-8)))))))
+(check "латиница из байтов остаётся простой строкой" (typep (utf8-text (ext:string-to-octets "save.sexp" :external-format :utf-8)) 'simple-base-string))
 (check "fits: кортеж нужной длины и типов" (and (fits '(1 2.5 "a" :k) '(integer real string keyword)) (not (fits '(1 2) '(integer real string)))))
 (check "fits: не тот тип, не список, точечная пара — нет" (and (not (fits '(1 "x") '(integer integer))) (not (fits 5 '(integer))) (not (fits '(1 . 2) '(integer integer)))))
 (check "fits: необязательный хвост" (and (fits '(1 2) '(t t &optional t t)) (fits '(1 2 3 4) '(t t &optional t t)) (not (fits '(1) '(t t &optional t t))) (not (fits '(1 2 3 4 5) '(t t &optional t t)))))
