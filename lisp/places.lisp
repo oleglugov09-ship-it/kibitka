@@ -32,14 +32,14 @@ They are (offset sideways from the road, pad radius, pad height above the road, 
   "The route sheet, each entry as (stretch from-fraction to-fraction layer kind).")
 (defparameter *chasm-at* '(4 .58) "The stretch and fraction of the bridge over the chasm.")
 (defparameter *chasm-half* 42.0 "Half the width of the chasm along the road, in meters.")
-(defparameter *tunnel-at* '(11 .05 250.0)
-  "The stretch, start fraction and length of the tunnel. It stands at the very start of its stretch: the rest of the
-stretch, to within sight of the next town, is the megastructure it opens into.")
+(defparameter *tunnel-at* '(11 .62 250.0) "The stretch, start fraction and length of the tunnel.")
 (defparameter *swamp-gap* 8 "The stretch with the swamp, which has its own gas station and mosquitoes.")
 
 (defvar *chasm* nil "The path coordinate of the middle of the bridge.")
 (defvar *tunnel* nil "The (from to) path coordinates of the tunnel.")
-(defvar *mega* nil "The (from to) path coordinates of the megastructure the tunnel opens into: the land is gone, the road runs on a trestle.")
+(defvar *mega* nil "The (from to) path coordinates of the tunnel through which the megastructure is entered, or NIL if there is
+none. From outside it is a plain tunnel; the megastructure is another place, shown only to those inside (marks.lisp).")
+(defvar *mega-node* nil "The megastructure as built right now, a node, or NIL while nobody of us is inside.")
 (defvar *swamp* nil "The (from to) path coordinates of the swamp.")
 (defun in-swamp-p (d) (and *swamp* (< (first *swamp*) d (second *swamp*))))
 
@@ -94,7 +94,8 @@ It is called before the land is built."
                                (gap-d (first *chasm-at*) (+ (second *chasm-at*) .1))      ; on a bend of the road it came out crooked
                                (+ *chasm-half* 40.0))
         *tunnel* (let ((d (gap-d (first *tunnel-at*) (second *tunnel-at*)))) (list d (+ d (third *tunnel-at*))))
-        *mega* nil)
+        *mega* nil *mega-node* nil)
+  (when (boundp '*mega-in*) (setf (symbol-value '*mega-in*) nil))
   (reset-segments)
   (flet ((pad (&rest keys) (push (apply #'make-pad keys) *pads*))
          (level (d0 d1 &optional (ramp 90.0))                 ; the road along a pad is level, at the height of its middle
@@ -139,15 +140,7 @@ It is called before the land is built."
       (push (make-scene :d0 (- c h 30) :d1 (+ c h 30) :build (lambda () (build-chasm-bridge c h))) *scenes*))
     ;; the tunnel: mountain on both sides of the road, the road itself in a cut under the vault
     (destructuring-bind (d0 d1) *tunnel*
-      ;; beyond the tunnel the land drops away for good: a trestle through the dark, to within sight of the next town
-      (let* ((next (loop for tw in *towns* when (> (town-start tw) d1) minimize (town-start tw)))
-             (m0 (+ d1 20.0)) (m1 (min (+ d1 1500.0) (- (or next (+ d1 900.0)) 240.0))))
-        (when (> m1 (+ m0 200.0))
-          (setf *mega* (list m0 m1))
-          (level (+ d1 30) (+ m1 40) 60.0)
-          (pad :d0 (+ d1 60) :d1 (- m1 50) :ramp 40.0 :x0 -900.0 :x1 900.0 :m0 300.0 :m1 300.0 :y -240.0)
-          (push (list m0 m1) *decks*) (push (list m0 (+ m1 30)) *bare*)
-          (push (make-scene :d0 m0 :d1 m1 :build (lambda () (build-mega m0 m1))) *scenes*)))
+      (setf *mega* (list d0 d1))                                  ; the megastructure is entered inside it (marks.lisp)
       (level (- d0 30) (+ d1 30) 140.0)
       (pad :d0 d0 :d1 d1 :ramp 34.0 :x0 13.0 :x1 300.0 :m0 3.9 :m1 190.0 :y 40.0)     ; the land is now a grid over the map: the cut is wider than the vault
       (pad :d0 d0 :d1 d1 :ramp 34.0 :x0 -300.0 :x1 -17.0 :m0 190.0 :m1 3.9 :y 40.0)
