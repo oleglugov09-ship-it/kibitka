@@ -10,7 +10,8 @@
 (defparameter *summer-town* 1700.0 "How far ahead the town stands, in metres: always.")
 (defparameter *summer-grass* "#3c7a30")
 
-(defun summer-p () "Return true if the place behind the tunnel is the summer." (eq *mega-world* :summer))
+(defparameter *summer-hours* '(:morning 62.0 :noon 350.0 :storm 470.0 :evening 722.0 :night 960.0)
+  "The hours of the summer day, in the order they come, each with the second of the day cycle its zone is shown at.")
 
 (defun summer-zone (s)
   "Return the number of the summer zone at S metres along the way, and how far through it we are, from 0 to 1."
@@ -188,3 +189,32 @@ the field as one sheet of the same yellow."
     (shape town :cyl '(13.0 13.0 14.0 10) "#dfe4ea" 120.0 215.0 -80.0 :emit "#c9d6e6" :energy .35 :shadow nil)
     (dolist (y '(120.0 215.0 328.0)) (shape town :ball '(3.2 6 4) "#ff3020" 120.0 y -80.0 :emit "#ff2010" :energy 3 :unshaded t :shadow nil))
     town))
+
+;;; The summer as a world (see *WORLDS* in mega.lisp).
+
+(add-zones
+ '(;; flat land, a road that bends a little
+    :morning  (:name "Утро"                 :build zone-morning  :turn 2.0)
+    :noon     (:name "Полдень"              :build zone-noon     :turn 1.5)
+    :storm    (:name "Гроза"                :build zone-storm    :turn 1.5)
+    :evening  (:name "Вечер"                :build zone-evening  :turn 2.0)
+    :night    (:name "Ночь"                 :build zone-night    :turn 2.0)))
+
+(defun summer-zone-kind (z) "Return the kind of the summer's zone number Z: the hours, round and round." (nth (* 2 (mod z (/ (length *summer-hours*) 2))) *summer-hours*))
+
+(defun summer-gloom (s) "Return how dark it is S metres in: the summer is under the sky, and the dark ends with the tunnel." (- 1.0 (sstep 150.0 235.0 s)))
+
+(defun build-summer-parts (g turn entry)
+  "Build what in the summer does not go by: the hill the tunnel comes out of, the land to the horizon and the town ahead."
+  (declare (ignore turn))
+  (shape entry :box '(320.0 34.0 330.0) *summer-grass* -1.8 24.8 -35.0 :shadow nil)
+  (dolist (x '(-88.4 84.8)) (shape entry :box '(160.0 8.0 330.0) *summer-grass* x 3.9 -35.0 :shadow nil))
+  (list :town (build-summer-far g)))
+
+(defun summer-air (s)
+  "Set the air of the summer S metres in: the sky shows the hour of the place and the weather is its own, the clock
+of the game stands still, and the picture is in full colour, not a faded film."
+  (setf *sky-hour* (summer-hour s) *wx-force* (summer-weather s) *haze* 0.0 *fog-inside* nil)
+  (juice (- 1.0 *gloom*)))
+
+(add-world :summer :flag "summer" :kind 'summer-zone-kind :parts 'build-summer-parts :gloom 'summer-gloom :air 'summer-air)

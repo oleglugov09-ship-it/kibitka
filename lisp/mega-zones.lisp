@@ -3,6 +3,165 @@
 
 (in-package #:kiosk-trip)
 
+;;; The megastructure as a world (see *WORLDS* in mega.lisp): its zones, the order they come in, the way down from
+;;; the tunnel, and what does not go by - the wall the tunnel comes out of, the breach the day comes in through,
+;;; the platform, the pen and the crane.
+
+(defparameter *mega-lift* '(6 .45) "The cell at which the platform starts down, and how steeply it goes: metres down per metre forward.")
+
+(defparameter *mega-order* '(:metro :quarry :dam :reactor :factory :pipes :communal :archive :paper :rail :statues :garages :spiral :poles :columns)
+  "The kinds of zones, after the first one. Late-Soviet things grown past all measure: a workshop, a communal
+corridor, a garage co-operative, a heating main, a left-luggage hall, an avenue of busts.")
+
+;;; Of the megastructure's zones besides what every zone has: :HAZE is how much pale light stands there, :SUN how
+;;; strong the day from the breach is against it (.5 unless said), :FOG how thick the air is (the usual murk unless
+;;; said: a great hall is clear from end to end). :HALL says the zone stands in the common hall - a roof, far
+;;; walls, slits of day: T, or :DEEP with a floor far below, or :LAMPS with lamps on that floor too.
+
+(add-zones
+  '(:lift     (:name "Спуск"                :build zone-lift     :haze .5  :sun 1.4 :fog .0009 :bare t)
+    :metro    (:name "Метро"                :build zone-metro    :haze .5  :sun 0.0 :fog .0009)
+    :quarry   (:name "Карьер"               :build zone-quarry   :haze .7  :sun 3.0 :fog .0009 :turn 3.0 :steep .05 :way -1 :down t)
+    :dam      (:name "Плотина"              :build zone-dam      :haze .5  :sun 1.4 :fog .0012 :turn .6 :way 1 :hall t)
+    :reactor  (:name "Энергоблок"           :build zone-reactor  :haze .5  :sun 1.0 :fog .0016 :turn 1.5)
+    :factory  (:name "Конвейер"             :build zone-factory  :haze .5  :turn 1.5)
+    :pipes    (:name "Теплотрасса"          :build zone-pipes    :haze .24 :turn 4.5 :steep .07 :hall :lamps)
+    :communal (:name "Коммуналка"           :build zone-communal :haze .38 :turn 1.0)
+    :archive  (:name "Архив"                :build zone-archive  :haze .34 :turn 2.0)
+    :paper    (:name "Письмо"               :build zone-paper    :haze .55 :turn 4.5)
+    :rail     (:name "Сортировочная"        :build zone-rail     :haze .3  :turn 2.0 :steep .015 :hall :deep)
+    :statues  (:name "Аллея трудовой славы" :build zone-statues  :haze .3  :turn 1.5 :hall t)
+    :garages  (:name "Гаражный кооператив"  :build zone-garages  :haze .3  :turn 5.0 :steep .045 :hall :deep)
+    :spiral   (:name "Пандус"               :build zone-spiral   :haze .12 :turn 6.0 :steep .07 :way 1 :down t)
+    :poles    (:name "Микрорайон на сваях"  :build zone-poles    :haze .3  :turn 4.0 :hall :lamps)
+    :columns  (:name "Вестибюль"            :build zone-columns  :haze .22 :turn 2.5 :hall t)))
+
+(defun mega-zone-kind (z)
+  "Return the kind of the megastructure's zone number Z: the way down first, then the others, the first time round in
+the order they are listed and after that shuffled, never the same twice in a row."
+  (if (<= z 0)
+      :lift
+      (let* ((n (length *mega-order*)) (block (floor (1- z) n)) (pos (mod (1- z) n)))
+        (if (zerop block)
+            (nth pos *mega-order*)
+            (let ((step (loop for s from (1+ (floor (* (1- n) (vr block 4.0)))) when (= 1 (gcd s n)) return s)))
+              (nth (mod (+ (floor (* n (vr block 9.0))) (* pos step)) n) *mega-order*))))))
+
+(defun mega-lift-drop (j)
+  "Return how far cell J goes down without tilting: on the way down from the tunnel the platform we stand on stays level."
+  (and (<= (first *mega-lift*) j (1- *mega-first*)) (* (second *mega-lift*) *mega-cell*)))
+
+(defun build-mega-parts (g turn entry)
+  "Build what in the megastructure does not go by, and return it as a plist."
+  ;; the wall the tunnel comes out of: it goes up and down and to the right out of sight
+  (shape entry :box '(1700.0 600.0 6.0) "#39474d" 800.0 312.0 -197.0 :shadow nil)
+  (shape entry :box '(1700.0 1000.0 6.0) "#39474d" 800.0 -501.0 -197.0 :shadow nil)
+  (shape entry :box '(1600.0 14.0 6.0) "#39474d" 814.0 6.0 -197.0 :shadow nil)
+  ;; The light of the place has a source: far off and high up there is a breach, and the day comes in through it
+  ;; from one side. It hangs in the megastructure's own frame, so as the way turns it swings round us like a sun.
+  (let ((sun (gdext:make-object "DirectionalLight3D")) (pen (group g 0.0 0.0 (- *mega-pen*))) (crane (group g 0.0 0.0 -150.0)) (lift (group g)))
+    (object-set sun "light_color" (hex "#b9d6de")) (object-set sun "light_energy" 0.0) (object-set sun "shadow_enabled" nil)
+    (node-add-child turn sun)
+    (node-3d-set-rotation sun (v3 -.36 .85 0))                 ; low: it rakes the sides of things and hardly touches the floors
+    (shape turn :ball '(70.0 12 8) "#cfe6ee" -430.0 240.0 -380.0 :emit "#b9d6de" :energy 2.0 :unshaded t :shadow nil)   ; the breach itself
+    ;; the platform that carries us down from the tunnel: we stand on it and look about
+    (shape lift :box '(22.0 1.2 34.0) "#4a4c50" -1.8 -.72 0.0 :shadow nil)
+    (dolist (x '(-12.6 9.0)) (shape lift :box '(.5 .14 34.0) "#c9a13a" x -.1 0.0 :shadow nil))
+    (dolist (z '(-16.8 16.8)) (shape lift :box '(22.0 .14 .5) "#c9a13a" -1.8 -.1 z :shadow nil))
+    (shape lift :box '(.2 1.1 34.0) "#3a3c40" 9.1 .5 0.0 :shadow nil)
+    (dolist (x '(-12.4 8.8))
+      (dolist (z '(-16.6 16.6))
+        (shape lift :box '(.3 2.4 .3) "#3a3c40" x 1.1 z :shadow nil)
+        (shape lift :box '(.4 .4 .4) "#ff3020" x 2.5 z :emit "#ff2010" :energy 2.5 :shadow nil)))
+    (shape lift :box '(8.0 3.0 20.0) "#3a3c40" -15.0 -2.0 0.0 :shadow nil)
+    ;; the pen that writes our road: its nib on the paper far ahead, the barrel leaning back over us
+    (let ((lean (group pen)))
+      (node-3d-set-rotation lean (v3 .55 .3 0))
+      (shape lean :cyl '(13.0 .5 60.0 12) "#c9a13a" 0 30.0 0 :metal .5 :shadow nil)
+      (shape lean :cyl '(15.0 15.0 620.0 12) "#1a2a6a" 0 370.0 0 :shadow nil)
+      (shape lean :cyl '(16.0 16.0 30.0 12) "#c9a13a" 0 75.0 0 :metal .5 :shadow nil))
+    ;; the crane that sets the road down: a gantry astride it, a container on its ropes
+    (dolist (x '(-46.0 46.0)) (shape crane :box '(7.0 260.0 7.0) "#c9a13a" x 40.0 0 :shadow nil))
+    (shape crane :box '(110.0 9.0 9.0) "#c9a13a" 0 172.0 0 :shadow nil)
+    (shape crane :box '(16.0 10.0 16.0) "#8a6a1e" 0 162.0 0 :shadow nil)
+    (dolist (dz '(-14.0 14.0)) (shape crane :box '(.5 130.0 .5) "#2a2c30" 0 94.0 dz :shadow nil))
+    (dolist (part (list pen crane lift)) (object-set part "visible" nil))
+    (list :sun sun :pen pen :crane crane :lift lift)))
+
+(defun step-mega-parts (parts)
+  "Light the megastructure by its zone, and show the platform, the pen and the crane where they belong."
+  (let* ((c *mega-cell*) (here (mega-kind (floor *mega-s* c))) (there (mega-kind (floor (+ *mega-s* *mega-pen*) c))))
+    (object-set (getf parts :sun) "light_energy" (* (zone here :sun .5) *haze*))
+    (object-set (getf parts :pen) "visible" (and (eq here :paper) (eq there :paper)))
+    (object-set (getf parts :crane) "visible" (and (eq here :rail) (eq there :rail)))
+    (object-set (getf parts :lift) "visible" (and (eq here :lift) (> *mega-s* 196.0)))))
+
+(defun mega-air (s)
+  "Set the air of the megastructure S metres in: the haze and the murk of the zone come on slowly; no sky, no weather."
+  (let* ((kind (mega-kind (floor s *mega-cell*))) (haze (zone kind :haze 0.0)) (fog (zone kind :fog .0047)))
+    (setf *haze* (+ *haze* (* .012 (- haze *haze*)))
+          *fog-inside* (+ (or *fog-inside* fog) (* .012 (- fog (or *fog-inside* fog))))
+          *sky-hour* nil *wx-force* nil)
+    (juice 0.0)))
+
+(add-world :mega :flag "tunnel" :kind 'mega-zone-kind :drop 'mega-lift-drop :parts 'build-mega-parts :step 'step-mega-parts :air 'mega-air)
+
+;;; What the megastructure's zones are built of.
+
+(defun mega-columns (g i lamps)
+  "Put the columns of cell I: two or three of them wherever they happen to stand, thick and thin, some broken off
+short; with LAMPS, a lamp on one."
+  (let ((c *mega-cell*))
+    (flet ((r (k) (vr (+ i 2000.5) (float k))))
+      (dotimes (k (+ 2 (floor (* 2 (r 1)))))
+        (let* ((side (if (< (r (+ 10 k)) .5) -1 1)) (x (* side (+ 18.0 (* 240.0 (r (+ 20 k)) (r (+ 25 k))))))
+               (w (+ 8.0 (* 26.0 (r (+ 30 k)) (r (+ 35 k))))) (z (- (* c (r (+ 40 k))))) (broken (< (r (+ 50 k)) .22))
+               (top (if broken (+ 20.0 (* 110.0 (r (+ 60 k)))) 430.0)))
+          (shape g :box (list w (+ top 260.0) w) (if (< (r (+ 70 k)) .5) "#7c7b76" "#6b6a66") x (/ (- top 260.0) 2) z
+                 :rot (list 0 (* 1.5 (r (+ 80 k))) (if broken (* .12 (- (r (+ 90 k)) .5)) 0)) :shadow nil)
+          (when (and lamps (zerop k))
+            (shape g :box '(.5 1.2 1.6) "#ffcf8a" (- x (* side (+ .3 (/ w 2)))) 7.0 z :emit "#ffb060" :energy 3 :shadow nil)
+            (light g "#ffb866" 1.6 70.0 (- x (* side (+ 8.0 (/ w 2)))) 7.0 z)))))))
+
+(defun mega-ground (g i rgb)
+  "Lay the ground of cell I where a zone is driven over at floor level: not one plane but a strip under the wheels
+and patches on either side, each at its own height, so that the place has ledges, pits and steps."
+  (let* ((c *mega-cell*) (mid (- (/ c 2))))
+    (flet ((r (k) (vr (+ i 3000.5) (float k))))
+      (shape g :box (list 18.0 40.0 c) rgb -1.8 -20.05 mid :shadow nil)                          ; what we drive on
+      (dolist (side '(-1 1))
+        (let* ((b (floor i 3)) (near (+ 30.0 (* 90.0 (vr (+ b (* 7 side)) 31.0))))                 ; the patches hold for three cells
+               (dy1 (nth (floor (* 6 (vr (+ b (* 7 side)) 32.0))) '(-14.0 -6.0 -2.0 0.0 3.0 9.0)))
+               (dy2 (nth (floor (* 6 (vr (+ b (* 7 side)) 33.0))) '(-40.0 -16.0 -5.0 4.0 12.0 30.0))))
+          (shape g :box (list near 60.0 c) rgb (* side (+ 9.0 (/ near 2))) (- dy1 30.0) mid :shadow nil)
+          (unless (< (vr (+ b (* 7 side)) 34.0) .2)                                                  ; and now and then a pit to the level below
+            (shape g :box (list (- 300.0 near) 80.0 c) rgb (* side (+ 9.0 near (/ (- 300.0 near) 2))) (- dy2 40.0) mid :shadow nil))
+          (when (< (r (+ 5 side)) .25)                                                               ; a block left lying
+            (shape g :box (list (+ 3.0 (* 9.0 (r 6))) (+ 2.0 (* 6.0 (r 7))) (+ 3.0 (* 8.0 (r 8)))) rgb
+                   (* side (+ 14.0 (* 40.0 (r 9)))) (+ dy1 2.0) (* (- c) (r 10)) :rot (list 0 (* 3.0 (r 11)) (* .2 (r 12))) :shadow nil)))))))
+
+(defun mega-hall (g i hall)
+  "Put the common hall around cell I: a roof, far walls and piers, the day coming in through slits only. With HALL
+:DEEP or :LAMPS there is a floor far below, and with :LAMPS a lamp or two on it."
+  (let* ((c *mega-cell*) (mid (- (/ c 2))))
+    (flet ((r (k) (vr (+ i 1000.5) (float k))))
+      (shape g :box (list 1200.0 8.0 c) "#161c20" -1.8 470.0 mid :shadow nil)
+      (dolist (x '(-600.0 596.0)) (shape g :box (list 10.0 900.0 c) "#1c2428" x 30.0 mid :shadow nil))
+      (unless (eq hall t) (shape g :box (list 1200.0 6.0 c) "#12171a" -1.8 -420.0 mid :shadow nil))
+      (when (zerop (mod i 3))                                            ; a slit in the roof
+        (shape g :box (list (+ 120.0 (* 300.0 (r 420))) 1.0 4.0) "#cfe6ee" (- (* 800.0 (r 421)) 400.0) 465.0 (* (- c) (r 422))
+               :emit "#b9d6de" :energy 2.2 :unshaded t :shadow nil))
+      (when (zerop (mod i 4))                                            ; and one in a wall
+        (let ((side (if (< (r 430) .5) -1 1)))
+          (shape g :box (list 1.0 (+ 60.0 (* 220.0 (r 431))) 3.0) "#cfe6ee" (* side 594.0) (- (* 500.0 (r 432)) 150.0) (* (- c) (r 433))
+                 :emit "#b9d6de" :energy 2.2 :unshaded t :shadow nil)))
+      (when (eq hall :lamps)
+        (dotimes (k 2)
+          (shape g :box '(2.0 2.0 2.0) "#ffcf8a" (- (* 700.0 (r (+ 440 k))) 350.0) -414.0 (* (- c) (r (+ 450 k))) :emit "#ffb060" :energy 2.5 :unshaded t :shadow nil)))
+      (when (zerop (mod i 3))                                            ; a pier from floor to roof
+        (let ((side (if (< (r 400) .5) -1 1)))
+          (shape g :box (list (+ 30.0 (* 40.0 (r 403))) 900.0 (+ 30.0 (* 40.0 (r 404)))) "#39474d" (* side (+ 300.0 (* 260.0 (r 401)))) 25.0 (* (- c) (r 402)) :shadow nil))))))
+
 (defzone zone-columns                                                        ; the level the old zones began with: a floor on columns, another above
          (mega-ground g i "#5f5e5a")
          (shape g :box (list 520.0 4.0 c) "#4a4946" -1.8 182.0 mid :shadow nil)
