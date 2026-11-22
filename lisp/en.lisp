@@ -1768,4 +1768,6 @@ otherwise the world and messages drift apart."
   "SWITCH OFF THE LIGHT AS YOU LEAVE"
 "ГСК «ЗАРЯ» · СТОРОЖ В БОКСЕ № 1"
   "GARAGE CO-OP «ZARYA» · WATCHMAN IN BOX 1"
+"Двор-колодец"
+  "The well yard"
 ) by #'cddr do (setf (gethash ru *en*) en))
