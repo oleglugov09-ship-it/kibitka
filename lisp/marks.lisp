@@ -313,16 +313,16 @@ FIRST and LAST mark the portals."
 (defparameter *mega-first* 16 "The number of cells in the first zone, the one the tunnel opens into: a short one.")
 (defparameter *mega-names* '(:columns "Вестибюль" :poles "Микрорайон на сваях" :pipes "Теплотрасса" :crater "Пролом"
                              :graves "Камера хранения" :statues "Аллея трудовой славы" :rail "Сортировочная" :spiral "Пандус"
-                             :factory "Цех № 1" :communal "Двор-колодец" :garages "Гаражный кооператив")
+                             :factory "Конвейер" :communal "Коммуналка" :garages "Гаражный кооператив" :archive "Архив" :paper "Письмо")
   "What each kind of zone is called, in the corner of the screen.")
-(defparameter *mega-kinds* '(:poles :factory :pipes :communal :graves :garages :spiral :statues :rail :columns)
+(defparameter *mega-kinds* '(:poles :factory :pipes :communal :archive :garages :spiral :statues :rail :paper :columns)
   "The kinds of zones, after the first one. Late-Soviet things grown past all measure: a workshop, a communal
 corridor, a garage co-operative, a heating main, a left-luggage hall, an avenue of busts.")
 (defvar *mega-parts* nil "The megastructure's moving parts, a plist: :cells (the group the cells hang in) and :entry (the tunnel we came by).")
 (defvar *mega-cells* (make-hash-table) "The cells built right now: a table from a cell's number to its node.")
 (defvar *mega-s* 0.0 "How far we have driven since the old world went out of sight.")
 (defparameter *mega-haze* '(:columns .22 :poles .3 :pipes .24 :graves .2 :crater .3 :statues .3 :rail .3 :spiral .12
-                            :factory .5 :communal .38 :garages .3)
+                            :factory .5 :communal .38 :garages .3 :archive .34 :paper .55)
   "How much haze stands in each kind of zone: in the open ones the far shapes show, the closed ones are dark.")
 
 (defun mega-kind (i)
@@ -347,9 +347,9 @@ corridor, a garage co-operative, a heating main, a left-luggage hall, an avenue 
       (values 0.0 0.0)
       (let* ((kind (mega-kind i)) (b (floor i 8)) (way (vr b 21.0)) (grade (vr b 33.0))
              (turn (ecase kind (:columns 2.5) (:poles 4.0) (:pipes 4.5) (:graves 0.0) (:crater 3.0) (:statues 1.5) (:rail 2.0) (:spiral 6.0)
-                           (:factory 1.5) (:communal 1.0) (:garages 5.0)))
+                           (:factory 1.5) (:communal 1.0) (:garages 5.0) (:archive 2.0) (:paper 4.5)))
              (steep (ecase kind (:columns 0.0) (:poles 0.0) (:pipes .07) (:graves .03) (:crater 0.0) (:statues 0.0) (:rail .015) (:spiral .07)
-                            (:factory 0.0) (:communal 0.0) (:garages .045))))
+                            (:factory 0.0) (:communal 0.0) (:garages .045) (:archive 0.0) (:paper 0.0))))
         (values (* (/ pi 180) turn (cond ((eq kind :spiral) 1) ((< way .3) 0) ((< way .55) 1) ((< way .8) -1) ((< way .9) 2) (t -2)))
                 (atan (* steep (cond ((member kind '(:spiral :graves)) -1) ((< grade .4) 0) ((< grade .7) -1) (t 1))))))))
 
@@ -367,6 +367,32 @@ corridor, a garage co-operative, a heating main, a left-luggage hall, an avenue 
                                       (+ yaw turn) tilt))))))
            (setf *mega-pose-top* (max *mega-pose-top* i))
            (gethash i *mega-poses*))))
+
+;;; The megastructure is at work, and the way is part of the work: a conveyor belt, the inside of a pipe, a shelf
+;;; of an archive, the line a pen is writing ahead of us, containers a crane sets down one by one so that the road
+;;; does not end. What moves is kept by cell in *MEGA-LIVES* as (kind node . numbers) and stepped every frame:
+;;; :ink - a stretch of the line, there only once the pen has passed; :drop - a thing that hangs high far ahead,
+;;; is lowered into place as we come and is lifted away behind; :press - a thing going up and down.
+
+(defvar *mega-lives* (make-hash-table) "A table from a cell's number to what moves in it: a list of (kind node . numbers).")
+(defvar *mega-live-now* '() "What moves in the cell being built right now.")
+(defparameter *mega-pen* 240.0 "How far ahead of us the pen writes, in metres.")
+
+(defun live (kind node &rest numbers) "Record that NODE of the cell being built moves in the manner KIND; return NODE." (push (list* kind node numbers) *mega-live-now*) node)
+
+(defun step-mega-lives ()
+  (let ((c *mega-cell*))
+    (maphash (lambda (i lives)
+               (let ((ahead (- (* i c) *mega-s*)))
+                 (dolist (l lives)
+                   (destructuring-bind (kind node . numbers) l
+                     (ecase kind
+                       (:ink (object-set node "visible" (< ahead *mega-pen*)))
+                       (:drop (destructuring-bind (x y z) numbers                       ; lowered ahead of us, lifted behind
+                                (node-3d-set-position node (v3 x (+ y (cond ((> ahead 130.0) (* 1.1 (- ahead 130.0))) ((< ahead -90.0) (* 1.1 (- -90.0 ahead))) (t 0.0))) z))))
+                       (:press (destructuring-bind (x z y0 y1 period phase) numbers
+                                 (node-3d-set-position node (v3 x (+ y0 (* (- y1 y0) (+ .5 (* .5 (sin (+ phase (/ (* 6.283 *time*) period))))))) z)))))))))
+             *mega-lives*)))
 
 (defun mega-columns (g i lamps)
   "Put the columns of cell I: two or three of them wherever they happen to stand, thick and thin, some broken off
@@ -400,71 +426,18 @@ and patches on either side, each at its own height, so that the place has ledges
             (shape g :box (list (+ 3.0 (* 9.0 (r 6))) (+ 2.0 (* 6.0 (r 7))) (+ 3.0 (* 8.0 (r 8)))) rgb
                    (* side (+ 14.0 (* 40.0 (r 9)))) (+ dy1 2.0) (* (- c) (r 10)) :rot (list 0 (* 3.0 (r 11)) (* .2 (r 12))) :shadow nil)))))))
 
-(defun build-mega-cell (cells i)
-  "Build cell I of the megastructure under CELLS and return its group. Inside it x is to the right, y up, and the
-cell runs from z = 0 back to z = -*MEGA-CELL*."
-  (let* ((c *mega-cell*) (pose (mega-pose i)) (g (group cells (first pose) (second pose) (third pose)))
-         (kind (mega-kind i)) (at (mod i 16)) (mid (- (/ c 2))))
-    (node-3d-set-rotation g (v3 (fifth pose) (fourth pose) 0))
-    (flet ((r (k) (vr (+ i 1000.5) (float k)))                        ; this cell's own dice
-           (floor-slab (w rgb &optional (x -1.8)) (shape g :box (list w 1.0 c) rgb x -.55 mid :shadow nil)))
-      ;; what we drive over is the structure itself, a different thing in every zone
-      (ecase kind
-        (:columns (mega-ground g i "#5f5e5a")
-                  (shape g :box (list 520.0 4.0 c) "#4a4946" -1.8 182.0 mid :shadow nil))                    ; the level above
-        (:poles (shape g :box (list 5.0 .3 c) "#4a4c50" 0.0 -.2 mid :shadow nil)                               ; a hanging gangway
-                (dolist (x '(-2.6 2.6))
-                  (shape g :box (list .3 .5 c) "#3a3c40" x .1 mid :shadow nil)
-                  (shape g :box '(.12 300.0 .12) "#3a3c40" x 150.0 0 :shadow nil)))
-        (:pipes nil)                                                                                         ; the back of a pipe, built below
-        (:graves (floor-slab 250.0 "#1e1f22" -2.0))
-        (:crater (floor-slab 520.0 "#62615d")
-                 (dotimes (k 2)                                                                                ; slabs fallen from above
-                   (shape g :box (list (+ 4.0 (* 9.0 (r (+ 200 k)))) .8 (+ 3.0 (* 6.0 (r (+ 210 k))))) "#55544f"
-                          (* (if (< (r (+ 220 k)) .5) -1 1) (+ 14.0 (* 60.0 (r (+ 230 k))))) .3 (* (- c) (r (+ 240 k)))
-                          :rot (list (* .3 (r (+ 250 k))) (* 3.0 (r (+ 260 k))) (* .25 (r (+ 270 k)))) :shadow nil)))
-        (:statues (mega-ground g i "#8a887f"))
-        (:factory (shape g :box (list 9.0 3.0 c) "#c9a13a" -1.0 -1.55 mid :shadow nil)                       ; the runway of a gantry crane, high over the shop
-                  (dolist (x '(-5.6 3.6)) (shape g :box (list .3 1.0 c) "#8a6a1e" x .5 mid :shadow nil))
-                  (shape g :box '(5.0 110.0 5.0) "#8a6a1e" -1.0 -58.0 0 :shadow nil))
-        (:communal (shape g :box (list 12.0 .8 c) "#6f6e69" -3.0 -.45 mid :shadow nil)                       ; a gallery along the wall of a courtyard
-                   (shape g :box (list .25 1.1 c) "#3a3c40" 3.1 .55 mid :shadow nil))
-        (:garages (shape g :box (list 10.0 1.0 c) "#55524f" -1.0 -.55 mid :shadow nil)                       ; a flyover across the co-operative
-                  (dolist (x '(-6.2 4.2)) (shape g :box (list .3 .9 c) "#4a4c50" x .4 mid :shadow nil))
-                  (shape g :box '(3.0 70.0 3.0) "#5a5a58" -1.0 -36.0 0 :shadow nil))
-        (:garages (floor-slab 520.0 "#4a4844"))
-        (:spiral (floor-slab 17.0 "#5f5e5a" -1.0))                                                           ; a ramp along a wall
-        (:rail (floor-slab 190.0 "#3f3d3a" -40.0)))
-      (unless (member kind '(:graves :spiral :communal :factory))        ; we are indoors: a ceiling, far walls and a bottom, and piers between
-        (shape g :box (list 1200.0 8.0 c) "#161c20" -1.8 470.0 mid :shadow nil)
-        (dolist (x '(-600.0 596.0)) (shape g :box (list 10.0 900.0 c) "#1c2428" x 30.0 mid :shadow nil))
-        (when (member kind '(:pipes :poles :garages :rail)) (shape g :box (list 1200.0 6.0 c) "#12171a" -1.8 -420.0 mid :shadow nil))
-        (when (zerop (mod i 3))                                          ; the day comes in only through slits
-          (shape g :box (list (+ 120.0 (* 300.0 (r 420))) 1.0 4.0) "#cfe6ee" (- (* 800.0 (r 421)) 400.0) 465.0 (* (- c) (r 422))
-                 :emit "#b9d6de" :energy 2.2 :unshaded t :shadow nil))
-        (when (zerop (mod i 4))
-          (let ((side (if (< (r 430) .5) -1 1)))
-            (shape g :box (list 1.0 (+ 60.0 (* 220.0 (r 431))) 3.0) "#cfe6ee" (* side 594.0) (- (* 500.0 (r 432)) 150.0) (* (- c) (r 433))
-                   :emit "#b9d6de" :energy 2.2 :unshaded t :shadow nil)))
-        (when (member kind '(:pipes :poles))                             ; and far below, a lamp or two on the bottom
-          (dotimes (k 2)
-            (shape g :box '(2.0 2.0 2.0) "#ffcf8a" (- (* 700.0 (r (+ 440 k))) 350.0) -414.0 (* (- c) (r (+ 450 k))) :emit "#ffb060" :energy 2.5 :unshaded t :shadow nil)))
-        (when (zerop (mod i 3))
-          (let ((side (if (< (r 400) .5) -1 1)))
-            (shape g :box (list (+ 30.0 (* 40.0 (r 403))) 900.0 (+ 30.0 (* 40.0 (r 404)))) "#39474d" (* side (+ 300.0 (* 260.0 (r 401)))) 25.0 (* (- c) (r 402)) :shadow nil))))
-      (when (= at 8)                                                     ; one of our bus stops every so often, under a lamp
-        (let ((stop (group g *stop-x* 0.0 -20.0)))
-          (shape g :box '(9.0 .5 14.0) "#6f6e69" 8.6 -.3 -20.0 :shadow nil)
-          (build-stop stop (* 7.0 (floor i 16)))
-          (shape g :box '(.14 5.6 .14) "#3a3c40" 5.0 2.8 -15.0 :shadow nil)
-          (shape g :box '(.6 .2 .4) "#ffe2a8" 5.3 5.6 -15.0 :emit "#ffcf8a" :energy 3 :shadow nil)
-          (light g "#ffcf8a" 2.2 26.0 5.6 5.0 -15.0)))
-      ;; Everything here is out of scale with us: a machine is a tower block, a door is seven storeys, a bust's head
-      ;; is a house. Now and then a thing of our own size stands by - a door, a lamp, a whole five-storey house
-      ;; hanging from a crane - so that the eye can measure.
-      (ecase kind
-        (:columns (mega-columns g i (zerop (mod i 6))))                 ; a vestibule on columns; here and there the lamps still burn
-        (:poles                                                          ; panel houses, each on one pole, up and up
+;;; Each kind of zone builds its cell in a function of its own (a single function for all of them grew past what
+;;; the browser build could take). Inside, G is the cell's group, I its number, C its length, MID the z of its
+;;; middle, AT its place in a run of sixteen, and (R k) the cell's own dice.
+
+(defmacro defzone (name &body body)
+  `(defun ,name (g i c mid at)
+     (declare (ignorable g i c mid at))
+     (flet ((r (k) (vr (+ i 1000.5) (float k))))
+       (declare (ignorable (function r)))
+       ,@body)))
+
+(defzone zone-poles                                                          ; panel houses, each on one pole, up and up
          (dotimes (k 3)
            (let* ((side (if (< (r (+ 1 k)) .5) -1 1)) (x (* side (+ 30.0 (* 250.0 (r (+ 3 k))))))
                   (up (+ 14.0 (* 280.0 (r (+ 5 k)) (r (+ 15 k))))) (z (- (* c (r (+ 7 k)))))
@@ -475,9 +448,19 @@ cell runs from z = 0 back to z = -*MEGA-CELL*."
              (when (< (r (+ 11 k)) .45)                                   ; somebody is at home
                (shape h :box '(.3 1.6 2.0) "#ffcf7a" (* side -6.1) 1.5 (- (* 40.0 (r (+ 13 k))) 20.0) :emit "#ffb866" :energy 3 :shadow nil)
                (when (< (abs x) 110.0) (light h "#ffb866" 2.2 46.0 (* side -9.0) 1.5 0.0))))))
-        (:pipes                                                          ; a heating main; the road lies on one of its pipes
-         (shape g :cyl (list 5.6 5.6 c 14) "#d4d6d2" 0.0 -5.62 (- (/ c 2)) :rot (list (/ pi 2) 0 0) :shadow nil)
-         (when (evenp i) (shape g :cyl '(6.5 6.5 1.6 14) "#a9aca8" 0.0 -5.62 0 :rot (list (/ pi 2) 0 0) :shadow nil))
+
+(defzone zone-pipes                                                          ; a heating main; the road lies on one of its pipes
+         (if (< (vr (floor i 8) 77.0) .5)
+             (progn                                                       ; inside the pipe: its wall all round us, plates missing here and there
+               (dotimes (k 10)
+                 (let ((a (* k (/ pi 5))))
+                   (unless (and (< 1 k 9) (< (r (+ 900 k)) .1))
+                     (shape g :box (list 6.2 .5 c) (if (< (r (+ 910 k)) .2) "#6a4a3a" "#8a8f93") (* 9.2 (sin a)) (- 8.9 (* 9.2 (cos a))) mid :rot (list 0 0 a) :shadow nil))))
+               (when (evenp i) (dotimes (k 10) (let ((a (* k (/ pi 5)))) (shape g :box '(6.4 1.4 1.6) "#5a5e60" (* 8.6 (sin a)) (- 8.9 (* 8.6 (cos a))) 0 :rot (list 0 0 a) :shadow nil))))
+               (when (zerop (mod at 4)) (shape g :box '(.6 .3 1.6) "#ffe2a8" 0.0 17.2 mid :emit "#ffcf8a" :energy 3 :shadow nil) (light g "#ffcf8a" 1.6 30.0 0.0 14.0 mid)))
+             (progn                                                       ; on its back
+               (shape g :cyl (list 5.6 5.6 c 14) "#d4d6d2" 0.0 -5.62 (- (/ c 2)) :rot (list (/ pi 2) 0 0) :shadow nil)
+               (when (evenp i) (shape g :cyl '(6.5 6.5 1.6 14) "#a9aca8" 0.0 -5.62 0 :rot (list (/ pi 2) 0 0) :shadow nil))))
          (when (zerop (mod i 3))                                          ; a pipe one could drive a train through
            (let ((rad (+ 22.0 (* 30.0 (r 15)))))
              (shape g :cyl (list rad rad 1400.0 16) (if (< (r 16) .5) "#aeb2ae" "#3a3a3e") -1.8
@@ -494,27 +477,47 @@ cell runs from z = 0 back to z = -*MEGA-CELL*."
                    (t
                     (shape g :cyl (list rad rad 700.0 10) rgb (* (if (< (r (+ 90 k)) .5) -1 1) (+ 60.0 (* 160.0 (r (+ 100 k))))) (* 60.0 (r (+ 110 k))) z
                            :rot (list 0 (* 3.0 (r (+ 120 k))) 1.0) :shadow nil))))))
-        (:graves                                                         ; left luggage: walls of cells as high as the eye goes
-         (dolist (x '(-116.0 112.0))
-           (shape g :box (list 4.0 340.0 c) "#16171a" x 160.0 mid :shadow nil)
-           (loop for y from 2.0 to 320.0 by 28.0 do (shape g :box (list 4.2 .3 c) "#2c2e33" x y mid :shadow nil))
-           (loop for z from 0.0 below c by 21.0 do (shape g :box '(4.2 340.0 .3) "#2c2e33" x 160.0 (- z) :shadow nil)))
-         (dotimes (k 4)                                                   ; the red eyes of cells that are taken
-           (shape g :box '(.4 2.4 2.4) "#ff3020" (if (evenp k) 109.6 -113.6) (+ 9.0 (* 14.0 (floor (* 12 (r (+ 800 k)))))) (* (- c) (r (+ 810 k))) :emit "#ff2010" :energy 2.5 :shadow nil))
-         (when (zerop (mod at 3))
-           (dolist (x '(-108.0 104.0))
-             (shape g :box '(1.2 2.4 4.8) "#fff0c8" x 24.0 -8.0 :emit "#ffe2a8" :energy 3 :shadow nil))
-           (light g "#ffe2a8" 2.0 120.0 80.0 24.0 -8.0))
-         (when (< (r 1) .5)                                               ; one cell pulled out: a drawer the size of a room
-           (shape g :box '(9.0 13.0 10.0) "#3a3c42" (if (< (r 2) .5) -111.0 107.0) (+ 9.0 (* 14.0 (floor (* 4 (r 3))))) (- (* 10.5 (floor (* 4 (r 4))))) :shadow nil)))
-        (:crater                                                         ; a hole through the levels above: the day falls in, and snow lies under it
+
+(defzone zone-archive                                                        ; along a shelf of the archive, between the files
+         (dolist (side '(-1 1))
+           (let ((z 0.0) (k 0))
+             (loop while (< z (- c 3.0))                                  ; files of every thickness, standing close; a gap now and then
+                   do (let* ((w (+ 3.0 (* 9.0 (r (+ 1000 (* 40 side) k))))) (h (+ 46.0 (* 34.0 (r (+ 1100 (* 40 side) k)))))
+                             (x (* side (+ 9.5 26.0))) (lean (if (< (r (+ 1200 (* 40 side) k)) .12) (* .16 (- (r (+ 1300 k)) .5)) 0.0)))
+                        (unless (< (r (+ 1400 (* 40 side) k)) .14)
+                          (shape g :box (list 52.0 h (- w .3)) (nth (floor (* 5 (r (+ 1500 (* 40 side) k)))) '("#8a7458" "#6a5a48" "#55708a" "#7a6a52" "#5a4a3a"))
+                                 x (/ h 2) (- (+ z (/ w 2))) :rot (list lean 0 0) :shadow nil)
+                          (shape g :box (list .3 9.0 (* w .6)) "#e8e0d0" (- x (* side 26.1)) (* h .62) (- (+ z (/ w 2))) :shadow nil))    ; the label on its spine
+                        (incf z w) (incf k)))))
+         (shape g :box (list 130.0 4.0 c) "#5a3e26" -1.0 92.0 mid :shadow nil)                                        ; the shelf above
+         (when (zerop (mod at 8)) (shape g :box '(8.0 96.0 3.0) "#5a3e26" -1.0 44.0 0 :shadow nil))                   ; an upright of the rack, off to the side
+         (when (zerop (mod at 4))                                                                                     ; a lamp under the shelf
+           (shape g :box '(3.0 .5 1.2) "#ffe2a8" -1.0 89.5 mid :emit "#ffcf8a" :energy 3 :shadow nil)
+           (light g "#ffcf8a" 2.4 110.0 -1.0 70.0 mid))
+         (when (= (mod at 8) 3) (sign g "ДЕЛО №" 9.3 30.0 mid :h 5.0 :rgb "#2a2420"))
+         (when (< (r 1) .1)                                                                                           ; a file pulled out and left on the board
+           (shape g :box '(8.0 6.0 30.0) "#7a6a52" (* (if (< (r 2) .5) -1 1) 6.0) 3.0 mid :rot (list 0 (* .5 (- (r 3) .5)) 0) :shadow nil)))
+
+(defzone zone-paper                                                          ; a letter being written: what stands on the desk, far off
+         (when (zerop (mod i 11))
+           (let ((x (* (if (< (r 1) .5) -1 1) (+ 220.0 (* 160.0 (r 2))))))
+             (shape g :cyl '(46.0 60.0 80.0 14) "#1c2a3a" x 40.0 mid :rough .3 :shadow nil)                           ; an inkwell
+             (shape g :cyl '(30.0 30.0 6.0 14) "#0a0f1e" x 82.0 mid :shadow nil)))
+         (when (zerop (mod i 7))                                                                                      ; a pencil lying across the sheet
+           (shape g :cyl '(7.0 7.0 520.0 6) "#c9a13a" (* (if (< (r 3) .5) -1 1) (+ 120.0 (* 200.0 (r 4)))) 7.0 mid :rot (list (/ pi 2) (* 1.2 (- (r 5) .5)) 0) :shadow nil))
+         (when (zerop (mod i 5))                                                                                      ; lines already written, to either side
+           (let ((x (* (if (evenp (floor i 5)) -1 1) (+ 40.0 (* 60.0 (r 6))))))
+             (dotimes (k 6) (shape g :box (list (+ 6.0 (* 14.0 (r (+ 10 k)))) .03 1.2) "#1a2a6a" (+ x (* 24.0 k (if (plusp x) 1 -1))) -.02 (- (* 6.0 (r (+ 20 k)))) :shadow nil)))))
+
+(defzone zone-crater                                                         ; a hole through the levels above: the day falls in, and snow lies under it
          (if (= at 8)
              (progn (shape g :ball '(60.0 14 8) "#e6eaf0" 110.0 -.4 -24.0 :scale '(1.0 .07 1.0) :shadow nil)
                     (shape g :cyl '(110.0 110.0 900.0 20) "#cfd8e6" 110.0 450.0 -24.0 :alpha .05 :unshaded t :shadow nil)
                     (shape g :cyl '(110.0 110.0 1.0 20) "#b9d6de" 110.0 900.0 -24.0 :emit "#b9d6de" :energy 2.5 :unshaded t :shadow nil)
                     (light g "#cfe2ea" 3.4 240.0 100.0 40.0 -22.0) (light g "#cfe2ea" 2.2 90.0 20.0 12.0 -20.0))
              (mega-columns g i nil)))
-        (:statues                                                        ; the avenue of labour glory: busts whose heads are houses
+
+(defzone zone-statues                                                        ; the avenue of labour glory: busts whose heads are houses
          (when (< (r 20) .62)
          (let* ((side (if (< (r 21) .5) -1 1)) (h (+ 20.0 (* 140.0 (r 1) (r 22)))) (x (* side (+ 30.0 (* 150.0 (r 2) (r 23))))))
            (shape g :box (list 24.0 (+ h 80.0) 24.0) "#8a887f" x (- (/ h 2) 40.0) -20.0 :rot (list 0 (* 1.5 (r 24)) 0) :shadow nil)
@@ -529,7 +532,15 @@ cell runs from z = 0 back to z = -*MEGA-CELL*."
                (shape g :box '(120.0 420.0 120.0) "#8a887f" bx 210.0 -10.0 :shadow nil)
                (shape g :box '(100.0 90.0 210.0) "#c9c7be" bx 465.0 -10.0 :shadow nil)
                (shape g :ball '(78.0 16 12) "#c9c7be" bx 590.0 -10.0 :shadow nil))))))
-        (:factory                                                        ; workshop No. 1, crossed on its crane runway: the floor is far below
+
+(defzone zone-factory                                                        ; the conveyor: it carries us through the machines; the shop floor is far below
+         (when (= (mod at 4) 2)                                           ; a press astride the belt: we pass under its head
+           (dolist (x '(-22.0 20.0)) (shape g :box '(12.0 150.0 18.0) "#3f6f73" x 60.0 mid :shadow nil))
+           (shape g :box '(54.0 40.0 18.0) "#3f6f73" -1.0 150.0 mid :shadow nil)
+           (live :press (shape g :box '(28.0 26.0 15.0) "#8a8f93" -1.0 60.0 mid :metal .4 :shadow nil) -1.0 mid 26.0 110.0 (+ 5.0 (* 4.0 (r 580))) (* 6.0 (r 581)))
+           (shape g :box '(.6 1.6 1.6) "#ff3020" -15.7 12.0 mid :emit "#ff2010" :energy 2.5 :shadow nil))
+         (when (= (mod at 4) 0)                                           ; a crate on the belt ahead of us, the size of a house
+           (shape g :box '(9.0 8.0 12.0) "#a8843c" -1.0 4.0 -30.0 :rot (list 0 (* .3 (- (r 582) .5)) 0) :shadow nil))
          (let ((low (group g 0.0 -112.0 0.0)))
            (shape low :box (list 900.0 2.0 c) "#4f4e4a" -1.0 -1.0 mid :shadow nil)                                    ; the shop floor
            (shape low :box (list 3.0 .1 c) "#c9a13a" 40.0 .1 mid :shadow nil)                                         ; a yellow line on it, a road wide
@@ -564,7 +575,29 @@ cell runs from z = 0 back to z = -*MEGA-CELL*."
            (shape g :box '(2.0 44.0 300.0) "#a3262c" 200.0 90.0 mid :shadow nil)
            (sign g (nth (mod (floor i 8) 5) '("СЛАВА ТРУДУ!" "ПЛАН — ЗАКОН" "ПЯТИЛЕТКУ — В ЧЕТЫРЕ ГОДА" "ВЫШЕ ЗНАМЯ СОРЕВНОВАНИЯ" "ЭКОНОМИКА ДОЛЖНА БЫТЬ ЭКОНОМНОЙ"))
                  198.8 90.0 mid :h 20.0 :rgb "#f0ece0")))
-        (:communal                                                       ; the well of a communal house: we go along a gallery, the yard is beside and below
+
+(defzone zone-communal                                                       ; a communal flat without end: its corridor, then a gallery over its yard, then the corridor again
+         (when (< (vr (floor i 12) 78.0) .5)
+           (dolist (x '(-36.0 32.0))
+             (shape g :box (list 2.0 130.0 c) "#6a7a5a" x 65.0 mid :shadow nil)
+             (shape g :box (list 2.2 40.0 c) "#3c5a48" x 20.0 mid :shadow nil))
+           (shape g :box (list 72.0 2.0 c) "#b8ac94" -2.0 131.0 mid :shadow nil)
+           (dolist (side '(-1 1))
+             (let ((x (if (< side 0) -34.8 30.8)) (lit (< (r (+ 600 side)) .35)) (open (< (r (+ 650 side)) .18)))
+               (if open                                                   ; a door standing open: a room beyond, with its own light
+                   (progn (shape g :box '(.6 24.0 10.0) "#16171a" x 12.0 -21.0 :shadow nil)
+                          (shape g :box '(.7 18.0 7.0) "#ffcf7a" (+ x (* side .2)) 11.0 -21.0 :emit "#ffb866" :energy 2.0 :shadow nil)
+                          (light g "#ffb866" 2.0 60.0 (- x (* side 8.0)) 10.0 -21.0))
+                   (shape g :box '(.6 24.0 10.0) "#5a3e26" x 12.0 -21.0 :shadow nil))
+               (shape g :box '(.7 5.0 10.0) (if lit "#ffcf7a" "#2a2c30") x 27.5 -21.0 :emit (and lit "#ffb866") :energy 2.5 :shadow nil)
+               (dotimes (k 4) (shape g :box '(.6 1.4 1.0) "#16171a" x (+ 8.0 (* 2.0 k)) -28.5 :shadow nil))))
+           (shape g :cyl '(.15 .15 40.0 4) "#2a2a2e" -2.0 110.0 mid :shadow nil)
+           (shape g :ball '(2.6 10 8) "#fff0c8" -2.0 88.0 mid :emit "#ffe2a8" :energy 3 :shadow nil)
+           (light g "#ffd9a0" 2.4 120.0 -2.0 84.0 mid)
+           (when (zerop (mod at 3))                                       ; things left in the corridor: a trunk, a bicycle wheel, a basin
+             (shape g :box '(9.0 6.0 14.0) "#5a2a22" (if (< (r 660) .5) -27.0 23.0) 3.0 -34.0 :shadow nil)
+             (shape g :cyl '(8.0 8.0 .6 14) "#8a8f93" (if (< (r 661) .5) -33.6 29.6) 30.0 -8.0 :rot (list 0 0 (/ pi 2)) :shadow nil)))
+         (unless (< (vr (floor i 12) 78.0) .5)
          (shape g :box (list 4.0 700.0 c) "#6a7a5a" -11.0 0.0 mid :shadow nil)                                        ; our wall, storeys up and storeys down
          (loop for z from 4.0 below c by 10.0 for k from 0                                                            ; doors of the flats along the gallery
                do (let ((lit (< (r (+ 600 k)) .35)))
@@ -585,8 +618,9 @@ cell runs from z = 0 back to z = -*MEGA-CELL*."
          (shape g :box (list 196.0 2.0 c) "#3a3a3c" 100.0 -330.0 mid :shadow nil)                                     ; the yard itself, far below
          (when (zerop (mod at 4)) (shape g :box '(2.0 2.0 2.0) "#ffe2a8" 100.0 -322.0 mid :emit "#ffcf8a" :energy 3 :unshaded t :shadow nil))
          (when (= (mod at 8) 5)
-           (sign g "УХОДЯ, ГАСИТЕ СВЕТ" -8.8 3.4 mid :h .5 :rgb "#f0ece0" :yaw (/ pi 2))))
-        (:garages                                                        ; the garage co-operative from a flyover: built by many hands over many years
+           (sign g "УХОДЯ, ГАСИТЕ СВЕТ" -8.8 3.4 mid :h .5 :rgb "#f0ece0" :yaw (/ pi 2)))))
+
+(defzone zone-garages                                                        ; the garage co-operative from a flyover: built by many hands over many years
          (let ((low (group g 0.0 -72.0 0.0)))
            (dolist (side '(-1 1))
              (dotimes (row 6)
@@ -608,7 +642,8 @@ cell runs from z = 0 back to z = -*MEGA-CELL*."
            (when (= (mod at 4) 1)                                                                                                  ; somebody is in: doors ajar, light on the lane
              (shape low :box '(.6 14.0 8.0) "#ffcf7a" (- (* 200.0 (r 770)) 100.0) 8.0 -12.0 :emit "#ffb866" :energy 2.5 :shadow nil)))
          (when (= (mod at 8) 6) (sign g "ГСК «ЗАРЯ» · СТОРОЖ В БОКСЕ № 1" 4.4 2.4 mid :h .6 :rgb "#f0ece0")))
-        (:spiral                                                         ; the ramp: a wall on the left that has no top, nothing on the right
+
+(defzone zone-spiral                                                         ; the ramp: a wall on the left that has no top, nothing on the right
          (shape g :box (list 2.0 600.0 c) "#6b6a66" -10.5 220.0 mid :shadow nil)
          (shape g :box (list .5 1.0 c) "#4a4946" 7.2 .5 mid :shadow nil)
          (dotimes (k 3)                                                   ; far across the shaft, lamps on other ramps
@@ -617,16 +652,101 @@ cell runs from z = 0 back to z = -*MEGA-CELL*."
          (when (zerop (mod at 4))
            (shape g :box '(.3 .5 1.4) "#ffe2a8" -9.3 5.0 mid :emit "#ffcf8a" :energy 3 :shadow nil)
            (light g "#ffcf8a" 1.5 34.0 -7.0 5.0 mid)))
-        (:rail                                                           ; a marshalling yard for trains one could live in
-         (dolist (x '(-58.0 -34.0)) (shape g :box (list 1.6 2.2 c) "#8a8e92" x 1.1 mid :shadow nil))                  ; rails a man high
-         (loop for z from 0.0 below c by 10.5 do (shape g :box '(38.0 1.2 4.0) "#3c2a20" -46.0 .2 (- z) :shadow nil)) ; sleepers
-         (shape g :box '(1.2 90.0 1.2) "#3a3c40" -80.0 45.0 0 :shadow nil)
-         (shape g :box '(26.0 1.6 5.0) "#f4f6ff" -68.0 90.0 0 :emit "#e8f0ff" :energy 3 :shadow nil)
-         (when (evenp i) (light g "#dfe8ff" 2.2 150.0 -60.0 70.0 0))
-         (when (<= 5 at 11)                                               ; a train left standing: each car a block of flats on wheels
-           (shape g :box (list 30.0 46.0 (- c 3.0)) (if (= at 5) "#5a2a22" "#33363a") -46.0 31.0 mid :shadow nil)
-           (shape g :box (list 26.0 6.0 (- c 6.0)) "#1e1f22" -46.0 5.0 mid :shadow nil)
-           (dolist (z '(-8.0 -34.0)) (shape g :cyl '(4.0 4.0 26.0 12) "#16171a" -46.0 4.0 z :rot (list 0 0 (/ pi 2)) :shadow nil))))))
+
+(defzone zone-rail                                                           ; the marshalling yard: a crane sets the containers down ahead of us, and takes them up behind
+         (let ((low (group g 0.0 -84.0 0.0)))
+           (shape low :box (list 900.0 2.0 c) "#33312e" -1.0 -1.0 mid :shadow nil)                                    ; the yard, far below
+           (dolist (x '(-150.0 -126.0 130.0 154.0)) (shape low :box (list 1.6 2.2 c) "#8a8e92" x 1.1 mid :shadow nil))  ; rails
+           (dotimes (k 3)                                                                                             ; stacks of containers, as they were left
+             (let ((x (* (if (< (r (+ 900 k)) .5) -1 1) (+ 22.0 (* 230.0 (r (+ 910 k)) (r (+ 915 k)))))) (n (1+ (floor (* 6 (r (+ 920 k)) (r (+ 925 k)))))))
+               (dotimes (j n)
+                 (shape low :box '(12.0 12.0 40.0) (nth (floor (* 5 (r (+ 930 (* 10 k) j)))) '("#5a2a22" "#3c5a48" "#55708a" "#a8843c" "#6a3a5a"))
+                        (+ x (* 1.4 (- (r (+ 940 (* 10 k) j)) .5))) (+ 6.0 (* 12.0 j)) (- mid (* 4.0 (- (r (+ 950 k)) .5))) :shadow nil))))
+           (when (zerop (mod i 3))
+             (let ((x (- (* 500.0 (r 960)) 250.0)))
+               (shape low :box '(.6 110.0 .6) "#3a3c40" x 55.0 -6.0 :shadow nil)
+               (shape low :box '(8.0 1.0 3.0) "#f4f6ff" x 110.0 -6.0 :emit "#e8f0ff" :energy 3 :shadow nil)
+               (light low "#dfe8ff" 2.2 150.0 x 100.0 -6.0)))))
+
+(defun build-mega-cell (cells i)
+  "Build cell I of the megastructure under CELLS and return its group. Inside it x is to the right, y up, and the
+cell runs from z = 0 back to z = -*MEGA-CELL*."
+  (let* ((c *mega-cell*) (pose (mega-pose i)) (g (group cells (first pose) (second pose) (third pose)))
+         (kind (mega-kind i)) (at (mod i 16)) (mid (- (/ c 2))))
+    (node-3d-set-rotation g (v3 (fifth pose) (fourth pose) 0))
+    (flet ((r (k) (vr (+ i 1000.5) (float k)))                        ; this cell's own dice
+           (floor-slab (w rgb &optional (x -1.8)) (shape g :box (list w 1.0 c) rgb x -.55 mid :shadow nil)))
+      ;; what we drive over is the structure itself, a different thing in every zone
+      (ecase kind
+        (:columns (mega-ground g i "#5f5e5a")
+                  (shape g :box (list 520.0 4.0 c) "#4a4946" -1.8 182.0 mid :shadow nil))                    ; the level above
+        (:poles (shape g :box (list 5.0 .3 c) "#4a4c50" 0.0 -.2 mid :shadow nil)                               ; a hanging gangway
+                (dolist (x '(-2.6 2.6))
+                  (shape g :box (list .3 .5 c) "#3a3c40" x .1 mid :shadow nil)
+                  (shape g :box '(.12 300.0 .12) "#3a3c40" x 150.0 0 :shadow nil)))
+        (:pipes nil)                                                                                         ; a pipe, on it or in it: built below
+        (:archive (floor-slab 62.0 "#8a6a4a" -1.0) (shape g :box (list 62.0 3.0 c) "#5a3e26" -1.0 -2.55 mid :shadow nil))   ; the board of a shelf
+        (:paper (floor-slab 900.0 "#d8d2c0")                                                                 ; a sheet of ruled paper
+                (loop for z from 0.0 below c by 10.5 do (shape g :box '(900.0 .02 .35) "#9fb0c8" -1.8 -.03 (- z) :shadow nil))
+                (shape g :box (list .5 .02 c) "#a3262c" 90.0 -.03 mid :shadow nil)                           ; the margin
+                (live :ink (shape g :box (list 6.0 .04 c) "#1a2a6a" 0.0 -.02 mid :rough .2 :shadow nil)))   ; the line the pen has written: our road
+        (:statues (mega-ground g i "#8a887f"))
+        (:factory (shape g :box (list 13.0 1.2 c) "#1e1f22" -1.0 -.65 mid :shadow nil)                       ; a conveyor belt, and we are on it
+                  (dolist (x '(-8.2 6.2)) (shape g :box (list 1.0 2.4 c) "#c9a13a" x -.6 mid :shadow nil))
+                  (loop for z from 3.0 below c by 14.0 do (shape g :cyl '(1.0 1.0 15.0 8) "#5a5e60" -1.0 -2.3 (- z) :rot (list 0 0 (/ pi 2)) :shadow nil))
+                  (shape g :box '(4.0 110.0 4.0) "#8a6a1e" -1.0 -58.0 0 :shadow nil))
+        (:communal (if (< (vr (floor i 12) 78.0) .5)
+                       (progn (floor-slab 70.0 "#5a3e26" -2.0)                                               ; inside: the floorboards of the corridor
+                              (loop for x from -34.0 to 30.0 by 8.0 do (shape g :box (list .2 .02 c) "#3c2a20" x -.03 mid :shadow nil)))
+                       (progn (shape g :box (list 12.0 .8 c) "#6f6e69" -3.0 -.45 mid :shadow nil)            ; outside: a gallery over the yard
+                              (shape g :box (list .25 1.1 c) "#3a3c40" 3.1 .55 mid :shadow nil))))
+        (:garages (shape g :box (list 10.0 1.0 c) "#55524f" -1.0 -.55 mid :shadow nil)                       ; a flyover across the co-operative
+                  (dolist (x '(-6.2 4.2)) (shape g :box (list .3 .9 c) "#4a4c50" x .4 mid :shadow nil))
+                  (shape g :box '(3.0 70.0 3.0) "#5a5a58" -1.0 -36.0 0 :shadow nil))
+        (:spiral (floor-slab 17.0 "#5f5e5a" -1.0))                                                           ; a ramp along a wall
+        (:rail (live :drop (shape g :box (list 12.0 12.0 (- c .8)) (nth (mod i 5) '("#5a2a22" "#3c5a48" "#55708a" "#a8843c" "#6a3a5a")) 0.0 -6.05 mid :shadow nil)
+                     0.0 -6.05 mid)))                                                                        ; a container set down for us to drive over
+      (unless (member kind '(:graves :spiral :communal :factory :archive :paper))   ; we are indoors: a ceiling, far walls and a bottom, and piers between
+        (shape g :box (list 1200.0 8.0 c) "#161c20" -1.8 470.0 mid :shadow nil)
+        (dolist (x '(-600.0 596.0)) (shape g :box (list 10.0 900.0 c) "#1c2428" x 30.0 mid :shadow nil))
+        (when (member kind '(:pipes :poles :garages :rail)) (shape g :box (list 1200.0 6.0 c) "#12171a" -1.8 -420.0 mid :shadow nil))
+        (when (zerop (mod i 3))                                          ; the day comes in only through slits
+          (shape g :box (list (+ 120.0 (* 300.0 (r 420))) 1.0 4.0) "#cfe6ee" (- (* 800.0 (r 421)) 400.0) 465.0 (* (- c) (r 422))
+                 :emit "#b9d6de" :energy 2.2 :unshaded t :shadow nil))
+        (when (zerop (mod i 4))
+          (let ((side (if (< (r 430) .5) -1 1)))
+            (shape g :box (list 1.0 (+ 60.0 (* 220.0 (r 431))) 3.0) "#cfe6ee" (* side 594.0) (- (* 500.0 (r 432)) 150.0) (* (- c) (r 433))
+                   :emit "#b9d6de" :energy 2.2 :unshaded t :shadow nil)))
+        (when (member kind '(:pipes :poles))                             ; and far below, a lamp or two on the bottom
+          (dotimes (k 2)
+            (shape g :box '(2.0 2.0 2.0) "#ffcf8a" (- (* 700.0 (r (+ 440 k))) 350.0) -414.0 (* (- c) (r (+ 450 k))) :emit "#ffb060" :energy 2.5 :unshaded t :shadow nil)))
+        (when (zerop (mod i 3))
+          (let ((side (if (< (r 400) .5) -1 1)))
+            (shape g :box (list (+ 30.0 (* 40.0 (r 403))) 900.0 (+ 30.0 (* 40.0 (r 404)))) "#39474d" (* side (+ 300.0 (* 260.0 (r 401)))) 25.0 (* (- c) (r 402)) :shadow nil))))
+      (when (= at 8)                                                     ; one of our bus stops every so often, under a lamp
+        (let ((stop (group g *stop-x* 0.0 -20.0)))
+          (shape g :box '(9.0 .5 14.0) "#6f6e69" 8.6 -.3 -20.0 :shadow nil)
+          (build-stop stop (* 7.0 (floor i 16)))
+          (shape g :box '(.14 5.6 .14) "#3a3c40" 5.0 2.8 -15.0 :shadow nil)
+          (shape g :box '(.6 .2 .4) "#ffe2a8" 5.3 5.6 -15.0 :emit "#ffcf8a" :energy 3 :shadow nil)
+          (light g "#ffcf8a" 2.2 26.0 5.6 5.0 -15.0)))
+      ;; Everything here is out of scale with us: a machine is a tower block, a door is seven storeys, a bust's head
+      ;; is a house. Now and then a thing of our own size stands by - a door, a lamp, a whole five-storey house
+      ;; hanging from a crane - so that the eye can measure.
+      (ecase kind
+        (:columns (mega-columns g i (zerop (mod i 6))))
+        (:poles (zone-poles g i c mid at))
+        (:pipes (zone-pipes g i c mid at))
+        (:graves nil)
+        (:archive (zone-archive g i c mid at))
+        (:paper (zone-paper g i c mid at))
+        (:crater (zone-crater g i c mid at))
+        (:statues (zone-statues g i c mid at))
+        (:factory (zone-factory g i c mid at))
+        (:communal (zone-communal g i c mid at))
+        (:garages (zone-garages g i c mid at))
+        (:spiral (zone-spiral g i c mid at))
+        (:rail (zone-rail g i c mid at))))
     g))
 
 (defun build-mega ()
@@ -648,8 +768,21 @@ return its group. The cells themselves are built by STEP-MEGA as the wagon goes.
       (node-add-child turn sun)
       (node-3d-set-rotation sun (v3 -.36 .85 0))                 ; low: it rakes the sides of things and hardly touches the floors
       (shape turn :ball '(70.0 12 8) "#cfe6ee" -430.0 240.0 -380.0 :emit "#b9d6de" :energy 2.0 :unshaded t :shadow nil)   ; the breach itself
-      (clrhash *mega-cells*) (clrhash *mega-poses*)
-      (setf *mega-parts* (list :cells cells :turn turn :tilt tilt :entry entry :sun sun :at nil) *mega-s* 0.0))
+      (let ((pen (group g 0.0 0.0 (- *mega-pen*))) (crane (group g 0.0 0.0 -150.0)))
+        ;; the pen that writes our road: its nib on the paper far ahead, the barrel leaning back over us
+        (let ((lean (group pen)))
+          (node-3d-set-rotation lean (v3 .55 .3 0))
+          (shape lean :cyl '(13.0 .5 60.0 12) "#c9a13a" 0 30.0 0 :metal .5 :shadow nil)
+          (shape lean :cyl '(15.0 15.0 620.0 12) "#1a2a6a" 0 370.0 0 :shadow nil)
+          (shape lean :cyl '(16.0 16.0 30.0 12) "#c9a13a" 0 75.0 0 :metal .5 :shadow nil))
+        ;; the crane that sets the road down: a gantry astride it, a container on its ropes
+        (dolist (x '(-46.0 46.0)) (shape crane :box '(7.0 260.0 7.0) "#c9a13a" x 40.0 0 :shadow nil))
+        (shape crane :box '(110.0 9.0 9.0) "#c9a13a" 0 172.0 0 :shadow nil)
+        (shape crane :box '(16.0 10.0 16.0) "#8a6a1e" 0 162.0 0 :shadow nil)
+        (dolist (dz '(-14.0 14.0)) (shape crane :box '(.5 130.0 .5) "#2a2c30" 0 94.0 dz :shadow nil))
+        (object-set pen "visible" nil) (object-set crane "visible" nil)
+        (clrhash *mega-cells*) (clrhash *mega-poses*) (clrhash *mega-lives*)
+        (setf *mega-parts* (list :cells cells :turn turn :tilt tilt :entry entry :sun sun :pen pen :crane crane :at nil) *mega-s* 0.0)))
     g))
 
 (defun step-mega-cells ()
@@ -663,15 +796,25 @@ return its group. The cells themselves are built by STEP-MEGA as the wagon goes.
         (node-3d-set-rotation (getf *mega-parts* :turn) (v3 0 (- (mix 3)) 0))
         (node-3d-set-position cells (v3 (- (mix 0)) (- (mix 1)) (- (mix 2))))))
     (object-set (getf *mega-parts* :sun) "light_energy" (* .5 *haze*))
+    (let ((here (mega-kind (floor *mega-s* c))) (there (mega-kind (floor (+ *mega-s* *mega-pen*) c))))
+      (object-set (getf *mega-parts* :pen) "visible" (and (eq here :paper) (eq there :paper)))
+      (object-set (getf *mega-parts* :crane) "visible" (and (eq here :rail) (eq there :rail))))
+    (step-mega-lives)
     (unless (eql (getf *mega-parts* :at) (floor *mega-s* c))             ; nothing to do while we stay in one cell and all is built
       (loop for i being the hash-keys of *mega-cells* using (hash-value node)
-            do (unless (<= (1- lo) i (1+ hi)) (node-queue-free node) (remhash i *mega-cells*)))
+            do (unless (<= (1- lo) i (1+ hi)) (node-queue-free node) (remhash i *mega-cells*) (remhash i *mega-lives*)))
       (loop for i from (floor *mega-s* c) to hi                           ; the nearest first
             while (< fresh 2)
-            do (unless (gethash i *mega-cells*) (setf (gethash i *mega-cells*) (build-mega-cell cells i)) (incf fresh)))
+            do (unless (gethash i *mega-cells*)
+                 (let ((*mega-live-now* '()))
+                   (setf (gethash i *mega-cells*) (build-mega-cell cells i) (gethash i *mega-lives*) *mega-live-now*))
+                 (incf fresh)))
       (loop for i from (1- (floor *mega-s* c)) downto lo
             while (< fresh 2)
-            do (unless (gethash i *mega-cells*) (setf (gethash i *mega-cells*) (build-mega-cell cells i)) (incf fresh)))
+            do (unless (gethash i *mega-cells*)
+                 (let ((*mega-live-now* '()))
+                   (setf (gethash i *mega-cells*) (build-mega-cell cells i) (gethash i *mega-lives*) *mega-live-now*))
+                 (incf fresh)))
       (when (zerop fresh) (setf (getf *mega-parts* :at) (floor *mega-s* c))))))
 
 (defvar *mega-in* nil "True while we are in the megastructure: from the moment we drive deep into the tunnel until we back out of it.")
@@ -702,7 +845,7 @@ fuel up, since there is nowhere to fill it."
     (let ((want (if in (getf *mega-haze* (mega-kind (floor *mega-s* *mega-cell*)) 0.0) 0.0)))   ; the haze of the zone comes on slowly
       (setf *haze* (if in (+ *haze* (* .012 (- want *haze*))) 0.0)))
     (cond ((and in (null *mega-node*)) (setf *mega-node* (build-mega)))
-          ((and (not in) *mega-node*) (node-queue-free *mega-node*) (clrhash *mega-cells*) (setf *mega-node* nil *mega-parts* nil)))
+          ((and (not in) *mega-node*) (node-queue-free *mega-node*) (clrhash *mega-cells*) (clrhash *mega-lives*) (setf *mega-node* nil *mega-parts* nil)))
     (when (and in *mega-parts*)
       (step-mega-cells)
       (node-3d-set-position (getf *mega-parts* :entry) (v3 0 0 *mega-s*))
