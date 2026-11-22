@@ -1734,4 +1734,6 @@ otherwise the world and messages drift apart."
   "The idols"
 "Сортировочная"
   "The marshalling yard"
+"Спуск"
+  "The way down"
 ) by #'cddr do (setf (gethash ru *en*) en))

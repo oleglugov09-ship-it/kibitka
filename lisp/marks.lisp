@@ -312,9 +312,9 @@ FIRST and LAST mark the portals."
 (defparameter *mega-zone* 64 "The number of cells in a zone: some five minutes of driving.")
 (defparameter *mega-first* 16 "The number of cells in the first zone, the one the tunnel opens into: a short one.")
 (defparameter *mega-names* '(:columns "Уровень на колоннах" :poles "Дома на столбах" :pipes "Трубы" :crater "Пролом"
-                             :graves "Картотека" :statues "Истуканы" :rail "Сортировочная")
+                             :graves "Картотека" :statues "Истуканы" :rail "Сортировочная" :spiral "Спуск")
   "What each kind of zone is called, in the corner of the screen.")
-(defparameter *mega-kinds* '(:poles :pipes :graves :crater :statues :rail :columns) "The kinds of zones, after the first one.")
+(defparameter *mega-kinds* '(:poles :pipes :graves :crater :spiral :statues :rail :columns) "The kinds of zones, after the first one.")
 (defvar *mega-parts* nil "The megastructure's moving parts, a plist: :cells (the group the cells hang in) and :entry (the tunnel we came by).")
 (defvar *mega-cells* (make-hash-table) "The cells built right now: a table from a cell's number to its node.")
 (defvar *mega-s* 0.0 "How far we have driven since the old world went out of sight.")
@@ -326,6 +326,39 @@ FIRST and LAST mark the portals."
         :columns
         (let* ((n (length *mega-kinds*)) (block (floor (1- z) n)) (pos (mod (1- z) n)))
           (nth (mod (+ (floor (* n (vr block 9.0))) (* pos (1+ (floor (* (1- n) (vr block 4.0)))))) n) *mega-kinds*)))))
+
+;;; The way through the megastructure is not straight. Every cell turns a little and climbs or drops a little
+;;; against the one before, by its number alone; how much depends on the zone: a level on columns only bends, a
+;;; pipe bends and dips, the drawers run dead straight and down, the descent winds down and down to the left.
+;;; A cell's place is the sum of all the turns before it, kept in *MEGA-POSES* as it is first asked for.
+
+(defvar *mega-poses* (make-hash-table) "A table from a cell's number to where it starts and how it lies: (x y z yaw pitch).")
+(defvar *mega-pose-top* 0 "The highest cell whose place is known.")
+
+(defun mega-bend (i)
+  "Return how cell I turns against the one before it, in radians (left is positive), and how steep it is (up is positive)."
+  (if (< i *mega-first*)
+      (values 0.0 0.0)
+      (let* ((kind (mega-kind i)) (b (floor i 8)) (way (vr b 21.0)) (grade (vr b 33.0))
+             (turn (ecase kind (:columns 2.5) (:poles 4.0) (:pipes 4.5) (:graves 0.0) (:crater 3.0) (:statues 1.5) (:rail 2.0) (:spiral 6.0)))
+             (steep (ecase kind (:columns 0.0) (:poles 0.0) (:pipes .07) (:graves .03) (:crater 0.0) (:statues 0.0) (:rail .015) (:spiral .07))))
+        (values (* (/ pi 180) turn (cond ((eq kind :spiral) 1) ((< way .3) 0) ((< way .55) 1) ((< way .8) -1) ((< way .9) 2) (t -2)))
+                (atan (* steep (cond ((member kind '(:spiral :graves)) -1) ((< grade .4) 0) ((< grade .7) -1) (t 1))))))))
+
+(defun mega-pose (i)
+  "Return where cell I starts and how it lies, as (x y z yaw pitch). Cells before the first run straight and level."
+  (cond ((<= i 0) (list 0.0 0.0 (- (* i *mega-cell*)) 0.0 0.0))
+        ((gethash i *mega-poses*))
+        (t (when (zerop (hash-table-count *mega-poses*)) (setf *mega-pose-top* 0 (gethash 0 *mega-poses*) (list 0.0 0.0 0.0 0.0 0.0)))
+           (loop for j from *mega-pose-top* below i                          ; walk on from the last one known
+                 do (destructuring-bind (x y z yaw pitch) (gethash j *mega-poses*)
+                      (multiple-value-bind (turn tilt) (mega-bend (1+ j))
+                        (let ((c *mega-cell*))
+                          (setf (gethash (1+ j) *mega-poses*)
+                                (list (- x (* c (cos pitch) (sin yaw))) (+ y (* c (sin pitch))) (- z (* c (cos pitch) (cos yaw)))
+                                      (+ yaw turn) tilt))))))
+           (setf *mega-pose-top* (max *mega-pose-top* i))
+           (gethash i *mega-poses*))))
 
 (defun mega-columns (g i lamps)
   "Put a row of columns across cell I, every other cell; with LAMPS, a lamp on the two nearest."
@@ -341,7 +374,9 @@ FIRST and LAST mark the portals."
 (defun build-mega-cell (cells i)
   "Build cell I of the megastructure under CELLS and return its group. Inside it x is to the right, y up, and the
 cell runs from z = 0 back to z = -*MEGA-CELL*."
-  (let* ((c *mega-cell*) (g (group cells 0.0 0.0 (- (* i c)))) (kind (mega-kind i)) (at (mod i 16)) (mid (- (/ c 2))))
+  (let* ((c *mega-cell*) (pose (mega-pose i)) (g (group cells (first pose) (second pose) (third pose)))
+         (kind (mega-kind i)) (at (mod i 16)) (mid (- (/ c 2))))
+    (node-3d-set-rotation g (v3 (fifth pose) (fourth pose) 0))
     (flet ((r (k) (vr (+ i 1000.5) (float k)))                        ; this cell's own dice
            (floor-slab (w rgb &optional (x -1.8)) (shape g :box (list w 1.0 c) rgb x -.55 mid :shadow nil)))
       ;; what we drive over is the structure itself, a different thing in every zone
@@ -360,6 +395,7 @@ cell runs from z = 0 back to z = -*MEGA-CELL*."
                           (* (if (< (r (+ 220 k)) .5) -1 1) (+ 14.0 (* 60.0 (r (+ 230 k))))) .3 (* (- c) (r (+ 240 k)))
                           :rot (list (* .3 (r (+ 250 k))) (* 3.0 (r (+ 260 k))) (* .25 (r (+ 270 k)))) :shadow nil)))
         (:statues (floor-slab 520.0 "#8a887f"))
+        (:spiral (floor-slab 17.0 "#5f5e5a" -1.0))                                                           ; a ramp along a wall
         (:rail (floor-slab 44.0 "#3f3d3a" -6.0)))
       (when (= at 8)                                                     ; one of our bus stops every so often, under a lamp
         (let ((stop (group g *stop-x* 0.0 -20.0)))
@@ -424,6 +460,15 @@ cell runs from z = 0 back to z = -*MEGA-CELL*."
              (let ((bx (* (- side) (+ 110.0 (* 80.0 (r 4))))))
                (shape g :box '(18.0 300.0 18.0) "#c9c7be" bx 60.0 -10.0 :shadow nil)
                (dolist (ez '(-4.0 4.0)) (shape g :box '(.6 3.6 2.6) "#1a1a1c" (+ bx (* side 9.2)) 196.0 (+ -10.0 ez) :shadow nil))))))
+        (:spiral                                                         ; the long way down: a wall on the left, nothing on the right
+         (shape g :box (list 1.2 90.0 c) "#6b6a66" -10.0 30.0 mid :shadow nil)
+         (shape g :box (list .5 1.0 c) "#4a4946" 7.2 .5 mid :shadow nil)
+         (dotimes (k 3)                                                   ; far across the shaft, lamps on other ramps
+           (shape g :box '(.9 .9 .9) "#ffcf8a" (+ 120.0 (* 260.0 (r (+ 300 k)))) (- (* 220.0 (r (+ 310 k))) 150.0) (* (- c) (r (+ 320 k)))
+                  :emit "#ffb060" :energy 2.5 :unshaded t :shadow nil))
+         (when (zerop (mod at 4))
+           (shape g :box '(.3 .5 1.4) "#ffe2a8" -9.3 5.0 mid :emit "#ffcf8a" :energy 3 :shadow nil)
+           (light g "#ffcf8a" 1.5 34.0 -7.0 5.0 mid)))
         (:rail                                                           ; a goods railway beside the road, under a row of white lamps
          (dolist (x '(-13.4 -11.6)) (shape g :box (list .16 .2 c) "#8a8e92" x .1 (- (/ c 2)) :shadow nil))
          (shape g :box (list 4.6 .4 c) "#4a4a48" -12.5 -.3 (- (/ c 2)) :shadow nil)
@@ -440,7 +485,7 @@ cell runs from z = 0 back to z = -*MEGA-CELL*."
 (defun build-mega ()
   "Build what holds the megastructure around the wagon, in the wagon's own axes (x to the right, z backwards), and
 return its group. The cells themselves are built by STEP-MEGA as the wagon goes."
-  (let* ((g (group *cart*)) (cells (group g)) (entry (group g)))
+  (let* ((g (group *cart*)) (tilt (group g)) (turn (group tilt)) (cells (group turn)) (entry (group g)))
     ;; the tunnel we came by: its vault goes on over us for a while and is left behind
     (shape entry :box '(.8 7.0 330.0) "#3c3c40" -7.9 3.5 -35.0 :shadow nil)
     (shape entry :box '(.8 7.0 330.0) "#3c3c40" 4.3 3.5 -35.0 :shadow nil)
@@ -450,15 +495,20 @@ return its group. The cells themselves are built by STEP-MEGA as the wagon goes.
     (dolist (x '(-13.0 9.4)) (shape entry :box '(9.0 12.0 1.6) "#9a9890" x 6.0 -200.4 :shadow nil))
     (shape entry :box '(31.4 4.6 1.6) "#9a9890" -1.8 10.0 -200.4 :shadow nil)
     (light g "#ffd9a0" 2.6 120.0 0.0 6.0 -6.0)                    ; our own light: a lantern over the wagon, so what is near is seen all round
-    (clrhash *mega-cells*)
-    (setf *mega-parts* (list :cells cells :entry entry) *mega-s* 0.0)
+    (clrhash *mega-cells*) (clrhash *mega-poses*)
+    (setf *mega-parts* (list :cells cells :turn turn :tilt tilt :entry entry) *mega-s* 0.0)
     g))
 
 (defun step-mega-cells ()
   "Keep the cells around the wagon built: some way behind, far ahead, no more than two new ones a frame."
   (let* ((c *mega-cell*) (cells (getf *mega-parts* :cells))
          (lo (floor (- *mega-s* 170.0) c)) (hi (floor (+ *mega-s* 540.0) c)) (fresh 0))
-    (node-3d-set-position cells (v3 0 0 *mega-s*))
+    ;; where we are on the way, and which way we face there: the megastructure is turned and moved the other way
+    (let* ((i (floor *mega-s* c)) (f (- (/ *mega-s* c) i)) (a (mega-pose i)) (b (mega-pose (1+ i))))
+      (flet ((mix (k) (+ (nth k a) (* f (- (nth k b) (nth k a))))))
+        (node-3d-set-rotation (getf *mega-parts* :tilt) (v3 (- (mix 4)) 0 0))
+        (node-3d-set-rotation (getf *mega-parts* :turn) (v3 0 (- (mix 3)) 0))
+        (node-3d-set-position cells (v3 (- (mix 0)) (- (mix 1)) (- (mix 2))))))
     (loop for i being the hash-keys of *mega-cells* using (hash-value node)
           do (unless (<= (1- lo) i (1+ hi)) (node-queue-free node) (remhash i *mega-cells*)))
     (loop for i from (floor *mega-s* c) to hi                             ; the nearest first
