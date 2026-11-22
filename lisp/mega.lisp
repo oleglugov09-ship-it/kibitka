@@ -56,18 +56,28 @@ corridor, a garage co-operative, a heating main, a left-luggage hall, an avenue 
     :garages  (:name "Гаражный кооператив"  :build zone-garages  :haze .3  :turn 5.0 :steep .045 :hall :deep)
     :spiral   (:name "Пандус"               :build zone-spiral   :haze .12 :turn 6.0 :steep .07 :way 1 :down t)
     :poles    (:name "Микрорайон на сваях"  :build zone-poles    :haze .3  :turn 4.0 :hall :lamps)
-    :columns  (:name "Вестибюль"            :build zone-columns  :haze .22 :turn 2.5 :hall t))
+    :columns  (:name "Вестибюль"            :build zone-columns  :haze .22 :turn 2.5 :hall t)
+    ;; the hours of the summer (leto.lisp): flat land, a road that bends a little
+    :morning  (:name "Утро"                 :build zone-morning  :turn 2.0)
+    :noon     (:name "Полдень"              :build zone-noon     :turn 1.5)
+    :storm    (:name "Гроза"                :build zone-storm    :turn 1.5)
+    :evening  (:name "Вечер"                :build zone-evening  :turn 2.0)
+    :night    (:name "Ночь"                 :build zone-night    :turn 2.0))
   "The kinds of zones and what is known of each: see above.")
 
 (defun zone (kind key &optional default)
   "Return what is known under KEY of the zones of KIND, or DEFAULT."
   (getf (getf *mega-zones* kind) key default))
 
+(defvar *mega-world* :mega "Which place lies behind the tunnel: :MEGA, the megastructure, or :SUMMER, the summer day that does not end (leto.lisp).")
+(defparameter *summer-hours* '(:morning 62.0 :noon 350.0 :storm 470.0 :evening 722.0 :night 960.0)
+  "The hours of the summer day, in the order they come, each with the second of the day cycle its zone is shown at.")
+
 (defun mega-kind (i)
   "Return the kind of the zone that cell I belongs to. The first zone is the level on columns."
   (let ((z (if (< i *mega-first*) 0 (1+ (floor (- i *mega-first*) *mega-zone*)))))
-    (if (<= z 0)
-        :lift
+    (if (or (<= z 0) (eq *mega-world* :summer))
+        (if (eq *mega-world* :summer) (nth (* 2 (mod z (/ (length *summer-hours*) 2))) *summer-hours*) :lift)
         (let* ((n (length *mega-order*)) (block (floor (1- z) n)) (pos (mod (1- z) n)))
           (if (zerop block)
               (nth pos *mega-order*)                                     ; the first time round, in the order they are listed
@@ -93,7 +103,7 @@ corridor, a garage co-operative, a heating main, a left-luggage hall, an avenue 
 
 (defun mega-drop (j)
   "Return how far cell J goes down without tilting: on the way down from the tunnel the platform we stand on stays level."
-  (if (<= (first *mega-lift*) j (1- *mega-first*)) (* (second *mega-lift*) *mega-cell*) 0.0))
+  (if (and (eq *mega-world* :mega) (<= (first *mega-lift*) j (1- *mega-first*))) (* (second *mega-lift*) *mega-cell*) 0.0))
 
 (defun mega-height (s)
   "Return the height of the way at S metres along it."
@@ -253,17 +263,22 @@ return its group. The cells themselves are built by STEP-MEGA as the wagon goes.
     (loop for z from 126.0 downto -196.0 by 8.0 do (shape entry :box '(.5 .12 2.4) "#2a2620" -1.8 6.95 z :shadow nil))
     (dolist (x '(-13.0 9.4)) (shape entry :box '(9.0 12.0 1.6) "#9a9890" x 6.0 -200.4 :shadow nil))
     (shape entry :box '(31.4 4.6 1.6) "#9a9890" -1.8 10.0 -200.4 :shadow nil)
-    ;; the wall the tunnel comes out of: it goes up and down and to the right out of sight
-    (shape entry :box '(1700.0 600.0 6.0) "#39474d" 800.0 312.0 -197.0 :shadow nil)
-    (shape entry :box '(1700.0 1000.0 6.0) "#39474d" 800.0 -501.0 -197.0 :shadow nil)
-    (shape entry :box '(1600.0 14.0 6.0) "#39474d" 814.0 6.0 -197.0 :shadow nil)
+    (if (eq *mega-world* :summer)
+        (progn                                                           ; the hill the tunnel comes out of, and what does not go by
+          (shape entry :box '(320.0 34.0 330.0) *summer-grass* -1.8 24.8 -35.0 :shadow nil)
+          (dolist (x '(-88.4 84.8)) (shape entry :box '(160.0 8.0 330.0) *summer-grass* x 3.9 -35.0 :shadow nil))
+          (build-summer-far g))
+        (progn                                                           ; the wall the tunnel comes out of: it goes up and down and to the right out of sight
+          (shape entry :box '(1700.0 600.0 6.0) "#39474d" 800.0 312.0 -197.0 :shadow nil)
+          (shape entry :box '(1700.0 1000.0 6.0) "#39474d" 800.0 -501.0 -197.0 :shadow nil)
+          (shape entry :box '(1600.0 14.0 6.0) "#39474d" 814.0 6.0 -197.0 :shadow nil)))
     ;; The light of the place has a source: far off and high up there is a breach, and the day comes in through it
     ;; from one side. It hangs in the megastructure's own frame, so as the way turns it swings round us like a sun.
     (let ((sun (gdext:make-object "DirectionalLight3D")))
       (object-set sun "light_color" (hex "#b9d6de")) (object-set sun "light_energy" 0.0) (object-set sun "shadow_enabled" nil)
       (node-add-child turn sun)
       (node-3d-set-rotation sun (v3 -.36 .85 0))                 ; low: it rakes the sides of things and hardly touches the floors
-      (shape turn :ball '(70.0 12 8) "#cfe6ee" -430.0 240.0 -380.0 :emit "#b9d6de" :energy 2.0 :unshaded t :shadow nil)   ; the breach itself
+      (unless (eq *mega-world* :summer) (shape turn :ball '(70.0 12 8) "#cfe6ee" -430.0 240.0 -380.0 :emit "#b9d6de" :energy 2.0 :unshaded t :shadow nil))   ; the breach itself
       (let ((pen (group g 0.0 0.0 (- *mega-pen*))) (crane (group g 0.0 0.0 -150.0)) (lift (group g)))
         ;; the platform that carries us down from the tunnel: we stand on it and look about
         (shape lift :box '(22.0 1.2 34.0) "#4a4c50" -1.8 -.72 0.0 :shadow nil)
@@ -339,10 +354,12 @@ daylight shows; one stays in whatever the path coordinate does after that, and g
 (defun step-gloom ()
   "Set how deep inside we are: the dark comes over the first stretch of the tunnel, for those driving into it."
   (setf *gloom*
-        (cond ((inside-mega-p) 1.0)
+        (cond ((inside-mega-p) (if (eq *mega-world* :summer) (- 1.0 (sstep 150.0 235.0 *mega-s*)) 1.0))   ; the summer is under the sky: the dark ends with the tunnel
               ((and *tunnel* *mega* (> *dir* 0) (< *dist* (- (second *tunnel*) 40.0)))
                (float (max 0.0 (min 1.0 (/ (- *dist* (first *tunnel*) 20.0) 70.0))) 1.0))
               (t 0.0))))
+
+(defvar *summer-grade* 0.0 "How far the picture has been turned from the faded film to the juicy summer, from 0 to 1.")
 
 (defun step-mega ()
   "Show the megastructure to those inside it, and nothing of the old world; lay it out along the way driven; keep the
@@ -350,10 +367,17 @@ fuel up, since there is nowhere to fill it."
   (let ((in (inside-mega-p)))
     (when *land* (object-set *land* "visible" (not in)))
     (when *world* (object-set *world* "visible" (not in)))
+    (let ((summer (and in (eq *mega-world* :summer))))                    ; there the sky shows the hour of the place, and the weather is its own
+      (setf *sky-hour* (and summer (summer-hour *mega-s*)) *wx-force* (and summer (summer-weather *mega-s*)))
+      (let ((k (if summer (- 1.0 *gloom*) 0.0)))                           ; and the picture is juicy, not a faded film
+        (when (and *grade* (not (eql k *summer-grade*)))
+          (setf *summer-grade* k)
+          (object-call *grade* "set_shader_parameter" "sat" (+ .74 (* .3 k)))
+          (object-call *grade* "set_shader_parameter" "gain" (+ .94 (* .04 k))))))
     (let ((want (if in (zone (mega-kind (floor *mega-s* *mega-cell*)) :haze 0.0) 0.0)))   ; the haze of the zone comes on slowly
       (setf *haze* (if in (+ *haze* (* .012 (- want *haze*))) 0.0)))
     (let ((want (zone (mega-kind (floor *mega-s* *mega-cell*)) :fog .0047)))             ; and so does its air
-      (setf *fog-inside* (and in (+ (or *fog-inside* want) (* .012 (- want (or *fog-inside* want)))))))
+      (setf *fog-inside* (and in (not (eq *mega-world* :summer)) (+ (or *fog-inside* want) (* .012 (- want (or *fog-inside* want)))))))
     (cond ((and in (null *mega-node*)) (setf *mega-node* (build-mega)))
           ((and (not in) *mega-node*) (node-queue-free *mega-node*) (clrhash *mega-cells*) (clrhash *mega-lives*) (setf *mega-node* nil *mega-parts* nil)))
     (when (and in *mega-parts*)
@@ -381,7 +405,8 @@ fuel up, since there is nowhere to fill it."
           (and (or (let ((e (ext:getenv "KIOSK_TUNNEL"))) (and e (plusp (length e))))
                    (and (object-call (gdext:singleton "OS") "has_feature" "web")
                         (let ((q (ignore-errors (object-call (gdext:singleton "JavaScriptBridge") "eval" "location.search"))))
-                          (and (stringp q) (search "tunnel" q)))))
+                          (when (and (stringp q) (search "summer" q)) (setf *mega-world* :summer))   ; ?summer: the other place behind it
+                          (and (stringp q) (or (search "tunnel" q) (search "summer" q))))))
                t)))
   (when (and (eq *tunnel-spawn* t) *lobby-open*) (setf *tunnel-spawn* :lobby))        ; wait for the lobby to be answered
   (when (and (eq *tunnel-spawn* :lobby) *tunnel* *cart* (not *lobby-open*)

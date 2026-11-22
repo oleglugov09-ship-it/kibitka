@@ -264,8 +264,8 @@ It has a frame, wheels, a cab with a hood, headlights and crates on the cab roof
   (when *headlight*
     ;; it has no shadow, so it lights the ground under the wagon too: on a road at night that passes for the
     ;; glow of the lamps, on a bare floor in the megastructure it is a patch of light from nowhere
-    (object-set *headlight* "light_energy" (* 1.2 (- 1 (daylight *day-t*)) (- 1.0 *gloom*))))
-  (let ((dark (- 1 (min 1.0 (* 2.5 (daylight *day-t*))))))                ; the headlights come on at dusk
+    (object-set *headlight* "light_energy" (* 1.2 (- 1 (daylight (sky-now))) (- 1.0 *gloom*))))
+  (let ((dark (- 1 (min 1.0 (* 2.5 (daylight (sky-now)))))))                ; the headlights come on at dusk
     (dolist (spot *beams*) (object-set spot "light_energy" (* 7.0 dark)))
     (dolist (cone *beam-cones*) (object-set cone "visible" (> dark .4)))))
 

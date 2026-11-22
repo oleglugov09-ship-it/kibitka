@@ -49,7 +49,7 @@ It is at full strength in the settlement and fades out a kilometre and a half aw
   (when *aurora*
     (let* ((mid (dalny-mid))
            (near (if mid (- 1 (sstep 500 1700 (abs (- *dist* mid)))) 0.0))
-           (night (max 0.0 (min 1.0 (/ (- .3 (daylight *day-t*)) .2)))))
+           (night (max 0.0 (min 1.0 (/ (- .3 (daylight (sky-now))) .2)))))
       (setf *aurora-k* (if *meta* 0.0 (* near night (- 1 (wx :cloud)))))
       (object-set *aurora* "visible" (> *aurora-k* .02))
       (when (> *aurora-k* .02)

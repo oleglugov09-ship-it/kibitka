@@ -202,7 +202,7 @@ It has a booth with a window, crates of bottles, bales of paper and scales. Retu
      (when (and place (eq (first place) :observatory))
        (let ((d (second place)))
          (list (road-usable 11.2 (+ d 6.0) 1.5
-                            (lambda () (if (< (daylight *day-t*) .3) "E — посмотреть в большой телескоп" "Большой телескоп. Днём звёзд не видно — приходи ночью"))
+                            (lambda () (if (< (daylight (sky-now)) .3) "E — посмотреть в большой телескоп" "Большой телескоп. Днём звёзд не видно — приходи ночью"))
                             #'open-scope)
                (road-usable 10.2 (- d 6.0) .6
                             (lambda () (if *spyglass* "Столик астронома" "E — взять подзорную трубу"))

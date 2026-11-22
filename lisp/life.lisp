@@ -93,7 +93,7 @@ Its x points to the right of the road and its z backwards along the path."
     (node-3d-set-scale (first (make-cat g index)) (v3 size size size))
     g))
 
-(defun day-light-p () (> (daylight *day-t*) .35))
+(defun day-light-p () (> (daylight (sky-now)) .35))
 
 ;;; ------------------------------------------------------------------ the queue
 ;;; Where the shop lets something go against coupons, there is a queue: the more goods are rationed, the longer.

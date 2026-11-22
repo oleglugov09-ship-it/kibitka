@@ -145,8 +145,8 @@ The sky stays over the wagon, turns with the day cycle and fades towards dawn an
   (when *sky-tilt*
     (destructuring-bind (x y z) *rig-at* (node-3d-set-position *sky-tilt* (v3 x y z)))
     ;; at midnight Orion stands in the south (on the window side): right ascension 6 hours
-    (node-3d-set-rotation *sky-spin* (v3 0 (+ (/ pi 2) (* 2 pi (/ (- (day-phase *day-t*) (* .5 (+ (second *dusk*) *day-len*))) *day-len*))) 0))
-    (let ((night (* (max 0.0 (min 1.0 (/ (- .42 (daylight *day-t*)) .3))) (- 1 (* .85 (wx :cloud))) (- 1.0 *gloom*) (if *meta* 0 1))))
+    (node-3d-set-rotation *sky-spin* (v3 0 (+ (/ pi 2) (* 2 pi (/ (- (day-phase (sky-now)) (* .5 (+ (second *dusk*) *day-len*))) *day-len*))) 0))
+    (let ((night (* (max 0.0 (min 1.0 (/ (- .42 (daylight (sky-now))) .3))) (- 1 (* .85 (wx :cloud))) (- 1.0 *gloom*) (if *meta* 0 1))))
       (object-set *sky-tilt* "visible" (> night .02))
       (object-set *star-mat* "albedo_color" (color 1 1 1 night)))
     (object-set *line-node* "visible" (and *zoom* t))))
@@ -194,7 +194,7 @@ The sky stays over the wagon, turns with the day cycle and fades towards dawn an
     (object-set (getf *scope-parts* :caption) "text" caption)))
 
 (defun open-scope ()
-  (cond ((>= (daylight *day-t*) .3) (say "Днём звёзд не видно. Дождись ночи — или усни в кибитке до темноты"))
+  (cond ((>= (daylight (sky-now)) .3) (say "Днём звёзд не видно. Дождись ночи — или усни в кибитке до темноты"))
         ((> (wx :cloud) .6) (say "Небо в тучах: в телескоп ничего не видно"))
         (t (setf *scope* 0)
            (object-set (getf *scope-parts* :layer) "visible" t)

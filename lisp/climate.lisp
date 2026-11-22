@@ -24,6 +24,7 @@
 (defvar *season-clock* 0.0 "The seconds elapsed since the season began.")
 (defvar *weather-left* 300.0 "The seconds the current weather will still hold.")
 (defvar *rain-node* nil)
+(defvar *wx-force* nil "The weather to aim at whatever the forecast, as a plist like *WX*, or NIL: the summer behind the tunnel has its own.")
 (defvar *precip-on* t "Whether rain and snow are drawn: a player's own setting (the pause menu), for a slow machine.")
 (defvar *snow-node* nil)
 
@@ -169,12 +170,12 @@ Start with a random season and clear weather."
       (say (format nil "Пришла ~a" (getf *season-names* next)))))
   ;; weather
   (when (<= (decf *weather-left* delta) 0) (set-weather (pick-weather)))
-  (let ((k (min 1.0 (/ delta *weather-change*))))
+  (let ((k (min 1.0 (/ delta (if *wx-force* 3.0 *weather-change*)))))
     (loop for (key) on *wx* by #'cddr
-          do (incf (getf *wx* key) (* k (- (weather-target key) (getf *wx* key))))))
-  (let ((outside (or (null *world*) (object-get *world* "visible"))))   ; no precipitation in the pocket dimension
+          do (incf (getf *wx* key) (* k (- (if *wx-force* (getf *wx-force* key 0.0) (weather-target key)) (getf *wx* key))))))
+  (let ((outside (or (null *world*) *wx-force* (object-get *world* "visible"))))   ; no precipitation in the pocket dimension
     (loop for (node k) in (list (list *rain-node* :rain) (list *snow-node* :snow))
           do (let ((v (if (and outside *precip-on*) (wx k) 0.0)))
                (object-set node "amount_ratio" v)
                (unless (eq (> v .01) (object-get node "emitting")) (object-set node "emitting" (> v .01))))))
-  (object-set *sky-mat* "sky_cover_modulate" (color 1 1 1 (* .9 (wx :cloud) (- 1.0 *gloom*)))))   ; no clouds inside the megastructure
+  (object-set *sky-mat* "sky_cover_modulate" (if *sky-hour* (color .3 .28 .44 (* .9 (wx :cloud))) (color 1 1 1 (* .9 (wx :cloud) (- 1.0 *gloom*))))))   ; no clouds inside the megastructure

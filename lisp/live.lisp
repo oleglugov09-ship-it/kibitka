@@ -30,7 +30,7 @@ FORM may also be a string with several forms. Return the local result; the guest
         :season *season* :weather *weather* :weather-left (round *weather-left*)
         :road (multiple-value-bind (course slope) (road-frame *dist*)
                 (list :course-deg (round (* course 180) pi) :slope-% (round (* 100 (tan slope))) :height (round (road-y *dist*))))
-        :day-t (round (day-phase *day-t*)) :daylight (float (daylight *day-t*) 1.0) :time-scale *time-scale*
+        :day-t (round (day-phase *day-t*)) :daylight (float (daylight (sky-now)) 1.0) :time-scale *time-scale*
         :props (length *props*) :bridges (length *bridges*)
         :pos (list (vector3-x *pos*) (vector3-z *pos*)) :yaw *yaw* :pitch *pitch*
         :window *window-open* :seat (first *seat*) :meta *meta*

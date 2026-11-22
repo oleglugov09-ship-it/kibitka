@@ -34,6 +34,10 @@ there the day does not reach, whatever the hour (marks.lisp sets it every frame)
 
 (defvar *fog-inside* nil "How thick the air is in the megastructure where we are, or NIL outside it: a great hall is seen
 from end to end only in clear air (mega.lisp sets it by the zone).")
+(defvar *sky-hour* nil "The second of the day cycle the sky is to show whatever the clock says, or NIL: in the summer
+behind the tunnel the hour belongs to the place, and the clock of the game stands still (leto.lisp).")
+(defun sky-now () "Return the second of the day cycle the sky shows." (or *sky-hour* *day-t*))
+
 (defvar *haze* 0.0 "How much pale haze stands in the megastructure where we are, from 0 (pitch dark) to 1: the cold
 sourceless light in which far things show as dark shapes (marks.lisp sets it by the zone).")
 
@@ -86,14 +90,15 @@ sourceless light in which far things show as dark shapes (marks.lisp sets it by 
   (setf *moon* (shape (or *turn* root) :ball '(6 16 10) "#f0ecdc" 0 0 0 :emit "#e8e4d0" :energy 1.6 :shadow nil :unshaded t)))
 
 (defun step-sky (delta)
-  (incf *day-t* (* delta *time-scale*))
-  (let* ((day (daylight *day-t*)) (ph (day-phase *day-t*))
+  (unless *sky-hour* (incf *day-t* (* delta *time-scale*)))
+  (let* ((day (daylight (sky-now))) (ph (day-phase (sky-now)))
          ;; the lights move in steps of ~0.2 degrees, not every frame: rotating a light shifts the shadow map,
          ;; and the shadow edges ripple
          (sun-a (sun-step (* pi (/ ph (second *dusk*))))) (sun-up (<= sun-a pi))
          (moon-a (sun-step (* pi (/ (mod (- ph (second *dusk*)) *day-len*) (- *day-len* (second *dusk*)))))))
-    (multiple-value-bind (top horizon) (sky-colors *day-t*)
-      (let ((gray (mix-color (hex "#8a9098") (hex "#202428") (- 1 day))) (overcast (* .6 (wx :cloud))))
+    (multiple-value-bind (top horizon) (sky-colors (sky-now))
+      (let ((gray (if *sky-hour* (hex "#2e2b4c") (mix-color (hex "#8a9098") (hex "#202428") (- 1 day))))      ; the storm of the summer is lilac-black
+            (overcast (* (if *sky-hour* .85 .6) (wx :cloud))))
         (setf top (mix-color top gray overcast) horizon (mix-color horizon gray (* .8 overcast))))
       (when (plusp *gloom*)                                    ; inside: no sky at all, only the haze, the same above and around
         (let ((haze (mix-color (hex "#000000") (hex "#5d7984") (* .8 *haze*))))

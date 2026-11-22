@@ -165,7 +165,7 @@ Also load the discs from project/discs/ and make the hint."
     ;; birds: one at a time, out of step, by day and without rain or snow
     (when (<= (decf *bird-timer* delta) 0)
       (setf *bird-timer* (+ (first *bird-gap*) (random (float (- (second *bird-gap*) (first *bird-gap*))))))
-      (when (and *birds-on* (> (daylight *day-t*) .35) (< (+ (wx :rain) (wx :snow)) .3) (not (eq *season* :winter)))
+      (when (and *birds-on* (> (daylight (sky-now)) .35) (< (+ (wx :rain) (wx :snow)) .3) (not (eq *season* :winter)))
         (let ((b (audio :birds)))
           (object-set b "volume_db" (- -14.0 (random 12.0)))   ; nearer and farther
           (object-call b "play"))))

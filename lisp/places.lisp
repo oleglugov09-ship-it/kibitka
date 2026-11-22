@@ -325,5 +325,5 @@ TILT is the tilt up from the horizon; SPIN is the speed in radians per second of
         (:path (destructuring-bind (x0 y0 z0 x1 y1 z1 period phase) numbers      ; there and back between two points
                  (let* ((u (mod (+ phase (/ *time* period)) 2.0)) (k (if (> u 1) (- 2 u) u)))
                    (node-3d-set-position node (v3 (+ x0 (* k (- x1 x0))) (+ y0 (* k (- y1 y0))) (+ z0 (* k (- z1 z0))))))))
-        (:night (object-set node "visible" (< (daylight *day-t*) .45)))            ; floodlights and beams - in the dark
+        (:night (object-set node "visible" (< (daylight (sky-now)) .45)))            ; floodlights and beams - in the dark
         (:blink (object-set node "visible" (< (mod (* *time* (first numbers)) 2.0) 1.2)))))))

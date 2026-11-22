@@ -126,7 +126,7 @@ void fragment() {
       (apply-curtains)))
   (destructuring-bind (&key smoke glow lamp car roof) *mood*
     (when smoke
-      (let* ((dark (- 1.0 (min 1.0 (* 3.0 (daylight *day-t*)))))                ; 0 by day, 1 in the dark
+      (let* ((dark (- 1.0 (min 1.0 (* 3.0 (daylight (sky-now))))))                ; 0 by day, 1 in the dark
              (night (* dark (- 1.0 (* .9 *curtain-k*))))                        ; what of the street's light gets in: drawn curtains keep it out
              (moving (> (abs *speed*) .5)) (rain (wx :rain)))
         (object-set smoke "emitting" (and (> *fire* 0) (not *meta*)))
