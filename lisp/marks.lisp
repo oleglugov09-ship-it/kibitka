@@ -298,6 +298,8 @@ FIRST and LAST mark the portals."
 
 (defvar *tunnel-spawn* :ask "Whether to start at the tunnel: :ASK until the address has been read, then T or NIL; :LOBBY while the lobby is open, :DONE once we are there.")
 
+(defun tunnel-mode-p () "Return true if this game was started at the tunnel." (and (member *tunnel-spawn* '(t :lobby :done)) t))
+
 (defun step-tunnel-spawn ()
   (when (eq *tunnel-spawn* :ask)
     (setf *tunnel-spawn*
