@@ -116,6 +116,6 @@ sourceless light in which far things show as dark shapes (marks.lisp sets it by 
       (node-3d-set-position *moon* (v3 (+ x (* -140 (cos moon-a))) (+ y (- (* 80 (sin moon-a)) 4)) (- z 50))))
     ;; lights off (L): almost no ambient light, so you can see where the street light breaks in
     (object-set *env* "ambient_light_energy" (if *lights-on*
-                                                    (+ (* (- 1.0 *gloom*) (+ .35 (* .65 day))) (* *gloom* (+ .02 (* .55 *haze*))))
+                                                    (+ (* (- 1.0 *gloom*) (+ .35 (* .65 day))) (* *gloom* (+ .02 (* .42 *haze*))))
                                                     .0))
     (object-set *env* "reflected_light_source" (if *lights-on* 0 1))))   ; REFLECTION_SOURCE_DISABLED: no sky glint

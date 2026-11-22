@@ -318,7 +318,7 @@ FIRST and LAST mark the portals."
 (defvar *mega-parts* nil "The megastructure's moving parts, a plist: :cells (the group the cells hang in) and :entry (the tunnel we came by).")
 (defvar *mega-cells* (make-hash-table) "The cells built right now: a table from a cell's number to its node.")
 (defvar *mega-s* 0.0 "How far we have driven since the old world went out of sight.")
-(defparameter *mega-haze* '(:columns .75 :poles 1.0 :pipes .9 :graves .2 :crater .9 :statues 1.0 :rail .7 :spiral .3)
+(defparameter *mega-haze* '(:columns .34 :poles .45 :pipes .4 :graves .08 :crater .42 :statues .45 :rail .3 :spiral .12)
   "How much haze stands in each kind of zone: in the open ones the far shapes show, the closed ones are dark.")
 
 (defun mega-kind (i)
