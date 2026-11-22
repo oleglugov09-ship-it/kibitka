@@ -32,6 +32,8 @@
 (defvar *gloom* 0.0 "How deep inside we are, from 0 in the open to 1 in the tunnel and the megastructure beyond it:
 there the day does not reach, whatever the hour (marks.lisp sets it every frame).")
 
+(defvar *fog-inside* nil "How thick the air is in the megastructure where we are, or NIL outside it: a great hall is seen
+from end to end only in clear air (mega-go.lisp sets it by the zone).")
 (defvar *haze* 0.0 "How much pale haze stands in the megastructure where we are, from 0 (pitch dark) to 1: the cold
 sourceless light in which far things show as dark shapes (marks.lisp sets it by the zone).")
 
@@ -107,7 +109,8 @@ sourceless light in which far things show as dark shapes (marks.lisp sets it by 
       (node-3d-set-rotation *sun* (v3 (- (max .03 (elev (min sun-a pi)))) (- (min sun-a pi) (/ pi 2)) 0))
       (node-3d-set-rotation *moon-light* (v3 (- (max .15 (elev moon-a))) (- moon-a (/ pi 2)) 0)))
     (object-set *sun* "light_energy" (if sun-up (* (- 1.0 *gloom*) (+ .15 (* 1.4 day)) (- 1 (* .7 (wx :cloud)))) 0.0))
-    (object-set *env* "fog_density" (+ *fog-base* (* .012 (wx :fog)) (* .004 (wx :rain)) (* .006 (wx :snow)) (* .0022 *gloom*)))
+    (let ((fog (+ *fog-base* (* .012 (wx :fog)) (* .004 (wx :rain)) (* .006 (wx :snow)) (* .0022 *gloom*))))
+      (object-set *env* "fog_density" (if *fog-inside* (+ (* (- 1.0 *gloom*) fog) (* *gloom* *fog-inside*)) fog)))
     (object-set *sun* "light_color" (mix-color (hex "#ff9a60") (hex "#fff4e0") day))
     (object-set *sun* "visible" sun-up)
     (object-set *moon-light* "light_energy" (if sun-up 0.0 (* (- 1.0 *gloom*) .35 (- 1 (* .7 (wx :cloud))))))
