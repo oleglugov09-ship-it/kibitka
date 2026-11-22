@@ -33,7 +33,7 @@
 there the day does not reach, whatever the hour (marks.lisp sets it every frame).")
 
 (defvar *fog-inside* nil "How thick the air is in the megastructure where we are, or NIL outside it: a great hall is seen
-from end to end only in clear air (mega-go.lisp sets it by the zone).")
+from end to end only in clear air (mega.lisp sets it by the zone).")
 (defvar *haze* 0.0 "How much pale haze stands in the megastructure where we are, from 0 (pitch dark) to 1: the cold
 sourceless light in which far things show as dark shapes (marks.lisp sets it by the zone).")
 

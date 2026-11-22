@@ -294,6 +294,8 @@ FIRST and LAST mark the portals."
         (shape g :box '(8.0 .9 .2) "#2c4a7a" -1.8 9.4 (+ z (if first .65 -.65)) :shadow nil)
         (sign g "ТУННЕЛЬ" -1.8 9.4 (+ z (if first .78 -.78)) :h .6 :rgb "#f0ece0" :yaw (if first 0.0 pi))))))
 
+;;; ------------------------------------------------------------------ mist and fireflies on the marsh
+
 (defun build-mist (d)
   "Build wisps of mist over the marsh at path coordinate D, with fireflies in it (those only at night)."
   (let ((g (group *world*)))
