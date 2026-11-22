@@ -296,29 +296,32 @@ FIRST and LAST mark the portals."
 
 ;;; The megastructure. The tunnel does not come out on the other side of its hill: some way in, the old world
 ;;; is no longer shown at all - no land, no towns, no cars, nobody - and what there is instead is built around
-;;; the wagon itself and goes by it without end. It is another place, not a piece of the ring. The wagon moves
-;;; along the ring only in name: every *MEGA-LAP* metres the driver is set back by as much, while the way driven
-;;; inside, *MEGA-S*, only grows, and the megastructure is laid out along that.
+;;; the wagon itself and goes by it without end. It is another place, not a piece of the ring: on the ring the
+;;; wagon stands still from then on (STEP-WORLD), and the way driven inside, *MEGA-S*, is counted apart; the
+;;; megastructure is laid out along that. There is no road of its own in it: one drives over the structures
+;;; themselves - the floor of a level, the back of a pipe, a gangway, the bed of a railway.
 ;;;
-;;; It is made of zones some seven hundred metres long, each of its own kind, one after another and never the
+;;; It is made of zones some two and a half kilometres long, each of its own kind, one after another and never the
 ;;; same twice in a row: a level on columns, a forest of panel houses on poles, a maze of pipes, a hole through
 ;;; the levels with the day falling in, walls of black drawers, a row of pale statues, a railway under its lamps.
 ;;; The kinds are taken from the city of «Girls' Last Tour». A zone is built cell by cell (*MEGA-CELL* metres)
 ;;; ahead of the wagon and taken away behind it; what a cell holds depends on its number alone, so everybody
 ;;; in the wagon sees the same.
 
-(defparameter *mega-lap* 252.0 "The length by which the driver is set back along the ring, in metres.")
 (defparameter *mega-cell* 42.0 "The length of one cell of the megastructure, in metres.")
-(defparameter *mega-zone* 16 "The number of cells in a zone.")
+(defparameter *mega-zone* 64 "The number of cells in a zone: some five minutes of driving.")
+(defparameter *mega-first* 16 "The number of cells in the first zone, the one the tunnel opens into: a short one.")
+(defparameter *mega-names* '(:columns "Уровень на колоннах" :poles "Дома на столбах" :pipes "Трубы" :crater "Пролом"
+                             :graves "Картотека" :statues "Истуканы" :rail "Сортировочная")
+  "What each kind of zone is called, in the corner of the screen.")
 (defparameter *mega-kinds* '(:poles :pipes :graves :crater :statues :rail :columns) "The kinds of zones, after the first one.")
 (defvar *mega-parts* nil "The megastructure's moving parts, a plist: :cells (the group the cells hang in) and :entry (the tunnel we came by).")
 (defvar *mega-cells* (make-hash-table) "The cells built right now: a table from a cell's number to its node.")
 (defvar *mega-s* 0.0 "How far we have driven since the old world went out of sight.")
-(defvar *mega-last* nil "The path coordinate on the previous frame while inside, to measure the way driven.")
 
 (defun mega-kind (i)
   "Return the kind of the zone that cell I belongs to. The first zone is the level on columns."
-  (let ((z (floor i *mega-zone*)))
+  (let ((z (if (< i *mega-first*) 0 (1+ (floor (- i *mega-first*) *mega-zone*)))))
     (if (<= z 0)
         :columns
         (let* ((n (length *mega-kinds*)) (block (floor (1- z) n)) (pos (mod (1- z) n)))
@@ -338,17 +341,30 @@ FIRST and LAST mark the portals."
 (defun build-mega-cell (cells i)
   "Build cell I of the megastructure under CELLS and return its group. Inside it x is to the right, y up, and the
 cell runs from z = 0 back to z = -*MEGA-CELL*."
-  (let* ((c *mega-cell*) (g (group cells 0.0 0.0 (- (* i c)))) (kind (mega-kind i)) (at (mod i *mega-zone*)))
-    (flet ((r (k) (vr (+ i 1000.5) (float k))))                       ; this cell's own dice
-      (loop for u from 0.0 below c by 6.0                                ; the trestle goes through every zone
-            do (shape g :box '(10.8 .5 6.0) "#5a5a58" -1.8 -.3 (- u) :shadow nil)
-               (dolist (x '(3.7 -7.3)) (shape g :box '(.3 .9 6.0) "#4a4c50" x .2 (- u) :shadow nil)))
-      (unless (eq kind :pipes) (shape g :box '(2.0 260.0 2.0) "#5a5a58" -1.8 -130.5 0 :shadow nil))
-      (when (= at 8)                                                     ; one of our bus stops in every zone, under a lamp
+  (let* ((c *mega-cell*) (g (group cells 0.0 0.0 (- (* i c)))) (kind (mega-kind i)) (at (mod i 16)) (mid (- (/ c 2))))
+    (flet ((r (k) (vr (+ i 1000.5) (float k)))                        ; this cell's own dice
+           (floor-slab (w rgb &optional (x -1.8)) (shape g :box (list w 1.0 c) rgb x -.55 mid :shadow nil)))
+      ;; what we drive over is the structure itself, a different thing in every zone
+      (ecase kind
+        (:columns (floor-slab 520.0 "#5f5e5a") (shape g :box '(520.0 .02 .5) "#4a4946" -1.8 -.03 0 :shadow nil)
+                  (shape g :box (list 520.0 4.0 c) "#4a4946" -1.8 182.0 mid :shadow nil))                    ; the level above
+        (:poles (shape g :box (list 5.0 .3 c) "#4a4c50" 0.0 -.2 mid :shadow nil)                               ; a hanging gangway
+                (dolist (x '(-2.6 2.6))
+                  (shape g :box (list .3 .5 c) "#3a3c40" x .1 mid :shadow nil)
+                  (shape g :box '(.12 300.0 .12) "#3a3c40" x 150.0 0 :shadow nil)))
+        (:pipes nil)                                                                                         ; the back of a pipe, built below
+        (:graves (floor-slab 44.0 "#1e1f22" -2.0))
+        (:crater (floor-slab 520.0 "#62615d")
+                 (dotimes (k 2)                                                                                ; slabs fallen from above
+                   (shape g :box (list (+ 4.0 (* 9.0 (r (+ 200 k)))) .8 (+ 3.0 (* 6.0 (r (+ 210 k))))) "#55544f"
+                          (* (if (< (r (+ 220 k)) .5) -1 1) (+ 14.0 (* 60.0 (r (+ 230 k))))) .3 (* (- c) (r (+ 240 k)))
+                          :rot (list (* .3 (r (+ 250 k))) (* 3.0 (r (+ 260 k))) (* .25 (r (+ 270 k)))) :shadow nil)))
+        (:statues (floor-slab 520.0 "#8a887f"))
+        (:rail (floor-slab 44.0 "#3f3d3a" -6.0)))
+      (when (= at 8)                                                     ; one of our bus stops every so often, under a lamp
         (let ((stop (group g *stop-x* 0.0 -20.0)))
           (shape g :box '(9.0 .5 14.0) "#6f6e69" 8.6 -.3 -20.0 :shadow nil)
-          (shape g :box '(1.4 260.0 1.4) "#5a5a58" 9.5 -130.6 -20.0 :shadow nil)
-          (build-stop stop (* 7.0 (floor i *mega-zone*)))
+          (build-stop stop (* 7.0 (floor i 16)))
           (shape g :box '(.14 5.6 .14) "#3a3c40" 5.0 2.8 -15.0 :shadow nil)
           (shape g :box '(.6 .2 .4) "#ffe2a8" 5.3 5.6 -15.0 :emit "#ffcf8a" :energy 3 :shadow nil)
           (light g "#ffcf8a" 2.2 26.0 5.6 5.0 -15.0)))
@@ -366,8 +382,8 @@ cell runs from z = 0 back to z = -*MEGA-CELL*."
                (shape h :box '(.3 1.6 2.0) "#ffcf7a" (* side -6.1) 1.5 (- (* 40.0 (r (+ 13 k))) 20.0) :emit "#ffb866" :energy 3 :shadow nil)
                (when (< (abs x) 110.0) (light h "#ffb866" 2.2 46.0 (* side -9.0) 1.5 0.0))))))
         (:pipes                                                          ; a maze of pipes; the road lies on one of them
-         (shape g :cyl (list 5.6 5.6 c 14) "#d4d6d2" -1.8 -6.2 (- (/ c 2)) :rot (list (/ pi 2) 0 0) :shadow nil)
-         (when (evenp i) (shape g :cyl '(6.5 6.5 1.6 14) "#a9aca8" -1.8 -6.2 0 :rot (list (/ pi 2) 0 0) :shadow nil))
+         (shape g :cyl (list 5.6 5.6 c 14) "#d4d6d2" 0.0 -5.62 (- (/ c 2)) :rot (list (/ pi 2) 0 0) :shadow nil)
+         (when (evenp i) (shape g :cyl '(6.5 6.5 1.6 14) "#a9aca8" 0.0 -5.62 0 :rot (list (/ pi 2) 0 0) :shadow nil))
          (dotimes (k 5)
            (let* ((rad (+ .8 (* 4.6 (r (+ 20 k)) (r (+ 30 k))))) (z (- (* c (r (+ 40 k)))))
                   (rgb (nth (floor (* 3 (r (+ 50 k)))) '("#c9ccc8" "#8a8f93" "#2a2a2e"))) (way (r (+ 60 k))))
@@ -415,7 +431,7 @@ cell runs from z = 0 back to z = -*MEGA-CELL*."
          (shape g :box '(.16 7.0 .16) "#3a3c40" -16.0 3.5 0 :shadow nil)
          (shape g :box '(2.2 .16 .5) "#f4f6ff" -15.0 7.0 0 :emit "#e8f0ff" :energy 3 :shadow nil)
          (when (evenp i) (light g "#dfe8ff" 1.6 40.0 -13.0 6.0 0))
-         (when (<= 5 at 9)                                                ; a train left standing
+         (when (<= 5 at 9)                                                ; a train left standing, now and then
            (dolist (z '(-3.0 -24.0))
              (shape g :box '(3.6 4.2 19.0) (if (= at 5) "#5a2a22" "#33363a") -12.5 2.6 (- z 9.0) :shadow nil)
              (shape g :box '(3.0 .8 17.0) "#1e1f22" -12.5 .5 (- z 9.0) :shadow nil))))))
@@ -429,12 +445,13 @@ return its group. The cells themselves are built by STEP-MEGA as the wagon goes.
     (shape entry :box '(.8 7.0 330.0) "#3c3c40" -7.9 3.5 -35.0 :shadow nil)
     (shape entry :box '(.8 7.0 330.0) "#3c3c40" 4.3 3.5 -35.0 :shadow nil)
     (shape entry :box '(13.0 .8 330.0) "#34343a" -1.8 7.4 -35.0 :shadow nil)
+    (shape entry :box '(11.4 .12 330.0) "#2c2c2f" -1.8 .0 -35.0 :shadow nil)                              ; its roadway
     (loop for z from 126.0 downto -196.0 by 8.0 do (shape entry :box '(.5 .12 2.4) "#2a2620" -1.8 6.95 z :shadow nil))
     (dolist (x '(-13.0 9.4)) (shape entry :box '(9.0 12.0 1.6) "#9a9890" x 6.0 -200.4 :shadow nil))
     (shape entry :box '(31.4 4.6 1.6) "#9a9890" -1.8 10.0 -200.4 :shadow nil)
     (light g "#ffd9a0" 2.6 120.0 0.0 6.0 -6.0)                    ; our own light: a lantern over the wagon, so what is near is seen all round
     (clrhash *mega-cells*)
-    (setf *mega-parts* (list :cells cells :entry entry) *mega-s* 0.0 *mega-last* nil)
+    (setf *mega-parts* (list :cells cells :entry entry) *mega-s* 0.0)
     g))
 
 (defun step-mega-cells ()
@@ -472,22 +489,22 @@ daylight shows; one stays in whatever the path coordinate does after that, and g
 
 (defun step-mega ()
   "Show the megastructure to those inside it, and nothing of the old world; lay it out along the way driven; keep the
-driver within one lap on the ring, so that the tunnel's far portal never comes."
+fuel up, since there is nowhere to fill it."
   (let ((in (inside-mega-p)))
     (when *land* (object-set *land* "visible" (not in)))
     (when *world* (object-set *world* "visible" (not in)))
     (cond ((and in (null *mega-node*)) (setf *mega-node* (build-mega)))
           ((and (not in) *mega-node*) (node-queue-free *mega-node*) (clrhash *mega-cells*) (setf *mega-node* nil *mega-parts* nil)))
     (when (and in *mega-parts*)
-      (let ((base (+ (first *tunnel*) 90.0)))
-        (when (and *mega-last* (< (abs (- *dist* *mega-last*)) 50.0)) (incf *mega-s* (- *dist* *mega-last*)))
-        (setf *mega-last* *dist*)
-        (step-mega-cells)
-        (node-3d-set-position (getf *mega-parts* :entry) (v3 0 0 *mega-s*))
-        (object-set (getf *mega-parts* :entry) "visible" (< *mega-s* 600.0))
-        (unless (net-guest-p)
-          (when (< *fuel* .5) (setf *fuel* 1.0))                                 ; nowhere to fill up here
-          (when (> *dist* (+ base 60.0 *mega-lap*)) (jump-dist (- *dist* *mega-lap*))))))))
+      (step-mega-cells)
+      (node-3d-set-position (getf *mega-parts* :entry) (v3 0 0 *mega-s*))
+      (object-set (getf *mega-parts* :entry) "visible" (< *mega-s* 600.0))
+      (unless (net-guest-p)
+        (when (< *fuel* .5) (setf *fuel* 1.0))))))                               ; nowhere to fill up here
+
+(defun mega-name ()
+  "Return what the part of the megastructure we are in is called."
+  (getf *mega-names* (mega-kind (floor *mega-s* *mega-cell*))))
 
 ;;; A way straight into the tunnel, for working on what is inside it: the page address with ?tunnel (or the
 ;;; variable KIOSK_TUNNEL on the desktop). Once the lobby is closed, whoever owns the world is put a hundred

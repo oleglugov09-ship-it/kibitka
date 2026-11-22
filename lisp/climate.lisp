@@ -177,4 +177,4 @@ Start with a random season and clear weather."
           do (let ((v (if (and outside *precip-on*) (wx k) 0.0)))
                (object-set node "amount_ratio" v)
                (unless (eq (> v .01) (object-get node "emitting")) (object-set node "emitting" (> v .01))))))
-  (object-set *sky-mat* "sky_cover_modulate" (color 1 1 1 (* .9 (wx :cloud)))))
+  (object-set *sky-mat* "sky_cover_modulate" (color 1 1 1 (* .9 (wx :cloud) (- 1.0 *gloom*)))))   ; no clouds inside the megastructure

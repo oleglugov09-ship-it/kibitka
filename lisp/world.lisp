@@ -564,7 +564,10 @@ world of things and the land are shifted."
 (defun step-world (delta)
   (step-turn delta)
   (note-side-roads)
-  (incf *dist* (* *dir* *speed* delta (cos (nth-value 1 (road-frame *dist*)))))   ; along the road itself — at the same speed
+  (if (and (fboundp 'inside-mega-p) (funcall 'inside-mega-p)
+           (or (> *dir* 0) (plusp (symbol-value '*mega-s*))))             ; in the megastructure we stand still on the ring:
+      (incf (symbol-value '*mega-s*) (* *dir* *speed* delta))             ; the way driven there is its own count (marks.lisp)
+      (incf *dist* (* *dir* *speed* delta (cos (nth-value 1 (road-frame *dist*))))))   ; along the road itself — at the same speed
   (when (ring) (step-way))                                            ; an exit, a crossroads, an entry, a new lap
   (place-world)
   (timed :chunks (step-chunks))
