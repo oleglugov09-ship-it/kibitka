@@ -17,6 +17,12 @@
     (1200 "#1c1a34" "#3a2a40"))
   "The sky keys: a list of (second top-color horizon-color).")
 
+(defparameter *summer-sky-keys*
+  '((0 "#16204a" "#5a4a70") (45 "#4f9ae6" "#ffcdb4") (70 "#4f9ae6" "#ffd8c2") (120 "#2a82ea" "#b6e2fb") (350 "#1560d8" "#b6e2fb")
+    (660 "#1c68e0" "#c2e2f6") (722 "#2a5cc4" "#ffb04a") (765 "#22367f" "#e8703a") (815 "#081238" "#27508c") (960 "#050c26" "#1c3a6a")
+    (1140 "#060d28" "#1a2c5a") (1200 "#16204a" "#5a4a70"))
+  "The sky keys of the summer behind the tunnel: the same hours, but a clean sky - deep blue by day, a bright band at dusk.")
+
 (defvar *day-t* 650.0)
 (defvar *env* nil "The Environment resource of the scene.")
 (defvar *sky-mat* nil "The ProceduralSkyMaterial of the sky.")
@@ -49,8 +55,9 @@ sourceless light in which far things show as dark shapes (marks.lisp sets it by 
 
 (defun sky-colors (tt)
   (let* ((tt (day-phase tt))
-         (i (position-if (lambda (k) (> (first k) tt)) *sky-keys*))
-         (a (nth (1- i) *sky-keys*)) (b (nth i *sky-keys*))
+         (keys (if *sky-hour* *summer-sky-keys* *sky-keys*))
+         (i (position-if (lambda (k) (> (first k) tt)) keys))
+         (a (nth (1- i) keys)) (b (nth i keys))
          (f (/ (- tt (first a)) (- (first b) (first a)))))
     (values (mix-color (hex (second a)) (hex (second b)) f) (mix-color (hex (third a)) (hex (third b)) f))))
 
@@ -114,7 +121,8 @@ sourceless light in which far things show as dark shapes (marks.lisp sets it by 
       (node-3d-set-rotation *sun* (v3 (- (max .03 (elev (min sun-a pi)))) (- (min sun-a pi) (/ pi 2)) 0))
       (node-3d-set-rotation *moon-light* (v3 (- (max .15 (elev moon-a))) (- moon-a (/ pi 2)) 0)))
     (object-set *sun* "light_energy" (if sun-up (* (- 1.0 *gloom*) (+ .15 (* 1.4 day)) (- 1 (* .7 (wx :cloud)))) 0.0))
-    (let ((fog (+ *fog-base* (* .012 (wx :fog)) (* .004 (wx :rain)) (* .006 (wx :snow)) (* .0022 *gloom*))))
+    (object-set *env* "fog_sky_affect" (if *sky-hour* 0.0 .25))            ; in the summer the haze lies on the land and leaves the sky clean
+    (let ((fog (+ (if *sky-hour* .0007 *fog-base*) (* .012 (wx :fog)) (* .004 (wx :rain)) (* .006 (wx :snow)) (* .0022 *gloom*))))
       (object-set *env* "fog_density" (if *fog-inside* (+ (* (- 1.0 *gloom*) fog) (* *gloom* *fog-inside*)) fog)))
     (object-set *sun* "light_color" (mix-color (hex "#ff9a60") (hex "#fff4e0") day))
     (object-set *sun* "visible" sun-up)
