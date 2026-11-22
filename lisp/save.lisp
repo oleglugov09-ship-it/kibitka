@@ -26,7 +26,7 @@
      (:kitchen "user://kitchen.sexp"))
     (:me "user://me.sexp"
      (:place "user://player.sexp") (:look "user://look.sexp") (:lobby "user://lobby.sexp")
-     (:lang "user://lang.sexp")))
+     (:lang "user://lang.sexp") (:gfx "user://gfx.sexp")))
   "The save files: (name path (section old-style-file-path) ...).")
 
 (defparameter *save-steps* '()

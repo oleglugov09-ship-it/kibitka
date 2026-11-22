@@ -24,6 +24,7 @@
 (defvar *season-clock* 0.0 "The seconds elapsed since the season began.")
 (defvar *weather-left* 300.0 "The seconds the current weather will still hold.")
 (defvar *rain-node* nil)
+(defvar *precip-on* t "Whether rain and snow are drawn: a player's own setting (the pause menu), for a slow machine.")
 (defvar *snow-node* nil)
 
 ;;; Season: colours
@@ -173,7 +174,7 @@ Start with a random season and clear weather."
           do (incf (getf *wx* key) (* k (- (weather-target key) (getf *wx* key))))))
   (let ((outside (or (null *world*) (object-get *world* "visible"))))   ; no precipitation in the pocket dimension
     (loop for (node k) in (list (list *rain-node* :rain) (list *snow-node* :snow))
-          do (let ((v (if outside (wx k) 0.0)))
+          do (let ((v (if (and outside *precip-on*) (wx k) 0.0)))
                (object-set node "amount_ratio" v)
                (unless (eq (> v .01) (object-get node "emitting")) (object-set node "emitting" (> v .01))))))
   (object-set *sky-mat* "sky_cover_modulate" (color 1 1 1 (* .9 (wx :cloud)))))
