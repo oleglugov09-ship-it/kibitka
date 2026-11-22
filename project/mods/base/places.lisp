@@ -7,13 +7,13 @@
     (6 .04 .5 :relief :hills)
     (8 .04 .96 :veg :marsh) (8 .04 .96 :water :lake) (8 .04 .96 :relief :plain)   ; the swamp
     (9 .06 .40 :relief :serpentine)                       ; the serpentine
-    (11 .56 .98 :relief :mountains)))
+    (11 .0 .32 :relief :mountains) (11 .0 1.0 :water :none)))   ; the hill the tunnel goes into; no water under the megastructure                       ; the hill the tunnel goes into
 
 ;;; The landmarks, each as (stretch before town number, fraction of the stretch, side +-1, what).
 (setf *landmark-plan*
       '((1 .35 1 :windmill) (2 .50 -1 :plane) (3 .42 1 :church) (4 .12 1 :pumpjacks) (4 .82 -1 :mast)
     (5 .36 1 :elevator) (6 .60 1 :wheel) (7 .36 1 :pylons) (7 .72 1 :watchtower) (8 .50 -1 :oldbus)
-    (9 .45 1 :radar) (2 .62 1 :farm) (11 .36 1 :rocket)
+    (9 .45 1 :radar) (2 .62 1 :farm) (10 .62 1 :rocket)
     (3 .60 1 :camp)))                                     ; the pioneer camp in the pine wood, open in summer
 
 ;;; The roadside diners on the right, each as (stretch, fraction, sign text, kind, color).

@@ -284,13 +284,57 @@ FIRST and LAST mark the portals."
     (shape g :box '(.8 7.0 8.3) "#3c3c40" -7.9 3.5 0)
     (shape g :box '(.8 7.0 8.3) "#3c3c40" 4.3 3.5 0)
     (shape g :box '(13.0 .8 8.3) "#34343a" -1.8 7.4 0)
-    (shape g :box '(.5 .12 2.4) "#ffb060" -1.8 6.95 0 :emit "#ff9a40" :energy 3 :shadow nil)
+    (if (and *tunnel* (> (min (- d (first *tunnel*)) (- (second *tunnel*) d)) 70.0))        ; deep inside the lamps are dead
+        (shape g :box '(.5 .12 2.4) "#2a2620" -1.8 6.95 0 :shadow nil)
+        (shape g :box '(.5 .12 2.4) "#ffb060" -1.8 6.95 0 :emit "#ff9a40" :energy 3 :shadow nil))
     (when (or first last)                                              ; portal: a concrete frame wider than the vault
       (let ((z (if first 4.4 -4.4)))
         (dolist (x '(-13.0 9.4)) (shape g :box '(9.0 12.0 1.6) "#9a9890" x 6.0 z))   ; the frame hides the cut in the hill
         (shape g :box '(31.4 4.6 1.6) "#9a9890" -1.8 10.0 z)
         (shape g :box '(8.0 .9 .2) "#2c4a7a" -1.8 9.4 (+ z (if first .65 -.65)) :shadow nil)
         (sign g "ТУННЕЛЬ" -1.8 9.4 (+ z (if first .78 -.78)) :h .6 :rgb "#f0ece0" :yaw (if first 0.0 pi))))))
+
+;;; The megastructure. The tunnel does not come out on the other side of the hill: it opens into something
+;;; built, with no land under the road and no sky over it. The road runs on a trestle between rows of columns
+;;; that go down out of sight and up out of sight; panel houses stand each on one pole; pipes cross overhead.
+;;; The only light is ours, until the one window where somebody is at home.
+
+(defun build-mega (m0 m1)
+  "Build the megastructure along the road from M0 to M1 and return its group."
+  (let ((g (group *world*)) (n 0) (len (- m1 m0)))
+    (loop for d from m0 to m1 by 6.0
+          do (let ((seg (road-group g d)))
+               (shape seg :box '(10.8 .5 6.3) "#5a5a58" -1.8 -.3 0)                                  ; the deck
+               (dolist (x '(3.7 -7.3)) (shape seg :box '(.3 .9 6.3) "#4a4c50" x .2 0 :shadow nil))   ; its rails
+               (when (zerop (mod n 6)) (shape seg :box '(2.0 260.0 2.0) "#5a5a58" -1.8 -130.5 0 :shadow nil))   ; a leg
+               (when (zerop (mod n 14))                                                              ; a row of columns across
+                 (dolist (x '(-230 -146 -62 58 142 226))
+                   (shape seg :box '(9.0 440.0 9.0) "#7c7b76" (+ -1.8 x) -40.0 0 :shadow nil)
+                   (shape seg :box '(20.0 7.0 20.0) "#6b6a66" (+ -1.8 x) 176.5 0 :shadow nil)))
+               (incf n)))
+    (loop for (frac x up turn lit) in '((.16 46 26 .2 nil) (.28 -70 44 -.3 nil) (.42 60 34 .1 t) (.55 -52 60 .5 nil)
+                                        (.66 90 80 -.2 nil) (.78 -96 30 .3 nil) (.9 54 52 0 nil))
+          do (let ((seg (road-group g (+ m0 (* frac len)))))                                          ; a panel house on one pole
+               (shape seg :cyl '(1.6 1.6 360.0 8) "#6a6c70" x (- up 180.0) 0 :shadow nil)
+               (let ((h (group seg x (+ up 7.5) 0)))
+                 (node-3d-set-rotation h (v3 0 turn 0))
+                 (shape h :box '(12.0 15.0 64.0) "#85857f" 0 0 0 :shadow nil)
+                 (when lit                                                                           ; somebody is at home
+                   (let ((side (if (> x 0) -1 1)))
+                     (shape h :box '(.3 1.6 2.0) "#ffcf7a" (* side 6.1) 1.5 -8.0 :emit "#ffb866" :energy 3 :shadow nil)
+                     (light h "#ffb866" 2.5 46.0 (* side 9.0) 1.5 -8.0))))))
+    (loop for (frac y r) in '((.08 14 3.0) (.22 22 5.0) (.35 12 2.0) (.5 30 6.0) (.62 16 3.0) (.74 24 4.0) (.94 13 2.5))
+          do (let ((seg (road-group g (+ m0 (* frac len)))))                                          ; a pipe across, overhead
+               (shape seg :cyl (list r r 700.0 10) "#c9ccc8" -1.8 y 0 :rot (list 0 0 (/ pi 2)) :shadow nil)))
+    g))
+
+(defun step-gloom ()
+  "Set how deep inside we are: the dark comes over the first stretch of the tunnel and lifts at the far end of the megastructure."
+  (setf *gloom*
+        (if (and *tunnel* *mega*)
+            (let ((d0 (first *tunnel*)) (m1 (second *mega*)) (d *dist*))
+              (float (max 0.0 (min 1.0 (/ (- d d0 20.0) 110.0) (/ (- m1 d) 160.0))) 1.0))
+            0.0)))
 
 ;;; A way straight into the tunnel, for working on what is inside it: the page address with ?tunnel (or the
 ;;; variable KIOSK_TUNNEL on the desktop). Once the lobby is closed, whoever owns the world is put a hundred
@@ -324,6 +368,7 @@ FIRST and LAST mark the portals."
 
 (defun step-tunnel ()
   (step-tunnel-spawn)
+  (step-gloom)
   (when *tunnel*
     (destructuring-bind (d0 d1) *tunnel*
       (let ((from (- d0 36.0)) (to (+ d1 36.0)))

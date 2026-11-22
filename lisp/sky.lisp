@@ -29,10 +29,14 @@
 (defparameter *sun-step* .004 "The step of the sun and moon across the sky, in radians.")
 (defun sun-step (a) (* *sun-step* (round a *sun-step*)))
 
+(defvar *gloom* 0.0 "How deep inside we are, from 0 in the open to 1 in the tunnel and the megastructure beyond it:
+there the day does not reach, whatever the hour (marks.lisp sets it every frame).")
+
 (defun daylight (tt)
-  "Return the amount of daylight at time TT: 1 is day, 0 is night."
+  "Return the amount of daylight at time TT: 1 is day, 0 is night. Inside the megastructure there is none."
   (let ((tt (day-phase tt)))
-    (if (< tt (second *dusk*)) (* (sstep 0 80 tt) (- 1 (sstep (first *dusk*) (second *dusk*) tt))) 0)))
+    (* (- 1.0 *gloom*)
+       (if (< tt (second *dusk*)) (* (sstep 0 80 tt) (- 1 (sstep (first *dusk*) (second *dusk*) tt))) 0))))
 
 (defun sky-colors (tt)
   (let* ((tt (day-phase tt))
@@ -86,6 +90,8 @@
     (multiple-value-bind (top horizon) (sky-colors *day-t*)
       (let ((gray (mix-color (hex "#8a9098") (hex "#202428") (- 1 day))) (overcast (* .6 (wx :cloud))))
         (setf top (mix-color top gray overcast) horizon (mix-color horizon gray (* .8 overcast))))
+      (when (plusp *gloom*)                                    ; inside: no sky at all
+        (setf top (mix-color top (hex "#000000") *gloom*) horizon (mix-color horizon (hex "#000000") *gloom*)))
       (object-set *sky-mat* "sky_top_color" top)
       (object-set *sky-mat* "sky_horizon_color" horizon)
       (object-set *sky-mat* "ground_horizon_color" horizon)
@@ -96,14 +102,14 @@
     (flet ((elev (a) (if (< a (/ pi 2)) a (- pi a))))
       (node-3d-set-rotation *sun* (v3 (- (max .03 (elev (min sun-a pi)))) (- (min sun-a pi) (/ pi 2)) 0))
       (node-3d-set-rotation *moon-light* (v3 (- (max .15 (elev moon-a))) (- moon-a (/ pi 2)) 0)))
-    (object-set *sun* "light_energy" (if sun-up (* (+ .15 (* 1.4 day)) (- 1 (* .7 (wx :cloud)))) 0.0))
+    (object-set *sun* "light_energy" (if sun-up (* (- 1.0 *gloom*) (+ .15 (* 1.4 day)) (- 1 (* .7 (wx :cloud)))) 0.0))
     (object-set *env* "fog_density" (+ *fog-base* (* .012 (wx :fog)) (* .004 (wx :rain)) (* .006 (wx :snow))))
     (object-set *sun* "light_color" (mix-color (hex "#ff9a60") (hex "#fff4e0") day))
     (object-set *sun* "visible" sun-up)
-    (object-set *moon-light* "light_energy" (if sun-up 0.0 (* .35 (- 1 (* .7 (wx :cloud))))))
-    (object-set *moon* "visible" (and (not sun-up) (< (wx :cloud) .6)))
+    (object-set *moon-light* "light_energy" (if sun-up 0.0 (* (- 1.0 *gloom*) .35 (- 1 (* .7 (wx :cloud))))))
+    (object-set *moon* "visible" (and (not sun-up) (< (wx :cloud) .6) (< *gloom* .3)))
     (destructuring-bind (x y z) *rig-at*                   ; the moon circles the wagon wherever it has driven
       (node-3d-set-position *moon* (v3 (+ x (* -140 (cos moon-a))) (+ y (- (* 80 (sin moon-a)) 4)) (- z 50))))
     ;; lights off (L): almost no ambient light, so you can see where the street light breaks in
-    (object-set *env* "ambient_light_energy" (if *lights-on* (+ .35 (* .65 day)) .0))
+    (object-set *env* "ambient_light_energy" (if *lights-on* (* (- 1.0 (* .97 *gloom*)) (+ .35 (* .65 day))) .0))
     (object-set *env* "reflected_light_source" (if *lights-on* 0 1))))   ; REFLECTION_SOURCE_DISABLED: no sky glint
