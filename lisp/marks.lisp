@@ -443,9 +443,9 @@ cell runs from z = 0 back to z = -*MEGA-CELL*."
         (:graves                                                         ; walls of black drawers along the road
          (dolist (x '(-22.0 18.0))
            (shape g :box (list 3.0 46.0 c) "#16171a" x 14.0 (- (/ c 2)) :shadow nil)
-           (loop for y from -6.0 to 34.0 by 2.5
+           (loop for y from -1.0 to 34.0 by 5.0
                  do (shape g :box (list 3.2 .08 c) "#2c2e33" x y (- (/ c 2)) :shadow nil))
-           (loop for z from 0.0 below c by 3.0 do (shape g :box '(3.2 46.0 .08) "#2c2e33" x 14.0 (- z) :shadow nil)))
+           (loop for z from 0.0 below c by 6.0 do (shape g :box '(3.2 46.0 .08) "#2c2e33" x 14.0 (- z) :shadow nil)))
          (when (zerop (mod at 3))                                         ; a bare bulb on the wall now and then
            (shape g :box '(.3 .3 .3) "#fff0c8" 16.3 6.0 -8.0 :emit "#ffe2a8" :energy 3 :shadow nil)
            (light g "#ffe2a8" 1.4 30.0 12.0 6.0 -8.0))
@@ -503,29 +503,38 @@ return its group. The cells themselves are built by STEP-MEGA as the wagon goes.
     (loop for z from 126.0 downto -196.0 by 8.0 do (shape entry :box '(.5 .12 2.4) "#2a2620" -1.8 6.95 z :shadow nil))
     (dolist (x '(-13.0 9.4)) (shape entry :box '(9.0 12.0 1.6) "#9a9890" x 6.0 -200.4 :shadow nil))
     (shape entry :box '(31.4 4.6 1.6) "#9a9890" -1.8 10.0 -200.4 :shadow nil)
-    (light g "#ffd9a0" 2.6 120.0 0.0 6.0 -6.0)                    ; our own light: a lantern over the wagon, so what is near is seen all round
-    (clrhash *mega-cells*) (clrhash *mega-poses*)
-    (setf *mega-parts* (list :cells cells :turn turn :tilt tilt :entry entry) *mega-s* 0.0)
+    ;; The light of the place has a source: far off and high up there is a breach, and the day comes in through it
+    ;; from one side. It hangs in the megastructure's own frame, so as the way turns it swings round us like a sun.
+    (let ((sun (gdext:make-object "DirectionalLight3D")))
+      (object-set sun "light_color" (hex "#b9d6de")) (object-set sun "light_energy" 0.0) (object-set sun "shadow_enabled" nil)
+      (node-add-child turn sun)
+      (node-3d-set-rotation sun (v3 -.36 .85 0))                 ; low: it rakes the sides of things and hardly touches the floors
+      (shape turn :ball '(70.0 12 8) "#cfe6ee" -430.0 240.0 -380.0 :emit "#b9d6de" :energy 2.0 :unshaded t :shadow nil)   ; the breach itself
+      (clrhash *mega-cells*) (clrhash *mega-poses*)
+      (setf *mega-parts* (list :cells cells :turn turn :tilt tilt :entry entry :sun sun :at nil) *mega-s* 0.0))
     g))
 
 (defun step-mega-cells ()
   "Keep the cells around the wagon built: some way behind, far ahead, no more than two new ones a frame."
   (let* ((c *mega-cell*) (cells (getf *mega-parts* :cells))
-         (lo (floor (- *mega-s* 170.0) c)) (hi (floor (+ *mega-s* 760.0) c)) (fresh 0))
+         (lo (floor (- *mega-s* 170.0) c)) (hi (floor (+ *mega-s* 620.0) c)) (fresh 0))
     ;; where we are on the way, and which way we face there: the megastructure is turned and moved the other way
     (let* ((i (floor *mega-s* c)) (f (- (/ *mega-s* c) i)) (a (mega-pose i)) (b (mega-pose (1+ i))))
       (flet ((mix (k) (+ (nth k a) (* f (- (nth k b) (nth k a))))))
         (node-3d-set-rotation (getf *mega-parts* :tilt) (v3 (- (mix 4)) 0 0))
         (node-3d-set-rotation (getf *mega-parts* :turn) (v3 0 (- (mix 3)) 0))
         (node-3d-set-position cells (v3 (- (mix 0)) (- (mix 1)) (- (mix 2))))))
-    (loop for i being the hash-keys of *mega-cells* using (hash-value node)
-          do (unless (<= (1- lo) i (1+ hi)) (node-queue-free node) (remhash i *mega-cells*)))
-    (loop for i from (floor *mega-s* c) to hi                             ; the nearest first
-          while (< fresh 2)
-          do (unless (gethash i *mega-cells*) (setf (gethash i *mega-cells*) (build-mega-cell cells i)) (incf fresh)))
-    (loop for i from (1- (floor *mega-s* c)) downto lo
-          while (< fresh 2)
-          do (unless (gethash i *mega-cells*) (setf (gethash i *mega-cells*) (build-mega-cell cells i)) (incf fresh)))))
+    (object-set (getf *mega-parts* :sun) "light_energy" (* .8 *haze*))
+    (unless (eql (getf *mega-parts* :at) (floor *mega-s* c))             ; nothing to do while we stay in one cell and all is built
+      (loop for i being the hash-keys of *mega-cells* using (hash-value node)
+            do (unless (<= (1- lo) i (1+ hi)) (node-queue-free node) (remhash i *mega-cells*)))
+      (loop for i from (floor *mega-s* c) to hi                           ; the nearest first
+            while (< fresh 2)
+            do (unless (gethash i *mega-cells*) (setf (gethash i *mega-cells*) (build-mega-cell cells i)) (incf fresh)))
+      (loop for i from (1- (floor *mega-s* c)) downto lo
+            while (< fresh 2)
+            do (unless (gethash i *mega-cells*) (setf (gethash i *mega-cells*) (build-mega-cell cells i)) (incf fresh)))
+      (when (zerop fresh) (setf (getf *mega-parts* :at) (floor *mega-s* c))))))
 
 (defvar *mega-in* nil "True while we are in the megastructure: from the moment we drive deep into the tunnel until we back out of it.")
 
