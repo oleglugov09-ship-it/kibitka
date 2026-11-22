@@ -58,8 +58,7 @@ void fragment() {
   c = mix(c, c * vec3(0.94, 0.98, 1.06), 1.0 - g);          // тени холоднее
   vec2 v = SCREEN_UV - 0.5;
   c *= 1.0 - 0.35 * dot(v, v);                                // края темнее
-  ivec2 p = ivec2(FRAGCOORD.xy) % 4;
-  c = floor(c * levels + B[p.x + p.y * 4] / 16.0) / levels;  // мало оттенков, переход зерном
+  // зерна нет: точки по всей картинке утомляли глаза (автор, 22.11). Таблица B и levels остались на случай возврата
   COLOR = vec4(c, 1.0);
 }")
 (defvar *grade* nil "The ShaderMaterial of the film, with parameters levels, sat and gain.")

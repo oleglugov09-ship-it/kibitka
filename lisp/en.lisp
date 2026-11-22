@@ -1706,4 +1706,6 @@ otherwise the world and messages drift apart."
   "DIARY · day ~d"
 "ДНЕВНИК · день ~d, дальше"
   "DIARY · day ~d, continued"
+"Старт у туннеля: бак полный, автопилот ведёт сквозь него"
+  "Start at the tunnel: a full tank, the autopilot takes us through"
 ) by #'cddr do (setf (gethash ru *en*) en))

@@ -292,7 +292,36 @@ FIRST and LAST mark the portals."
         (shape g :box '(8.0 .9 .2) "#2c4a7a" -1.8 9.4 (+ z (if first .65 -.65)) :shadow nil)
         (sign g "ТУННЕЛЬ" -1.8 9.4 (+ z (if first .78 -.78)) :h .6 :rgb "#f0ece0" :yaw (if first 0.0 pi))))))
 
+;;; A way straight into the tunnel, for working on what is inside it: the page address with ?tunnel (or the
+;;; variable KIOSK_TUNNEL on the desktop). Once the lobby is closed, whoever owns the world is put a hundred
+;;; metres before the tunnel with a full tank, the intro skipped, and the autopilot set through it.
+
+(defvar *tunnel-spawn* :ask "Whether to start at the tunnel: :ASK until the address has been read, then T or NIL; :LOBBY while the lobby is open, :DONE once we are there.")
+
+(defun step-tunnel-spawn ()
+  (when (eq *tunnel-spawn* :ask)
+    (setf *tunnel-spawn*
+          (and (or (let ((e (ext:getenv "KIOSK_TUNNEL"))) (and e (plusp (length e))))
+                   (and (object-call (gdext:singleton "OS") "has_feature" "web")
+                        (let ((q (ignore-errors (object-call (gdext:singleton "JavaScriptBridge") "eval" "location.search"))))
+                          (and (stringp q) (search "tunnel" q)))))
+               t)))
+  (when (and (eq *tunnel-spawn* t) *lobby-open*) (setf *tunnel-spawn* :lobby))        ; wait for the lobby to be answered
+  (when (and (eq *tunnel-spawn* :lobby) *tunnel* *cart* (not *lobby-open*)
+             (or (not *dev*) (and (boundp '*dev-started*) (symbol-value '*dev-started*))))     ; on the polygon: after its own start
+    (setf *tunnel-spawn* :done)
+    (unless (net-guest-p)
+      (when (eq *story-stage* :intro)                                                   ; no intro: straight to the road
+        (setf *story-stage* :owing)
+        (when *show* (setf *show* nil) (show-card)))
+      (setf *fuel* 1.0 *auto* nil *speed* 0.0 *dir* 1)
+      (relocate (- (first *tunnel*) 100.0))
+      (let ((next (or (find-if (lambda (tw) (> (town-stop-d tw) (second *tunnel*))) *towns*) (first *towns*))))
+        (go-to-town next))
+      (say-all "Старт у туннеля: бак полный, автопилот ведёт сквозь него"))))
+
 (defun step-tunnel ()
+  (step-tunnel-spawn)
   (when *tunnel*
     (destructuring-bind (d0 d1) *tunnel*
       (let ((from (- d0 36.0)) (to (+ d1 36.0)))
