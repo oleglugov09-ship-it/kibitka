@@ -129,7 +129,7 @@ Its width follows the picture. Return the mesh instance, or NIL when the picture
     (shape c :cyl '(.07 .27 .2 14) "#c8643a" 0 (+ f wh .26) 0 :shadow nil)                        ; a cloth shade
     (shape c :cyl '(.28 .28 .03 14) "#e0b050" 0 (+ f wh .165) 0 :shadow nil)                      ; its trim
     (push (shape c :ball '(.09 10 6) "#ffe8b0" 0 (+ f wh .11) 0 :emit "#ffc070" :energy 3 :shadow nil) *glow*)
-    (push (light c "#ffb070" 3.5 8 0 (+ f wh .1) 0) *glow*)
+    (push (light c "#ffb070" 4.2 3.7 0 (+ f wh .1) 0) *glow*)       ; a short reach: lights cast no shadows here, and a longer one lit the ground under the wagon through its floor
     (push (light c "#ff8060" 1.2 4 -.6 (+ f 1.4) -.2) *glow*)
     (dolist (sx '(-1 1))
       (dotimes (i 22)
