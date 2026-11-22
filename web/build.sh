@@ -28,7 +28,8 @@ PROJECT_ROOT="$ROOT/" SYSTEM=kiosk-trip GDECL="$GDECL/" ECL_TARGET="$ECL_WASM/" 
   "$HOST_ECL" --norc --load "$ROOT/web/build-web.lisp"
 emcc "$OPT" -fPIC -fno-exceptions -sSUPPORT_LONGJMP=wasm -I"$ECL_WASM" -I"$GDECL/src" \
   -c "$GDECL/src/gdecl.c" -o "$ROOT/build-web/gdecl.o"
-emcc "$OPT" -fPIC -sSIDE_MODULE=1 -sSUPPORT_LONGJMP=wasm \
+# --profiling-funcs keeps the names of functions in the module: a crash in the browser then prints a stack one can read
+emcc "$OPT" -fPIC -sSIDE_MODULE=1 -sSUPPORT_LONGJMP=wasm --profiling-funcs \
   -sBINARYEN_EXTRA_PASSES=--spill-pointers \
   -o "$ROOT/project/bin/libgdecl.wasm" \
   "$ROOT/build-web/gdecl.o" "$ROOT/build-web/application.a" \

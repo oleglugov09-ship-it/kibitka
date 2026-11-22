@@ -47,6 +47,12 @@ again too, because it may use a macro from the changed one.")
     (setf *stale* t)
     (format t "~&;;; cross: ~a~%" (enough-namestring source *root*))
     (install-cross-overrides)
+    ;; The C made from Lisp is compiled without optimisation, like ECL itself and for the same reason: the
+    ;; collector finds what is in use by looking through the stack, and optimised code keeps values where it
+    ;; cannot look. ECL would add -O2 by itself (its *CC-OPTIMIZE*, used when SPEED is 2 or more, which is the
+    ;; default), and did until 22.11: the game then died now and then with "not a lisp data object".
+    ;; LISP_OPT=-O2 web/build.sh brings the old behaviour back; rm build-web/*.o after changing it.
+    (setf c::*cc-optimize* (or (ext:getenv "LISP_OPT") "-O0"))
     (let ((compiled (compile-file source :output-file output :system-p t :verbose nil :print nil)))
       (unless compiled
         (error "Cross-compiling ~a failed" source))
