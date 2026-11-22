@@ -126,6 +126,12 @@ This is a cheat. Return T if the wagon was moved."
                      t))))))))
 
 (defun open-map ()
+  (when (inside-mega-p)                                    ; the map of the region shows nothing of this place
+    (unless *show*
+      (open-show (list (format nil "КАРТА ОБЛАСТИ~%~%Этого места на ней нет.~%~%По эстакаде пройдено: ~,1f км~%Сколько осталось — не написано."
+                               (/ (max 0.0 *mega-s*) 1000.0)))
+                 (lambda ())))
+    (return-from open-map nil))
   (setf *map-open* t *map-key* t)
   (object-set (getf *map-parts* :fuel) "button_pressed" (and *auto* (equal (cdr *auto*) "ближайшая АЗС") t))
   (object-set (getf *map-parts* :bank) "button_pressed" (and *auto* (equal (cdr *auto*) "сберкасса") t))

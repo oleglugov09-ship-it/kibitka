@@ -1710,4 +1710,6 @@ otherwise the world and messages drift apart."
   "Start at the tunnel: a full tank, the autopilot takes us through"
 "Дождь и снег"
   "Rain and snow"
+"КАРТА ОБЛАСТИ~%~%Этого места на ней нет.~%~%По эстакаде пройдено: ~,1f км~%Сколько осталось — не написано."
+  "MAP OF THE REGION~%~%This place is not on it.~%~%Driven along the trestle: ~,1f km~%How much is left — it does not say."
 ) by #'cddr do (setf (gethash ru *en*) en))
