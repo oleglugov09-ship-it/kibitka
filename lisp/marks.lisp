@@ -318,6 +318,8 @@ FIRST and LAST mark the portals."
 (defvar *mega-parts* nil "The megastructure's moving parts, a plist: :cells (the group the cells hang in) and :entry (the tunnel we came by).")
 (defvar *mega-cells* (make-hash-table) "The cells built right now: a table from a cell's number to its node.")
 (defvar *mega-s* 0.0 "How far we have driven since the old world went out of sight.")
+(defparameter *mega-haze* '(:columns .75 :poles 1.0 :pipes .9 :graves .2 :crater .9 :statues 1.0 :rail .7 :spiral .3)
+  "How much haze stands in each kind of zone: in the open ones the far shapes show, the closed ones are dark.")
 
 (defun mega-kind (i)
   "Return the kind of the zone that cell I belongs to. The first zone is the level on columns."
@@ -397,6 +399,13 @@ cell runs from z = 0 back to z = -*MEGA-CELL*."
         (:statues (floor-slab 520.0 "#8a887f"))
         (:spiral (floor-slab 17.0 "#5f5e5a" -1.0))                                                           ; a ramp along a wall
         (:rail (floor-slab 44.0 "#3f3d3a" -6.0)))
+      (unless (member kind '(:graves :spiral))                           ; far off, what makes the place big: piers and the edges of other levels
+        (when (zerop (mod i 3))
+          (let ((side (if (< (r 400) .5) -1 1)))
+            (shape g :box '(46.0 1400.0 46.0) "#39474d" (* side (+ 330.0 (* 420.0 (r 401)))) 100.0 (* (- c) (r 402)) :shadow nil)))
+        (when (zerop (mod i 5))
+          (let ((side (if (< (r 410) .5) -1 1)))
+            (shape g :box (list 520.0 14.0 (* 3 c)) "#323f45" (* side (+ 560.0 (* 300.0 (r 411)))) (- (* 520.0 (r 412)) 220.0) mid :shadow nil))))
       (when (= at 8)                                                     ; one of our bus stops every so often, under a lamp
         (let ((stop (group g *stop-x* 0.0 -20.0)))
           (shape g :box '(9.0 .5 14.0) "#6f6e69" 8.6 -.3 -20.0 :shadow nil)
@@ -502,7 +511,7 @@ return its group. The cells themselves are built by STEP-MEGA as the wagon goes.
 (defun step-mega-cells ()
   "Keep the cells around the wagon built: some way behind, far ahead, no more than two new ones a frame."
   (let* ((c *mega-cell*) (cells (getf *mega-parts* :cells))
-         (lo (floor (- *mega-s* 170.0) c)) (hi (floor (+ *mega-s* 540.0) c)) (fresh 0))
+         (lo (floor (- *mega-s* 170.0) c)) (hi (floor (+ *mega-s* 760.0) c)) (fresh 0))
     ;; where we are on the way, and which way we face there: the megastructure is turned and moved the other way
     (let* ((i (floor *mega-s* c)) (f (- (/ *mega-s* c) i)) (a (mega-pose i)) (b (mega-pose (1+ i))))
       (flet ((mix (k) (+ (nth k a) (* f (- (nth k b) (nth k a))))))
@@ -543,6 +552,8 @@ fuel up, since there is nowhere to fill it."
   (let ((in (inside-mega-p)))
     (when *land* (object-set *land* "visible" (not in)))
     (when *world* (object-set *world* "visible" (not in)))
+    (let ((want (if in (getf *mega-haze* (mega-kind (floor *mega-s* *mega-cell*)) 0.0) 0.0)))   ; the haze of the zone comes on slowly
+      (setf *haze* (if in (+ *haze* (* .012 (- want *haze*))) 0.0)))
     (cond ((and in (null *mega-node*)) (setf *mega-node* (build-mega)))
           ((and (not in) *mega-node*) (node-queue-free *mega-node*) (clrhash *mega-cells*) (setf *mega-node* nil *mega-parts* nil)))
     (when (and in *mega-parts*)
