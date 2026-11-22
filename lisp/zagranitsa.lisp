@@ -35,7 +35,7 @@ read after the word for 'Radio:'.")
              (let ((line (abroad-event entry)))
                (when line
                  (setf *abroad-news* (last (append *abroad-news* (list line)) 4))
-                 (say-all (format nil "Радио: ~a" line))
+                 (unless (inside-mega-p) (say-all (format nil "Радио: ~a" line)))
                  (log-event :abroad :line line))))))
 
 (defun abroad-news () "Return the next radio line about abroad, or NIL." (pop *abroad-news*))
