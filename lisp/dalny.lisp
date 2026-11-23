@@ -112,13 +112,9 @@ The recipient pays as for a hand-delivered parcel and the post office keeps its 
     (t
       (let* ((addr (cdr *carry*)) (fee (airmail-fee addr)) (pay (- (delivery-pay) fee)) (crate nil))
         ;; the plan's crate is the plan's crate by air too: it goes into the shop of its town and is paid as at the window
-        (if (parcel-good addr)
-            (multiple-value-setq (pay crate) (crate-delivered addr pay (parcel-town addr)))
-            (add-money pay))
+        (multiple-value-setq (pay crate) (parcel-delivered addr pay :by-air t))
         (empty-paws)
         (show-carry) (save-interior)
-        (award-pennant (parcel-town addr)) (note-quest :post)
-        (let ((answer (story-delivered addr t))) (when answer (say-later answer)))
         (log-event :airmail :to addr :fee fee :money *money*)
         (setf *next-plane* 0.0)                                        ; the plane takes off with it right away
         (say-all (if crate

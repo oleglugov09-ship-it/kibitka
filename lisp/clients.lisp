@@ -470,6 +470,17 @@ coupons, and with the fourth pennant the account. Return what was paid and what 
           (say-later (format nil "Горсовет выдал талоны: ~d. Теперь у нас ~d" (- *talons* had) *talons*))))
     (values price done)))
 
+(defun parcel-delivered (addr price &key by-air)
+  "The parcel ADDR has reached whoever it was for, and PRICE is the pay for carrying it: over the windowsill, at the
+camp's gates or, with BY-AIR, through the airmail window. The town's pennant for a first parcel, the quest of
+the post, the story the parcel belongs to, and the pay: to the co-operative with what the town adds if it is the
+plan's crate, into the pocket otherwise. Return what was paid and, for a crate, what to say about it."
+  (award-pennant (parcel-town addr)) (note-quest :post)
+  (let ((answer (story-delivered addr by-air))) (when answer (say-later answer)))   ; they reply to this very parcel
+  (if (parcel-good addr)
+      (crate-delivered addr price (parcel-town addr))
+      (progn (add-money price) (values price nil))))
+
 (defun step-client (delta)
   ;; parked at a market with a parcel for this town: the recipient comes up by himself
   (let ((place (place-here)))
@@ -494,15 +505,12 @@ coupons, and with the fourth pennant the account. Return what was paid and what 
                      (let ((price (if (eq kind :buyer) (good-price (spec-kind (car it)) (getf *client* :price)) (delivery-pay)))   ; the recipient pays for the delivery
                            (done nil))                                                       ; what to say about a parcel handed over
                        (when (eq kind :buyer) (note-trade (spec-kind (car it)) :sold (spec-prop (car it) :shop)))
-                       (when (eq kind :recipient)
-                         (award-pennant town) (note-quest :post)
-                         (let ((answer (story-delivered (spec-addr (car it))))) (when answer (say-later answer))))   ; they reply to this very parcel
                        (fly (cdr it) (paws-point (spec-z (car it))) :dur .4 :free t)   ; reaches out a paw and takes it
                        (lift-item it)
-                       (if (and (eq kind :recipient) (parcel-good (spec-addr (car it))))       ; the plan's crate: into the shop, pay to the account
-                           (multiple-value-setq (price done) (crate-delivered (spec-addr (car it)) price town))
-                           (progn (add-money price)
-                                  (setf done (format nil "Посылка вручена: +~/kiosk-trip::rub/" price))))
+                       (cond ((eq kind :recipient)
+                              (multiple-value-setq (price done) (parcel-delivered (spec-addr (car it)) price))
+                              (unless done (setf done (format nil "Посылка вручена: +~/kiosk-trip::rub/" price))))
+                             (t (add-money price)))
                        (things-changed t)
                        (log-event (if (eq kind :buyer) :sold :delivered) :price price :town town :money *money* :dist (round *dist*))
                        (cond ((eq kind :buyer) (client-leave (format nil "Продали за ~/kiosk-trip::rub/" price)))
