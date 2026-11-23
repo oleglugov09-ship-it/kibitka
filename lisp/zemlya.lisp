@@ -56,6 +56,7 @@ The pictures are nearly grey, the colour comes from the map; the shader doubles 
   (let ((terrain (new-object "Terrain3D")))
     (setf *terrain* terrain)
     (object-call terrain "set_collision_mode" 0)                         ; nobody collides with it: the game asks for heights itself
+    (when *baking* (object-call terrain "set_free_editor_textures" nil)) ; the textures are saved for the editor: keep them
     (node-add-child root terrain)
     (object-call terrain "change_region_size" *terrain-points*)
     (object-call terrain "set_vertex_spacing" *terrain-step*)

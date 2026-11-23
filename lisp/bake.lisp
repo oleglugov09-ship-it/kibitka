@@ -188,7 +188,8 @@ apart - x, z, heading and height. Numbers are 32-bit integers: millimetres, and 
     (terrain-param "world_shift" (v3 0.0 0.0 0.0)) (terrain-param "season_amount" 0.0)
     (object-call saver "save" (object-get *terrain* "assets") "res://terrain/assets.res")
     (object-call saver "save" (object-get *terrain* "material") "res://terrain/material.res")
-    (format t "~&BAKE editor resources: assets.res, material.res~%")))
+    (format t "~&BAKE editor resources: assets.res with ~d textures, material.res~%"
+            (object-call (object-get *terrain* "assets") "get_texture_count"))))
 
 (defun dump-terrain-shader (path)
   "Write Terrain3D's own shader, as it makes it for a terrain like ours, to the file PATH: tools/terrain-shader.py
@@ -209,7 +210,9 @@ makes the game's shader of it."
   (let* ((*season* :summer) (regions (bake-regions)) (t0 (get-internal-real-time)) (wet 0))
     (let ((path (ext:getenv "KIOSK_BAKE_SHADER"))) (when path (dump-terrain-shader path)))
     (make-terrain root nil)
-    (object-call *terrain* "set_free_editor_textures" nil)             ; or the textures are gone by the time they are saved for the editor
+    (when (ext:getenv "KIOSK_BAKE_EDITOR")                              ; only what the editor needs, the map is left as it is
+      (save-editor-resources)
+      (return-from bake-map nil))
     (format t "~&BAKE: ~d regions~%" (length regions))
     (loop for (rx rz) in regions for k from 1
           do (let ((water (bake-region *terrain-data* rx rz)))

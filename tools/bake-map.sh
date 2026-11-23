@@ -5,11 +5,18 @@
 #   tools/bake-map.sh                       the whole map: about half an hour
 #   KIOSK_BAKE_ONLY="-1 -1 1 1" tools/bake-map.sh    only the regions from (-1 -1) to (1 1): a piece, for a look
 #
+#   tools/bake-map.sh --editor              only the shader and what the Godot editor needs (terrain.tscn, assets.res,
+#                                           material.res); the baked map stays as it is
+#
 # What was baked before is removed first. Runs without a window and without sound.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 mkdir -p project/terrain/data project/terrain/water
-rm -f project/terrain/data/*.res project/terrain/water/*.res project/terrain/water/*.import project/terrain/data/*.import
+if [ "${1:-}" = "--editor" ]; then        # only the shader, the scene and the resources for the editor: the map is not touched
+  export KIOSK_BAKE_EDITOR=1
+else
+  rm -f project/terrain/data/*.res project/terrain/water/*.res project/terrain/water/*.import project/terrain/data/*.import
+fi
 tmp=$(mktemp -d)
 KIOSK_BAKE=1 KIOSK_BAKE_SHADER="$tmp/terrain3d.gdshader" KIOSK_NOLOG=1 KIOSK_SOLO=1 XDG_DATA_HOME="$tmp/data" \
   timeout 7200 godot --path project --headless --audio-driver Dummy 2>&1 | grep "BAKE\|Ошибка\|ERROR" || true
