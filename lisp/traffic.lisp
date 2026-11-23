@@ -22,9 +22,7 @@ The two values are (x y z), raised by UP, and (pitch heading 0)."
   (multiple-value-bind (at rot) (track-frame track d)
     (let ((g (keep (group *world* (first at) (second at) (third at)) d)))
       (node-3d-set-rotation g (v3 (first rot) (second rot) 0))
-      (shape g :box '(3.6 .6 12.6) "#6a6660" 0 -.12 0 :shadow nil)
-      (shape g :box '(2.6 .1 12.6) "#3a3028" 0 .22 0 :shadow nil)
-      (dolist (sx '(-.76 .76)) (shape g :box '(.1 .14 12.6) "#8a8e92" sx .32 0 :metal .6 :rough .4 :shadow nil)))))
+      (model g "rail"))))
 
 (defun make-train (track)
   "Build the diesel locomotive and the cars for TRACK.

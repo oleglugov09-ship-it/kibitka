@@ -75,14 +75,12 @@
             *pan-nodes*
             (destructuring-bind (nx ny nz) *pan-nail*
               (let ((lid (group c (+ sx nx) (+ f ny .36) (+ sz nz))))                ; the lid on its own nail, above the pan
-                (shape lid :cyl '(.15 .15 .02 14) "#2a2a30" 0 0 0 :rot (list (/ pi 2) 0 0) :metal .4 :rough .6)
-                (shape lid :ball '(.03 6 4) "#1e1e22" 0 0 -.03 :shadow nil)
+                (model lid "pan-lid")
                 (list :wall (pan-model c (+ sx nx) (+ f ny) (+ sz nz) :hanging t)
                       :stove (pan-model c sx (+ f *stove-top*) sz)
                       :lid lid))))))
   (let ((knife (group c 0 0 0)))                                             ; the knife of the cutting board
-    (shape knife :box '(.03 .004 .18) "#b8bcc0" 0 0 -.05 :metal .7 :rough .3 :shadow nil)
-    (shape knife :box '(.03 .015 .1) "#3a2a1e" 0 .004 .09 :shadow nil)
+    (model knife "knife")
     (setf *chop-nodes* (list :knife knife :slices '())))
   (show-chop)
   (show-kettle))

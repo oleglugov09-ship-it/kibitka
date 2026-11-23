@@ -149,7 +149,7 @@ inside, (at fraction) is the path coordinate at that fraction of the town length
        (model b "theme-factory-2"))
      (let* ((d (at .5)) (b (road-group g d)))   ; a pipeline arching over the street
        (model b "theme-factory-3")
-       (dolist (z '(.4 1.2 2.0)) (shape b :cyl '(.32 .32 150.0 8) (if (= z 1.2) "#c9a13a" "#8a8e92") -2 9.0 z :rot (list 0 0 (/ pi 2))))))
+       (model b "theme-factory-3b")))
 
 (deftheme :university (g tw d0 len mid)
   (let ((b (spot g 112 mid)))                                     ; the main building: wings, a tower, a spire
@@ -195,9 +195,7 @@ inside, (at fraction) is the path coordinate at that fraction of the town length
 (deftheme :rail (g tw d0 len mid)
   (let* ((d mid) (b (road-group g d)))        ; a footbridge over the street
        (model b "theme-rail-1")
-       (dolist (x '(-16 12))
-         (dolist (z '(-1.2 1.2)) (shape b :box '(.4 7.6 .4) "#6e6e6a" x 3.8 z))
-         (beam-between b (list x 7.6 0) (list (+ x (if (< x 0) -1 1)) 0 (if (< x 0) -16 16)) :thick 2.4 :rgb "#6e6e6a")))
+       (model b "theme-rail-1b"))
      (let ((b (spot g 78 (at .4))))                                   ; the depot and tracks with railcars
        (model b "theme-rail-2")))
 
@@ -240,8 +238,7 @@ inside, (at fraction) is the path coordinate at that fraction of the town length
 
 (deftheme :outpost (g tw d0 len mid)
   (let ((b (spot g 30 (at .4))))                                   ; shift workers' cabins and tanks
-       (loop for i below 10 do (shape b :box '(2.6 2.5 7.0) (nth (mod i 4) '("#55708a" "#c9793a" "#3f6f73" "#b0aa98")) (* 6 (mod i 2)) 1.5 (- (* 5 i) 22))
-                               (shape b :box '(.1 .9 1.2) "#e8c070" (- (* 6 (mod i 2)) 1.32) 1.8 (- (* 5 i) 22) :emit (when (evenp i) "#ffc060") :shadow nil))
+       (model b "theme-outpost-1b")
        (model b "theme-outpost-1")
        (moving (shape b :cone '(.5 2.4 8) "#e86a20" 20 8.0 31.3 :rot (list (/ pi 2) 0 0) :shadow nil) :swing .35 1.3 0.0 :x 1.4))
      (let ((b (spot g 70 (at .5))))                                   ; the helipad
@@ -278,10 +275,7 @@ inside, (at fraction) is the path coordinate at that fraction of the town length
 
 (deftheme :sawmill (g tw d0 len mid)
   (let ((b (spot g 26 (at .42))))                                  ; log stacks, the sawmill, sawdust, logging trucks
-       (loop for k below 5
-             do (loop for r below 4
-                      do (loop for i below (- 6 r)
-                               do (shape b :cyl '(.45 .45 9.0 8) (if (evenp (+ i r)) "#8a6440" "#7a5a3a") (+ (* k 9) (* .45 r) (* .9 i)) (+ .45 (* .8 r)) -30 :rot (list (/ pi 2) 0 0)))))
+       (model b "theme-sawmill-1b")
        (model b "theme-sawmill-1") (chimney-smoke b 7 2.4 13 :size 1.0 :amount 10 :life 2.5 :rgb "#d8c890")
        (loop for i below 26 do (build-prop (group b (+ 50 (random 60.0)) 0 (- (random 150.0) 75)) :pine 1))))
 

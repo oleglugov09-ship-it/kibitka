@@ -423,14 +423,12 @@ That is in front of its nose when we drive forward."
       (model g "zebra"))))
 
 
+(defparameter *stop-tiles* '("#3f6f73" "#a8843c" "#8a4038" "#55708a" "#b0aa98") "The faded colours of the tiles on the box bus stop.")
+
 (defun stop-box (g d)
   "Build under G a concrete box with a mosaic of faded tiles, varied by path coordinate D."
-  (let ((wall "#85857f"))
-    (shape g :box '(.2 2.5 3.6) wall .9 1.25 0)
-    (dolist (sz '(-1 1)) (shape g :box '(1.5 2.5 .2) wall .15 1.25 (* sz 1.7)))
-    (shape g :box '(2.3 .16 4.2) "#6e6e6a" .1 2.58 0)
-    (loop for i below 6 for c = (nth (mod (+ i (round d)) 5) '("#3f6f73" "#a8843c" "#8a4038" "#55708a" "#b0aa98"))
-          do (shape g :box '(.04 .5 .5) c .78 (+ .8 (* .52 (mod i 2)) (* .1 (mod i 3))) (- (* i .56) 1.4) :shadow nil))))
+  (let ((tiles (loop for j below 5 collect (nth (mod (+ j (round d)) 5) *stop-tiles*))))
+    (model g "stop-0" 0.0 0.0 0.0 :paint tiles)))
 
 (defun add-stop (d)
   "Add a bus stop at path coordinate D; each is different, BUILD-STOP (stops.lisp) picks the look.

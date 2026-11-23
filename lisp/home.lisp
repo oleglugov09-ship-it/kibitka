@@ -287,9 +287,7 @@ that could be lost. A jar opened and left waits for the same good."
 (defun jar-model (parent x y z &optional (rgb "#8a6a4a"))
   "Build a glass jar with a tin lid under PARENT with its bottom at (X Y Z); RGB is what is in it."
   (let ((g (group parent x y z)))
-    (shape g :cyl '(.05 .05 .11 10) rgb 0 .06 0 :shadow nil)
-    (shape g :cyl '(.058 .058 .14 10) "#d8e8f0" 0 .07 0 :alpha .3 :rough .1 :shadow nil)
-    (shape g :cyl '(.05 .05 .02 10) "#d8a840" 0 .15 0 :metal .6 :rough .4 :shadow nil)
+    (model g "jar" 0.0 0.0 0.0 :paint (list rgb))
     g))
 
 (defun make-home (c)

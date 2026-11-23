@@ -46,6 +46,9 @@ VIEWS = [("outside-back-right", '(setf *view* :outside *orbit-yaw* .6 *orbit-pit
          ("themes", """(progn (setf *orbit-dist* 330.0 *orbit-yaw* -1.57 *orbit-pitch* .5) (let ((tw (or (town-at *dist*) (first *towns*)))) (dolist (th *themes*) (funcall (cdr th) (group *world*) tw))) 1)"""),
          ("themes-low", '(setf *orbit-dist* 200.0 *orbit-yaw* -2.4 *orbit-pitch* .25)'),
          ("themes-back", '(setf *orbit-dist* 260.0 *orbit-yaw* -.7 *orbit-pitch* .35)'),
+         ("last", """(progn (setf *orbit-dist* 30.0 *orbit-yaw* 1.57 *orbit-pitch* .4 *seed* (rs-for 7)) (izba (group *cart* -12.0 0.0 -16.0) 0 0) (shop (group *cart* -14.0 0.0 22.0) "ХЛЕБ") (parked-car (group *cart*) -6.0 8.0) (loop for d in '(0.0 2.0) for i from 0 do (let ((g (group *cart* -7.0 0.0 (- (* 7.0 i) 8.0)))) (godot:node-3d-set-rotation g (v3 0 3.1416 0)) (stop-box g d))) (loop for k in '(:snag :hay :fence :cairn :campfire :mush :pumpkin) for i from 0 do (build-prop (group *cart* -5.0 0.0 (- (* 2.5 i) 20.0)) k 1)) 1)"""),
+         ("last-near", '(setf *orbit-dist* 18.0 *orbit-yaw* 2.2 *orbit-pitch* .3)'),
+         ("last-far", '(setf *orbit-dist* 45.0 *orbit-yaw* .9 *orbit-pitch* .5)'),
          ("meta-room", '(progn (setf *meta* t *view* :inside *seat* nil *pos* (v3 0 0 2.8) *yaw* 0.0 *pitch* 0.0) (apply-meta) 1)'),
          ("meta-room-back", '(setf *pos* (v3 0 0 -2.8) *yaw* 3.1416)'),
          ("meta-room-side", '(setf *pos* (v3 2.4 0 0) *yaw* 1.5708)')]

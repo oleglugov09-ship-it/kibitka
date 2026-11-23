@@ -168,17 +168,7 @@ the field as one sheet of the same yellow."
   "Put under G, in the wagon's axes, what does not go by: the land to the horizon and the town ahead."
   (shape g :box '(5200.0 .3 5200.0) *summer-grass* *way-x* -.45 0.0 :shadow nil)
   (let ((town (group g *way-x* 0.0 (- *summer-town*))))
-    (dotimes (k 22)
-      (let* ((x (- (* 60.0 k) 630.0 (* 40.0 (vr k 3.0)))) (h (+ 50.0 (* 150.0 (vr k 5.0) (vr k 6.0)))) (w (+ 34.0 (* 40.0 (vr k 7.0))))
-                (z (* 260.0 (- (vr k 8.0) .5))))
-        (shape town :box (list w h 30.0) (if (evenp k) "#e9edf2" "#d6dde6") x (/ h 2) z :emit "#c9d6e6" :energy .35 :shadow nil)
-        (dotimes (j 3)                                                   ; a few windows that show at night
-          (shape town :box '(3.0 3.0 .6) "#ffcf70" (+ x (* w (- (vr (+ k (* 9 j)) 11.0) .5) .8)) (* h (+ .2 (* .6 (vr (+ k (* 9 j)) 12.0))))
-                 (+ z 15.4)
-                 :emit "#ffb866" :energy 2.0 :unshaded t :shadow nil))))
-    (shape town :cyl '(3.0 9.0 330.0 8) "#dfe4ea" 120.0 165.0 -80.0 :emit "#c9d6e6" :energy .35 :shadow nil)      ; the television tower
-    (shape town :cyl '(13.0 13.0 14.0 10) "#dfe4ea" 120.0 215.0 -80.0 :emit "#c9d6e6" :energy .35 :shadow nil)
-    (dolist (y '(120.0 215.0 328.0)) (shape town :ball '(3.2 6 4) "#ff3020" 120.0 y -80.0 :emit "#ff2010" :energy 3 :unshaded t :shadow nil))
+    (model town "leto-town")
     town))
 
 ;;; The summer as a world (see *WORLDS* in mega.lisp).

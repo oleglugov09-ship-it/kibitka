@@ -164,18 +164,10 @@ Between them are courtyards."
 (defun izba (g x z)
   "Add to G at (X, Z) a private house.
 It is a log house with a gable roof, windows with carved frames, a fence and a shed."
-  (let ((wall (nth (random 4) '("#6a5038" "#4a6a5a" "#55708a" "#7a6a4a"))))
-    (body g 7.0 3.2 8.0 wall x z)
-    (dolist (s '(-1 1))
-      (shape g :box '(4.6 .2 8.6) "#4c4e52" (+ x 3.5 (* s 1.75)) 4.3 z :rot (list 0 0 (* s -.62))))
-    (dolist (wz '(-2 2))
-      (shape g :box '(.1 1.5 1.3) "#d8d4c4" (- x .04) 1.8 (+ z wz) :shadow nil)
-      (shape g :box '(.12 1.1 .9) "#2e333b" (- x .06) 1.8 (+ z wz) :shadow nil))
-    (when (zerop (random 3)) (shape g :box '(.14 1.1 .9) "#e8c070" (- x .08) 1.8 (+ z 2) :emit "#ffc060" :energy .9 :shadow nil))
-    (shape g :box '(.5 1.6 .5) "#5a4a44" (+ x 4.5) 5.0 (- z 1.5))                                  ; chimney
-    (when (zerop (random 3)) (chimney-smoke g (+ x 4.5) 6.0 (- z 1.5) :size .9))                          ; the stove is lit
-    (shape g :box '(.12 1.3 13.0) "#6a5a48" (- x 3.5) .65 z)                                     ; fence
-    (shape g :box '(3.0 2.2 3.5) "#5a4a3a" (+ x 9.5) 1.1 (+ z 3))))                               ; shed
+  (let* ((wall (nth (random 4) '("#6a5038" "#4a6a5a" "#55708a" "#7a6a4a"))) (h (group g x 0 z)))
+    (model h "izba" 0.0 0.0 0.0 :paint (list wall))
+    (when (zerop (random 3)) (shape h :box '(.14 1.1 .9) "#e8c070" -.08 1.8 2 :emit "#ffc060" :energy .9 :shadow nil))
+    (when (zerop (random 3)) (chimney-smoke h 4.5 6.0 -1.5 :size .9))))                            ; the stove is lit
 
 (defun garages (g len)
   "Add to G a row of garages of length LEN, with doors of different colours, rusty here and there."
@@ -201,10 +193,8 @@ It has a main building, a striped chimney and a gatehouse."
 
 (defun shop (g name)
   "Add to G a single-storey shop with a glowing shop window and a sign reading NAME."
-  (body g 10.0 4.2 22.0 "#8a8a84" 8.0 0)
-  (shape g :box '(.14 2.2 18.0) "#d8c890" 7.95 1.5 0 :emit "#ffd890" :energy .6 :shadow nil)
-  (shape g :box '(2.2 .2 22.4) "#55554f" 7.4 3.4 0 :shadow nil)
-  (shape g :box '(.2 1.0 12.0) (nth (random 3) '("#8a4038" "#3f6f73" "#a8843c")) 7.9 4.4 0 :shadow nil)
+  (let ((stripe (nth (random 3) '("#8a4038" "#3f6f73" "#a8843c"))))
+    (model g "shop" 0.0 0.0 0.0 :paint (list stripe)))
   (sign g name 7.75 4.4 0 :h .8))
 
 (defun culture-house (g)
@@ -298,10 +288,8 @@ buyers and sellers come up at the sound of the bell (trade.lisp)."
 
 (defun parked-car (g x z)
   "Add to G at (X, Z) a car parked at the kerb."
-  (let ((rgb (nth (random 5) '("#8a4038" "#3f6f73" "#b0aa98" "#55708a" "#a8843c"))))
-    (shape g :box '(1.6 .6 4.0) rgb x .65 z) (shape g :box '(1.5 .55 2.0) rgb x 1.2 (+ z .2))
-    (shape g :box '(1.52 .4 1.9) "#1a2026" x 1.22 (+ z .2) :shadow nil)
-    (dolist (sx '(-.8 .8)) (dolist (sz '(-1.3 1.3)) (shape g :cyl '(.32 .32 .2 8) "#141416" (+ x sx) .32 (+ z sz) :rot (list 0 0 (/ pi 2)))))))
+  (let ((rgb (nth (random 5) '("#8a4038" "#3f6f73" "#b0aa98" "#55708a" "#a8843c"))) (h (group g x 0 z)))
+    (model h "parked-car" 0.0 0.0 0.0 :paint (list rgb))))
 
 (defun kvas (g x z)
   "Add to G at (X, Z) a kvass barrel on wheels."

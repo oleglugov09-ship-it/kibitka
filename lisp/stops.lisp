@@ -16,8 +16,7 @@
 (defun stop-mosaic-wall (g d)
   "Build the mural wall stop in G.
 It is a full-height slab bearing the ornament of the town nearest to D, with a short canopy on top."
-  (shape g :box '(.24 3.4 3.8) "#85857f" 1.0 1.7 0)
-  (shape g :box '(1.9 .16 4.2) "#6e6e6a" .1 3.3 0 :rot '(0 0 -.12))
+  (model g "stop-12")
   (let ((tw (or (town-at d) (find-if (lambda (tw) (> (town-start tw) d)) *towns*))))
     (or (and tw (mural-quad g .86 1.75 0 -1 2.9 (town-index tw) :b))
         (shape g :box '(.04 2.2 2.6) (stop-rgb d) .86 1.7 0 :shadow nil))))

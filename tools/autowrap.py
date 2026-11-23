@@ -6,7 +6,8 @@ names no variable of a loop around it or parameter of its function."""
 import re, sys
 IMPURE = ["moving", "light-beam", "chimney-smoke", "sign", "red-light", "flood", "diner-cat", "build-prop", "mark-cow", "group", "random",
           "light", "vr", "life-cat", "make-cat", "lamp", "live", "setf", "push", "mural", "mural-quad", "end-mosaic", "window-rows", "body",
-          "mega-slab", "kvas", "parked-car", "stamp", "model", "drawn", "when", "unless", "if", "cond", "case", "player", "object-set", "usable"]
+          "mega-slab", "kvas", "parked-car", "stamp", "model", "drawn", "player", "object-set", "usable"]
+CONSTANTS = {"*way-x*", "*water-rgb*", "*floor*"}
 
 def parse(s):
     """Return the top-level forms as nodes (start, end, kids); atoms have kids None."""
@@ -69,6 +70,7 @@ def pure(s, node, env, parent):
             for k in nd[2]: collect(k)
     collect(node)
     names = set(atoms(s, node))
+    if any(len(a) > 2 and a[0] == '*' and a[-1] == '*' and a not in CONSTANTS for a in names): return False     # the state of the game
     if (names & env) - own - {parent}: return False
     # every shape must hang under PARENT or a group... groups are impure, so: under PARENT
     def ok(nd):
@@ -90,7 +92,8 @@ def runs(s, body, env, parent):
 path, specs = sys.argv[1], sys.argv[2:]
 s = open(path, encoding="utf-8").read(); top = parse(s); edits = []
 for spec in specs:
-    if spec == "theme":
+    if spec.startswith("theme"):
+        suffix = spec[6:]
         for form in top:
             if head(s, form) != "deftheme": continue
             key = s[form[2][1][0]:form[2][1][1]].lstrip(":"); count = [0]
@@ -99,7 +102,7 @@ for spec in specs:
                 h = head(s, nd)
                 if h in ("let", "let*") and nd[2][1][2] and any(b[2] and s[b[2][0][0]:b[2][0][1]] == "b" for b in nd[2][1][2]):
                     count[0] += 1
-                    for a, b in runs(s, nd[2][2:], env, "b"): edits.append((a, b, "b", '"theme-%s-%d"' % (key, count[0])))
+                    for a, b in runs(s, nd[2][2:], env, "b"): edits.append((a, b, "b", '"theme-%s-%d%s"' % (key, count[0], suffix)))
                     return
                 env2 = env | binders(s, nd)
                 for k in nd[2]: walk(k, env2)
