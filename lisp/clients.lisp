@@ -483,14 +483,37 @@ plan's crate, into the pocket otherwise. Return what was paid and, for a crate, 
       (crate-delivered addr price (parcel-town addr))
       (progn (add-money price) (values price nil))))
 
-(defun step-client (delta)
-  ;; parked at a market with a parcel for this town: the recipient comes up by himself
+(defun recipient-comes ()
+  "Parked at a market with a parcel for this town: the recipient comes up by himself, once per stop."
   (let ((place (place-here)))
     (when (and place (not *client*) (market-p place) (plusp (parcels-for (place-town place)))
                (> *window-k* .9)
                (not (member (place-key place) *met*)))
       (push (place-key place) *met*)
-      (client-come :recipient :town (place-town place))))
+      (client-come :recipient :town (place-town place)))))
+
+(defun client-takes (it kind town)
+  "The client reaches out a paw and takes the thing IT from the windowsill: a buyer of KIND :BUYER buys it, a
+recipient is handed his parcel for TOWN. The money, the words, and whether he then leaves."
+  (let ((price (if (eq kind :buyer) (good-price (spec-kind (car it)) (getf *client* :price)) (delivery-pay)))   ; the recipient pays for the delivery
+        (done nil))                                                       ; what to say about a parcel handed over
+    (when (eq kind :buyer) (note-trade (spec-kind (car it)) :sold (spec-prop (car it) :shop)))
+    (fly (cdr it) (paws-point (spec-z (car it))) :dur .4 :free t)   ; reaches out a paw and takes it
+    (lift-item it)
+    (cond ((eq kind :recipient)
+           (multiple-value-setq (price done) (parcel-delivered (spec-addr (car it)) price))
+           (unless done (setf done (format nil "Посылка вручена: +~/kiosk-trip::rub/" price))))
+          (t (add-money price)))
+    (things-changed t)
+    (log-event (if (eq kind :buyer) :sold :delivered) :price price :town town :money *money* :dist (round *dist*))
+    (cond ((eq kind :buyer) (client-leave (format nil "Продали за ~/kiosk-trip::rub/" price)))
+          ((plusp (parcels-for town))
+           (setf (getf *client* :left) 70.0 (getf *client* :reach) 1.2)
+           (say (format nil "~a В ~a есть ещё — ставь следующую" done (town-name town))))
+          (t (client-leave done)))))
+
+(defun step-client (delta)
+  (recipient-comes)
   (when (and *client* (<= (getf *client* :arrive 0.0) 0))
     (let ((kind (getf *client* :kind)))
       (cond ((> *speed* .6) (client-leave "Тронулись — клиент остался"))
@@ -504,20 +527,5 @@ plan's crate, into the pocket otherwise. Return what was paid and, for a crate, 
                                             (lambda (spec) (and (spec-addr spec) (eql (parcel-town (spec-addr spec)) town))))))))
                (if it
                    (when (<= (decf (getf *client* :reach) delta) 0)       ; reaches out a paw for a second and takes it
-                     (let ((price (if (eq kind :buyer) (good-price (spec-kind (car it)) (getf *client* :price)) (delivery-pay)))   ; the recipient pays for the delivery
-                           (done nil))                                                       ; what to say about a parcel handed over
-                       (when (eq kind :buyer) (note-trade (spec-kind (car it)) :sold (spec-prop (car it) :shop)))
-                       (fly (cdr it) (paws-point (spec-z (car it))) :dur .4 :free t)   ; reaches out a paw and takes it
-                       (lift-item it)
-                       (cond ((eq kind :recipient)
-                              (multiple-value-setq (price done) (parcel-delivered (spec-addr (car it)) price))
-                              (unless done (setf done (format nil "Посылка вручена: +~/kiosk-trip::rub/" price))))
-                             (t (add-money price)))
-                       (things-changed t)
-                       (log-event (if (eq kind :buyer) :sold :delivered) :price price :town town :money *money* :dist (round *dist*))
-                       (cond ((eq kind :buyer) (client-leave (format nil "Продали за ~/kiosk-trip::rub/" price)))
-                             ((plusp (parcels-for town))
-                              (setf (getf *client* :left) 70.0 (getf *client* :reach) 1.2)
-                              (say (format nil "~a В ~a есть ещё — ставь следующую" done (town-name town))))
-                             (t (client-leave done)))))
+                     (client-takes it kind town))
                    (setf (getf *client* :reach) 1.2))))))))
