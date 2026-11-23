@@ -82,7 +82,7 @@
 (defun look-key (event)
   "Handle the input EVENT while the profile is open.
 Game keys are muted meanwhile; I or Esc closes the profile."
-  (when (and (object-call event "is_class" "InputEventKey") (object-get event "pressed") (not (object-get event "echo"))
+  (when (and (key-press-p event)
              (member (key-code event) '(73 4194305)))
     (close-look)))
 

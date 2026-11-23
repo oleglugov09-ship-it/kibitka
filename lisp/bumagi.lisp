@@ -87,12 +87,8 @@ Return true if the paper is new."
 (defun doc-tex (name)
   (or (gethash name *doc-tex*)
       (let ((path (cl:format nil "res://textures/docs~a/~a.png" (if (eq *lang* :en) "-en" "") name)))
-        (when (picture-here-p path)
-          (let ((img (gdext:make-object "Image")) (tx (gdext:make-object "ImageTexture")))
-            (read-picture img path)
-            (object-call tx "set_image" img)
-            (gdext:setf-reference (gethash name *doc-tex*) tx)
-            tx)))))
+        (let ((tx (picture-texture path)))
+          (when tx (gdext:setf-reference (gethash name *doc-tex*) tx) tx)))))
 
 (defun doc-card (parent name x y w h)
   "Build a document on the desk under PARENT: picture NAME in the rectangle X Y W H.
@@ -159,7 +155,7 @@ Each paper is its own card; a missing one is an empty slot with a dotted outline
   (object-set (getf *docs-panel* :layer) "visible" nil))
 
 (defun docs-key (event)
-  (when (and (object-call event "is_class" "InputEventKey") (object-get event "pressed") (not (object-get event "echo"))
+  (when (and (key-press-p event)
              (or (guide-key (key-code event))                                         ; the guide booklet (guide.lisp)
                  (member (key-code event) '(69 4194305 73))))
     (unless *guide-open* (close-docs))))

@@ -146,9 +146,7 @@ Start with a random season and clear weather."
   ;; sky does not pinch into a star the way flat noise stretched over the sky dome does. No image: flat noise.
   (let ((path "res://textures/sky/clouds.png"))
     (if (picture-here-p path)
-        (let ((img (gdext:make-object "Image")) (tex (gdext:make-object "ImageTexture")))
-          (read-picture img path)
-          (object-call tex "set_image" img)
+        (let ((tex (picture-texture path)))
           (gdext:setf-reference *cloud-tex* tex)
           (object-set *sky-mat* "sky_cover" tex))
         (let ((noise (gdext:make-object "FastNoiseLite")) (tex (gdext:make-object "NoiseTexture2D")))

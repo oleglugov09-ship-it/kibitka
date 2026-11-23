@@ -174,6 +174,10 @@ the gas station).")
   "Pick up the menu language for the whole game: the language button in the pause menu changes it."
   (unless (eq (locale-lang) *lang*) (set-lang (locale-lang))))
 
+(defun key-press-p (event)
+  "Return true if EVENT is a key going down: not a key held (the keyboard's own repeat), not a key let go."
+  (and (object-call event "is_class" "InputEventKey") (object-get event "pressed") (not (object-get event "echo"))))
+
 (defun action-down (name)
   "Return true if the action NAME is held down.
 While the lobby is open, keys go to its fields, not to the game."

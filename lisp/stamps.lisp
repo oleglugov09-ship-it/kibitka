@@ -10,12 +10,8 @@
   "Return the texture of the stamp of TOWN, or NIL if there is no picture for it."
   (or (gethash town *stamp-textures*)
       (let ((path (cl:format nil "res://textures/stamps/~d.png" town)))
-        (when (picture-here-p path)
-          (let ((img (gdext:make-object "Image")) (tx (gdext:make-object "ImageTexture")))
-            (read-picture img path)
-            (object-call tx "set_image" img)
-            (gdext:setf-reference (gethash town *stamp-textures*) tx)
-            tx)))))
+        (let ((tx (picture-texture path)))
+          (when tx (gdext:setf-reference (gethash town *stamp-textures*) tx) tx)))))
 
 (defun stamp (parent town x y z height &key (yaw 0.0) (pitch 0.0))
   "Stick the stamp of TOWN, HEIGHT metres tall, at (X Y Z) under PARENT, turned by YAW and PITCH like SIGN.

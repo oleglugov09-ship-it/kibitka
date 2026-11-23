@@ -28,6 +28,16 @@ Reading goes through the engine, which works both from disk and from the game pa
   (let ((real (packed-path path)))
     (object-call image (if (eq real path) "load_png_from_buffer" "load_webp_from_buffer") (file-bytes real))))
 
+(defun picture-texture (path &key mipmaps)
+  "Return a texture made of the picture PATH (a .png), or NIL if the picture is not there.
+With MIPMAPS the smaller copies are made too: for what is seen from afar. Whoever asks keeps the texture."
+  (when (picture-here-p path)
+    (let ((img (gdext:make-object "Image")) (tx (gdext:make-object "ImageTexture")))
+      (read-picture img path)
+      (when mipmaps (object-call img "generate_mipmaps"))
+      (object-call tx "set_image" img)
+      tx)))
+
 (defun save-form (path form)
   "Write FORM as text to the file PATH (user://...) and return T on success.
 Writing goes through the engine: in the browser that puts the data into persistent storage,

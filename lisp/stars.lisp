@@ -184,11 +184,8 @@ The sky stays over the wagon, turns with the day cycle and fades towards dawn an
 (defun show-sight ()
   (destructuring-bind (file caption) (nth *scope* *scope-sights*)
     (let ((path (format nil "res://textures/scope/~a.png" file)))
-      (when (picture-here-p path)
-        (let ((img (gdext:make-object "Image")) (tx (gdext:make-object "ImageTexture")))
-          (read-picture img path)
-          (object-call tx "set_image" img)
-          (object-set (getf *scope-parts* :pic) "texture" tx))))
+      (let ((tx (picture-texture path)))
+        (when tx (object-set (getf *scope-parts* :pic) "texture" tx))))
     (object-set (getf *scope-parts* :caption) "text" caption)))
 
 (defun open-scope ()
@@ -207,7 +204,7 @@ The sky stays over the wagon, turns with the day cycle and fades towards dawn an
 Left click and E step through the objects; S and Esc step away."
   (cond ((and (object-call event "is_class" "InputEventMouseButton") (object-get event "pressed"))
          (setf *scope* (mod (1+ *scope*) (length *scope-sights*))) (show-sight))
-        ((and (object-call event "is_class" "InputEventKey") (object-get event "pressed") (not (object-get event "echo")))
+        ((and (key-press-p event))
          (let ((k (key-code event)))
            (cond ((member k '(83 4194305)) (close-scope))
                  ((member k '(69 32)) (setf *scope* (mod (1+ *scope*) (length *scope-sights*))) (show-sight)))))))
