@@ -184,13 +184,14 @@ That is the body, the truck under it, everything bolted on inside, the things an
         (progn
           (if paused
               (progn (incf *time* delta)                       ; network timers run on pause too
-                     (step-net delta) (step-lobby))
+                     (timed :net (step-net delta)) (timed :lobby (step-lobby)))
               (step-trip delta))
-          (save-game delta)
-          (step-saves delta)
-          (step-copies)
-          (step-map)
-          (step-log delta))
+          ;; each on its own, as in STEP-TRIP: a save that fails must not take the log with it
+          (timed :save-game (save-game delta))
+          (timed :saves (step-saves delta))
+          (timed :copies (step-copies))
+          (timed :map (step-map))
+          (timed :log (step-log delta)))
       (error (e) (note-error e "кадр")))))
 
 (defun step-trip (delta)
