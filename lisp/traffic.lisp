@@ -103,60 +103,32 @@ or a chase is a rare sight, once in a quarter of an hour at the most.")
 (defvar *car-n* 0)
 
 (defun car-wheels (g half zs &optional (r .34))
+  "Put wheels of radius R under the vehicle G, HALF a track apart, at each z of ZS (the parked vehicles of life.lisp)."
   (dolist (sx (list (- half) half))
     (dolist (sz zs) (shape g :cyl (list r r .22 8) "#141416" sx r sz :rot (list 0 0 (/ pi 2))))))
+
+(defun car-model (key)
+  "Return the name of the model of a vehicle of kind KEY (models/car-KEY.blend); a runaway is a passenger car in black."
+  (format nil "car-~(~a~)" (if (eq key :runaway) :car key)))
 
 (defun make-car (n &optional kind)
   "Build car number N (its nose points to -z).
 KIND is NIL for a passenger car or a truck, one of :fire :ambulance :police :runaway, or a vehicle on
 business: :milk :bread :lavka :army. Return the node
-and the flashers."
-  (let ((g (group *world*)) (rgb (nth (mod n 6) '("#8a4038" "#3f6f73" "#b0aa98" "#55708a" "#a8843c" "#e0dcd0")))
-        (blink '()) (nose -2.02))
+and the flashers. The vehicles are drawn in Blender (models/car-KIND.blend); a passenger car is repainted,
+the flashers blink and so are made here."
+  (let* ((g (group *world*)) (key (or kind (if (zerop (mod n 5)) :truck :car)))
+         (rgb (case key
+                (:runaway "#22222a")
+                (:police "#e0dcd0")
+                (t (nth (mod n 6) '("#8a4038" "#3f6f73" "#b0aa98" "#55708a" "#a8843c" "#e0dcd0")))))
+         (blink '()))
     (flet ((flasher (x y z rgb) (push (shape g :box '(.3 .2 .3) rgb x y z :emit rgb :energy 5 :shadow nil) blink)))
-      (case (or kind (if (zerop (mod n 5)) :truck :car))
-        (:truck
-         (shape g :box '(2.1 1.9 2.0) "#55708a" 0 1.6 -2.6) (shape g :box '(2.14 .7 1.6) "#16181c" 0 2.0 -2.75 :shadow nil)
-         (shape g :box '(2.3 1.8 5.0) "#6a5a48" 0 1.9 1.2) (shape g :box '(2.0 .5 7.0) "#1e2022" 0 .75 0)
-         (car-wheels g .95 '(-2.6 1.0 2.4) .45) (setf nose -3.62))
-        (:fire
-         (shape g :box '(2.3 2.2 2.2) "#b0241c" 0 1.8 -2.9) (shape g :box '(2.34 .8 1.7) "#16181c" 0 2.2 -3.1 :shadow nil)
-         (shape g :box '(2.4 2.0 5.6) "#b0241c" 0 1.9 1.1) (shape g :box '(2.44 .3 5.6) "#e8e4d8" 0 1.4 1.1 :shadow nil)
-         (shape g :box '(.7 .16 6.4) "#c8c8c4" 0 3.05 .6) (shape g :box '(2.0 .5 8.0) "#1e2022" 0 .75 0)
-         (car-wheels g 1.0 '(-2.9 1.2 2.8) .5) (flasher -.7 3.0 -2.9 "#3060ff") (flasher .7 3.0 -2.9 "#3060ff") (setf nose -4.02))
-        (:milk                                                        ; the milk lorry: a yellow tank behind the cab
-         (shape g :box '(2.1 1.9 2.0) "#55708a" 0 1.6 -2.6) (shape g :box '(2.14 .7 1.6) "#16181c" 0 2.0 -2.75 :shadow nil)
-         (shape g :cyl '(1.0 1.0 4.6 12) "#e0b830" 0 1.95 1.1 :rot (list (/ pi 2) 0 0))
-         (shape g :box '(2.04 .3 4.0) "#2c4a7a" 0 1.95 1.1 :shadow nil) (shape g :box '(2.0 .5 7.0) "#1e2022" 0 .75 0)
-         (car-wheels g .95 '(-2.6 1.0 2.4) .45) (setf nose -3.62))
-        (:bread                                                       ; the bread van: a closed body with trays behind doors
-         (shape g :box '(2.1 1.9 2.0) "#b0aa98" 0 1.6 -2.6) (shape g :box '(2.14 .7 1.6) "#16181c" 0 2.0 -2.75 :shadow nil)
-         (shape g :box '(2.3 2.3 4.8) "#c8b890" 0 2.0 1.1) (shape g :box '(2.34 .5 4.84) "#a8843c" 0 1.4 1.1 :shadow nil)
-         (dotimes (i 4) (shape g :box '(.02 1.5 .9) "#b8a880" 1.16 2.2 (- (* i 1.15) .6) :shadow nil))
-         (shape g :box '(2.0 .5 7.0) "#1e2022" 0 .75 0) (car-wheels g .95 '(-2.6 1.0 2.4) .45) (setf nose -3.62))
-        (:lavka                                                       ; the travelling shop: a blue van with a counter flap
-         (shape g :box '(2.0 2.2 5.2) "#3f6f73" 0 1.7 0) (shape g :box '(2.04 .7 1.4) "#16181c" 0 2.2 -1.85 :shadow nil)
-         (shape g :box '(.06 .9 2.0) "#e8e0d0" 1.03 1.9 .9 :shadow nil) (shape g :box '(.5 .06 2.0) "#8a6440" 1.2 1.45 .9 :shadow nil)
-         (car-wheels g .9 '(-1.6 1.6) .38) (setf nose -2.62))
-        (:army                                                        ; an army lorry under canvas
-         (shape g :box '(2.1 1.9 2.0) "#4a5a3a" 0 1.6 -2.6) (shape g :box '(2.14 .7 1.6) "#16181c" 0 2.0 -2.75 :shadow nil)
-         (shape g :box '(2.3 1.0 5.0) "#4a5a3a" 0 1.5 1.2) (shape g :cyl '(1.15 1.15 5.0 10) "#5a6a48" 0 2.0 1.2 :rot (list (/ pi 2) 0 0))
-         (shape g :box '(2.0 .5 7.0) "#1e2022" 0 .75 0) (car-wheels g .95 '(-2.6 1.0 2.4) .5) (setf nose -3.62))
-        (:ambulance
-         (shape g :box '(2.0 2.1 5.0) "#e8e4d8" 0 1.65 0) (shape g :box '(2.04 .35 5.04) "#b0241c" 0 1.5 0 :shadow nil)
-         (shape g :box '(2.04 .7 1.4) "#16181c" 0 2.1 -1.75 :shadow nil)
-         (car-wheels g .9 '(-1.6 1.6) .38) (flasher 0 2.8 -1.6 "#3060ff") (setf nose -2.52))
-        (t
-         (when (eq kind :runaway) (setf rgb "#22222a"))
-         (when (eq kind :police) (setf rgb "#e0dcd0"))
-         (shape g :box '(1.6 .6 4.0) rgb 0 .65 0) (shape g :box '(1.5 .55 2.0) rgb 0 1.2 .2)
-         (shape g :box '(1.52 .4 1.9) "#1a2026" 0 1.22 .2 :shadow nil)
-         (car-wheels g .8 '(-1.3 1.3) .32)
-         (when (eq kind :police)
-           (shape g :box '(1.62 .22 4.02) "#2c4a7a" 0 .7 0 :shadow nil)
-           (flasher -.35 1.6 .2 "#ff3020") (flasher .35 1.6 .2 "#3060ff"))))
-      (dolist (sx '(-.6 .6))
-        (shape g :ball '(.13 6 4) "#ffe9b0" sx .8 nose :emit "#ffd890" :energy 3 :shadow nil))
+      (model g (car-model key) 0.0 0.0 0.0 :paint (list rgb))
+      (case key
+        (:fire (flasher -.7 3.0 -2.9 "#3060ff") (flasher .7 3.0 -2.9 "#3060ff"))
+        (:ambulance (flasher 0 2.8 -1.6 "#3060ff"))
+        (:police (flasher -.35 1.6 .2 "#ff3020") (flasher .35 1.6 .2 "#3060ff")))
       (when blink
         (player g (wav-stream (sound-path "siren") :loop t) :positional t :db 4.0 :bus "Улица")))
     (values g blink)))

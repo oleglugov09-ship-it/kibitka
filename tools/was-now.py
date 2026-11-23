@@ -24,6 +24,8 @@ VIEWS = [("outside-back-right", '(setf *view* :outside *orbit-yaw* .6 *orbit-pit
          ("booth-yard", '(setf *orbit-dist* 17.0 *orbit-yaw* -2.2 *orbit-pitch* .5)'),
          ("stops-right", """(progn (setf *view* :outside *orbit-dist* 22.0 *orbit-yaw* 1.2 *orbit-pitch* .45) (loop for k in '(1 3 4 5 8 10 14 17) for n from 0 do (let ((g (group *cart* (if (< n 4) 7.0 -7.0) 0.0 (- (* 6.5 (mod n 4)) 14.0)))) (funcall (if (fboundp 'stop-look) 'stop-look 'build-stop) g (* 7.0 k)))) 1)"""),
          ("stops-left", '(setf *orbit-yaw* -1.9 *orbit-pitch* .35)'),
+         ("cars-right", """(progn (setf *orbit-dist* 26.0 *orbit-yaw* 1.0 *orbit-pitch* .4) (loop for (n k) in '((1 nil) (0 nil) (2 nil) (1 :fire) (1 :ambulance) (1 :police) (1 :milk) (1 :bread) (1 :lavka) (1 :army) (1 :runaway)) for i from 0 do (let ((g (make-car n k))) (object-call g "reparent" *cart*) (godot:node-3d-set-position g (v3 (if (< i 6) 14.0 -14.0) 0.0 (- (* 9.0 (mod i 6)) 22.0))) (godot:node-3d-set-rotation g (v3 0 1.5708 0)))) 1)"""),
+         ("cars-left", '(setf *orbit-yaw* -2.1 *orbit-pitch* .4)'),
          ("meta-room", '(progn (setf *meta* t *view* :inside *seat* nil *pos* (v3 0 0 2.8) *yaw* 0.0 *pitch* 0.0) (apply-meta) 1)'),
          ("meta-room-back", '(setf *pos* (v3 0 0 -2.8) *yaw* 3.1416)'),
          ("meta-room-side", '(setf *pos* (v3 2.4 0 0) *yaw* 1.5708)')]
