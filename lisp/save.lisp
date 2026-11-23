@@ -99,6 +99,9 @@ It reaches the disk within the next second (STEP-SAVES)."
 (defun replace-saves (sections)
   "Put SECTIONS, (key form ...) of the current version, in place of what the world file holds, and write it at once:
 a copy of the world is being restored."
+  ;; first every section of the world goes: one the copy does not have (the papers of a game that had none yet)
+  ;; must come back empty, not stay as it is in the world being replaced
+  (loop for (key) in (cddr (assoc :world *save-files*)) do (remhash key *saves*))
   (loop for (key form) on sections by #'cddr do (setf (gethash key *saves*) form))
   (pushnew :world *saves-dirty*)
   (flush-saves))

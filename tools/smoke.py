@@ -377,6 +377,11 @@ def saves():
     open(os.path.join(USER, "save.sexp"), "w").write("((( мусор")                 # the write was cut short
     start(p, KIOSK_SOLO="1", KIOSK_NOLAND="1", KIOSK_NAME="Проба")
     check("файл испорчен — игра поднялась с запасной копии", ev(p, f"(list {K}*money* (and ({K}gnome-found-p 2) t))"), "(80 T)")
+    # a copy of the world by hand, and back to it: the pocket and the papers return as they were in the copy
+    ev(p, f"(progn (setf {K}*money* 123) (setf {K}*game-timer* 0.0) ({K}save-game 1.0) ({K}make-copy) 1)")
+    slot = ev(p, f"(first (first {K}*copy-list*))").split()[0]              # an integer comes back with its bits spelled out
+    ev(p, f"(progn (setf {K}*money* 7) (push 6 {K}*fines*) ({K}save-papers) (setf {K}*game-timer* 0.0) ({K}save-game 1.0) ({K}restore-copy {slot}) 1)")
+    check("мир восстановлен из копии: деньги и штрафы как в копии", ev(p, f"(list {K}*money* {K}*fines* (and ({K}gnome-found-p 2) t))"), "(123 NIL T)")
     check("ошибок в журнале игры нет", log_errors(p), 0)
     stop_all()
 
