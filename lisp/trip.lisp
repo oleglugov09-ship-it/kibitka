@@ -53,7 +53,7 @@ Return NIL if there is no save."
     (when (and (fits g '(real real real real integer &optional t t))
                (<= 0 (first g) 1e6) (<= 0 (third g) 1))
       (destructuring-bind (dist money fuel planks onboard &optional (dir 1) day) g
-        (when (and (integerp day) (<= 0 day 100000000)) (setf *day-t* (* 10.0 day)))  ; the day cycle goes on, not restarts
+        (when (and (integerp day) (<= 0 day 100000000)) (set-day-time (* 10.0 day)))  ; the day cycle goes on, not restarts
         (when (eql dir -1) (head-back))       ; stood nose backwards: still do
         (put-money (round money))
         (setf *fuel* (float fuel 1.0) *planks* (max 0 (round planks)) *onboard* onboard

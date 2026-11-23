@@ -12,6 +12,7 @@
 (defvar *spyglass* nil "True when the spyglass has been found.")
 (defvar *picked* '() "The finds already picked up: entries (place kind number).")
 (defvar *find-nodes* '() "The finds nearby: entries ((place kind number) node x path-coordinate).")
+(defun use-waste-paper (n) "Spend N bundles of waste paper and save what is left." (decf *papers* n) (save-finds))
 (defun forget-find-nodes () "Forget the nodes of the finds: they are gone with the World they stood in." (setf *find-nodes* '()))
 (defun find-d (f) "Return the path coordinate of the place where the find F was laid out." (first (first f)))
 (defun find-kind (f) "Return what the find F is; :NONE marks a place already laid out." (second (first f)))

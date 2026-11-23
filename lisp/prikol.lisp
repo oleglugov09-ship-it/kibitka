@@ -180,7 +180,7 @@ Return T if a train ride was pending (GO-TO-TOWN then does nothing itself)."
   :label (lambda () (format nil "E — обменять ~d связки макулатуры на книги · у тебя ~d" *book-papers* *papers*))
   :use (lambda () (cond ((and (not *dev*) (< *papers* *book-papers*)) (say (format nil "Нужно ~d связки макулатуры — она лежит у остановок и заправок" *book-papers*)))
              (*carry* (say "Руки заняты — книги не взять"))
-             (t (decf *papers* *book-papers*) (save-finds)
+             (t (use-waste-paper *book-papers*)
                 (give-good :books (nth (random 4) '("Выдали стопку книг: «Два капитана» сверху" "Выдали книги: фантастика, зачитанная до дыр"
                                                     "Выдали книги: том энциклопедии и сказки" "Выдали книги: стихи и справочник грибника"))))))
   :build (lambda (g) (model g "booth-3-extra")))

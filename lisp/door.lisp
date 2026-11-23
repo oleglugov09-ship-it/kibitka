@@ -19,6 +19,8 @@
 (defun apply-ladder ()
   (when *ladder* (node-3d-set-rotation *ladder* (v3 (- (+ .3 (* (- 1 *ladder-k*) 2.75))) 0 0))))
 
+(defun lower-ladder () "Let the ladder down: we have stopped where one gets out." (setf *ladder-down* t))
+
 (defun toggle-ladder ()
   "Lower or raise the ladder (the G key).
 It cannot be lowered while moving."

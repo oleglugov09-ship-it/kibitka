@@ -100,32 +100,6 @@ With AUTO it goes to the slots of automatic copies, and the hand-made ones are l
     (setf *auto-copy-day* (today))
     (make-copy t)))
 
-;;; A player's own switches, in the pause menu for everyone: so far one, whether rain and snow are drawn.
-
-(defvar *gfx-ui* nil "The switches in the pause menu: (:layer :rain checkbox), or NIL before the first pause.")
-(defvar *gfx-read* nil "True once the switches have been read from the save.")
-
-(defun step-gfx ()
-  (unless *gfx-read*
-    (setf *gfx-read* t)
-    (let ((f (ignore-errors (get-save :gfx)))) (when (fits f '((:member t nil))) (setf *precip-on* (first f)))))
-  (when (and *paused* (null *gfx-ui*))
-    (let ((layer (gdext:make-object "CanvasLayer")) (bg (gdext:make-object "ColorRect")))
-      (node-add-child *root* layer) (node-add-child layer bg)
-      (object-set layer "layer" 30) (object-set layer "visible" nil)
-      (object-set bg "position" (vector2 8 2)) (object-set bg "size" (vector2 176 20))
-      (object-set bg "color" (color .08 .09 .1 .9))
-      (let ((box (lobby-control "CheckBox" bg 6 1 164 18 "Дождь и снег")))
-        (object-call box "add_theme_font_size_override" "font_size" 9)
-        (setf *gfx-ui* (list :layer layer :rain box)))))
-  (when *gfx-ui*
-    (let ((open (and *paused* (not *lobby-open*))) (box (getf *gfx-ui* :rain)))
-      (unless (eq open (object-get (getf *gfx-ui* :layer) "visible"))
-        (object-set (getf *gfx-ui* :layer) "visible" open)
-        (when open (object-set box "button_pressed" (and *precip-on* t))))
-      (when (and open (not (eq (and (object-get box "button_pressed") t) (and *precip-on* t))))
-        (setf *precip-on* (and (object-get box "button_pressed") t))
-        (ignore-errors (put-save :gfx (list *precip-on*)))))))
 
 (defun step-copies ()
   "Show the panel while the pause menu is open, for whoever owns the world, and answer its buttons."

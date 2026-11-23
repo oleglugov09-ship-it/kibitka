@@ -307,7 +307,7 @@ The stove is shared."
 (defshared burn-paper :paper ()
   "Put a bundle of waste paper into the stove. The bundles are the driver's count, so the driver does it."
   (cond ((<= *papers* 0) (say "Макулатуры нет: связки лежат у остановок и заправок"))
-        (t (decf *papers*) (save-finds)
+        (t (use-waste-paper 1)
            (setf *fire* (min 300.0 (+ *fire* *paper-burn*)) *cold-told* nil)
            (say (format nil "Связка макулатуры в печке: полминуты огня. Осталось связок: ~d" *papers*)))))
 

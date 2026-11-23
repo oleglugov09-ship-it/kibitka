@@ -1,4 +1,4 @@
-foreign-writes 120
+foreign-writes 112
 positional 395
 guest-checks 66
 late-binding 46

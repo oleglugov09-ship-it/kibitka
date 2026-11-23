@@ -63,7 +63,7 @@ The wallet is shared, so anyone can refuel."
 Once we stop there the ladder lowers by itself: only at such places can one get out and walk around."
   (let ((at (and (find-if (lambda (d) (< (abs (- d *dist*)) 30)) *stations*) (< *speed* .4))))
     (when (and at (not *at-station*))
-      (unless (net-guest-p) (setf *ladder-down* t))
+      (unless (net-guest-p) (lower-ladder))
       (say (if (net-guest-p)
                "Заправка. Лесенка опущена — можно выйти"
                (format nil "Заправка. R — бензин на ~/kiosk-trip::rub/ · P — ~d доски за ~/kiosk-trip::rub/ Лесенка опущена — можно выйти"
@@ -72,7 +72,7 @@ Once we stop there the ladder lowers by itself: only at such places can one get 
     ;; one can get out not only at a gas station: bus stop, observatory, drop-off point (finds.lisp)
     (let ((place (walk-place)))
       (when (and place (not *walk-here*) (not (eq (first place) :station)))
-        (unless (net-guest-p) (when (member (first place) '(:observatory :depot :airmail :gimmick)) (setf *ladder-down* t)))
+        (unless (net-guest-p) (when (member (first place) '(:observatory :depot :airmail :gimmick)) (lower-ladder)))
         (say (ecase (first place)
                (:stop "Остановка. E по лесенке за дверью — опустить её и выйти")
                (:observatory "Обсерватория. Лесенка опущена — выходи: на террасе большой телескоп")

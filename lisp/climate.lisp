@@ -178,3 +178,29 @@ Start with a random season and clear weather."
                (object-set node "amount_ratio" v)
                (unless (eq (> v .01) (object-get node "emitting")) (object-set node "emitting" (> v .01))))))
   (object-set *sky-mat* "sky_cover_modulate" (if *sky-hour* (color .3 .28 .44 (* .9 (wx :cloud))) (color 1 1 1 (* .9 (wx :cloud) (- 1.0 *gloom*))))))   ; no clouds inside the megastructure
+
+;;; ------------------------------------------------------------------ the switch in the pause menu
+;;; Rain and snow can be switched off: on a weak machine they are what costs most. The switch is every player's
+;;; own (the save section :gfx is in the player's file) and sits above the copies of the world in the pause menu.
+
+(defvar *gfx-ui* nil "The switches in the pause menu: (:layer :rain checkbox), or NIL before the first pause.")
+(defvar *gfx-read* nil "True once the switches have been read from the save.")
+
+(defun step-gfx ()
+  (unless *gfx-read*
+    (setf *gfx-read* t)
+    (let ((f (ignore-errors (get-save :gfx)))) (when (fits f '((:member t nil))) (setf *precip-on* (first f)))))
+  (when (and *paused* (null *gfx-ui*))
+    (multiple-value-bind (bg layer) (screen-panel 30 8 2 176 20 '(.08 .09 .1 .9))
+      (object-set layer "visible" nil)
+      (let ((box (lobby-control "CheckBox" bg 6 1 164 18 "Дождь и снег")))
+        (object-call box "add_theme_font_size_override" "font_size" 9)
+        (setf *gfx-ui* (list :layer layer :rain box)))))
+  (when *gfx-ui*
+    (let ((open (and *paused* (not *lobby-open*))) (box (getf *gfx-ui* :rain)))
+      (unless (eq open (object-get (getf *gfx-ui* :layer) "visible"))
+        (object-set (getf *gfx-ui* :layer) "visible" open)
+        (when open (object-set box "button_pressed" (and *precip-on* t))))
+      (when (and open (not (eq (and (object-get box "button_pressed") t) (and *precip-on* t))))
+        (setf *precip-on* (and (object-get box "button_pressed") t))
+        (ignore-errors (put-save :gfx (list *precip-on*)))))))

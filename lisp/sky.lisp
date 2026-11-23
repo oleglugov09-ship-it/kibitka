@@ -31,6 +31,7 @@
 (defvar *moon-light* nil)
 (defvar *moon* nil)
 
+(defun set-day-time (tt) "Put the clock of the day cycle at TT seconds since the first dawn: a save being read." (setf *day-t* tt))
 (defun day-phase (tt) (mod tt *day-len*))
 
 (defparameter *sun-step* .004 "The step of the sun and moon across the sky, in radians.")

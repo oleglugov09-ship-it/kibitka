@@ -196,7 +196,7 @@ The driver does it, on a guest's behalf too: the waste paper is the driver's, an
         ((and (eq what :window) (not *dev*) (< *papers* *seal-papers*))
          (say (format nil "Нужно ~d связки макулатуры — она лежит у остановок и заправок" *seal-papers*))
          (return-from toggle-insulation nil))
-        (t (when (and (eq what :window) (not *dev*)) (decf *papers* *seal-papers*) (save-finds))
+        (t (when (and (eq what :window) (not *dev*)) (use-waste-paper *seal-papers*))
            (push what *insulation*)
            (say (if (eq what :window) "Окно заклеено на зиму: кибитка остывает медленнее" "Одеяло на двери: из тамбура не дует"))))
   (save-home) (show-home))
