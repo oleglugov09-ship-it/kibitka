@@ -166,7 +166,7 @@ The bunk shelf is handled separately (FIXTURE-USABLES)."
                       (destructuring-bind (what x z yaw eye) seat
                         (declare (ignore what))
                         (usable x (max .2 (- eye .6)) z (lambda () "E — сесть")
-                                (lambda () (setf *seat* seat *pos* (v3 x 0 z) *yaw* yaw *pitch* -.05))
+                                (lambda () (sit-on seat -.05))
                                 nil 2.6 .3))))))
 
 (defun fold-seats ()
@@ -180,16 +180,16 @@ is always there; the lower one when it is folded down, otherwise there are the s
 
 (defun toggle-fold ()
   (setf *fold-down* (not *fold-down*))
-  (when (and (not *fold-down*) *seat* (eq (seat-what *seat*) :fold)) (setf *seat* nil))
+  (when (and (not *fold-down*) *seat* (eq (seat-what *seat*) :fold)) (stand-up))
   (refresh-seats)
   (say (if *fold-down* "Полка откинута · E по ней — лечь" "Полка поднята")))
 
 (defun lie-on-bunk (kind)
   "Lie down on the bunk KIND (:FOLD is the lower one, :TOP the upper), or get up if we lie there."
   (if (and *seat* (eq (seat-what *seat*) kind))
-      (setf *seat* nil)
+      (stand-up)
       (let ((seat (assoc kind (fold-seats))))
-        (when seat (setf *seat* seat *pos* (v3 (second seat) 0 (third seat)) *yaw* (fourth seat) *pitch* .55)))))
+        (when seat (sit-on seat .55)))))
 
 (defun sit-on-bunk () (lie-on-bunk :fold))
 
@@ -258,6 +258,8 @@ is always there; the lower one when it is folded down, otherwise there are the s
 
 (defparameter *stove-at* '(-1.18 2.35) "The x and z of the stove: in the corner to the right of the door.")
 (defvar *planks* *start-planks* "The number of planks in stock.")
+(defvar *lights-on* t "True while the lamp and the fairy lights of the wagon are on.")
+(defun add-planks (n) "Put N planks into stock; with N negative, take them out." (incf *planks* n))
 (defvar *fire* 0.0 "The number of seconds the fire will still burn.")
 (defvar *warm* .7 "The warmth in the wagon, 0..1.")
 (defvar *stove-glow* nil)
@@ -434,7 +436,7 @@ Addressed parcels are not broken."
           ((spec-addr (car it)) (say "Это чужая посылка. Её ждут"))
           (t (node-queue-free (cdr it))
              (lift-item it)
-             (incf *planks* *crate-planks*)
+             (add-planks *crate-planks*)
              (things-changed t)
              (say (format nil "Ящик разобран. Досок: ~d" *planks*))))))
 

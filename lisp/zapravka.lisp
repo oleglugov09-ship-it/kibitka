@@ -32,7 +32,7 @@ The wallet is shared, so anyone can refuel."
   (when *at-station*
     (destructuring-bind (n price) *plank-price*
       (cond ((not (or *dev* (take-money price))) (say "На доски не хватает"))   ; on the dev polygon everything is free
-            (t (incf *planks* n) (say-all (format nil "Купили досок: ~d за ~/kiosk-trip::rub/" n price)))))))
+            (t (add-planks n) (say-all (format nil "Купили досок: ~d за ~/kiosk-trip::rub/" n price)))))))
 
 (defun buy-planks () "Buy planks on P at a gas station; return T if we are at one." (when *at-station* (take-planks) t))
 (defvar *fuel-told* nil)
@@ -80,6 +80,8 @@ Once we stop there the ladder lowers by itself: only at such places can one get 
                (:airmail "Авиапочта. Лесенка опущена — неси посылку к окошку, улетит самолётом")
                (:gimmick (format nil "~a. Лесенка опущена — подойди к окошку" (third (assoc (third place) *gimmick-plan*)))))))
       (setf *walk-here* (and place t)))))
+
+(defun fill-tank () "Fill the tank to the brim, for nothing: where the road gives no chance to pay for it." (setf *fuel* 1.0))
 
 (defun reset-tank ()
   "Start a trip: the tank as at the depot. START-TRIP calls it through RESET-ROADSIDE, together with the pocket."

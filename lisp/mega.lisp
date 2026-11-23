@@ -329,6 +329,8 @@ the same one every frame."
                    *haze* 0.0 *fog-inside* nil *sky-hour* nil *wx-force* nil *sun-turn* 0.0)
              (juice 0.0))))))
 
+(defvar *mega-node* nil "The megastructure as built right now, a node, or NIL while nobody of us is inside.")
+
 (defun drop-mega ()
   "Take the megastructure down, if it is built: its node, and everything that was counted inside it."
   (when *mega-node*
@@ -351,7 +353,7 @@ its air."
       (node-3d-set-position (getf *mega-parts* :entry) (v3 0 (- (mega-height *mega-s*)) *mega-s*))
       (object-set (getf *mega-parts* :entry) "visible" (< *mega-s* 900.0))
       (unless (or (net-guest-p) (place-rule :pumps))
-        (when (< *fuel* .5) (setf *fuel* 1.0))))))                               ; nowhere to fill up: the tank is kept up
+        (when (< *fuel* .5) (fill-tank))))))                               ; nowhere to fill up: the tank is kept up
 
 ;;; A way straight into the tunnel, for working on what is behind it: the page address with a world's flag in it
 ;;; (?tunnel, ?summer), or the variable KIOSK_TUNNEL on the desktop. Once the lobby is closed, whoever owns the
@@ -383,7 +385,7 @@ its air."
       (when (eq *story-stage* :intro)                                                   ; no intro: straight to the road
         (setf *story-stage* :owing)
         (when *show* (setf *show* nil) (show-card)))
-      (setf *fuel* 1.0 *dir* 1)
+      (setf *dir* 1) (fill-tank)
       (cancel-course)
       (halt)
       (relocate (- (first *tunnel*) 100.0))

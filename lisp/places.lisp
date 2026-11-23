@@ -39,7 +39,6 @@ They are (offset sideways from the road, pad radius, pad height above the road, 
 (defvar *tunnel* nil "The (from to) path coordinates of the tunnel.")
 (defvar *mega* nil "The (from to) path coordinates of the tunnel through which the megastructure is entered, or NIL if there is
 none. From outside it is a plain tunnel; the megastructure is another place, shown only to those inside (marks.lisp).")
-(defvar *mega-node* nil "The megastructure as built right now, a node, or NIL while nobody of us is inside.")
 (defvar *swamp* nil "The (from to) path coordinates of the swamp.")
 (defun in-swamp-p (d) (and *swamp* (< (first *swamp*) d (second *swamp*))))
 

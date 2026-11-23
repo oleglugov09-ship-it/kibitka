@@ -170,7 +170,7 @@ seats are counted anew and the arrangement is saved."
 (defun refresh-seats ()
   (setf *seats* (append (fold-seats) (bed-seats)))
   ;; we sat on a crate and it was carted off or taken apart - stand up
-  (when (and *seat* (not *meta*) (not (member *seat* *seats* :test #'equal))) (setf *seat* nil)))
+  (when (and *seat* (not *meta*) (not (member *seat* *seats* :test #'equal))) (stand-up)))
 
 (defun make-interior (cart)
   "Place the things in the freshly assembled wagon CART."
@@ -231,7 +231,7 @@ Return NIL when looking past everything."
       (when (< *planks* *crate-planks*)
         (say (format nil "На ящик нужно досок: ~d, а есть ~d" *crate-planks* *planks*))
         (return-from place-item))
-      (decf *planks* *crate-planks*))
+      (add-planks (- *crate-planks*)))
     (when a
       (destructuring-bind (x z top item) a
         (declare (ignore item))
@@ -278,7 +278,7 @@ Return true if anything moved."
     (when (and it (spec-addr (car it))) (say "Чужую посылку не выбросить — её ждут") (return-from remove-item))
     (when it
       (when (and (member (spec-kind (car it)) '(:crate :box)) (not (spec-addr (car it))))   ; our own crate was removed - the planks come back
-        (incf *planks* *crate-planks*))
+        (add-planks *crate-planks*))
       (node-queue-free (cdr it))
       (lift-item it)
       (things-changed t))))

@@ -27,8 +27,6 @@
 A guest uses it to reconcile with the driver.")
 (defvar *last-put* nil "The last put-down: (SPEC TIME TAKEN-FROM).
 It says what was just put down and when, and where it stood before that.")
-(defvar *client* nil "The client at the window, a plist: :kind :node :price :left (seconds) :reach
-:stall ((NODE Z KIND ADDR) ...) :stop :town.")
 (defvar *visits* '() "The visits left per place: (PLACE . CLIENTS-STILL-TO-COME).
 PLACE is the rounded path coordinate of the stay.")
 (defvar *met* '() "The places where the recipient has already come up by himself (the second time, only by the bell).")

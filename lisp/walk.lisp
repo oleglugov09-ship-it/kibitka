@@ -31,6 +31,10 @@ Walking towards the rack in front of it, one goes up tread by tread; a step asid
 
 (defparameter *sit-reach* 1.3 "The distance to a seat within which one can sit down.")
 (define-fields seat what x z yaw eye)   ; WHAT is :top, :fold, :stool, :bed, :crate or :meta; EYE is the height of the eyes there
+(defun sit-on (seat pitch)
+  "Sit or lie down on SEAT, a record of *SEATS*: we are put where it is, facing as it faces, looking PITCH up or down."
+  (setf *seat* seat *pos* (v3 (seat-x seat) 0 (seat-z seat)) *yaw* (seat-yaw seat) *pitch* pitch))
+(defun stand-up () "Get up from whatever we sit or lie on." (setf *seat* nil))
 (defun eye-height () "Return the height of our eyes above the floor: of the seat we are on, or standing." (if *seat* (seat-eye *seat*) *eye*))
 (defun lying-p () "Return true if we are lying on one of the two bunks." (and *seat* (member (seat-what *seat*) '(:fold :top)) t))
 (defvar *seat* nil "The seat we are sitting on, or NIL.")

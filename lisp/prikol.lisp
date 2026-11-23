@@ -248,7 +248,7 @@ Return T if a train ride was pending (GO-TO-TOWN then does nothing itself)."
   :shelf '("#c8a060" "#8a6440" "#5a3e26")
   :spot '(10.4 2.6 .8)
   :label (lambda () (format nil "E — ~d досок за ~/kiosk-trip::rub/" (first *carpenter-deal*) (second *carpenter-deal*)))
-  :use (lambda () (when (pay (second *carpenter-deal*)) (incf *planks* (first *carpenter-deal*))
+  :use (lambda () (when (pay (second *carpenter-deal*)) (add-planks (first *carpenter-deal*))
           (say (format nil "Плотник отсыпал ~d досок. В печку: ~d" (first *carpenter-deal*) *planks*))))
   :build (lambda (g) (model g "booth-11-extra")))
 

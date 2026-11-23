@@ -21,7 +21,6 @@ The body, the door and the furniture are painted in their Blender files (models/
 (defvar *cart* nil "The Node3D of the wagon.")
 (defvar *bulbs* '())
 (defvar *glow* '() "The lamp and its light; they are switched off together with the fairy lights (L).")
-(defvar *lights-on* t)
 (defvar *meta* nil "True while we are in the meta room (meta.lisp): the wagon and the world are hidden and nothing sways.")
 
 (defun kc (key) (getf *kc* key))

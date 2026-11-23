@@ -4,6 +4,9 @@
 
 (in-package #:kiosk-trip)
 
+(defvar *client* nil "The client at the window, a plist: :kind :node :price :left (seconds) :reach
+:stall ((NODE Z KIND ADDR) ...) :stop :town.")
+
 ;;; The kinds of client at the window. What a kind says and shows is declared here in one place; a new kind
 ;;; needs a DEFCLIENT, its price and what it puts on the windowsill in CLIENT-COME, and, if the deal itself
 ;;; is new, a branch in STALL-DEAL. The functions take the price, the good, the town and the destination.
