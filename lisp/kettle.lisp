@@ -308,9 +308,8 @@ Everyone counts the heat for their own hint; the driver alone decides that it ha
 
 (defun save-kitchen ()
   "Write the kettle and the pan into the save. PUT-SAVE leaves the file alone while nothing has changed."
-  (unless (net-guest-p)
-    (put-save :kitchen (list (if (member *kettle-at* '(:paw :away)) :table *kettle-at*)       ; carried: it will be found on the table
-                             (and *kettle-water* t) *kettle-tea* *kettle-brew* (and *pan-on* t)))))
+  (put-save :kitchen (list (if (member *kettle-at* '(:paw :away)) :table *kettle-at*)       ; carried: it will be found on the table
+                             (and *kettle-water* t) *kettle-tea* *kettle-brew* (and *pan-on* t))))
 
 (defun load-kitchen ()
   (let ((f (get-save :kitchen)))

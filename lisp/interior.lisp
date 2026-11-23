@@ -91,7 +91,7 @@ Return the node."
 
 
 (defun save-interior ()
-  (when (net-guest-p) (return-from save-interior))          ; a guest's things are the host's - leave our own file alone
+  ;; a guest's things are the driver's: PUT-SAVE leaves our own file alone then
   ;; what is in the paws right now is saved as standing where it was taken from (or by the window): quit the game - nothing lost
   (ignore-errors
    (put-save :interior

@@ -342,11 +342,10 @@ On the dev polygon he is known from the start."
 ;;; ------------------------------------------------------------------ in the game: the day, the save, the guests
 
 (defun save-plan ()
-  (unless (net-guest-p)
-    (put-save :plan (list *plan-day* *credit*
+  (put-save :plan (list *plan-day* *credit*
                           (loop for key being the hash-keys of *stocks* using (hash-value v)
                                 collect (list (car key) (cdr key) (round v)))
-                          nil *heat* (copy-tree *deeds*) (list *shark* *shark-day* *shark-paid-day*) *talons*))))
+                          nil *heat* (copy-tree *deeds*) (list *shark* *shark-day* *shark-paid-day*) *talons*)))
 
 (defun load-plan ()
   (let ((f (get-save :plan)))

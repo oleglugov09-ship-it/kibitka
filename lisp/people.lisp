@@ -207,8 +207,7 @@ speaks instead. A dismissed person may be met once more among the buyers or on t
         (some (lambda (e) (and (not (person-in-post-p (first e))) (acting-line (first e)))) posts))))
 
 (defun save-people ()
-  (when (and (fboundp 'net-guest-p) (not (net-guest-p)))
-    (put-save :people (list :v2 *people-met* *people-fate* *people-score* *quarter-done* *cargo-day* *loan-seen*))))
+  (put-save :people (list :v2 *people-met* *people-fate* *people-score* *quarter-done* *cargo-day* *loan-seen*)))
 
 (defun load-people ()
   (let ((f (get-save :people)) (met '(:each (keyword integer integer integer (:each string)))))

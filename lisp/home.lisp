@@ -30,9 +30,8 @@
 (defun save-home ()
   "Write the home state. The diary is copied: its pages are changed in place, and a save that shares them
 with the last one written would look unchanged."
-  (unless (net-guest-p)
-    (put-save :home (list *calendar-day* (copy-tree (subseq *diary* 0 (min 14 (length *diary*)))) *insulation* *jars* *trip-day0*
-                          (loop for (day . text) in *said-log* collect (list day text))))))        ; what we were told: the diary's other half
+  (put-save :home (list *calendar-day* (copy-tree (subseq *diary* 0 (min 14 (length *diary*)))) *insulation* *jars* *trip-day0*
+                          (loop for (day . text) in *said-log* collect (list day text)))))        ; what we were told: the diary's other half
 
 (defun clean-page (page)
   "Return the diary page PAGE with only what a page may hold, or NIL if it is not a page at all."
