@@ -29,9 +29,9 @@ def place(pos, rot, scale):
 
 
 def material(s):
-    paint = PAINT.index(s["rgb"]) if s["rgb"] in PAINT and not s["emit"] and not s["alpha"] else None
+    paint = PAINT.index(s["rgb"]) if s["rgb"] in PAINT and not s["alpha"] and s["emit"] in (None, s["rgb"]) else None
     if paint is not None and paint < len(SHOW): s = dict(s, rgb=SHOW[paint])      # shown in a livery of its own; the game repaints it
-    name = (f"paint{paint}" if paint is not None else s["rgb"]) + (f" emit {s['emit']} {s['energy']:g}" if s["emit"] else "") + (f" metal {s['metal']:g}" if s["metal"] else "") \
+    name = (f"paint{paint}" if paint is not None else s["rgb"]) + (f" emit {'own' if paint is not None else s['emit']} {s['energy']:g}" if s["emit"] else "") + (f" metal {s['metal']:g}" if s["metal"] else "") \
         + (f" rough {s['rough']:g}" if abs(s["rough"] - .9) > 1e-6 else "") + (f" alpha {s['alpha']:g}" if s["alpha"] else "") + (" unshaded" if s["unshaded"] else "")
     m = bpy.data.materials.get(name)
     if m: return m

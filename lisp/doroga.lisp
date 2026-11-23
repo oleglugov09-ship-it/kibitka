@@ -292,39 +292,12 @@ The head floats above the shoulders with a gap of a couple of centimeters.")
 (defun cat-outfit (g head outfit coat)
   "Dress a cat: the body goes into the group G, the hat onto the head HEAD.
 OUTFIT is 0 for a coat of color COAT and a scarf, 1 for a sheepskin coat and an ushanka,
-2 for a coat and a flat cap, 3 for overalls and a hard hat, 4 for a leather jacket and a peaked cap."
-  (flet ((scarf ()
-           (shape g :cyl '(.2 .22 .11 10) "#a3262c" 0 .95 0)
-           (shape g :ball '(.07 8 5) "#8a1c22" .13 .93 .17)
-           (shape g :box '(.09 .34 .04) "#a3262c" .14 .76 .2 :rot '(.12 0 -.08))
-           (shape g :box '(.08 .26 .04) "#b83038" .07 .8 .22 :rot '(.16 0 .1))
-           (dolist (dy '(.0 .1)) (shape g :box '(.092 .025 .042) "#e8e0d0" .14 (+ .64 dy) .21 :rot '(.12 0 -.08) :shadow nil))))
-    (case outfit
-      (1 (shape g :cyl '(.19 .34 .92 10) "#b08a58" 0 .46 0)                    ; sheepskin coat: sheepskin, white trim
-         (shape g :cyl '(.23 .25 .13 10) "#f0ece0" 0 .95 0) (shape g :cyl '(.35 .355 .1 10) "#f0ece0" 0 .06 0)
-         (shape g :box '(.05 .8 .03) "#f0ece0" 0 .5 .27 :rot '(-.17 0 0) :shadow nil)
-         (shape head :ball '(.3 10 6) "#6a4a30" 0 .2 -.02 :scale '(1.22 .55 1.08))   ; ushanka
-         (shape head :box '(.42 .11 .06) "#8a6a48" 0 .16 .27 :shadow nil)
-         (dolist (sx '(-1 1)) (shape head :box '(.07 .3 .24) "#6a4a30" (* sx .37) -.02 0)))
-      (2 (shape g :cyl '(.15 .3 .92 10) "#4a4a52" 0 .46 0) (scarf)              ; coat with buttons
-         (dolist (y '(.4 .56 .72)) (shape g :ball '(.025 6 4) "#c8b890" 0 y (+ .2 (* .16 (- .92 y))) :shadow nil))
-         (shape head :cyl '(.3 .32 .08 12) "#5a5048" 0 .26 -.02 :rot '(-.1 0 0))  ; flat cap
-         (shape head :box '(.26 .03 .17) "#4a4038" 0 .22 .3 :rot '(.2 0 0)))
-      (3 (shape g :cyl '(.15 .3 .92 10) "#2c5a8a" 0 .46 0)                      ; overalls with straps
-         (dolist (sx '(-.09 .09)) (shape g :box '(.045 .34 .03) "#244a72" sx .8 .18 :rot '(-.16 0 0) :shadow nil))
-         (shape g :box '(.2 .16 .03) "#244a72" 0 .6 .225 :rot '(-.16 0 0) :shadow nil)
-         (shape g :cyl '(.2 .21 .08 10) "#d8d4c4" 0 .94 0)
-         (shape head :ball '(.33 12 6) "#e0a020" 0 .14 0 :scale '(1.12 .62 1.06))  ; hard hat
-         (shape head :cyl '(.4 .4 .03 14) "#e0a020" 0 .13 .03))
-      (4 (shape g :cyl '(.24 .3 .46 10) "#3a3a40" 0 .23 0)                      ; leather jacket, trousers, belt
-         (shape g :cyl '(.16 .25 .5 10) "#241e1a" 0 .69 0 :rough .45)
-         (shape g :cyl '(.255 .255 .05 10) "#16120e" 0 .47 0 :shadow nil) (shape g :box '(.06 .06 .02) "#c9a13a" 0 .47 .255 :shadow nil)
-         (shape g :cyl '(.2 .21 .07 10) "#3a2e26" 0 .95 0)
-         (shape head :cyl '(.3 .27 .1 12) "#2a2a30" 0 .27 -.02)                    ; peaked cap
-         (shape head :cyl '(.275 .275 .05 12) "#a3262c" 0 .22 -.02 :shadow nil)
-         (shape head :box '(.24 .025 .15) "#101014" 0 .19 .29 :rot '(.25 0 0))
-         (shape head :ball '(.03 6 4) "#c9a13a" 0 .26 .26 :metal .6 :rough .3))
-      (t (shape g :cyl '(.15 .3 .92 10) coat 0 .46 0) (scarf)))))
+2 for a coat and a flat cap, 3 for overalls and a hard hat, 4 for a leather jacket and a peaked cap.
+The clothes are drawn in Blender (models/zhiteli/cat-coat-N.blend, cat-hat-N.blend)."
+  (cond ((<= 1 outfit 4)
+         (model g (format nil "cat-coat-~d" outfit))
+         (model head (format nil "cat-hat-~d" outfit)))
+        (t (model g "cat-coat-0" 0.0 0.0 0.0 :paint (list coat)))))
 
 ;;; A player's look is one number: units - the clothing set, tens - the fur, hundreds - the flashlight (0 - none,
 ;;; 1 - beam forward, 2 - upright under the muzzle), thousands - what the cat holds in its paws (0 - nothing,
@@ -352,24 +325,9 @@ above the body with a gap and can be rocked on its own."
          (eye (nth (mod index 3) '("#e8c840" "#7ac060" "#6ab0d8"))))
     ;; body and hat - by the clothing set
     (cat-outfit g head (mod look 10) coat)
-    (dolist (sx '(-1 1)) (shape g :ball '(.075 8 5) fur (* sx .26) .66 .1))
+    (model g "cat-paws" 0.0 0.0 0.0 :paint (list fur))
     ;; the head - in its own coordinates, centered at zero
-    (node-3d-set-scale (shape head :ball '(.31 10 7) fur 0 0 0) (v3 1.15 .92 1.0))
-    (dolist (sx '(-1 1))
-      ;; ear: a flat shell, pink middle, dark edge at the back, a tuft on the tip
-      (let ((ear (group head (* sx .2) .27 0)))
-        (node-3d-set-rotation ear (v3 0 0 (* sx -.22)))
-        (shape ear :cone '(.13 .3 6) fur 0 .1 0 :scale '(1 1 .45))
-        (shape ear :cone '(.085 .2 6) "#d89a9a" 0 .08 .035 :scale '(1 1 .3) :shadow nil)
-        (shape ear :cone '(.135 .28 6) "#1c1c22" 0 .09 -.03 :scale '(1 1 .3) :shadow nil)
-        (shape ear :cone '(.03 .09 4) "#e8e4d8" 0 .28 0 :shadow nil)
-        (shape ear :box '(.012 .09 .012) "#e8e4d8" (* sx .03) .05 .06 :rot (list 0 0 (* sx .5)) :shadow nil)
-        (shape ear :box '(.012 .07 .012) "#e8e4d8" (* sx -.02) .04 .06 :rot (list 0 0 (* sx -.3)) :shadow nil))
-      (shape head :ball '(.065 8 5) eye (* sx .125) .03 .265 :emit eye :energy .5 :shadow nil)
-      (shape head :box '(.022 .1 .02) "#101014" (* sx .125) .03 .325 :shadow nil)
-      (dolist (dy '(-.02 .02))
-        (shape head :box '(.2 .008 .008) "#e8e4d8" (* sx .22) (+ -.08 dy) .25 :rot (list 0 (* sx -.3) (* sx dy 4)) :shadow nil)))
-    (shape head :box '(.05 .035 .03) "#d88a8a" 0 -.06 .305 :shadow nil)
+    (model head "cat-head" 0.0 0.0 0.0 :paint (list fur eye))
     (list g head)))
 
 (defun place-person (g d x &optional (turn .45))

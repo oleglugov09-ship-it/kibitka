@@ -107,11 +107,14 @@ Cubes named surface_NAME: the top face is a place to stand or put things, each a
     (let* ((mesh (object-get node "mesh")) (m (and mesh (plusp (object-call mesh "get_surface_count")) (object-call mesh "surface_get_material" 0)))
            (name (if m (princ-to-string (object-get m "resource_name")) "")))
       (when (and (> (length name) 5) (eql 0 (search "paint" name)) (digit-char-p (char name 5)))
-        (let ((rgb (nth (digit-char-p (char name 5)) paint)))
-          (when rgb
+        (let* ((rgb (nth (digit-char-p (char name 5)) paint)) (ws (words name)) (glow (member "emit" ws :test #'string=)))
+          (when rgb                                                 ; "paint1 emit own 0.5": it glows with its own colour
             (object-call node "set_surface_override_material" 0
-                         (material rgb :rough (/ (round (* 100 (object-get m "roughness"))) 100.0)
-                                       :metal (/ (round (* 100 (object-get m "metallic"))) 100.0))))))))
+                         (if glow
+                             (material rgb :emit rgb :energy (let ((v (ignore-errors (let ((*read-eval* nil)) (read-from-string (third glow))))))
+                                                               (if (realp v) (float v 1.0) 1.0)))
+                             (material rgb :rough (/ (round (* 100 (object-get m "roughness"))) 100.0)
+                                           :metal (/ (round (* 100 (object-get m "metallic"))) 100.0)))))))))
   (dotimes (i (object-call node "get_child_count"))
     (paint-model (object-call node "get_child" i) paint)))
 

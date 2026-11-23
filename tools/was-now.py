@@ -49,6 +49,9 @@ VIEWS = [("outside-back-right", '(setf *view* :outside *orbit-yaw* .6 *orbit-pit
          ("last", """(progn (setf *orbit-dist* 30.0 *orbit-yaw* 1.57 *orbit-pitch* .4 *seed* (rs-for 7)) (izba (group *cart* -12.0 0.0 -16.0) 0 0) (shop (group *cart* -14.0 0.0 22.0) "ХЛЕБ") (parked-car (group *cart*) -6.0 8.0) (loop for d in '(0.0 2.0) for i from 0 do (let ((g (group *cart* -7.0 0.0 (- (* 7.0 i) 8.0)))) (godot:node-3d-set-rotation g (v3 0 3.1416 0)) (stop-box g d))) (loop for k in '(:snag :hay :fence :cairn :campfire :mush :pumpkin) for i from 0 do (build-prop (group *cart* -5.0 0.0 (- (* 2.5 i) 20.0)) k 1)) 1)"""),
          ("last-near", '(setf *orbit-dist* 18.0 *orbit-yaw* 2.2 *orbit-pitch* .3)'),
          ("last-far", '(setf *orbit-dist* 45.0 *orbit-yaw* .9 *orbit-pitch* .5)'),
+         ("cats", """(progn (setf *view* :outside *orbit-dist* 13.0 *orbit-yaw* -1.57 *orbit-pitch* .1) (loop for look below 5 do (loop for row below 2 do (let ((g (group *cart* -5.0 0.0 (+ -3.2 (* 1.5 look) (* .75 row))))) (godot:node-3d-set-rotation g (v3 0 -1.57 0)) (godot:node-3d-set-position g (v3 (- -4.6 (* 1.3 row)) 0.0 (- (* 1.5 look) 3.0))) (make-cat g (+ look (* 3 row) 1) look)))) (loop for marks in '((:tie :hat :folder) (:glasses :bun :book) (:shades :bow) (:white) (:kerchief) (:kerchief-white :cap) (:officer)) for i from 0 do (let ((g (group *cart* -7.4 0.0 (- (* 1.2 i) 3.6)))) (godot:node-3d-set-rotation g (v3 0 -1.57 0)) (let ((c (make-cat g (+ i 2)))) (person-dress (first c) (second c) marks)))) 1)"""),
+         ("cats-near", '(setf *orbit-dist* 11.0 *orbit-yaw* -1.25 *orbit-pitch* .16)'),
+         ("cats-side", '(setf *orbit-dist* 12.0 *orbit-yaw* -1.95 *orbit-pitch* .3)'),
          ("meta-room", '(progn (setf *meta* t *view* :inside *seat* nil *pos* (v3 0 0 2.8) *yaw* 0.0 *pitch* 0.0) (apply-meta) 1)'),
          ("meta-room-back", '(setf *pos* (v3 0 0 -2.8) *yaw* 3.1416)'),
          ("meta-room-side", '(setf *pos* (v3 2.4 0 0) *yaw* 1.5708)')]
