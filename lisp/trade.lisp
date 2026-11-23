@@ -353,7 +353,7 @@ driver's, so it returns to the hands, or it would be lost."
 
 (defun step-onboard ()
   (unless (or (net-guest-p) *lobby-open* (>= *onboard* 9) (and *toast* (> (cdr *toast*) 0))
-              (and (boundp '*show*) (symbol-value '*show*)))                 ; a card is on the screen: a hint under it would be lost
+              *show*)                 ; a card is on the screen: a hint under it would be lost
     (let ((market (let ((p (place-here))) (and p (market-p p) (zerop (place-town p))))))
       (case *onboard*
         (0 (when (> *time* 2)

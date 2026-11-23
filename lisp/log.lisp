@@ -27,7 +27,7 @@
 (defun log-event (event &rest plist)
   "Record the event EVENT with the fields in PLIST (:key value ...).
 The trip diary in the wagon hears every event too (home.lisp)."
-  (when (fboundp 'diary-note) (noting :diary (funcall 'diary-note event plist)))
+  (noting :diary (diary-note event plist))
   (when (and (< (length *log-queue*) 200) (not (ext:getenv "KIOSK_NOLOG")))     ; test runs (tools/smoke.py) must not clutter the log
     (push (format nil "{\"e\":~a,\"at\":~d~{,\"~(~a~)\":~a~}}"
                   (json-value event) (round *time*)

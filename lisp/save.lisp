@@ -72,7 +72,7 @@ Read the file itself, its backup copy or, when neither exists, the old-style fil
                  (when (some #'file-here-p (list path bak start))
                    (cl:format t "~&The save ~a could not be read~:[: starting anew~;, a spare copy is taken~]~%" path (not (eq got :none)))
                    (when (eq got :none) (push name *saves-lost*))
-                   (when (fboundp 'log-event) (funcall 'log-event :save-lost :file (string-downcase (symbol-name name)) :rescued (not (eq got :none)))))))
+                   (log-event :save-lost :file (string-downcase (symbol-name name)) :rescued (not (eq got :none))))))
         (cond ((eq got :none)                                      ; no new file — take the old ones one by one
                (loop for (key old) in sections
                      do (let ((form (and (file-here-p old) (load-form old))))
@@ -129,9 +129,9 @@ a copy of the world is being restored."
 
 (defun step-saves-lost ()
   "Tell the player, once the game is on, that a save was there and could not be read."
-  (when (and *saves-lost* (boundp '*time*) (> (symbol-value '*time*) 8.0) (not (and (boundp '*lobby-open*) (symbol-value '*lobby-open*))))
+  (when (and *saves-lost* (> *time* 8.0) (not *lobby-open*))
     (setf *saves-lost* '())
-    (funcall 'say "Сохранение не прочиталось — игра началась заново. Напиши автору: такого быть не должно")))
+    (say "Сохранение не прочиталось — игра началась заново. Напиши автору: такого быть не должно")))
 
 (defun step-saves (delta)
   (step-saves-lost)

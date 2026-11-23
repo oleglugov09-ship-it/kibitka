@@ -377,7 +377,7 @@ its air."
       (setf *tunnel-spawn* (and world t))))
   (when (and (eq *tunnel-spawn* t) *lobby-open*) (setf *tunnel-spawn* :lobby))        ; wait for the lobby to be answered
   (when (and (eq *tunnel-spawn* :lobby) *tunnel* *cart* (not *lobby-open*)
-             (or (not *dev*) (and (boundp '*dev-started*) (symbol-value '*dev-started*))))     ; on the polygon: after its own start
+             (or (not *dev*) *dev-started*))     ; on the polygon: after its own start
     (setf *tunnel-spawn* :done)
     (unless (net-guest-p)
       (when (eq *story-stage* :intro)                                                   ; no intro: straight to the road

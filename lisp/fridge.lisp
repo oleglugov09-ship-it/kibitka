@@ -123,7 +123,7 @@ Mushrooms on the dryer are dried instead."
                  (set-items (mapcar (lambda (spec) (if (member spec dry :test #'equal) (list* (dried-of (spec-kind spec)) (rest spec)) spec)) (mapcar #'car *items*)))
                  (save-interior)
                  (say-all "На сушилке высохло: теперь не испортится"))
-               (when (and bad (boundp '*trip-day0*) (= day (1+ (symbol-value '*trip-day0*))))   ; the first dawn of a trip forgives: a warning, nothing lost
+               (when (and bad (= day (1+ *trip-day0*)))   ; the first dawn of a trip forgives: a warning, nothing lost
                  (setf bad nil)
                  (log-event :spoil-warned :dist (round *dist*))
                  (say-all "Утро. Продукты на полке чуть не испортились — на этот раз обошлось. Молоко, рыбу и грибы на ночь убирай в холодильник — он у стены с ковром"))

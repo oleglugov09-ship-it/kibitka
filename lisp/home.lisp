@@ -178,7 +178,7 @@ with the last one written would look unchanged."
 (defun open-diary ()
   "Open the folder at the bookmark of the diary."
   (unless *docs-open* (open-docs))
-  (funcall 'open-paper :diary))
+  (open-paper :diary))
 
 ;;; ------------------------------------------------------------------ for the winter: the window and the door
 

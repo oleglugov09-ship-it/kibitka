@@ -62,7 +62,7 @@ and state returning the node. STEP, if given, is called every frame with node, k
 
 (defun step-report ()
   "Hold a quarterly report as soon as one more quarter of the loan is paid: cards for us, a line for the guests."
-  (when (and (< *quarter-done* (debt-quarter)) (null *show*) (not (and (boundp '*ending*) *ending*)))
+  (when (and (< *quarter-done* (debt-quarter)) (null *show*) (not *ending*))
     (let ((cards (hold-report)))
       (log-event :report :quarter *quarter-done*)
       (say-all (format nil "~a" (substitute #\Space #\Newline (format nil "~{~a~^ · ~}" (rest cards)))))

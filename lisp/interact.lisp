@@ -126,7 +126,7 @@ Discs are handled by hand too."
 
 (defun note-said (text)
   (unless (equal text (cdr (first *said-log*)))
-    (push (cons (if (fboundp 'trip-day) (funcall 'trip-day) 0) text) *said-log*)
+    (push (cons (trip-day) text) *said-log*)
     (incf *said-n*)
     (when (> (length *said-log*) *said-keep*) (setf *said-log* (subseq *said-log* 0 *said-keep*)))))
 
@@ -148,9 +148,9 @@ not to the driver."
 
 (defun press-notebook ()
   "Open the notebook: everything that was said, the newest first."
-  (cond ((and (boundp '*show*) (symbol-value '*show*)) nil)
-        (t (funcall 'log-event :notebook :n (length *said-log*))
-           (funcall 'open-diary) t)))                                       ; the notebook is the diary's bookmark in the folder
+  (cond (*show* nil)
+        (t (log-event :notebook :n (length *said-log*))
+           (open-diary) t)))                                       ; the notebook is the diary's bookmark in the folder
 
 (defun make-hint (root)
   (let ((layer (gdext:make-object "CanvasLayer")) (l (gdext:make-object "Label")))

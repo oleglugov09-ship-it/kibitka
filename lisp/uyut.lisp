@@ -257,7 +257,7 @@ Each time it is about something different."
     (return-from radio-line (nth (mod *radio-n* 4) '("Радио: шипение" "Радио: шипение, и в нём что-то вроде счёта"
                                                     "Радио: тишина" "Радио: …точного времени… — и снова шипение"))))
   (when (evenp *radio-n*)                                    ; every other time: about what we ourselves delivered (istorii.lisp)
-    (let ((news (and (not (net-guest-p)) (or (story-news) (and (fboundp 'abroad-news) (funcall 'abroad-news))))))
+    (let ((news (and (not (net-guest-p)) (or (story-news) (abroad-news)))))
       (when news (return-from radio-line (format nil "Радио: ~a" news)))))
   (let ((next (find-if (lambda (tw) (> (town-start tw) *dist*)) *towns*)))
     (case (mod *radio-n* 5)
