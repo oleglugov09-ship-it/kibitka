@@ -519,6 +519,17 @@ stacks are furniture, they are not delivered). The first three towns are used in
 (defvar *hud-hidden* nil "True when H has hidden the gauges, the network line and the hints (for a pretty shot).")
 (defvar *dash* nil "The dashboard (a Control).")
 (defvar *dash-parts* nil "The dashboard parts as a plist: :needle :warm :fire :digits :planks :rows.")
+(defun screen-panel (layer-number x y w h rgba &optional (root *root*))
+  "Add a layer numbered LAYER-NUMBER over the game and on it a panel of colour RGBA at (X Y), W by H, in the 640 by
+360 of the screen. Return the panel, to put things on, and the layer, to show and hide it. Every screen of the
+game - the map, the lobby, the cards, the copies, the debug lines - starts with this."
+  (let ((layer (gdext:make-object "CanvasLayer")) (bg (gdext:make-object "ColorRect")))
+    (godot:object-set layer "layer" layer-number)
+    (node-add-child root layer) (node-add-child layer bg)
+    (godot:object-set bg "position" (vector2 x y)) (godot:object-set bg "size" (vector2 w h))
+    (godot:object-set bg "color" (apply #'color rgba))
+    (values bg layer)))
+
 (defun hud-rect (parent x y w h rgb &optional (a 1.0))
   (let ((r (gdext:make-object "ColorRect")))
     (node-add-child parent r)

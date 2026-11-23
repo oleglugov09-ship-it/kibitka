@@ -78,12 +78,8 @@ With AUTO it goes to the slots of automatic copies, and the hand-made ones are l
              (say (format nil "Мир восстановлен из копии: ~a. Прежний мир тоже сохранён копией" (third f)))))))
 
 (defun make-copy-panel ()
-  (let ((layer (gdext:make-object "CanvasLayer")) (bg (gdext:make-object "ColorRect")))
-    (node-add-child *root* layer) (node-add-child layer bg)
-    (object-set layer "layer" 30)                                      ; above the pause menu
+  (multiple-value-bind (bg layer) (screen-panel 30 8 24 176 (+ 52 (* 22 (+ *copy-slots* *auto-slots*))) '(.08 .09 .1 .9))   ; layer 30: above the pause menu
     (object-set layer "visible" nil)                                   ; STEP-COPIES opens it and fills the list
-    (object-set bg "position" (vector2 8 24)) (object-set bg "size" (vector2 176 (+ 52 (* 22 (+ *copy-slots* *auto-slots*)))))
-    (object-set bg "color" (color .08 .09 .1 .9))
     (hud-label bg "Копии мира" 8 4 10)
     (let ((new (lobby-control "Button" bg 8 22 160 20 "Сделать копию"))
           (rows (loop for i below (+ *copy-slots* *auto-slots*) collect (lobby-control "Button" bg 8 (+ 48 (* 22 i)) 160 20 ""))))

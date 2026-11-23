@@ -22,12 +22,7 @@ The Crossroads is in the middle and north (-z) is at the top."
     (values (+ 320 (* k (- x (first *hub*)))) (+ 180 (* k (- z (second *hub*)))))))
 
 (defun make-map (root)
-  (let* ((layer (gdext:make-object "CanvasLayer")) (bg (gdext:make-object "ColorRect")))
-    (object-set layer "layer" 6)
-    (node-add-child root layer)
-    (node-add-child layer bg)
-    (object-set bg "position" (vector2 0 0)) (object-set bg "size" (vector2 640 360))
-    (object-set bg "color" (color .04 .05 .06 .72))
+  (multiple-value-bind (bg layer) (screen-panel 6 0 0 640 360 '(.04 .05 .06 .72) root)
     (hud-rect bg 20 16 600 328 '(.85 .82 .72) .97)
     (hud-rect bg 20 16 600 2 '(.42 .34 .22))
     (hud-label bg "КАРТА" 30 22 12 '(.2 .16 .1))

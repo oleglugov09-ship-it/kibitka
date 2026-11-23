@@ -34,12 +34,7 @@
     c))
 
 (defun make-lobby (root)
-  (let* ((layer (gdext:make-object "CanvasLayer")) (bg (gdext:make-object "ColorRect")))
-    (object-set layer "layer" 5)
-    (node-add-child root layer)
-    (node-add-child layer bg)
-    (object-set bg "position" (vector2 0 0)) (object-set bg "size" (vector2 640 360))
-    (object-set bg "color" (color .04 .05 .06 .72))
+  (multiple-value-bind (bg layer) (screen-panel 5 0 0 640 360 '(.04 .05 .06 .72) root)
     ;; a waybill: yellowed paper, ruled lines, the depot's stamp
     (hud-rect bg 60 60 520 240 '(.88 .84 .70) .98)
     (hud-rect bg 60 60 520 3 '(.42 .30 .16))

@@ -111,11 +111,7 @@ mods: ~:[none~;~:*~{~a~^, ~}~] · stories ~d"
 (defun toggle-debug ()
   (setf *debug-on* (not *debug-on*))
   (unless *debug-label*
-    (let ((layer (gdext:make-object "CanvasLayer")) (bg (gdext:make-object "ColorRect")))
-      (node-add-child *root* layer) (node-add-child layer bg)
-      (godot:object-set layer "layer" 20)
-      (godot:object-set bg "position" (vector2 4 4)) (godot:object-set bg "size" (vector2 420 124))
-      (godot:object-set bg "color" (color 0 0 0 .62))
+    (let ((bg (screen-panel 20 4 4 420 124 '(0 0 0 .62))))
       (setf *debug-label* (hud-label bg "" 5 3 7 '(.75 1.0 .75)))
       (setf (getf (symbol-plist '*debug-label*) :bg) bg)))
   (godot:object-set (getf (symbol-plist '*debug-label*) :bg) "visible" *debug-on*))
@@ -164,11 +160,7 @@ Return T when the key was ours."
   (if (member key '(:paws :truck :fuel :noon)) (cl:format nil "~a: ~:[off~;ON~]" label (cheat-p key)) label))
 
 (defun make-cheats ()
-  (let ((layer (gdext:make-object "CanvasLayer")) (bg (gdext:make-object "ColorRect")))
-    (node-add-child *root* layer) (node-add-child layer bg)
-    (godot:object-set layer "layer" 21)
-    (godot:object-set bg "position" (vector2 40 40)) (godot:object-set bg "size" (vector2 560 280))
-    (godot:object-set bg "color" (color .08 .1 .09 .94))
+  (multiple-value-bind (bg layer) (screen-panel 21 40 40 560 280 '(.08 .1 .09 .94))
     (let ((title (hud-label bg "" 20 10 10 '(.75 1.0 .75))))
       (godot:object-set title "text" "CHEATS · F4 or \\ — close · for the driver or solo play"))
     (setf *cheat-ui*

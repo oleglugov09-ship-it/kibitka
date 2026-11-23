@@ -53,11 +53,7 @@
 (defvar *show-down* t "True if the key or the button that turns the cards was down on the previous frame.")
 
 (defun make-show ()
-  (let ((layer (gdext:make-object "CanvasLayer")) (bg (gdext:make-object "ColorRect")))
-    (object-set layer "layer" 6)
-    (node-add-child *root* layer) (node-add-child layer bg)
-    (object-set bg "position" (vector2 0 0)) (object-set bg "size" (vector2 640 360))
-    (object-set bg "color" (color .03 .03 .04 .94))
+  (multiple-value-bind (bg layer) (screen-panel 6 0 0 640 360 '(.03 .03 .04 .94))
     (object-set bg "mouse_filter" 2)
     (hud-rect bg 120 70 400 1 '(.79 .63 .23)) (hud-rect bg 120 290 400 1 '(.79 .63 .23))
     (let ((text (hud-label bg "" 120 80 12 '(.92 .88 .76))))
