@@ -49,7 +49,7 @@ FORM may also be a string with several forms. Return the local result; the guest
 (live-fn window (&optional (open t)) "Slide the big window open when OPEN is true, or shut it when OPEN is NIL." (setf *window-open* open))
 
 (live-fn pace (v) "Set the truck speed to V, in m/s.
-Without the autopilot the truck brakes at once; to drive, call (kiosk-trip::go-to-town ...)." (setf *speed* (float v 1.0)))
+Without the autopilot the truck brakes at once; to drive, call (kiosk-trip::go-to-town ...)." (set-speed (float v 1.0)))
 
 (live-fn time-of-day (what)
   "Set the time of day to WHAT: seconds since dawn, or :dawn :day :noon :sunset :night :midnight."

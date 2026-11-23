@@ -118,7 +118,8 @@ This is a cheat. Return T if the wagon was moved."
           (cond ((net-guest-p) (say "Переносит водитель") nil)
                 (t (let* ((k (/ 112.0 (/ (ring-length) (* 2 pi))))
                           (d (nearest-road-d (+ (first *hub*) (/ (- mx 320) k)) (+ (second *hub*) (/ (- my 180) k)))))
-                     (setf *auto* nil *auto-then* nil *way* '() *speed* 0.0 *dir* 1 *yaw-now* 0.0 *lane-now* 0.0)
+                     (setf *auto* nil *auto-then* nil *way* '() *dir* 1 *yaw-now* 0.0 *lane-now* 0.0)
+                     (halt)
                      (relocate d)
                      (log-event :cheat :what :teleport :dist (round d))
                      (dolist (b (getf *map-parts* :towns)) (object-set b "button_pressed" nil))
@@ -274,9 +275,9 @@ Without the autopilot the truck does not drive: whatever got it moving earlier, 
 full stop."
   (when (and (not *auto*) (not (net-guest-p)))
     (if (> *speed* 0.0)
-        (setf *speed* (max 0.0 (- *speed* (* *brake* delta))))
+        (set-speed (max 0.0 (- *speed* (* *brake* delta))))
         (park-right)))
-  (when (and *auto* (not (net-guest-p)) (turning-p)) (setf *speed* 0.0))        ; turn around only while standing still
+  (when (and *auto* (not (net-guest-p)) (turning-p)) (halt))        ; turn around only while standing still
   (when (and *auto* (not (net-guest-p)) (not (turning-p)))
     ;; a new player is waiting on the way: stop at their bus stop by ourselves and drive on as soon as they board
     (let* ((pickup (first (sort (loop for p in *net-peers*
@@ -291,7 +292,7 @@ full stop."
              (setf *auto-replan* nil)
              (set-course (car *auto*) (cdr *auto*)))
             ((and pickup (< left 1.5))
-             (setf *speed* 0.0)
+             (halt)
              (park-right t)
              (unless (equal *auto-waiting* (cdr pickup))
                (setf *auto-waiting* (cdr pickup) *auto-waited* 0.0)
@@ -301,16 +302,16 @@ full stop."
                (push (car pickup) *auto-skipped*)
                (say-all (format nil "~a не сел — едем дальше" (cdr pickup)))))
             ((and (< left 1.5) *auto-then*)                              ; reached the turning spot, now head for the target
-             (setf *speed* 0.0)
+             (halt)
              (let ((then *auto-then*))
                (setf *auto* nil *auto-then* nil)
                (set-course (car then) (cdr then))))
             ((< left 1.5)
-             (setf *speed* 0.0)
+             (halt)
              (say-all (format nil "Приехали: ~a" (cdr *auto*)))
              (log-event :arrived :dist (round *dist*) :fuel *fuel*)
              (setf *auto* nil *auto-waiting* nil))
             (t (let ((want (min *max-speed* (sqrt (* 2 *auto-brake* (max 0.0 (- left 1.0)))))))
-                 (setf *speed* (if (< *speed* want)
+                 (set-speed (if (< *speed* want)
                                    (min want (+ *speed* (* *throttle* delta)))
                                    (max want (- *speed* (* *brake* delta)))))))))))

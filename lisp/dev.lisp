@@ -82,7 +82,7 @@ Only the driver moves the wagon."
     (cond ((net-guest-p) (say "Переносит водитель"))                 ; shown to the player, so it goes through the translation
           (list (setf *poi* (mod (+ *poi* step) (length list)))
                 (let ((p (nth *poi* list)))
-                  (setf *auto* nil *speed* 0.0)
+                  (setf *auto* nil) (halt)
                   (relocate (car p))
                   (say (cl:format nil "~d/~d · ~a · ~d m" (1+ *poi*) (length list) (cdr p) (round (car p)))))))))
 

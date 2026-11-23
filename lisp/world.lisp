@@ -12,7 +12,11 @@
 
 (in-package #:kiosk-trip)
 
-(defparameter *speed* 7.0 "The truck speed in m/s.")
+(defvar *speed* 7.0 "The truck speed in m/s. It is set through HALT, SLOW-TO and SET-SPEED only.")
+
+(defun set-speed (v) "Make the truck go at V m/s: the autopilot's word, or the driver's speed told to a guest." (setf *speed* v))
+(defun halt () "Stop the truck at once." (setf *speed* 0.0))
+(defun slow-to (limit) "Do not let the truck go faster than LIMIT m/s right now." (setf *speed* (min *speed* limit)))
 (defparameter *smooth-ground* t "True for smooth land lighting: flat faces far away are smaller than a pixel and shimmer.")
 (defparameter *prop-step* 1.4 "The spacing of the roadside things, in metres.")
 (defparameter *ahead* 170.0 "The distance ahead up to which we build.")

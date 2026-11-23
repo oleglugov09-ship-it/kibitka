@@ -641,9 +641,9 @@ record our edit as 'what the driver has'."
                (3 (dolist (m (peer-msgs (cdr e))) (noting :guest-take (guest-take m)))))))))
   (let ((h *net-host*))
     (when (and h *net-joined*)
-      (cond ((eq *net-wait* :pick) (setf *speed* 0.0) (guest-pick-stop h))
+      (cond ((eq *net-wait* :pick) (halt) (guest-pick-stop h))
             (*net-wait*
-             (setf *speed* 0.0)
+             (halt)
              (place-truck h)
              (let ((gap (- *net-wait* (getf h :dist))))
                ;; the wagon stands and is not coming to us (the driver is trading, the autopilot target is nearer than
@@ -655,7 +655,7 @@ record our edit as 'what the driver has'."
                      ((< (* *dir* gap) -25) (setf *net-wait* :pick)
                       (say "Кибитка проехала мимо. Ждёшь на следующей остановке")))))
             (t (let ((diff (- (getf h :dist) *dist*)))
-                 (setf *speed* (getf h :speed))
+                 (set-speed (getf h :speed))
                  (cond ((< diff -60) (relocate (getf h :dist)))          ; the driver 'turned around' to a town behind
                        ((> diff 60) (jump-dist (getf h :dist)))
                        (t (incf *dist* (* .08 diff)))))))

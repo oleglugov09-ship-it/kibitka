@@ -442,7 +442,7 @@ The wallet is shared, so anyone can refuel."
   (setf *fuel* (max 0.0 (- *fuel* (/ (* *speed* delta) (* 1000 *tank-km*)))))
   (when (<= *fuel* 0.0)
     (unless *fuel-out* (setf *fuel-out* t) (log-event :fuel-out :money *money* :dist (round *dist*) :next-station (next-station *dist*)))
-    (setf *speed* (min *speed* 2.5)))
+    (slow-to 2.5))
   (when (> *fuel* .05) (setf *fuel-out* nil))                       ; empty tank: we coast along, barely moving
   (when (and (< *fuel* .15) (not *fuel-told*)) (setf *fuel-told* t) (say "Бак почти пуст. Ищи заправку")))
 
