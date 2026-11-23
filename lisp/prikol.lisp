@@ -204,12 +204,8 @@ Return T if a train ride was pending (GO-TO-TOWN then does nothing itself)."
   :shelf '("#d8d0b8" "#2c4a7a" "#a3262c")
   :spot '(10.2 3.2 2.0)
   :label "E — подняться на маяк: что почём в ближайших городах"
-  :use (lambda () (let* ((here (trade-town))                                ; the two nearest towns by road, in either direction
-              (near (sort (loop for tw in *towns* unless (= (town-index tw) here)
-                                collect (cons (or (plan-way (town-stop-d tw)) 1e9) (town-index tw)))
-                          #'< :key #'car)))
-         (say (format nil "С маяка видно далеко. ~{~a~^ · ~}"
-                      (loop for (nil . i) in (subseq near 0 2) collect (market-note i))))))
+  :use (lambda () (say (format nil "С маяка видно далеко. ~{~a~^ · ~}"       ; the two nearest towns by road, in either direction
+                               (mapcar #'market-note (rest (sheet-towns))))))
   :build (lambda (g) (dotimes (k 6) (shape g :cyl '(.8 .9 1.0 12) (if (evenp k) "#e8e4d8" "#a3262c") 7.0 (+ .5 k) -3.2))   ; a small lighthouse
          (model g "booth-5-extra")))
 
@@ -352,3 +348,12 @@ booth to booth, and a gas station next door does not switch them off."
              (when (and (null *client*) (> *window-k* .9) (> (- *time* *rush-bell*) 7.0))
                (setf *rush-bell* *time*) (ring-bell)))
             (t (setf *rush-told* nil))))))
+
+;;; A guest holds the driver's stamp, badge, lid and the day's takings: taken in here (APPLY-WORLD, sync.lisp).
+(defun accept-prikol (prikol)
+  "Take in, as a guest, the driver's booth things PRIKOL: (stamp badge spent lid)."
+  (when (fits prikol '(t t list t))
+    (unless (eq (and (fourth prikol) t) (and *lid* t)) (setf *lid* (and (fourth prikol) t)) (show-lid))
+    (setf *stamp* (and (first prikol) t) *badge* (and (second prikol) t)
+          *gimmick-spent* (loop for e in (third prikol)
+                                when (fits e '(integer integer)) collect (cons (first e) (second e))))))

@@ -196,3 +196,13 @@ It has a booth with a window, crates of bottles, bales of paper and scales. Retu
                           (lambda () (format nil "E — сдать бутылки (~d) и макулатуру (~d): +~/kiosk-trip::rub/"
                                              *bottles* *papers* (+ (* *bottle-price* *bottles*) (* *paper-price* *papers*))))
                           #'sell-finds 3.2 .7))))))
+
+;;; A guest holds the driver's finds: taken in here (APPLY-WORLD, sync.lisp).
+(defun accept-finds (finds)
+  "Take in, as a guest, the driver's FINDS: (bottles papers spyglass picked-nearby)."
+  (when (fits finds '(integer integer t list))
+    (setf *bottles* (first finds) *papers* (second finds))
+    (unless (eq (and (third finds) t) (and *spyglass* t)) (setf *spyglass* (and (third finds) t)) (show-spyglass))
+    (dolist (id (fourth finds))
+      (when (fits id '(integer keyword integer))
+        (pushnew id *picked* :test #'equal)))))

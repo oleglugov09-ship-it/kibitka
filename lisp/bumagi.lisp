@@ -304,3 +304,17 @@ and ask for a licence. Travelling light, we are never stopped."
   :shelf '("#2c4a7a" "#d8d0b8" "#2a2c30")
   :label (lambda () (if *fines* (format nil "E — оплатить штрафы: ~/kiosk-trip::rub/" (reduce #'+ *fines*)) "Участок: штрафов за вами нет"))
   :use #'pay-fines)
+
+;;; A guest holds the driver's papers: the driver's word about them is taken in here (APPLY-WORLD, sync.lisp).
+(defun accept-papers (papers)
+  "Take in, as a guest, the driver's PAPERS: (licences fines quest check-phase)."
+  (when (fits papers '(t t t t))
+    (destructuring-bind (licenses fines quest check) papers
+      (when (and (fits licenses '(:each keyword)) (fits fines '(:each integer)))
+        (setf *licenses* licenses *fines* fines
+              *quest* (and (fits quest '(keyword integer))
+                           (cons (first quest) (second quest))))
+        (let ((phase (and (member check '(:stopping :waiting)) check)))
+          (unless (eq phase (first *check*))                       ; the policeman at the window is there for everyone
+            (setf *check* (and phase (list phase nil nil 0.0)))
+            (show-officer (eq phase :waiting))))))))

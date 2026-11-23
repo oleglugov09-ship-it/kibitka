@@ -169,30 +169,8 @@ seconds (a message may have been lost); otherwise :SAME stands in for it."
   (when (and (listp w) (= (length w) 5))
     (destructuring-bind (events papers prikol finds auto) w
       (apply-events events)
-      (when (fits papers '(t t t t))
-        (destructuring-bind (licenses fines quest check) papers
-          (when (and (fits licenses '(:each keyword)) (fits fines '(:each integer)))
-            (setf *licenses* licenses *fines* fines
-                  *quest* (and (fits quest '(keyword integer))
-                               (cons (first quest) (second quest))))
-            (let ((phase (and (member check '(:stopping :waiting)) check)))
-              (unless (eq phase (first *check*))                       ; the policeman at the window is there for everyone
-                (setf *check* (and phase (list phase nil nil 0.0)))
-                (show-officer (eq phase :waiting)))))))
-      (when (fits prikol '(t t list t))
-        (unless (eq (and (fourth prikol) t) (and *lid* t)) (setf *lid* (and (fourth prikol) t)) (show-lid))
-        (setf *stamp* (and (first prikol) t) *badge* (and (second prikol) t)
-              *gimmick-spent* (loop for e in (third prikol)
-                                    when (fits e '(integer integer)) collect (cons (first e) (second e)))))
-      (when (fits finds '(integer integer t list))
-        (setf *bottles* (first finds) *papers* (second finds))
-        (unless (eq (and (third finds) t) (and *spyglass* t)) (setf *spyglass* (and (third finds) t)) (show-spyglass))
-        (dolist (id (fourth finds))
-          (when (fits id '(integer keyword integer))
-            (pushnew id *picked* :test #'equal))))
-      (if (fits auto '(real string (:each (real real real))))
-          (setf *auto* (cons (first auto) (second auto)) *way* (third auto))      ; where we are heading is visible on the guest's map too
-          (setf *auto* nil *way* '())))))
+      ;; each part is taken in by whoever owns that state: the checks of what came, and the writing
+      (accept-papers papers) (accept-prikol prikol) (accept-finds finds) (accept-course auto))))
 
 (defun world-digest ()
   "Return the shared state as one list.

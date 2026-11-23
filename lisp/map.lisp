@@ -322,3 +322,10 @@ full stop."
                  (set-speed (if (< *speed* want)
                                    (min want (+ *speed* (* *throttle* delta)))
                                    (max want (- *speed* (* *brake* delta)))))))))))
+
+;;; A guest sees on its map where the driver is heading: taken in here (APPLY-WORLD, sync.lisp).
+(defun accept-course (auto)
+  "Take in, as a guest, the driver's course AUTO: (target title turns), or anything else for none."
+  (if (fits auto '(real string (:each (real real real))))
+      (setf *auto* (cons (first auto) (second auto)) *way* (third auto))
+      (setf *auto* nil *way* '())))
