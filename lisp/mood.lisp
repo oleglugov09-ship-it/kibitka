@@ -69,13 +69,10 @@ void fragment() {
 
 (defun make-curtains (c)
   "Hang under C a rod over the big window and two curtains on it."
-  (shape c :cyl '(.012 .012 2.9 6) "#5a3e26" (- *half-width* .17) (+ *floor* 2.07) 0 :rot (list (/ pi 2) 0 0) :shadow nil)
   (setf *curtains*
         (loop for side in '(-1 1)
               collect (let ((g (group c 0 0 0)))
-                        (shape g :box '(.03 1.22 1.42) "#b84a34" 0 0 0 :shadow nil)
-                        (dolist (dz '(-.5 -.25 0.0 .25 .5)) (shape g :box '(.04 1.2 .03) "#9a3a2a" 0 0 dz :shadow nil))   ; folds
-                        (shape g :box '(.036 .08 1.42) "#d8a840" 0 -.56 0 :shadow nil)                                  ; a hem
+                        (model g "curtain")
                         (cons g side))))
   (apply-curtains))
 

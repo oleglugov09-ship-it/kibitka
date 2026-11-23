@@ -63,26 +63,15 @@ A record of your own, dropped into project/discs/, is called by its file name.")
 (defun make-jukebox (cart)
   "Build under CART the shelf by the window wall, the radiogram on it and the rack of records beside it."
   (destructuring-bind (jx jz) *jukebox-at*
-    (let ((f *floor*) (wood "#6a3a2e"))
-      (shape cart :box '(.36 .03 .96) "#8a6440" jx (+ f *jukebox-y* -.015) (- jz .15))            ; the shelf under both
-      (dolist (dz '(-.55 .25)) (shape cart :box '(.3 .16 .03) "#5a3e26" (+ jx .02) (+ f *jukebox-y* -.11) (+ jz dz)))
+    ;; the shelf, the radiogram and the crate for the records are drawn in Blender (models/appliances.blend)
+    (let ((f *floor*))
       (let ((g (group cart jx (+ f *jukebox-y*) jz)))
-        (shape g :box '(.3 .24 .56) wood 0 .12 0)                                                 ; the cabinet
-        (shape g :box '(.012 .15 .3) "#c8b890" -.152 .14 -.1 :shadow nil)                         ; the cloth of the loudspeaker
-        (shape g :box '(.26 .012 .5) "#2a2a2e" 0 .246 0 :shadow nil)                              ; the deck
-        (shape g :cyl '(.11 .11 .012 16) "#3a3a40" -.02 .256 -.08 :shadow nil)                    ; the turntable
-        (shape g :box '(.012 .012 .2) "#b0b4b8" .09 .27 .1 :rot '(0 .5 0) :metal .7 :shadow nil)  ; the tone arm
-        (shape g :box '(.02 .3 .56) wood .15 .39 0)                                               ; the lid, propped open against the wall
-        (shape g :box '(.008 .3 .008) "#8a8e92" .12 .55 .26 :rot (list .2 0 0) :shadow nil)       ; the aerial
         (setf *slot-node* nil *jukebox* g *notes* '()
               *music* (player g (wav-stream (sound-path "step-1")) :positional t :y .3 :db -14.0 :bus "Музыка" :play nil))
         (when *playing* (play-disc *playing*)))))
   (destructuring-bind (cx cz) *crate-at*
     (setf *crate-node* (group cart cx (+ *floor* *jukebox-y*) cz))
-    (node-3d-set-rotation *crate-node* (v3 0 (/ pi 2) 0))                    ; the sleeves stand in a row along the wall
-    (let ((g *crate-node*))
-      (shape g :box '(.44 .02 .26) "#7a5a3a" 0 .01 0)
-      (dolist (s '(-1 1)) (shape g :box '(.02 .14 .26) "#7a5a3a" (* s .21) .07 0))))
+    (node-3d-set-rotation *crate-node* (v3 0 (/ pi 2) 0)))                   ; the sleeves stand in a row along the wall
   (show-discs))
 
 (defun show-discs ()

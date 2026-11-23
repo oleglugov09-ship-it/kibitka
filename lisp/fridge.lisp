@@ -33,25 +33,13 @@
     (destructuring-bind (w h) *fridge-size*
       (let* ((g (group c fx *floor* fz)) (half (/ w 2)) (white "#e8e6dc")
              (hinge (group g half 0 (- half))))
-        (shape g :box (list .03 h w) white (- .015 half) (/ h 2) 0)                        ; the back
-        (dolist (sz (list (- .015 half) (- half .015))) (shape g :box (list w h .03) white 0 (/ h 2) sz))
-        (shape g :box (list w .03 w) white 0 (- h .015) 0)
-        (shape g :box (list w (first *fridge-shelves*) w) white 0 (/ (first *fridge-shelves*) 2) 0)
-        (shape g :box (list (- w .08) .02 (- w .08)) "#c8ccd0" 0 (- (second *fridge-shelves*) .01) 0 :metal .5 :rough .4 :shadow nil)
-        (shape g :box (list (- w .1) .18 (- w .08)) "#d0d8e0" -.02 (- h .13) 0 :shadow nil)   ; the freezer box under the top
-        (shape hinge :box (list .04 (- h .04) w) white .02 (/ h 2) half)                   ; the door
-        ;; the look of the old ZIL: rounded edges, a chrome lever for a handle, the name in chrome letters
-        (dolist (z (list .0 w)) (shape hinge :cyl (list .04 .04 (- h .04) 8) white .0 (/ h 2) z :shadow nil))
-        (shape hinge :cyl (list .04 .04 w 8) white .0 (- h .02) half :rot (list (/ pi 2) 0 0) :shadow nil)
-        (shape g :cyl (list .05 .05 w 8) white (- half .05) (- h .03) 0 :rot (list (/ pi 2) 0 0) :shadow nil)
-        (shape hinge :box '(.03 .05 .05) "#b0b4b8" .055 (* h .66) (- w .07) :metal .8 :rough .25 :shadow nil)     ; the pivot
-        (shape hinge :box '(.025 .24 .03) "#c8ccd0" .075 (* h .56) (- w .07) :metal .8 :rough .25 :shadow nil)    ; the lever
-        (shape hinge :box '(.008 .012 .26) "#b0b4b8" .042 (* h .8) half :metal .8 :rough .25 :shadow nil)
+        ;; the box, its shelves and the dryer over the stove are drawn in Blender (models/appliances.blend), the door in fridge-door.blend
+        (model c "appliances")
+        (model hinge "fridge-door")
         (let ((name (sign hinge "" .048 (* h .86) half :h .07 :rgb "#c8ccd0" :yaw (/ pi 2))))
           (godot:object-set name "text" "ЗИЛ"))
         (setf *fridge-door* hinge)
-        (apply-fridge))))
-  (make-dryer c))
+        (apply-fridge)))))
 
 (defun in-fridge-p (spec)
   "Return true if the item record SPEC stands inside the fridge."
@@ -107,14 +95,6 @@ A shelf has four places, two by two, like a section of the rack in small; things
 (defun on-dryer-p (spec)
   (destructuring-bind (cx cz w d top) (dryer-surface)
     (and (< (abs (- (second spec) cx)) (/ w 2)) (< (abs (- (fourth spec) cz)) (/ d 2)) (< (abs (- (third spec) top)) .1))))
-
-(defun make-dryer (c)
-  (destructuring-bind (cx cz w d top) (dryer-surface)
-    (let ((g (group c cx (+ *floor* top) cz)))
-      (dolist (dx '(-.2 -.1 0.0 .1 .2)) (shape g :box (list .025 .02 d) "#8a6440" dx -.01 0 :shadow nil))
-      (dolist (dz (list (- .03 (/ d 2)) (- (/ d 2) .03)))
-        (shape g :box (list w .02 .03) "#5a3e26" 0 -.03 dz :shadow nil)
-        (shape g :box '(.03 .2 .03) "#34363a" (- .02 (/ w 2)) -.13 dz :rot (list 0 0 -.5) :metal .5 :rough .5 :shadow nil)))))
 
 (defun toggle-fridge ()
   (setf *fridge-open* (not *fridge-open*))

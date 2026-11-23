@@ -83,10 +83,7 @@ The gnomes stand on two shelves above the door, nine to a shelf, facing the room
 (defun make-trophies (c)
   "Build the trophy shelves by the entrance under C and all eighteen figures on them.
 Figures not yet found are hidden."
-  (let ((f *floor*) (z (- *half-length* .2)))
-    (dolist (h '(2.07 2.47))
-      (shape c :box '(2.3 .03 .22) "#8a6440" 0 (+ f h -.015) z)
-      (dolist (x '(-1.1 0.0 1.1)) (shape c :box '(.03 .12 .2) "#5a3e26" x (+ f h -.09) z)))
+  (let ((f *floor*))
     (setf *trophies*
           (loop for (i) in *gnome-plan*
                 collect (destructuring-bind (tx ty tz yaw) (trophy-spot i)

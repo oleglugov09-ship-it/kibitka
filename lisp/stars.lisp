@@ -161,9 +161,7 @@ The sky stays over the wagon, turns with the day cycle and fades towards dawn an
 (defun make-spyglass (c)
   (destructuring-bind (x y z) *spyglass-at*
     (let ((g (group c x (+ *floor* y) z)))
-      (shape g :cyl '(.03 .045 .42 8) "#c9a13a" 0 0 0 :rot (list 0 0 (/ pi 2)) :metal .7 :rough .3)
-      (shape g :cyl '(.05 .05 .05 8) "#2a2c30" -.2 0 0 :rot (list 0 0 (/ pi 2)))
-      (dolist (sx '(-.12 .12)) (shape g :box '(.02 .08 .03) "#5a3e26" sx -.04 .02 :shadow nil))
+      (model g "spyglass")
       (setf *spyglass-node* g)
       (show-spyglass))))
 
