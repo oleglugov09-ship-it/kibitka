@@ -79,6 +79,117 @@ At the ends they veer away, in the middle they run alongside."
   (destructuring-bind (d0 d1) track
     (+ *rail-x* (* 420 (- 1 (* (sstep d0 (+ d0 320) d) (- 1 (sstep (- d1 320) d1 d))))))))
 
+;;; The plan is laid out a part at a time; each part adds its pads (where the land is made flat for something to
+;;; stand on), its level stretches of road and its scenes. PLAN-PLACES below calls them in the one order that works.
+
+(defun add-pad (&rest keys) "Add a pad to the plan: a piece of land made flat; KEYS are those of MAKE-PAD." (push (apply #'make-pad keys) *pads*))
+
+(defun level-road (d0 d1 &optional (ramp 90.0))
+  "Make the road level from D0 to D1, at the height of the middle of that stretch: the road along a pad is level."
+  (push (list d0 d1 (raw-road-y (/ (+ d0 d1) 2)) ramp) *levels*))
+
+(defun plan-town-pads ()
+  "Towns: the street is level, with a terrace for buildings on both sides; gas stations outside the towns."
+  ;; towns: the street is level, on both sides a terrace for buildings and the second rows of houses
+  (dolist (tw *towns*)
+    (let ((d0 (- (town-start tw) 30)) (d1 (+ (town-end tw) 30)))
+      (level-road d0 d1 260.0)
+      (cond ((eq (town-theme tw) :port)                    ; port: beyond the second line of houses - the sea
+             (add-pad :d0 d0 :d1 d1 :ramp 60.0 :x0 4.0 :x1 128.0 :m0 4.0 :m1 14.0 :y -.37)
+             (add-pad :d0 d0 :d1 d1 :ramp 80.0 :x0 150.0 :x1 1100.0 :m0 8.0 :m1 200.0 :y -5.0)
+             (let ((c (road-pos (/ (+ d0 d1) 2) 900.0)))     ; and farther out, where the land is already shared by the map, sea too
+               (push (list (first c) (third c) 1300.0 (- (road-y (/ (+ d0 d1) 2)) 6.0)) *basins*)))
+            ((eq (town-theme tw) :river)                   ; river town: beyond the embankment - a river along the whole town
+             (add-pad :d0 d0 :d1 d1 :ramp 60.0 :x0 4.0 :x1 58.0 :m0 4.0 :m1 8.0 :y -.37)
+             (add-pad :d0 d0 :d1 d1 :ramp 70.0 :x0 74.0 :x1 150.0 :m0 8.0 :m1 40.0 :y -3.4))
+            (t (add-pad :d0 d0 :d1 d1 :ramp 60.0 :x0 4.0 :x1 125.0 :m0 4.0 :m1 110.0 :y -.37)))
+      (when (eq (town-theme tw) :resort)                    ; resort: the mountain the cable car goes up
+        (let ((len (- (town-end tw) (town-start tw))))
+          (add-pad :d0 (+ (town-start tw) (* .34 len)) :d1 (+ (town-start tw) (* .56 len)) :ramp 90.0
+               :x0 240.0 :x1 310.0 :m0 80.0 :m1 80.0 :y 46.0)))
+      (add-pad :d0 d0 :d1 d1 :ramp 60.0 :x0 -125.0 :x1 -4.0 :m0 110.0 :m1 4.0 :y 0.0)     ; on the left the oncoming lane - flush with the road
+      (let ((tw tw)) (push (make-scene :d0 (town-start tw) :d1 (town-end tw) :build (lambda () (build-skyline tw))) *scenes*))
+      (dolist (s (town-stations tw))                               ; gas stations outside the town
+        (unless (town-at s) (level-road (- s 20) (+ s 20)) (add-pad :d0 (- s 20) :d1 (+ s 20) :ramp 14.0 :x0 4.0 :x1 27.0 :m0 4.0 :m1 14.0 :y -.37))))))
+
+(defun plan-stop-pads ()
+  "Bus stops between towns, on the ring road and on the spokes."
+  ;; bus stops between towns
+  (loop for d = 150.0 then (stop-after d) while (< d 100500.0)     ; bus stops - both on the ring road and on the spokes
+        do (unless (or (town-at d) (off-road-p d) (< 25300.0 d *ring-top*)) (add-pad :d0 (- d 4) :d1 (+ d 4) :ramp 5.0 :x0 4.0 :x1 10.5 :m0 4.0 :m1 5.0 :y -.2))))
+
+(defun plan-rails ()
+  "The railway: the tracks and their embankment."
+  ;; railway: the embankment
+  (loop for (i f0 f1) in *rail-plan*
+        do (let ((track (list (gap-d i f0) (gap-d i f1))))
+             (push track *tracks*)
+             (add-pad :d0 (first track) :d1 (second track) :ramp 20.0 :x0 -3.4 :x1 3.4 :m0 8.0 :m1 8.0 :y .7
+                  :shift (lambda (d) (track-x track d))))))
+
+(defun plan-chasm ()
+  "The bridge over the chasm: the land drops away across the full width, the road runs on a deck."
+  ;; the bridge over the chasm: the land drops away across the full width, the road runs on a deck
+  (let ((c *chasm*) (h *chasm-half*))
+    (level-road (- c h 30) (+ c h 30) 120.0)
+    (add-pad :d0 (- c h) :d1 (+ c h) :ramp 24.0 :x0 -700.0 :x1 700.0 :m0 260.0 :m1 260.0 :y -52.0)
+    (push (list (- c h 30) (+ c h 30)) *decks*) (push (list (- c h 34) (+ c h 34)) *bare*)
+    (push (make-scene :d0 (- c h 30) :d1 (+ c h 30) :build (lambda () (build-chasm-bridge c h))) *scenes*)))
+
+(defun plan-tunnel ()
+  "The tunnel: mountain on both sides of the road, the road in a cut under the vault."
+  ;; the tunnel: mountain on both sides of the road, the road itself in a cut under the vault
+  (destructuring-bind (d0 d1) *tunnel*
+    (setf *mega* (list d0 d1))                                  ; the megastructure is entered inside it (marks.lisp)
+    (level-road (- d0 30) (+ d1 30) 140.0)
+    (add-pad :d0 d0 :d1 d1 :ramp 34.0 :x0 13.0 :x1 300.0 :m0 3.9 :m1 190.0 :y 40.0)     ; the land is now a grid over the map: the cut is wider than the vault
+    (add-pad :d0 d0 :d1 d1 :ramp 34.0 :x0 -300.0 :x1 -17.0 :m0 190.0 :m1 3.9 :y 40.0)
+    (push (list (- d0 44) (+ d1 44)) *bare*)))
+
+(defun plan-outings ()
+  "Where one gets out of the wagon: the observatory, the scrap depot, the airmail, the Crossroads."
+  ;; the observatory in the mountains before the bridge and the scrap depot in the factory town: here one gets out of the wagon
+  (let ((d (gap-d 4 .34)))
+    (setf *observatory* d)
+    (level-road (- d 22) (+ d 22))
+    (add-pad :d0 (- d 22) :d1 (+ d 22) :ramp 16.0 :x0 4.0 :x1 30.0 :m0 4.0 :m1 14.0 :y -.37)
+    (push (make-scene :d0 (- d 22) :d1 (+ d 22) :build (lambda () (build-observatory d))) *scenes*))
+  (let* ((tw (find :factory *towns* :key #'town-theme)) (d (and tw (+ (town-start tw) (* .4 (- (town-end tw) (town-start tw)))))))
+    (setf *depot-d* d)
+    (when d (push (make-scene :d0 (- d 14) :d1 (+ d 14) :build (lambda () (build-scrap-depot d))) *scenes*)))
+  (let* ((tw (nth *dalny* *towns*)) (d (and tw (+ (town-start tw) (* .44 (- (town-end tw) (town-start tw)))))))   ; airmail in Dalny, away from the market
+    (setf *airmail-d* d *plane* nil)
+    (when d (push (make-scene :d0 (- d 12) :d1 (+ d 12) :build (lambda () (build-airmail d))) *scenes*)))
+  (when *hub* (push (make-scene :d0 (- (edge-d1 (cdr (first *exits*))) 60) :d1 (+ (edge-d1 (cdr (first *exits*))) 60)
+                                :build #'build-hub :at (list (first *hub*) (second *hub*))) *scenes*)))
+
+(defun plan-swamp ()
+  "The swamp: patches of mist and fireflies."
+  ;; the swamp: patches of mist and fireflies
+  (loop for d from (+ (first *swamp*) 60) below (second *swamp*) by 140
+        do (let ((d d)) (push (make-scene :d0 (- d 70) :d1 (+ d 70) :build (lambda () (build-mist d))) *scenes*))))
+
+(defun plan-diners ()
+  "Diners: a pad with a parking lot each."
+  ;; diners: a pad with a parking lot
+  (loop for (i f name kind rgb) in *diner-plan*
+        do (let ((d (gap-d i f)) (name name) (kind kind) (rgb rgb))
+             (level-road (- d 19) (+ d 19))
+             (add-pad :d0 (- d 19) :d1 (+ d 19) :ramp 14.0 :x0 4.0 :x1 30.0 :m0 4.0 :m1 12.0 :y -.37)
+             (push (make-scene :d0 (- d 20) :d1 (+ d 20) :build (lambda () (build-diner d name kind rgb))) *scenes*))))
+
+(defun plan-landmarks ()
+  "Landmarks by the road."
+  ;; landmarks
+  (loop for (i f side kind) in *landmark-plan*
+        do (let ((d (gap-d i f)) (spec (getf *landmark-kinds* kind)) (side side) (kind kind))
+             (when (eq kind :camp) (push (list (- d 23) (+ d 23)) *bare*))     ; nothing grows in front of the camp's gates
+             (when spec
+               (destructuring-bind (x r y m) spec
+                 (level-road (- d r) (+ d r))
+                 (add-pad :d0 (- d r) :d1 (+ d r) :ramp m :x0 (- (* side x) r) :x1 (+ (* side x) r) :m0 m :m1 m :y y)))
+             (push (make-scene :d0 (- d 30) :d1 (+ d 30) :build (lambda () (build-landmark kind d side))) *scenes*))))
+
 (defun plan-places ()
   "Collect the pads and scenes of the world from the town layout.
 It is called before the land is built."
@@ -97,93 +208,24 @@ It is called before the land is built."
         *mega* nil)
   (when (boundp '*mega-in*) (setf (symbol-value '*mega-in*) nil))
   (reset-segments)
-  (flet ((pad (&rest keys) (push (apply #'make-pad keys) *pads*))
-         (level (d0 d1 &optional (ramp 90.0))                 ; the road along a pad is level, at the height of its middle
-           (push (list d0 d1 (raw-road-y (/ (+ d0 d1) 2)) ramp) *levels*)))
-    ;; towns: the street is level, on both sides a terrace for buildings and the second rows of houses
-    (dolist (tw *towns*)
-      (let ((d0 (- (town-start tw) 30)) (d1 (+ (town-end tw) 30)))
-        (level d0 d1 260.0)
-        (cond ((eq (town-theme tw) :port)                    ; port: beyond the second line of houses - the sea
-               (pad :d0 d0 :d1 d1 :ramp 60.0 :x0 4.0 :x1 128.0 :m0 4.0 :m1 14.0 :y -.37)
-               (pad :d0 d0 :d1 d1 :ramp 80.0 :x0 150.0 :x1 1100.0 :m0 8.0 :m1 200.0 :y -5.0)
-               (let ((c (road-pos (/ (+ d0 d1) 2) 900.0)))     ; and farther out, where the land is already shared by the map, sea too
-                 (push (list (first c) (third c) 1300.0 (- (road-y (/ (+ d0 d1) 2)) 6.0)) *basins*)))
-              ((eq (town-theme tw) :river)                   ; river town: beyond the embankment - a river along the whole town
-               (pad :d0 d0 :d1 d1 :ramp 60.0 :x0 4.0 :x1 58.0 :m0 4.0 :m1 8.0 :y -.37)
-               (pad :d0 d0 :d1 d1 :ramp 70.0 :x0 74.0 :x1 150.0 :m0 8.0 :m1 40.0 :y -3.4))
-              (t (pad :d0 d0 :d1 d1 :ramp 60.0 :x0 4.0 :x1 125.0 :m0 4.0 :m1 110.0 :y -.37)))
-        (when (eq (town-theme tw) :resort)                    ; resort: the mountain the cable car goes up
-          (let ((len (- (town-end tw) (town-start tw))))
-            (pad :d0 (+ (town-start tw) (* .34 len)) :d1 (+ (town-start tw) (* .56 len)) :ramp 90.0
-                 :x0 240.0 :x1 310.0 :m0 80.0 :m1 80.0 :y 46.0)))
-        (pad :d0 d0 :d1 d1 :ramp 60.0 :x0 -125.0 :x1 -4.0 :m0 110.0 :m1 4.0 :y 0.0)     ; on the left the oncoming lane - flush with the road
-        (let ((tw tw)) (push (make-scene :d0 (town-start tw) :d1 (town-end tw) :build (lambda () (build-skyline tw))) *scenes*))
-        (dolist (s (town-stations tw))                               ; gas stations outside the town
-          (unless (town-at s) (level (- s 20) (+ s 20)) (pad :d0 (- s 20) :d1 (+ s 20) :ramp 14.0 :x0 4.0 :x1 27.0 :m0 4.0 :m1 14.0 :y -.37)))))
-    (level -14.0 46.0)
-    (pad :d0 -14.0 :d1 46.0 :ramp 16.0 :x0 4.0 :x1 34.0 :m0 4.0 :m1 16.0 :y -.37)   ; the warehouse we set out from
-    ;; bus stops between towns
-    (loop for d = 150.0 then (stop-after d) while (< d 100500.0)     ; bus stops - both on the ring road and on the spokes
-          do (unless (or (town-at d) (off-road-p d) (< 25300.0 d *ring-top*)) (pad :d0 (- d 4) :d1 (+ d 4) :ramp 5.0 :x0 4.0 :x1 10.5 :m0 4.0 :m1 5.0 :y -.2)))
-    ;; railway: the embankment
-    (loop for (i f0 f1) in *rail-plan*
-          do (let ((track (list (gap-d i f0) (gap-d i f1))))
-               (push track *tracks*)
-               (pad :d0 (first track) :d1 (second track) :ramp 20.0 :x0 -3.4 :x1 3.4 :m0 8.0 :m1 8.0 :y .7
-                    :shift (lambda (d) (track-x track d)))))
-    ;; the bridge over the chasm: the land drops away across the full width, the road runs on a deck
-    (let ((c *chasm*) (h *chasm-half*))
-      (level (- c h 30) (+ c h 30) 120.0)
-      (pad :d0 (- c h) :d1 (+ c h) :ramp 24.0 :x0 -700.0 :x1 700.0 :m0 260.0 :m1 260.0 :y -52.0)
-      (push (list (- c h 30) (+ c h 30)) *decks*) (push (list (- c h 34) (+ c h 34)) *bare*)
-      (push (make-scene :d0 (- c h 30) :d1 (+ c h 30) :build (lambda () (build-chasm-bridge c h))) *scenes*))
-    ;; the tunnel: mountain on both sides of the road, the road itself in a cut under the vault
-    (destructuring-bind (d0 d1) *tunnel*
-      (setf *mega* (list d0 d1))                                  ; the megastructure is entered inside it (marks.lisp)
-      (level (- d0 30) (+ d1 30) 140.0)
-      (pad :d0 d0 :d1 d1 :ramp 34.0 :x0 13.0 :x1 300.0 :m0 3.9 :m1 190.0 :y 40.0)     ; the land is now a grid over the map: the cut is wider than the vault
-      (pad :d0 d0 :d1 d1 :ramp 34.0 :x0 -300.0 :x1 -17.0 :m0 190.0 :m1 3.9 :y 40.0)
-      (push (list (- d0 44) (+ d1 44)) *bare*))
-    ;; the observatory in the mountains before the bridge and the scrap depot in the factory town: here one gets out of the wagon
-    (let ((d (gap-d 4 .34)))
-      (setf *observatory* d)
-      (level (- d 22) (+ d 22))
-      (pad :d0 (- d 22) :d1 (+ d 22) :ramp 16.0 :x0 4.0 :x1 30.0 :m0 4.0 :m1 14.0 :y -.37)
-      (push (make-scene :d0 (- d 22) :d1 (+ d 22) :build (lambda () (build-observatory d))) *scenes*))
-    (let* ((tw (find :factory *towns* :key #'town-theme)) (d (and tw (+ (town-start tw) (* .4 (- (town-end tw) (town-start tw)))))))
-      (setf *depot-d* d)
-      (when d (push (make-scene :d0 (- d 14) :d1 (+ d 14) :build (lambda () (build-scrap-depot d))) *scenes*)))
-    (let* ((tw (nth *dalny* *towns*)) (d (and tw (+ (town-start tw) (* .44 (- (town-end tw) (town-start tw)))))))   ; airmail in Dalny, away from the market
-      (setf *airmail-d* d *plane* nil)
-      (when d (push (make-scene :d0 (- d 12) :d1 (+ d 12) :build (lambda () (build-airmail d))) *scenes*)))
-    (when *hub* (push (make-scene :d0 (- (edge-d1 (cdr (first *exits*))) 60) :d1 (+ (edge-d1 (cdr (first *exits*))) 60)
-                                  :build #'build-hub :at (list (first *hub*) (second *hub*))) *scenes*))
-    (plan-gimmicks)                                         ; booths with the towns' gimmicks
-    (forget-find-nodes) (forget-gnome-nodes) (setf *gnome-told* nil)                                 ; the old finds went away with the old world
-    (setf *stop-ds* (append (mapcar #'town-stop-d *towns*)
-                            (loop for d = 150.0 then (stop-after d) while (< d 100500.0)
-                                  unless (or (town-at d) (bare-at d) (< 25300.0 d *ring-top*)) collect d)))
-    ;; the swamp: patches of mist and fireflies
-    (loop for d from (+ (first *swamp*) 60) below (second *swamp*) by 140
-          do (let ((d d)) (push (make-scene :d0 (- d 70) :d1 (+ d 70) :build (lambda () (build-mist d))) *scenes*)))
-    ;; diners: a pad with a parking lot
-    (loop for (i f name kind rgb) in *diner-plan*
-          do (let ((d (gap-d i f)) (name name) (kind kind) (rgb rgb))
-               (level (- d 19) (+ d 19))
-               (pad :d0 (- d 19) :d1 (+ d 19) :ramp 14.0 :x0 4.0 :x1 30.0 :m0 4.0 :m1 12.0 :y -.37)
-               (push (make-scene :d0 (- d 20) :d1 (+ d 20) :build (lambda () (build-diner d name kind rgb))) *scenes*)))
-    ;; landmarks
-    (loop for (i f side kind) in *landmark-plan*
-          do (let ((d (gap-d i f)) (spec (getf *landmark-kinds* kind)) (side side) (kind kind))
-               (when (eq kind :camp) (push (list (- d 23) (+ d 23)) *bare*))     ; nothing grows in front of the camp's gates
-               (when spec
-                 (destructuring-bind (x r y m) spec
-                   (level (- d r) (+ d r))
-                   (pad :d0 (- d r) :d1 (+ d r) :ramp m :x0 (- (* side x) r) :x1 (+ (* side x) r) :m0 m :m1 m :y y)))
-               (push (make-scene :d0 (- d 30) :d1 (+ d 30) :build (lambda () (build-landmark kind d side))) *scenes*)))
-    ;; exits, entries and the Crossroads go last: they take the height of the ring road, and every level section above changes it
-    (plan-junctions))
+  (plan-town-pads)
+  (level-road -14.0 46.0)
+  (add-pad :d0 -14.0 :d1 46.0 :ramp 16.0 :x0 4.0 :x1 34.0 :m0 4.0 :m1 16.0 :y -.37)   ; the warehouse we set out from
+  (plan-stop-pads)
+  (plan-rails)
+  (plan-chasm)
+  (plan-tunnel)
+  (plan-outings)
+  (plan-gimmicks)                                         ; booths with the towns' gimmicks
+  (forget-find-nodes) (forget-gnome-nodes) (setf *gnome-told* nil)                                 ; the old finds went away with the old world
+  (setf *stop-ds* (append (mapcar #'town-stop-d *towns*)
+                          (loop for d = 150.0 then (stop-after d) while (< d 100500.0)
+                                unless (or (town-at d) (bare-at d) (< 25300.0 d *ring-top*)) collect d)))
+  (plan-swamp)
+  (plan-diners)
+  (plan-landmarks)
+  ;; exits, entries and the Crossroads go last: they take the height of the ring road, and every level section above changes it
+  (plan-junctions)
   (clrhash *rows*)
   (setf *row* nil))
 
