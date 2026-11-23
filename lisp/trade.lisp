@@ -240,7 +240,7 @@ Return NIL for the floor or the top of an item."
       (let ((surface (surface-at x z top)))
         (cond ((>= (length *items*) *max-items*) "Больше в кибитку не влезет")
               ((and *client* (< (abs (- top .95)) .05)                  ; on the shared windowsill: not onto the client's goods
-                    (some (lambda (entry) (and (< (abs (- z (second entry))) .22) (< (abs (- x *half-width* .29)) .3)))
+                    (some (lambda (entry) (and (< (abs (- z (offer-z entry))) .22) (< (abs (- x *half-width* .29)) .3)))
                           (getf *client* :stall)))
                "Тут лежит товар клиента — поставь рядом")
               ((and (< z *rack-front*) (shelf-level top)) nil)                ; the rack: the place has already been chosen by slots
@@ -390,17 +390,17 @@ These are the bell in the slid-open window (E) and what the client put on the wi
      (when *client*
        (loop for entry in (getf *client* :stall)
              collect (let ((entry entry) (sender (eq (getf *client* :kind) :sender)))
-                       (usable (+ *half-width* .29) (if sender 1.17 1.07) (second entry)
+                       (usable (+ *half-width* .29) (if sender 1.17 1.07) (offer-z entry)
                              (lambda ()
-                               (cond ((eq (third entry) :coins)
+                               (cond ((eq (offer-kind entry) :coins)
                                       (if (and *carry* (null (cdr *carry*)) (wanted-p (car *carry*)))
                                           (format nil "ЛКМ — отдать за ~/kiosk-trip::rub/" (good-price (car *carry*) (getf *client* :price)))
                                           (format nil "Покупатель ищет ~a, даёт ~/kiosk-trip::rub/: возьми с полки (ЛКМ)" (good-name (client-good)) (getf *client* :price))))
                                      (t (if sender
-                                   (if (parcel-good (fourth entry))
-                                       (format nil (if (paper-p :account) "ЛКМ — взять ящик по наряду: ~a в ~a · платит ~/kiosk-trip::rub/ на счёт" "ЛКМ — взять ящик по наряду: ~a в ~a · платит ~/kiosk-trip::rub/") (good-name (parcel-good (fourth entry))) (place-name (parcel-town (fourth entry))) (getf *client* :price))
-                                       (format nil "ЛКМ — взять посылку в ~a · платит ~/kiosk-trip::rub/" (place-name (parcel-town (fourth entry))) (getf *client* :price)))
-                                   (format nil "ЛКМ — купить ~a за ~/kiosk-trip::rub/ · у тебя ~/kiosk-trip::rub/" (good-name (third entry)) (getf *client* :price) *money*)))))
+                                   (if (parcel-good (offer-addr entry))
+                                       (format nil (if (paper-p :account) "ЛКМ — взять ящик по наряду: ~a в ~a · платит ~/kiosk-trip::rub/ на счёт" "ЛКМ — взять ящик по наряду: ~a в ~a · платит ~/kiosk-trip::rub/") (good-name (parcel-good (offer-addr entry))) (place-name (parcel-town (offer-addr entry))) (getf *client* :price))
+                                       (format nil "ЛКМ — взять посылку в ~a · платит ~/kiosk-trip::rub/" (place-name (parcel-town (offer-addr entry))) (getf *client* :price)))
+                                   (format nil "ЛКМ — купить ~a за ~/kiosk-trip::rub/ · у тебя ~/kiosk-trip::rub/" (good-name (offer-kind entry)) (getf *client* :price) *money*)))))
                              (lambda () (take-from-stall entry))
                              :hand)))))))
 

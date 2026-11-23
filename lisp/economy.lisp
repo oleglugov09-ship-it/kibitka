@@ -45,9 +45,10 @@
 ;;; Things to do on the road (uyut.lisp)
 (defparameter *cook-time* 28.0 "The number of seconds it takes a raw good on the hot stove to become a dish.")
 (defvar *recipes* '()
-  "The recipes: entries of (raw-good dish dish-name-in-the-accusative).
+  "The recipes: entries of (raw-good dish dish-name-in-the-accusative [second-good [way]]), see the fields below.
 A dish is wanted wherever its raw good is wanted, but at twice the price. Without the cooktop the stove
 bakes only blini: nothing else fits on its round lid.")
+(define-fields recipe raw dish name second-good way)   ; WAY: NIL - on the stove; :jar - put up in a jar; :line - dried on the line
 (defparameter *lid-price* 25 "The price of the cast-iron lid for the frying pan, sold at the hardware shop in Krasny Kut.")
 (defparameter *second-share* 1.5 "The factor of its average price that the second ingredient adds to the price of a dish of two goods.")
 (defparameter *winter-bonus* 1.5 "The factor by which jars and dried food cost more in winter, when nothing grows.")

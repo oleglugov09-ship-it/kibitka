@@ -66,6 +66,7 @@
 ;;; towns dress up (life.lisp) and buyers come for the holiday's goods and pay more.
 (defvar *speaker-lines* '() "What the loudspeaker at a market says, from mods: a plist of :morning, :day, :evening and lists of lines.")
 (defvar *holidays* '() "The holidays: entries of (season day-of-season key name goods-wanted).")
+(define-fields feast season day key name goods)
 (defparameter *holiday-markup* 1.4 "How much more a buyer gives for a holiday's good on that holiday.")
 (defparameter *holiday-chance* .6 "The chance that a buyer on a holiday comes for one of its goods.")
 
@@ -76,9 +77,9 @@
       0))
 
 (defun holiday () "Return today's holiday as its entry in *HOLIDAYS*, or NIL."
-  (find-if (lambda (h) (and (eq (first h) *season*) (eql (second h) (season-day)))) *holidays*))
-(defun holiday-key () (third (holiday)))
-(defun holiday-goods () (fifth (holiday)))
+  (find-if (lambda (h) (and (eq (feast-season h) *season*) (eql (feast-day h) (season-day)))) *holidays*))
+(defun holiday-key () (feast-key (holiday)))
+(defun holiday-goods () (feast-goods (holiday)))
 
 (defun output (town good)
   "Return what TOWN makes of GOOD a day: the makers together cover *PLAN-COVER* of all the norms."

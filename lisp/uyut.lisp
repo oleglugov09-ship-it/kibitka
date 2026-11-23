@@ -306,7 +306,7 @@ Each time it is about something different."
 
 (defun single-dish (kind)
   "Return the dish that KIND alone turns into on the stove, or NIL."
-  (second (find-if (lambda (r) (and (eq (first r) kind) (null (fourth r)) (null (fifth r)))) *recipes*)))
+  (recipe-dish (find-if (lambda (r) (and (eq (recipe-raw r) kind) (null (recipe-second-good r)) (null (recipe-way r)))) *recipes*)))
 
 (defun raw-on-stove ()
   "Return the records of the items that stand on the stove and can be cooked.

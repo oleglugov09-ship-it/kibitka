@@ -6,8 +6,8 @@
 (in-package #:kiosk-trip)
 
 (defun dish-p (kind) "Return the recipe entry if KIND is a cooked dish." (find kind *recipes* :key #'second))
-(defun raw-of (kind) "Return the raw good the dish KIND is cooked from; for a non-dish return KIND itself." (let ((r (dish-p kind))) (if r (first r) kind)))
-(defun good-name (kind) (cond ((dish-p kind) (third (dish-p kind))) (t (or (second (assoc kind *goods*)) "товар"))))
+(defun raw-of (kind) "Return the raw good the dish KIND is cooked from; for a non-dish return KIND itself." (let ((r (dish-p kind))) (if r (recipe-raw r) kind)))
+(defun good-name (kind) (cond ((dish-p kind) (recipe-name (dish-p kind))) (t (or (second (assoc kind *goods*)) "товар"))))
 (defun good-base (kind) (or (third (assoc kind *goods*)) 5))
 
 (defun trait (kind key)
@@ -93,7 +93,7 @@ A dish costs more."
   (let* ((recipe (dish-p kind))
          (price (cond ((null recipe) price)
                       ;; a dish of two goods: the second one is paid for as well, a little above what it costs raw
-                      ((fourth recipe) (+ (* *blin-factor* price) *blin-bonus* (round (* *second-share* (good-base (fourth recipe))))))
+                      ((recipe-second-good recipe) (+ (* *blin-factor* price) *blin-bonus* (round (* *second-share* (good-base (recipe-second-good recipe))))))
                       (t (+ (* *blin-factor* price) *blin-bonus*)))))
     (if (and (eq *season* :winter) (preserved-p kind)) (round (* *winter-bonus* price)) price)))  ; what was put by for the winter
 

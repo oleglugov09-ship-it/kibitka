@@ -12,6 +12,8 @@
 
 (defvar *life-kinds* '() "The kinds of life: entries of (name spots state build step), see DEFLIFE.")
 (defvar *alive* '() "What stands now: entries of (name key path-coordinate node state).")
+(define-fields alive name key d node state)
+(define-fields life-kind name spots state build step)
 (defvar *life-parts* (make-hash-table :test 'eq) "What a moving thing consists of: node -> plist, for its STEP.")
 (defvar *life-tick* 0.0)
 (defparameter *life-reach* 150.0 "How far beyond the window, in metres, the life of a spot is kept.")
@@ -30,8 +32,8 @@ and state returning the node. STEP, if given, is called every frame with node, k
   (clrhash *life-parts*))
 
 (defun drop-life (entry)
-  (remhash (fourth entry) *life-parts*)
-  (node-queue-free (fourth entry)))
+  (remhash (alive-node entry) *life-parts*)
+  (node-queue-free (alive-node entry)))
 
 (defun step-life (delta)
   "Bring the life of the roadside up to date twice a second, and move what moves every frame."
@@ -44,8 +46,8 @@ and state returning the node. STEP, if given, is called every frame with node, k
               do (loop for (key d) in (funcall spots)
                        do (when (in-window-p d *life-reach*)
                             (let ((want (funcall state key d))
-                                  (entry (find-if (lambda (e) (and (eq (first e) name) (equal (second e) key))) *alive*)))
-                              (when (and entry (not (equal want (fifth entry))))
+                                  (entry (find-if (lambda (e) (and (eq (alive-name e) name) (equal (alive-key e) key))) *alive*)))
+                              (when (and entry (not (equal want (alive-state entry))))
                                 (drop-life entry)
                                 (setf *alive* (remove entry *alive*) entry nil))
                               (when (and want (null entry))
@@ -55,8 +57,8 @@ and state returning the node. STEP, if given, is called every frame with node, k
         (dolist (e *alive*) (unless (member e seen) (drop-life e)))
         (setf *alive* (remove-if-not (lambda (e) (member e seen)) *alive*))))
     (dolist (e *alive*)
-      (let ((step (fifth (assoc (first e) *life-kinds*))))
-        (when step (funcall step (fourth e) (second e) (third e) (fifth e)))))))
+      (let ((step (life-kind-step (assoc (alive-name e) *life-kinds*))))
+        (when step (funcall step (alive-node e) (alive-key e) (alive-d e) (alive-state e)))))))
 
 ;;; ------------------------------------------------------------------ the quarterly report on the screen
 
@@ -155,10 +157,10 @@ Its x points to the right of the road and its z backwards along the path."
          (short (first (short-goods town))) (plenty (first (surplus-goods town)))
          (pick (floor (+ (* 3 town) (/ *day-t* 300)))))
     (cond ((not (day-light-p)) nil)                                                 ; at night it is silent
-          ((and h (fifth h))
+          ((and h (feast-goods h))
            (format nil "Из репродуктора: «С праздником, товарищи!» Сегодня ~a: к столу ищут ~{~a~^, ~} и платят щедрее"
-                   (tr (fourth h)) (mapcar #'good-name (fifth h))))
-          (h (format nil "Из репродуктора: «Все на ~a!»" (string-downcase (tr (fourth h)))))
+                   (tr (feast-name h)) (mapcar #'good-name (feast-goods h))))
+          (h (format nil "Из репродуктора: «Все на ~a!»" (string-downcase (tr (feast-name h)))))
           ((and short (zerop (mod pick 3)))
            (format nil "Из репродуктора: «…население просят экономить ~a»" (good-name short)))
           ((and plenty (= 1 (mod pick 3)))

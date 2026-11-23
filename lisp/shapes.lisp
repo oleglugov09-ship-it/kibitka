@@ -107,10 +107,12 @@ centimeter, so random rocks share meshes too."
 ;;; World): when the node is removed (NODE-QUEUE-FREE), the outlines go too.
 
 (defvar *tracking* nil "The build record while one is being taken, (groups . shapes), else NIL.
-A group is (node parent x y z yaw sx sz).")
+A group is (node parent x y z yaw sx sz): see the fields below.")
+(define-fields tracked node parent x y z yaw sx sz)
 
 (defvar *batch* nil "See Batches below. While a batch is gathered: (root offsets lots). OFFSETS is a table from a group that only shifts its shapes to
 (parent x y z); LOTS a table from (mesh material shadow range) to the pending shapes of that lot.")
+(define-fields batch root offsets lots)
 
 (defvar *draw-dir* (ext:getenv "KIOSK_DRAW") "The folder pieces are written down into for Blender (models.lisp, DRAWN), or NIL: the usual game.")
 (defvar *drawing* nil "While a piece is written down for Blender: (root shapes), SHAPES the shapes noted so far; else NIL.")
@@ -136,23 +138,23 @@ A group is (node parent x y z yaw sx sz).")
 (defun node-3d-set-position (node v)
   (drawing-set node 1 v)
   (when *batch*
-    (let ((cell (gethash node (second *batch*)))) (when cell (setf (rest cell) (list (vector3-x v) (vector3-y v) (vector3-z v))))))
+    (let ((cell (gethash node (batch-offsets *batch*)))) (when cell (setf (rest cell) (list (vector3-x v) (vector3-y v) (vector3-z v))))))
   (let ((e (and *tracking* (tracked node))))
-    (when e (setf (third e) (vector3-x v) (fourth e) (vector3-y v) (fifth e) (vector3-z v))))
+    (when e (setf (tracked-x e) (vector3-x v) (tracked-y e) (vector3-y v) (tracked-z e) (vector3-z v))))
   (godot:node-3d-set-position node v))
 
 (defun node-3d-set-rotation (node v)
   (drawing-set node 2 v)
   (unbatch node)
   (let ((e (and *tracking* (tracked node))))
-    (when e (setf (sixth e) (vector3-y v))))
+    (when e (setf (tracked-yaw e) (vector3-y v))))
   (godot:node-3d-set-rotation node v))
 
 (defun node-3d-set-scale (node v)
   (drawing-set node 3 v)
   (unbatch node)
   (let ((e (and *tracking* (tracked node))))
-    (when e (setf (seventh e) (vector3-x v) (eighth e) (vector3-z v))))
+    (when e (setf (tracked-sx e) (vector3-x v) (tracked-sz e) (vector3-z v))))
   (godot:node-3d-set-scale node v))
 
 (defun node-queue-free (node)
@@ -210,8 +212,8 @@ Each shape is lifted through its chain of groups up to the root, which is under 
 
 (defun batch-offset (parent)
   "Return the shift of PARENT against the root of the batch as a list (x y z), or NIL if its shapes cannot be batched."
-  (cond ((eq parent (first *batch*)) '(0.0 0.0 0.0))
-        (t (let ((cell (gethash parent (second *batch*))))
+  (cond ((eq parent (batch-root *batch*)) '(0.0 0.0 0.0))
+        (t (let ((cell (gethash parent (batch-offsets *batch*))))
              (when cell
                (let ((up (batch-offset (first cell))))
                  (and up (mapcar #'+ up (rest cell)))))))))
@@ -219,19 +221,19 @@ Each shape is lifted through its chain of groups up to the root, which is under 
 (defun solo (thing)
   "Make the pending shape THING a node of its own and return the node; anything else is returned as it is."
   (if (pending-p thing)
-      (let ((lot (gethash (pending-key thing) (third *batch*))))
-        (setf (gethash (pending-key thing) (third *batch*)) (remove thing lot))
+      (let ((lot (gethash (pending-key thing) (batch-lots *batch*))))
+        (setf (gethash (pending-key thing) (batch-lots *batch*)) (remove thing lot))
         (let ((*batch* nil)) (apply #'shape (pending-args thing))))
       thing))
 
 (defun unbatch (group)
   "Take GROUP out of the batch: it is going to turn, grow or move, so its shapes become nodes of their own."
-  (when (and *batch* (gethash group (second *batch*)))
+  (when (and *batch* (gethash group (batch-offsets *batch*)))
     (let ((mine '()))
-      (maphash (lambda (key lot) (declare (ignore key)) (dolist (p lot) (when (eq (first (pending-args p)) group) (push p mine)))) (third *batch*))
+      (maphash (lambda (key lot) (declare (ignore key)) (dolist (p lot) (when (eq (first (pending-args p)) group) (push p mine)))) (batch-lots *batch*))
       (mapc #'solo mine))
-    (remhash group (second *batch*))
-    (loop for child being the hash-keys of (second *batch*) using (hash-value cell)        ; and the groups under it with it
+    (remhash group (batch-offsets *batch*))
+    (loop for child being the hash-keys of (batch-offsets *batch*) using (hash-value cell)        ; and the groups under it with it
           when (eq (first cell) group) collect child into children
           finally (mapc #'unbatch children))))
 
@@ -299,7 +301,7 @@ RGB is its color, ROT is (x y z) in radians and SCALE is (x y z). Return the Mes
                       (and shadow t) (shape-range kind dims scale emit)))
            (p (pending key (list parent kind dims rgb x y z :emit emit :energy energy :rough rough :metal metal
                                  :rot rot :scale scale :alpha alpha :shadow shadow :unshaded unshaded))))
-      (push p (gethash key (third *batch*)))
+      (push p (gethash key (batch-lots *batch*)))
       (return-from shape p)))
   (let ((mi (gdext:make-object "MeshInstance3D")))
     (object-set mi "mesh" (mesh-of kind dims))
@@ -330,7 +332,7 @@ It lets a thing be assembled from shapes and moved as a whole."
       (push (list g parent x y z 0.0 1.0 1.0) (car *tracking*)))
     (when *draw-dir* (setf (gethash g *drawn-groups*) (list parent (list x y z) (list 0 0 0) (list 1 1 1))))
     (when (and *batch* (not *tracking*) (batch-offset parent))
-      (setf (gethash g (second *batch*)) (list parent (float x 1.0) (float y 1.0) (float z 1.0))))
+      (setf (gethash g (batch-offsets *batch*)) (list parent (float x 1.0) (float y 1.0) (float z 1.0))))
     g))
 
 ;;; Lamps. A lamp is a bulb that glows and, often, the light it gives; the two are put together here, so that every

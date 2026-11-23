@@ -369,6 +369,8 @@ coins with the left mouse button."
                              (not (member (car it) (getf *client* :ignore) :test #'equal))))
            *items*))
 
+(define-fields offer node z kind addr)   ; what the client has put on the windowsill: one entry of his :STALL
+
 (defun on-sill-p (it)
   (and (< 1.15 (spec-x (car it)) 2.3) (< (abs (- (spec-y (car it)) .95)) .1)))
 
@@ -405,7 +407,7 @@ Return four values: what he now has in hand, whether that changed, what to say, 
                (unless sender (note-trade kind :bought))
                (when (and sender (getf *client* :story)) (apply #'story-taken (getf *client* :story)))   ; the story is on its way
                (stop-flying (list node))
-               (fly node (v3 (- *half-width* .3) (+ *floor* 1.0) (second entry)) :dur .22 :free t)   ; through the window, to us
+               (fly node (v3 (- *half-width* .3) (+ *floor* 1.0) (offer-z entry)) :dur .22 :free t)   ; through the window, to us
                (setf (getf *client* :stall) (remove entry (getf *client* :stall)))
                (log-event (if sender :parcel-taken :bought) :price price :to addr :money *money* :dist (round *dist*))
                (unless (getf *client* :stall) (client-leave))
@@ -426,7 +428,7 @@ Return four values: what he now has in hand, whether that changed, what to say, 
   "Handle a left click on stall ENTRY, something the client put on the windowsill.
 For a guest the deal is made by the driver."
   (cond ((net-guest-p)
-         (guest-send (list :a :take (second entry) (car *carry*) (cdr *carry*) *carry-props*)))
+         (guest-send (list :a :take (offer-z entry) (car *carry*) (cdr *carry*) *carry-props*)))
         (t (multiple-value-bind (carry changed words props) (stall-deal entry *carry* *carry-props*)
              (when changed (set-carry carry props) (show-carry))
              (say words)))))

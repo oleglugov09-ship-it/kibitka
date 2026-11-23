@@ -94,7 +94,7 @@ with the last one written would look unchanged."
                   (format nil "~d-й день пути~%~%~a~%~%~a~a"
                           (trip-day day) (tr (nth (mod (1- (trip-day day)) 7) *weekdays*)) (tr (getf *season-names* *season*))
                           (if (zerop left) (tr " — последний день") (format nil (tr " · до смены сезона дней: ~d") left)))
-                  (and (holiday) (tr (fourth (holiday)))))            ; a red-letter day
+                  (and (holiday) (tr (feast-name (holiday)))))            ; a red-letter day
           (format nil "~a~%~%~a"
                   (if *calendar-notes* (fill-text (nth (mod day (length *calendar-notes*)) *calendar-notes*)) "")
                   (if omens (tr (nth (mod day (length omens)) omens)) "")))))
@@ -218,11 +218,11 @@ The driver does it, on a guest's behalf too: the waste paper is the driver's, an
 
 (defun jar-of (kind)
   "Return what the good KIND becomes in a jar, or NIL: the recipes with the hearth :JAR."
-  (second (find-if (lambda (r) (and (eq (first r) kind) (eq (fifth r) :jar))) *recipes*)))
+  (recipe-dish (find-if (lambda (r) (and (eq (recipe-raw r) kind) (eq (recipe-way r) :jar))) *recipes*)))
 
 (defun preserved-p (kind)
   "Return true if KIND is food put by for the winter: from a jar or from the dryer."
-  (and (find-if (lambda (r) (and (eq (second r) kind) (member (fifth r) '(:jar :line)))) *recipes*) t))
+  (and (find-if (lambda (r) (and (eq (recipe-dish r) kind) (member (recipe-way r) '(:jar :line)))) *recipes*) t))
 
 (defun crate-point ()
   "Return where the crate of jars stands: x, height above the floor, z."
