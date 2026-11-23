@@ -384,12 +384,13 @@ def saves():
 def tour():
     """Drive around the whole road.
 
-    In every town, at the bridge, the tunnel and the swamp the world must assemble without errors.
-    Catches what can't be seen from the start — a broken building standing ten kilometers away."""
+    In every town, on the railway, at the bridge, the tunnel and the swamp the world must assemble without errors,
+    and so must every zone of every place behind the tunnel. Catches what can't be seen from the start — a broken
+    building standing ten kilometers away, a train that stops the game, a zone that fails to build."""
     print("Объезд дороги")
     p = P0
     start(p, KIOSK_SOLO="1", KIOSK_NOLAND="1", KIOSK_NAME="Проба")   # no network and no land: we look at the buildings
-    spots = ev(p, f"(append (loop for tw in {K}*towns* append (loop for f in '(.15 .45 .75) collect (round (+ ({K}town-start tw) (* f (- ({K}town-end tw) ({K}town-start tw))))))) (list (round (- {K}*chasm* 90)) (round {K}*chasm*) (round (- (first {K}*tunnel*) 60)) (round (+ (first {K}*tunnel*) 80)) (round (+ (first {K}*swamp*) 300))) (loop for (i f) in {K}*landmark-plan* collect (round ({K}gap-d i f))) (loop for (i f) in {K}*diner-plan* collect (round ({K}gap-d i f))) (loop for e in (rest {K}*edges*) append (list (round (+ ({K}edge-d0 e) 400)) (round (/ (+ ({K}edge-d0 e) ({K}edge-d1 e)) 2)) (round (- ({K}edge-d1 e) 260)))))")
+    spots = ev(p, f"(append (loop for tr in {K}*tracks* collect (round (+ (first tr) 300))) (loop for tw in {K}*towns* append (loop for f in '(.15 .45 .75) collect (round (+ ({K}town-start tw) (* f (- ({K}town-end tw) ({K}town-start tw))))))) (list (round (- {K}*chasm* 90)) (round {K}*chasm*) (round (- (first {K}*tunnel*) 60)) (round (+ (first {K}*tunnel*) 80)) (round (+ (first {K}*swamp*) 300))) (loop for (i f) in {K}*landmark-plan* collect (round ({K}gap-d i f))) (loop for (i f) in {K}*diner-plan* collect (round ({K}gap-d i f))) (loop for e in (rest {K}*edges*) append (list (round (+ ({K}edge-d0 e) 400)) (round (/ (+ ({K}edge-d0 e) ({K}edge-d1 e)) 2)) (round (- ({K}edge-d1 e) 260)))))")
     spots = [int(x) for x in spots.replace("(", " ").replace(")", " ").split() if x.lstrip("-").isdigit()]
     for night in ("nil", "t"):
         ev(p, f"(setf {K}*day-t* {'900.0' if night == 't' else '300.0'})")
@@ -399,6 +400,28 @@ def tour():
             ev(p, f"(progn (setf {K}*next-event* 0.0 {K}*next-pass* 0.0) t)")
             time.sleep(.25)
     check(f"объезд {len(spots)} мест днём и ночью: игра жива", ev(p, "(+ 1 1)"), lambda v: v.startswith("2"))
+    # The places behind the tunnel: every world is entered through the door, and the wagon is put into the middle of
+    # each of its zones long enough for the cells around it to be built and for what moves in them to move.
+    ev(p, f"(setf {K}*day-t* 300.0)")
+    worlds = [w.lower() for w in ev(p, f"(loop for (w) on {K}*worlds* by #'cddr collect w)").replace("(", " ").replace(")", " ").split() if w.startswith(":")]
+    for w in worlds:
+        ev(p, f"(progn ({K}relocate (- (first {K}*tunnel*) 100)) (setf {K}*mega-world* {w} {K}*dir* 1 {K}*auto* nil {K}*speed* 0.0) t)")
+        time.sleep(.5)
+        ev(p, f"(progn ({K}relocate (+ (first {K}*tunnel*) 120)) t)")
+        time.sleep(1.0)
+        check(f"мир {w}: за дверью", ev(p, f"(list {K}*place* (and {K}*mega-node* t))"), lambda v, w=w: w.upper() in v.upper() and " T" in v.upper())
+        zones = ev(p, f"(let ((out '()) (i 0)) (dotimes (z 17) (multiple-value-bind (zz start len) ({K}way-zone i) (declare (ignore zz)) (push (round (* {K}*mega-cell* (+ start (floor len 2)))) out) (setf i (+ start len)))) (nreverse out))")
+        zones = [int(x) for x in zones.replace("(", " ").replace(")", " ").split() if x.isdigit()]
+        fewest = 99
+        for at in zones:
+            ev(p, f"(progn (setf {K}*mega-s* {at}.0) t)")
+            time.sleep(.9)
+            fewest = min(fewest, int(ev(p, f"(hash-table-count {K}*mega-cells*)").split()[0]))
+        check(f"мир {w}: {len(zones)} зон, вокруг кибитки везде построено не меньше 12 ячеек", fewest, lambda v: v >= 12)
+        ev(p, f"(progn ({K}relocate (- (first {K}*tunnel*) 100)) t)")
+        time.sleep(.5)
+        check(f"мир {w}: вернулись на кольцо", ev(p, f"{K}*place*"), lambda v: "RING" in v.upper())
+    check("после всех мест игра жива", ev(p, "(+ 1 1)"), lambda v: v.startswith("2"))
     check("ошибок в журнале игры нет", log_errors(p), 0)
     stop_all()
 
