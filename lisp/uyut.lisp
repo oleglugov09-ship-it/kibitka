@@ -14,6 +14,7 @@
 (defvar *pennants* 0 "The town pennants as a bit mask: one bit per town index.")
 (defvar *radio-on* nil)
 (defvar *dice* (list 0 1 1 "") "The last dice roll as (sequence-number first second who).")
+(define-fields roll seq a b who)
 (defvar *guitar-on* nil "True while we are playing the guitar.")
 (defvar *swatter* nil "True once the fly swatter is bought (it is sold only at the gas station by the swamp).")
 (defvar *mosquito* nil "The mosquito in the wagon: how many seconds it has been here, or NIL.")
@@ -97,7 +98,7 @@ Pressing the same key again switches it off."
             *swatter* (and (fourth form) t)))))
 
 (defstate :wall
-  :clear (lambda () (setf *pennants* 0 *photos* '() *snapped* '() *dice* (list (first *dice*) 1 1 "") *cook* nil *swatter* nil))
+  :clear (lambda () (setf *pennants* 0 *photos* '() *snapped* '() *dice* (list (roll-seq *dice*) 1 1 "") *cook* nil *swatter* nil))
   :load #'load-wall :save #'save-wall
   :show (lambda () (when *uyut* (show-pennants) (show-photos) (show-swatter))))
 
@@ -282,12 +283,12 @@ Each time it is about something different."
 (defun show-dice ()
   (let ((label (un :dice-label)))
     (when label
-      (object-set label "text" (if (plusp (first *dice*)) (format nil "~d + ~d" (second *dice*) (third *dice*)) "")))))
+      (object-set label "text" (if (plusp (roll-seq *dice*)) (format nil "~d + ~d" (roll-a *dice*) (roll-b *dice*)) "")))))
 
 (defun roll-dice ()
-  (setf *dice* (list (1+ (first *dice*)) (1+ (random 6)) (1+ (random 6)) *net-name*))
+  (setf *dice* (list (1+ (roll-seq *dice*)) (1+ (random 6)) (1+ (random 6)) *net-name*))
   (show-dice)
-  (say (format nil "Кости: ~d и ~d" (second *dice*) (third *dice*))))
+  (say (format nil "Кости: ~d и ~d" (roll-a *dice*) (roll-b *dice*))))
 
 ;;; ------------------------------------------------------------------ pancakes
 
@@ -569,10 +570,10 @@ In the swamp a mosquito flies into the wagon: it whines, circles around the head
 (defcommon :dice :value (copy-list *dice*) :spec '(integer integer integer string)
   :accept (lambda (roll)
             (destructuring-bind (seq a b name) roll
-              (when (and (> seq (first *dice*)) (<= 1 a 6) (<= 1 b 6))
+              (when (and (> seq (roll-seq *dice*)) (<= 1 a 6) (<= 1 b 6))
                 (setf *dice* (list seq a b (subseq name 0 (min 24 (length name)))))
                 (show-dice)
-                (say (format nil "~a бросает кости: ~d и ~d" (fourth *dice*) a b))))))
+                (say (format nil "~a бросает кости: ~d и ~d" (roll-who *dice*) a b))))))
 
 (defcommon :swatter :value (and *swatter* t) :spec '(:member t nil) :driver t
   :accept (lambda (bought) (setf *swatter* bought) (show-swatter)))

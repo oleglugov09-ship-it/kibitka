@@ -378,6 +378,7 @@ same way on every leg, by so many degrees, along an arc.")
 (defparameter *turn-speed* 1.8 "The speed of the truck during a U-turn, m/s.")
 (defparameter *turn-pause* .5 "The pause between the legs of a U-turn, s: the driver changes gear.")
 (defvar *u-turn* nil "The U-turn under way: (radius sign leg turned pause), or NIL.")
+(define-fields u-turn radius sign leg turned pause)
 
 (defun turn-shift ()
   "Return the sideways shift a whole U-turn of radius 1 makes, along the legs of *TURN-LEGS*."
@@ -402,7 +403,7 @@ the truck along the road; guests are told where it stands."
                  (setf *u-turn* (list (max 2.0 (/ (abs shift) (turn-shift))) sign 0 0.0 0.0))))
              (destructuring-bind (r sign leg turned pause) *u-turn*
                (let ((spec (nth leg *turn-legs*)))
-                 (cond ((plusp pause) (setf (fifth *u-turn*) (max 0.0 (- pause delta))))
+                 (cond ((plusp pause) (setf (u-turn-pause *u-turn*) (max 0.0 (- pause delta))))
                        ((null spec) (setf *yaw-now* want *lane-now* (lane) *u-turn* nil))
                        (t (destructuring-bind (dir deg) spec
                             (let* ((left (- (* deg (/ pi 180)) turned))
@@ -412,8 +413,8 @@ the truck along the road; guests are told where it stands."
                               (incf *lane-now* (* dir ds (sin th)))
                               (unless (net-guest-p) (incf *dist* (* dir ds (cos th))))
                               (if (>= da left)
-                                  (setf (third *u-turn*) (1+ leg) (fourth *u-turn*) 0.0 (fifth *u-turn*) *turn-pause*)
-                                  (setf (fourth *u-turn*) (+ turned da)))))))))))))
+                                  (setf (u-turn-leg *u-turn*) (1+ leg) (u-turn-turned *u-turn*) 0.0 (u-turn-pause *u-turn*) *turn-pause*)
+                                  (setf (u-turn-turned *u-turn*) (+ turned da)))))))))))))
 
 (defvar *spans* (make-hash-table :test 'equal) "The table of what is already built on the grid: key → (first . last) grid node number.")
 (defvar *listed* (make-hash-table :test 'equal) "The table of what is already built by the list: key → (path-coordinate . reach).")

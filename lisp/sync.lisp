@@ -24,12 +24,12 @@
   "Return what is happening in the driver's world right now, in a compact form to send to the guests."
   (list (loop for c in *cars* collect (list (getf c :n) (f1 (getf c :d)) (f1 (getf c :v)) (getf c :dir) (getf c :kind)))
         (loop for tr in *trains*
-              collect (list (position (first tr) *tracks* :test #'equal) (f1 (second tr)) (f1 (fourth tr))))
+              collect (list (position (train-track tr) *tracks* :test #'equal) (f1 (train-head-d tr)) (f1 (train-rest tr))))
         (and *plane* (cons (f1 (- *time* (second *plane*))) (mapcar #'f1 (append (third *plane*) (fourth *plane*)))))
         (loop for f in *flocks*
-              collect (let ((p (node-3d-get-position (first f))))
-                        (list (sixth f) (f1 (- *time* (third f))) (f1 (vector3-x p)) (f1 (vector3-y p)) (f1 (vector3-z p))
-                              (f1 (fourth f)) (f1 (fifth f)))))
+              collect (let ((p (node-3d-get-position (flock-node f))))
+                        (list (flock-n f) (f1 (- *time* (flock-born f))) (f1 (vector3-x p)) (f1 (vector3-y p)) (f1 (vector3-z p))
+                              (f1 (flock-vx f)) (f1 (flock-vz f)))))
         (and *mosquito* t)
         (and *sleep* t)
         *dir*
@@ -61,8 +61,8 @@
           (when (and (fits e '(integer real real)) (nth (first e) *tracks*))
             (let* ((track (nth (first e) *tracks*)) (tr (assoc track *trains* :test #'equal)))
               (unless tr (setf tr (list track (second e) (make-train track) (third e))) (push tr *trains*))
-              (when (> (abs (- (second tr) (second e))) 12.0) (setf (second tr) (second e)))
-              (setf (fourth tr) (third e))))))
+              (when (> (abs (- (train-head-d tr) (second e))) 12.0) (setf (train-head-d tr) (second e)))
+              (setf (train-rest tr) (third e))))))
       (when (and plane (null *plane*) (listp plane) (= (length plane) 7) (every #'realp plane))
         (let ((g (group *world*)))
           (biplane g)

@@ -7,6 +7,7 @@
 ;;; ------------------------------------------------------------------ the railway and the train
 
 (defvar *trains* '() "The trains as (track head-path-coordinate car-nodes resting-until-time) lists.")
+(define-fields train track head-d cars rest)
 (defparameter *train-speed* 16.0)
 (defparameter *train-car-gap* 15.0 "The spacing of train cars, in metres.")
 
@@ -55,14 +56,14 @@ Each is a node of its own; they run along the rails one after another. Return th
         (when tr
           (destructuring-bind (s cars rest) (rest tr)
             (cond ((> rest 0.0)                                            ; resting
-                   (when (and (< (decf (fourth tr) delta) 0.0) inside) (setf (second tr) (- *dist* 280.0))))
+                   (when (and (< (decf (train-rest tr) delta) 0.0) inside) (setf (train-head-d tr) (- *dist* 280.0))))
                   ((> (- s (* *train-car-gap* (length cars))) (- d1 40))          ; gone
                    (dolist (c cars) (object-set c "visible" nil))
-                   (setf (fourth tr) 150.0))
+                   (setf (train-rest tr) 150.0))
                   (t
-                   (incf (second tr) (* delta *train-speed*))
+                   (incf (train-head-d tr) (* delta *train-speed*))
                    (loop for c in cars for i from 0
-                         do (let ((d (- (second tr) (* i *train-car-gap*))))
+                         do (let ((d (- (train-head-d tr) (* i *train-car-gap*))))
                               (if (and (< (+ d0 30) d (- d1 30)) (< (track-x track d) 330) (< (abs (- d *dist*)) 520))
                                   (multiple-value-bind (at rot) (track-frame track d .1)
                                     (node-3d-set-position c (v3 (first at) (second at) (third at)))
@@ -197,7 +198,8 @@ to its own lane."
 
 ;;; ------------------------------------------------------------------ birds
 
-(defvar *flocks* '() "The flocks as (node birds born vx vz) lists.")
+(defvar *flocks* '() "The flocks as (node birds born vx vz number) lists.")
+(define-fields flock node birds born vx vz n)
 (defvar *next-flock* 14.0)
 (defvar *flock-n* 0)
 
