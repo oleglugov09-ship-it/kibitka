@@ -170,16 +170,15 @@ The sky stays over the wagon, turns with the day cycle and fades towards dawn an
 (defvar *scope-sights* '())
 
 (defun make-scope (root)
-  (let ((layer (gdext:make-object "CanvasLayer")) (bg (gdext:make-object "ColorRect")) (pic (gdext:make-object "TextureRect")))
-    (object-set layer "layer" 6)
-    (node-add-child root layer) (node-add-child layer bg) (node-add-child bg pic)
-    (object-set bg "position" (vector2 0 0)) (object-set bg "size" (vector2 640 360)) (object-set bg "color" (color 0 0 0 1))
+  (multiple-value-bind (bg layer) (screen-panel 6 0 0 640 360 '(0 0 0 1) root)
+   (let ((pic (gdext:make-object "TextureRect")))
+    (node-add-child bg pic)
     (object-set pic "position" (vector2 170 20)) (object-set pic "size" (vector2 300 300))
     (object-set pic "expand_mode" 1) (object-set pic "stretch_mode" 5) (object-set pic "texture_filter" 1)
     (object-set layer "visible" nil)
     (setf *scope-parts* (list :layer layer :pic pic
                               :caption (hud-label bg "" 170 326 10 '(.92 .88 .76))
-                              :hint (hud-label bg "ЛКМ или E — следующий объект · S или Esc — отойти от телескопа" 170 344 7 '(.6 .6 .56))))))
+                              :hint (hud-label bg "ЛКМ или E — следующий объект · S или Esc — отойти от телескопа" 170 344 7 '(.6 .6 .56)))))))
 
 (defun show-sight ()
   (destructuring-bind (file caption) (nth *scope* *scope-sights*)
