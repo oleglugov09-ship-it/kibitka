@@ -419,7 +419,7 @@ The wallet is shared, so anyone can refuel."
   "Buy a bundle of planks for the stove."
   (when *at-station*
     (destructuring-bind (n price) *plank-price*
-      (cond ((not (take-money price)) (say "На доски не хватает"))
+      (cond ((not (or *dev* (take-money price))) (say "На доски не хватает"))   ; on the dev polygon everything is free
             (t (incf *planks* n) (say-all (format nil "Купили досок: ~d за ~/kiosk-trip::rub/" n price)))))))
 
 (defun buy-planks () "Buy planks on P at a gas station; return T if we are at one." (when *at-station* (take-planks) t))

@@ -395,7 +395,7 @@ A dish costs more."
 (defun show-swatter () (when (un :swatter) (object-set (un :swatter) "visible" (and *swatter* t))))
 
 (defshared buy-swatter :swatter ()
-  (cond ((not (take-money *swatter-price*)) (say "На мухобойку не хватает денег"))
+  (cond ((not (or *dev* (take-money *swatter-price*))) (say "На мухобойку не хватает денег"))   ; on the dev polygon everything is free
         (t (setf *swatter* t)
            (show-swatter) (save-wall)
            (log-event :swatter :money *money*)
