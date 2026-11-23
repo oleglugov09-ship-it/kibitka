@@ -33,6 +33,9 @@ VIEWS = [("outside-back-right", '(setf *view* :outside *orbit-yaw* .6 *orbit-pit
          ("buildings-far", '(setf *orbit-dist* 110.0 *orbit-yaw* 2.3 *orbit-pitch* .4)'),
          ("diners", """(progn (setf *orbit-dist* 40.0 *orbit-yaw* -1.57 *orbit-pitch* .45) (loop for f in '(diner-glass diner-grill diner-kiosk) for rgb in '("#a3262c" "#3f6f73" "#c9a13a") for i from 0 do (let ((g (group *cart* 6.0 0.0 (- (* 40.0 i) 40.0)))) (diner-apron g "КАФЕ" rgb) (funcall f g "КАФЕ" rgb))) 1)"""),
          ("diners-high", '(setf *orbit-dist* 60.0 *orbit-yaw* -1.0 *orbit-pitch* .8)'),
+         ("road", """(progn (setf *orbit-dist* 34.0 *orbit-yaw* -1.2 *orbit-pitch* .5) (let ((d (+ *dist* 14.0))) (add-zebra d) (add-bus (+ d 10.0)) (add-stele (+ d 22.0) "ГОРОД") (build-scrap-depot (+ d 44.0)) (build-observatory (- d 50.0))) 1)"""),
+         ("road-ahead", '(setf *orbit-dist* 50.0 *orbit-yaw* -2.4 *orbit-pitch* .45)'),
+         ("road-behind", '(setf *orbit-dist* 60.0 *orbit-yaw* -.6 *orbit-pitch* .45)'),
          ("meta-room", '(progn (setf *meta* t *view* :inside *seat* nil *pos* (v3 0 0 2.8) *yaw* 0.0 *pitch* 0.0) (apply-meta) 1)'),
          ("meta-room-back", '(setf *pos* (v3 0 0 -2.8) *yaw* 3.1416)'),
          ("meta-room-side", '(setf *pos* (v3 2.4 0 0) *yaw* 1.5708)')]

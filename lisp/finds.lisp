@@ -148,25 +148,12 @@ It has a dome, a terrace with the big telescope and a small table with the spygl
 Return the group node."
   (let ((g (apply #'group *world* (road-pos d 3.2 -.35))))
     (node-3d-set-rotation g (v3 0 (- (road-frame d)) 0))
-    (shape g :box '(22.0 .14 30.0) "#8a8880" 11.0 .07 0 :shadow nil)
-    (shape g :cyl '(5.0 5.0 5.0 16) "#d8d4c4" 17.0 2.5 4.0)
-    (shape g :ball '(5.0 16 10) "#e8e8e4" 17.0 5.0 4.0 :rough .5)
-    (shape g :box '(1.2 4.6 .5) "#16181c" 13.6 7.4 4.0 :rot '(0 0 .75) :shadow nil)
-    (shape g :box '(.14 2.2 1.2) "#3a2a1e" 11.95 1.1 4.0 :shadow nil)
+    (model g "observatory")
     (sign g "ОБСЕРВАТОРИЯ" 11.9 3.4 4.0 :h .6 :rgb "#2c4a7a")
     ;; the big telescope on the terrace
-    (shape g :cyl '(.5 .7 1.3 10) "#85857f" 8.0 .65 -6.0)
-    (let ((tube (group g 8.0 1.7 -6.0)))
-      (node-3d-set-rotation tube (v3 0 .4 -.85))
-      (shape tube :cyl '(.36 .42 3.8 12) "#e8e4d8" 0 1.3 0) (shape tube :cyl '(.44 .44 .5 12) "#2a2c30" 0 3.2 0)
-      (shape tube :cyl '(.08 .08 1.2 8) "#2a2c30" .45 .6 0) (shape tube :cyl '(.12 .1 .3 8) "#c9a13a" 0 -.7 0 :metal .6 :rough .3))
-    (shape g :box '(.6 .5 .6) "#6a5038" 7.2 .25 -7.2)                              ; a step up to the eyepiece
-    ;; the small table: the spyglass lies on it until it is taken
-    (shape g :box '(1.4 .08 .8) "#8a6440" 7.0 .8 6.0) (dolist (sx '(-.6 .6)) (shape g :box '(.08 .8 .7) "#5a3e26" (+ 7.0 sx) .4 6.0))
     (unless *spyglass*
       (shape g :cyl '(.035 .05 .5 8) "#c9a13a" 7.0 .9 6.0 :rot (list (/ pi 2) .5 0) :metal .7 :rough .3))
-    (shape g :box '(.14 3.0 .14) "#5a5e60" 4.0 1.5 -12.0)
-    (shape g :box '(.3 .2 .3) "#ff5040" 4.0 3.05 -12.0 :emit "#ff2010" :energy 1.2 :shadow nil)   ; a red lamp: it does not dazzle the eyes
+       ; a red lamp: it does not dazzle the eyes
     (flood g 9.0 2.0 0 :rgb "#ff6050" :energy 1.2 :range 18.0)
     g))
 
@@ -175,16 +162,8 @@ Return the group node."
 It has a booth with a window, crates of bottles, bales of paper and scales. Return the group node."
   (let ((g (apply #'group *world* (road-pos d 3.2 -.35))))
     (node-3d-set-rotation g (v3 0 (- (road-frame d)) 0))
-    (shape g :box '(14.0 .12 20.0) "#5a5a58" 9.0 .06 0 :shadow nil)
-    (shape g :box '(5.0 3.0 7.0) "#6a7a5a" 12.5 1.5 0) (shape g :box '(5.6 .3 7.6) "#4c4e52" 12.5 3.15 0 :rot '(0 0 -.08))
-    (shape g :box '(.14 1.0 1.6) "#e8c070" 9.95 1.6 0 :emit "#ffc060" :energy 1.0 :shadow nil)
-    (shape g :box '(.6 .08 1.8) "#8a6440" 9.7 1.05 0)
-    (shape g :box '(.2 .9 6.4) "#3c4638" 9.9 3.7 0 :shadow nil)
+    (model g "scrap-depot")
     (sign g "ПРИЁМ СТЕКЛОТАРЫ" 9.78 3.9 0 :h .42 :rgb "#e8e0d0") (sign g "И МАКУЛАТУРЫ" 9.78 3.45 0 :h .42 :rgb "#e8e0d0")
-    (loop for i below 6 do (shape g :box '(.6 .4 .5) "#7a5a3a" (+ 7.0 (* .65 (mod i 2))) (+ .2 (* .42 (floor i 2))) -5.0)
-                           (shape g :cyl '(.2 .2 .12 8) "#3a7a4a" (+ 7.0 (* .65 (mod i 2))) (+ .45 (* .42 (floor i 2))) -5.0 :shadow nil))
-    (loop for i below 5 do (shape g :box '(.9 .5 .7) (if (evenp i) "#d8d2c0" "#c8b890") 7.4 (+ .25 (* .5 i)) 5.5 :rot (list 0 (* .1 i) 0)))
-    (shape g :box '(.9 .12 .9) "#3a3a40" 7.6 .5 1.8) (shape g :box '(.1 1.2 .1) "#3a3a40" 8.0 1.1 1.8) (shape g :cyl '(.3 .3 .05 12) "#e8e0d0" 7.9 1.7 1.8 :rot (list 0 0 (/ pi 2)))
     g))
 
 (defun finds-usables ()

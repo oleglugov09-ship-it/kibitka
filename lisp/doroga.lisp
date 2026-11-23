@@ -272,9 +272,7 @@ Wires are strung to the neighboring poles.")
     (when (on-road-p x z .3) (return-from add-pole nil))                 ; at a fork - not in the middle of another road
     (let ((g (keep (group *world* x y z) d)) (lean (- (random .1) .05)) (th (road-frame d)))
       (node-3d-set-rotation g (v3 (- (random .06) .03) (- th) lean))
-      (shape g :box '(.18 7.4 .18) "#4a4038" 0 3.7 0)
-      (shape g :box '(1.5 .1 .1) "#4a4038" 0 6.9 0)
-      (dolist (sx '(-1 1)) (shape g :box '(.08 .16 .08) "#b8b4a8" (* sx .65) 7.02 0 :shadow nil))
+      (model g "pole")
       (let ((tops (loop for s in '(-.65 .65) collect (list (+ x (* s (cos th))) (+ y 7.05) (+ z (* s (sin th)))))))
         (setf (gethash (round d) *pole-wires*) tops)                    ; wires go to those neighbors that already stand
         (dolist (n (list (- d *pole-step*) (+ d *pole-step*)))
@@ -422,16 +420,8 @@ That is in front of its nose when we drive forward."
   "Add a zebra crossing over both lanes at path coordinate D, with a sign on each side."
   (destructuring-bind (x y z) (road-pos d (/ *lane-x* 2) .04)
     (let ((g (keep (turned (group *world* x y z) d) d)))
-      (loop for i from -4 to 4 do (shape g :box '(.5 .02 3.0) "#e4e0d2" (* i 1.0) 0 0 :shadow nil))
-      (dolist (sx '(-5.4 5.4))
-        (shape g :box '(.07 2.4 .07) "#6a6e70" sx 1.2 (* (signum sx) 1.9))
-        (shape g :box '(.05 .6 .6) "#2c5a9a" sx 2.5 (* (signum sx) 1.9) :shadow nil)
-        (shape g :box '(.06 .3 .3) "#e8e4d8" sx 2.5 (* (signum sx) 1.9) :shadow nil :rot (list (/ pi 4) 0 0))))))
+      (model g "zebra"))))
 
-
-(defun stop-bench (g)
-  (shape g :box '(.4 .08 2.4) "#6a5038" .5 .55 0)
-  (dolist (sz '(-1 1)) (shape g :box '(.36 .5 .1) "#55554f" .5 .28 (* sz 1.0))))
 
 (defun stop-box (g d)
   "Build under G a concrete box with a mosaic of faded tiles, varied by path coordinate D."
@@ -451,10 +441,7 @@ Sometimes cats wait at it (STOP-SPOT says where)."
       (let ((g (keep (group *world* x y z) d)))
         (node-3d-set-rotation g (v3 0 (- (if (> side 0) 0 pi) (road-frame d)) 0))
         (stop-look g d)                                                        ; eighteen looks - stops.lisp
-        (shape g :box '(2.4 .12 4.2) "#5a5a58" -.2 .06 0)                      ; floor slab
-        (stop-bench g)
-        (shape g :box '(.08 2.6 .08) "#5a5a58" -1.2 1.3 2.4)                   ; bus stop sign on a post
-        (shape g :box '(.06 .5 .6) "#c9a13a" -1.2 2.4 2.4 :shadow nil))))
+        (model g "stop-base"))))
   (let ((people (loop for i below (nth (random 6) '(0 1 1 1 2 2))
                       collect (apply #'add-person (stop-spot d i)))))
     (push (list d people nil) *stops*)))
@@ -481,9 +468,7 @@ Sometimes cats wait at it (STOP-SPOT says where)."
   (destructuring-bind (x y z) (side-point 5.2 d -.2)
     (when (on-road-p x z .3) (return-from add-lamp nil))
     (let ((g (keep (turned (group *world* x y z) d) d)))
-      (shape g :box '(.13 6.2 .13) "#5a5e60" 0 3.1 0)
-      (shape g :box '(1.7 .08 .08) "#5a5e60" -.85 6.1 0 :shadow nil)
-      (shape g :box '(.55 .12 .26) "#ffe2a0" -1.6 6.02 0 :emit "#ffd080" :energy 1.6 :shadow nil))))
+      (model g "street-lamp"))))
 
 (defun add-stele (d name &optional back)
   "Add the stele at a town entrance at path coordinate D: a concrete slab with an emblem and NAME.
@@ -492,11 +477,7 @@ BACK is for those entering from the other end: it stands on their right side, fa
     (let ((g (keep (group *world* x y z) d)))
       (node-3d-set-rotation g (v3 0 (- (if back pi 0) (road-frame d)) 0))
       (sign g name -.3 1.6 .9 :h .7 :rgb "#d8d4c4")
-      (shape g :box '(1.2 .5 3.4) "#6e6e6a" 0 .25 0)
-      (shape g :box '(.5 4.6 1.5) "#85857f" 0 2.7 -.6 :rot '(0 0 -.1))
-      (shape g :box '(.5 2.6 1.1) "#85857f" 0 1.7 .9 :rot '(0 0 -.1))
-      (shape g :cyl '(.55 .55 .08 12) "#8a4038" -.3 3.9 -.6 :rot (list 0 0 (/ pi 2)) :shadow nil)
-      (shape g :box '(.08 .22 1.3) "#c9a13a" -.3 2.9 -.6 :shadow nil))))
+      (model g "stele"))))
 
 (defun add-km-sign (d &optional back)
   "Add the blue sign on the right at path coordinate D: distances to the next town and gas station.
@@ -512,8 +493,7 @@ BACK is for those driving back."
       (destructuring-bind (x y z) (side-point (if back (- *lane-x* 7.0) 7.0) d -.2)
         (let ((g (keep (group *world* x y z) d)))
           (node-3d-set-rotation g (v3 0 (- (if back pi 0) (road-frame d)) 0))
-          (dolist (sx '(-1.1 1.1)) (shape g :box '(.1 3.2 .1) "#8a8a84" sx 1.6 0))
-          (shape g :box '(2.9 1.1 .08) "#2c4a7a" 0 2.9 0 :shadow nil)                  ; the board across the road, facing those driving up
+          (model g "km-sign")
           (sign g (format nil "~a  ~,1f" (town-title next)
                           (/ (abs (- (if back (town-end next) (town-start next)) d)) 1000))
                 0 3.13 .06 :h .36 :yaw 0.0)
@@ -524,13 +504,7 @@ BACK is for those driving back."
   "Add a city bus at the bus stop at path coordinate D: yellow, with a white roof."
   (destructuring-bind (x y z) (side-point 4.4 d 0.0)
     (let ((g (keep (turned (group *world* x y z) d) d)))
-      (shape g :box '(2.5 2.3 9.0) "#c9a13a" 0 1.75 0)
-      (shape g :box '(2.54 .5 9.04) "#d8d4c4" 0 3.0 0 :shadow nil)
-      (shape g :box '(2.56 .8 8.2) "#1a2026" 0 2.2 0 :rough .2 :shadow nil)
-      (shape g :box '(2.3 .9 .06) "#1a2026" 0 2.15 -4.52 :rough .2 :shadow nil)
-      (dolist (sx '(-1 1))
-        (dolist (wz '(-2.9 2.6)) (shape g :cyl '(.5 .5 .3 12) "#141416" (* sx 1.15) .5 wz :rot (list 0 0 (/ pi 2))))
-        (shape g :cyl '(.14 .14 .06 8) "#ffe9b0" (* sx .85) 1.0 -4.53 :rot (list (/ pi 2) 0 0) :emit "#ffd890" :energy 1.5 :shadow nil)))))
+      (model g "bus"))))
 
 ;;; A street you remember: in the middle of such a town a bus stands and music quietly starts
 ;;; to play. The file is project/discs/street.mp3 or street.wav; if it is missing - the first disc.
