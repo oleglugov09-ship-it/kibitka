@@ -566,7 +566,7 @@ world of things and the land are shifted."
       (incf *dist* (* *dir* *speed* delta (cos (nth-value 1 (road-frame *dist*))))))   ; along the road itself — at the same speed
   (when (ring) (step-way))                                            ; an exit, a crossroads, an entry, a new lap
   (place-world)
-  (timed :chunks (step-chunks))
+  (unless (off-ring-p) (timed :chunks (step-chunks)))                  ; behind a door the land is not shown: it is not built either, and waits
   (step-roads)
   (timed :props (step-props))
   (step-bridges))
