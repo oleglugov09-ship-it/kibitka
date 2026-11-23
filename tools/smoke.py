@@ -254,6 +254,21 @@ def solo():
     ev(p, press(77))
     check("M открывает карту, E её закрывает не сразу", ev(p, f"{K}*map-open*"), "T")
     ev(p, f"({K}close-map)")
+    # a parcel reaches its place in three ways, and all of them go through one function (PARCEL-DELIVERED)
+    check("ящик по наряду авиапочтой: товар в магазине города, выдан талон, лапы пусты",
+          ev(p, f"""(let* ((good (first (first {K}*goods*))) (town 3) (addr ({K}plan-addr town good)) (talons {K}*talons*))
+                 ({K}set-stock town good 0.0) ({K}set-carry (cons :box addr)) ({K}send-airmail)
+                 (list (> ({K}stock town good) 0.0) (> {K}*talons* talons) {K}*carry*))"""), "(T T NIL)")
+    check("обычная посылка авиапочтой: плата в кошелёк, лапы пусты",
+          ev(p, f"""(let ((m {K}*money*)) ({K}set-carry (cons :box 5)) ({K}send-airmail) (list (> {K}*money* m) {K}*carry*))"""), "(T NIL)")
+    check("посылка в лагерь: плата в кошелёк, лапы пусты",
+          ev(p, f"""(let ((m {K}*money*)) ({K}set-carry (cons :box {K}*camp-town*)) ({K}camp-parcel) (list (> {K}*money* m) {K}*carry*))"""), "(T NIL)")
+    check("на полигоне доски бесплатны, вне его без денег не дают",
+          ev(p, f"""(let (({K}*at-station* t) (m {K}*money*) (was {K}*planks*) free paid)
+                 ({K}put-money 0)
+                 (let (({K}*dev* t)) ({K}take-planks)) (setf free (- {K}*planks* was) was {K}*planks*)
+                 (let (({K}*dev* nil)) ({K}take-planks)) (setf paid (- {K}*planks* was))
+                 ({K}put-money m) (list (plusp free) paid))"""), "(T 0)")
     check("ошибок в журнале игры нет", log_errors(p), 0)
     stop_all()
 
