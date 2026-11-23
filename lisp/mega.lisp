@@ -202,7 +202,7 @@ back to z = -*MEGA-CELL*."
          (kind (mega-kind i)) (at (mod i 16)))
     (node-3d-set-rotation g (v3 (fifth pose) (fourth pose) 0))
     (with-batch (g)                                                      ; a cell is hundreds of shapes and a few dozen draws
-      (funcall (zone kind :build) g i c (- (/ c 2)) at)
+      (call-declared "zone" kind :build (zone kind :build) g i c (- (/ c 2)) at)
       (when (zone kind :hall) (mega-hall g i (zone kind :hall)))
       (when (and (= at 8) (not (zone kind :bare))) (mega-stop g i)))
     g))
@@ -260,9 +260,9 @@ group. The cells themselves are built by STEP-MEGA-CELLS as the wagon goes."
   "See whether the wagon has gone through a door or come back, and say where it is."
   (unless (net-guest-p)
     (if *mega-in*
-        (when (funcall (getf (getf *doors* *mega-in*) :out)) (setf *mega-in* nil))
+        (when (call-declared "door" *mega-in* :out (getf (getf *doors* *mega-in*) :out)) (setf *mega-in* nil))
         (loop for (key door) on *doors* by #'cddr
-              when (funcall (getf door :in))
+              when (call-declared "door" key :in (getf door :in))
                 do (setf *mega-in* key *mega-s* 0.0)
                    (when (getf door :world) (setf *mega-world* (getf door :world)))
                    (return))))

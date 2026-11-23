@@ -24,9 +24,7 @@
   "Call what the client KIND declares under KEY - its sign, its hint, its words - with ARGS.
 A kind that is not declared, or declares no such thing, is an error that names both: calling whatever was found
 used to end in 'not a valid function name NIL', which says nothing of who came to the window."
-  (let ((f (client-kind kind key)))
-    (unless (functionp f) (error "The client kind ~s declares no ~s (the kinds: ~{~s~^ ~})" kind key (mapcar #'car *client-kinds*)))
-    (apply f args)))
+  (apply #'call-declared "client kind" kind key (client-kind kind key) args))
 
 (defclient :buyer
   :sign (lambda (price good town dest) (declare (ignore town dest))

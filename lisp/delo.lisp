@@ -141,6 +141,17 @@ FILL-TEXT puts there what the function returns now, so the text follows the para
                       (defun (setf ,name) (value record) (setf (nth ,i record) value))))
      ',record))
 
+;;; Much of the game is declared in tables: a kind of client, a zone, a door each say how to build, what to answer.
+;;; Calling what such a table holds without looking ends, when the entry is not there, in 'not a valid function
+;;; name NIL': an error that says nothing of which entry of which table. This says both.
+
+(defun call-declared (what name key fn &rest args)
+  "Call FN with ARGS, where FN is what the WHAT (a word for the log: \"zone\", \"door\") called NAME declares under KEY.
+If nothing is declared there, signal an error that names all three."
+  (unless (or (functionp fn) (and fn (symbolp fn) (fboundp fn)))        ; a function, or the name of one
+    (error "The ~a ~s declares no ~s" what name key))
+  (apply fn args))
+
 ;;; Things that happen once a day. Each keeps the day it last ran in a variable of its own (what happens at dawn
 ;;; is not the same for the fridge, the weather and the money-lender, and after a save is read each has its own
 ;;; catching up to do); what they share is how a new day is told from the first look and from a clock turned back.

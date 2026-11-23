@@ -594,6 +594,11 @@
 
 ;;; What the code is built from: the small pieces everything else goes through
 (format t "Кирпичи~%")
+(check "объявленное вызывается" (= (call-declared "probe" :a :twice (lambda (x) (* 2 x)) 21) 42))
+(check "объявленное по имени функции тоже вызывается" (= (call-declared "probe" :a :abs 'abs -3) 3))
+(check "необъявленное — ошибка, которая называет, чего нет"
+       (handler-case (progn (call-declared "zone" :swamp :build nil) nil)
+         (error (e) (let ((text (princ-to-string e))) (and (search "zone" text) (search "SWAMP" text) (search "BUILD" text) t)))))
 (define-fields probe-rec a b c)
 (let ((r (list 1 2 3)))
   (check "define-fields: поля читаются по порядку" (equal (list (probe-rec-a r) (probe-rec-b r) (probe-rec-c r)) '(1 2 3)))
