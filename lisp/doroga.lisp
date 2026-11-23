@@ -160,7 +160,6 @@ At a fork one can thus see where the other road goes. At most two new ribbons ar
 (setf *kc* '(:body "#2f4a3c" :trim "#b9a24a" :roof "#6a6e70" :roof2 "#5e6264" :wood "#8a6440" :dark "#4a3020"
              :floor "#a07a50" :cloth "#8a5a44" :inside "#c4b894" :carpet "#8a1a22" :carpet2 "#e0b050" :carpet3 "#2a3a7a"))
 
-(defparameter *cab-rgb* "#6f9cb4" "The color of the cab: the pale blue of a Soviet lorry.")
 (defvar *wheels* '() "The wheel nodes, which turn by the distance traveled.")
 (defvar *wheel-spin* 0.0)
 (defvar *headlight* nil "The headlight, which shines in the dark.")
@@ -180,40 +179,12 @@ At a fork one can thus see where the other road goes. At most two new ribbons ar
   "Build the truck under the wagon C.
 It has a frame, wheels, a cab with a hood, headlights and crates on the cab roof."
   (setf *wheels* '() *lamps* '())
-  (let* ((f *floor*) (zf (- *half-length*)) (cab *cab-rgb*) (dark "#22242a") (glass "#1a2026"))
-    (shape c :box '(1.9 .24 9.4) dark 0 (- f .2) -1.75)                      ; frame
+  (let* ((f *floor*) (zf (- *half-length*)))
     (dolist (sx '(-1 1))
       (truck-wheel c (* sx 1.28) (- zf 2.75))                                 ; front axle
-      (truck-wheel c (* sx 1.3) 1.15) (truck-wheel c (* sx 1.3) 2.35)         ; rear ones
-      (shape c :box '(.5 .1 2.7) dark (* sx 1.3) (min (+ (* 2 *wheel-r*) .1) (- f .12)) 1.75))
-    ;; cab
-    (shape c :box '(2.7 1.2 1.9) cab 0 (+ f .6) (- zf 1.05))
-    (shape c :box '(2.6 .95 1.6) cab 0 (+ f 1.68) (- zf .9))
-    (shape c :box '(2.72 .12 1.85) cab 0 (+ f 2.2) (- zf .95))
-    (shape c :box '(2.3 .7 .06) glass 0 (+ f 1.7) (- zf 1.73) :rough .2)       ; windshield
-    (shape c :box '(.07 .72 .08) cab 0 (+ f 1.7) (- zf 1.74) :shadow nil)       ; in two halves, with a post between them
-    (shape c :cyl '(1.36 1.36 1.6 12) cab 0 (+ f 2.02) (- zf .9) :rot (list (/ pi 2) 0 0) :scale '(1 1 .2))   ; the rounded roof: flattened across, along the cab (local y is the length)
-    (shape c :box '(2.74 .08 1.9) "#e8e4d8" 0 (+ f 1.2) (- zf 1.05) :shadow nil)                              ; the white belt under the windows
-    (dolist (sx '(-1 1)) (shape c :box '(.06 .62 1.0) glass (* sx 1.31) (+ f 1.72) (- zf 1.0) :rough .2))
-    (shape c :box '(.5 .75 .3) "#2c2e34" -.6 (+ f 1.5) (- zf 1.0))            ; the driver - a silhouette behind the glass
-    (shape c :ball '(.19 8 5) "#2c2e34" -.6 (+ f 2.0) (- zf 1.05))
-    (dolist (sx '(-1 1)) (shape c :box '(.08 .3 .2) dark (* sx 1.5) (+ f 1.75) (- zf 1.7)))   ; mirrors
-    ;; hood, grille, bumper, headlights
-    (shape c :box '(2.3 1.0 1.5) cab 0 (+ f .5) (- zf 2.75))
-    (shape c :cyl '(1.15 1.15 1.5 12) cab 0 (+ f .98) (- zf 2.75) :rot (list (/ pi 2) 0 0) :scale '(1 1 .22))   ; the hood is rounded on top
-    ;; the face of the lorry: a wide white grille with bars, the lamps set into its ends, a bright bumper
-    (shape c :box '(2.34 .62 .08) "#e8e4d8" 0 (+ f .5) (- zf 3.52))
-    (dolist (y '(-.2 -.07 .06 .19)) (shape c :box '(1.4 .05 .09) dark 0 (+ f .5 y) (- zf 3.53) :shadow nil))
-    (shape c :box '(.5 .09 .1) "#b03a2c" 0 (+ f .9) (- zf 3.53) :shadow nil)                                  ; the maker's plate
-    (dolist (sx '(-1 1))
-      ;; a wing over each front wheel: an arch of five plates a hand above the tyre. It used to be a whole
-      ;; disc, which swallowed the upper half of the wheel and hung in front of it
-      (let ((r (+ *wheel-r* .13)))
-        (dolist (a '(-1.25 -.62 0.0 .62 1.25))
-          (shape c :box (list .56 .07 (* r .72)) cab (* sx 1.3) (+ *wheel-r* (* r (cos a))) (+ (- zf 2.75) (* r (sin a)))
-                 :rot (list a 0 0))))
-      (shape c :cyl '(.07 .07 .06 8) "#e8a030" (* sx 1.2) (+ f .86) (- zf 3.5) :rot (list (/ pi 2) 0 0) :emit "#e08020" :energy .8 :shadow nil))
-    (shape c :box '(2.8 .24 .22) "#b8b4a8" 0 (- f .05) (- zf 3.62) :metal .4 :rough .5)
+      (truck-wheel c (* sx 1.3) 1.15) (truck-wheel c (* sx 1.3) 2.35))        ; rear ones
+    ;; everything of the truck that stands still; the wheels, the lamps and the beams are built around it
+    (model c "truck")
     (dolist (sx '(-1 1))
       (push (shape c :cyl '(.19 .19 .08 10) "#ffe9b0" (* sx .92) (+ f .55) (- zf 3.54) :rot (list (/ pi 2) 0 0)
                    :emit "#ffd890" :energy 2.5 :shadow nil)
@@ -238,24 +209,7 @@ It has a frame, wheels, a cab with a hood, headlights and crates on the cab roof
           *beam-cones*
           (loop for sx in '(-1 1)
                 collect (shape c :cone '(1.5 9.0 10) "#ffe6b4" (* sx .92) (+ f .45) (- zf 3.6 4.5) :rot (list (/ pi 2) 0 0)
-                               :alpha .045 :unshaded t :shadow nil)))
-    ;; crates on the cab roof: we carry things in crates
-    (loop for (bx bz w) in '((-.55 -.75 .9) (.6 -1.0 .8) (.5 -.3 .6))
-          do (shape c :box (list w .45 .6) "#8a6440" bx (+ f 2.49) (+ zf bz))
-             (shape c :box (list (+ w .03) .06 .63) "#5a3e26" bx (+ f 2.6) (+ zf bz)))
-    (shape c :box '(.1 1.3 .1) dark 1.2 (+ f .9) (- zf .05))                  ; exhaust pipe
-    ;; rail-car details: rib posts along the sides, the yellow stripe, underfloor boxes, mushroom vents on the roof
-    (let ((x (+ *half-width* .1)) (wh *wall-height*))
-      (dolist (sx '(-1 1))
-        (loop for z from -2.6 to 2.61 by .65
-              do (unless (and (> sx 0) (< (abs z) 1.4))            ; no ribs across the big window - it is not a grille
-                   (shape c :box (list .05 (+ wh .1) .09) "#263c31" (* sx x) (+ f (/ wh 2)) z :shadow nil)))
-        (shape c :box (list .03 .13 (* 2 *half-length*)) (kc :trim) (* sx (+ x .03)) (+ f .8) 0 :shadow nil)
-        (shape c :box '(.5 .45 1.3) "#2a2c30" (* sx 1.15) (- f .55) -.4)
-        (shape c :box '(.5 .3 .7) "#34363a" (* sx 1.15) (- f .48) -1.6))
-      (loop for z in '(-1.9 0.0 1.9)
-            do (shape c :cyl '(.16 .2 .22 8) "#4c5052" 0 (+ f wh 1.12) z)
-               (shape c :cyl '(.26 .26 .05 8) "#4c5052" 0 (+ f wh 1.25) z)))))
+                               :alpha .045 :unshaded t :shadow nil)))))
 
 (defun step-team (delta)
   "Turn the wheels by the distance traveled in DELTA seconds and light the headlights in the dark."

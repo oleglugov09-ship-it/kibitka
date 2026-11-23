@@ -474,8 +474,7 @@ In the swamp a mosquito flies into the wagon: it whines, circles around the head
   (let ((f *floor*) (cards '()) (pennants '()))
     (dolist (key '(:radio-player :guitar-player)) (when (un key) (node-queue-free (un key))))   ; the old ones are from the previous wagon
     (setf *uyut* nil *guitar-on* nil *sleep* nil *photo-wait* 0 *mosquito* nil *swamp-time* 0.0)
-    ;; the string with photo cards above the rug (left wall)
-    (shape c :box '(.008 .008 5.2) "#3a2a1e" (+ (- *half-width*) .1) (+ f 2.1) 0 :shadow nil)
+    ;; the photo cards on the string above the rug (left wall); the string itself is in the furniture model
     (dotimes (i *photo-slots*)
       (let ((mi (gdext:make-object "MeshInstance3D")) (mesh (gdext:make-object "QuadMesh"))
             (mat (gdext:make-object "StandardMaterial3D")) (z (- 2.3 (* i .42))))
@@ -500,7 +499,6 @@ In the swamp a mosquito flies into the wagon: it whines, circles around the head
     ;; the camera on a nail
     (destructuring-bind (x y z) *camera-at*
       (let ((g (group c x (+ f y) z)))
-        (shape c :box '(.012 .012 .05) "#8a8e92" x (+ f y .27) z :shadow nil)          ; the nail: it stays
         (setf (getf *uyut* :camera-node) g)
         (shape g :box '(.07 .11 .17) "#2a2a2e" 0 0 0)
         (shape g :cyl '(.04 .04 .05 10) "#16161a" -.05 0 0 :rot (list 0 0 (/ pi 2)))

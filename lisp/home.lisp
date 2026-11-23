@@ -297,32 +297,11 @@ that could be lost. A jar opened and left waits for the same good."
   (let ((f *floor*) (strips '()) (jars '()) leaf quilt can)
     ;; the calendar: a card with a picture and a block of leaves; the number on the top leaf is the day
     (destructuring-bind (x y z) *calendar-at*
-      (shape c :box '(.2 .3 .012) "#e8e0d0" x (+ f y) z :shadow nil)
-      (shape c :box '(.18 .12 .01) "#3f6f73" x (+ f y .08) (- z .008) :shadow nil)
-      (shape c :box '(.14 .12 .03) "#f6f2e8" x (+ f y -.07) (- z .02) :shadow nil)
-      (shape c :box '(.14 .02 .034) "#a3262c" x (+ f y -.02) (- z .02) :shadow nil)
       (setf leaf (sign c "" x (+ f y -.08) (- z .04) :h .07 :rgb "#2a2a2e" :yaw pi)))
-    ;; the supply sheet: a clipboard with typed sheets, on the carpet wall above the fridge
-    (destructuring-bind (x y z) *sheet-at*
-      (shape c :box '(.015 .34 .24) "#6a5038" x (+ f y) z :shadow nil)
-      (shape c :box '(.01 .3 .2) "#f0ece0" (+ x .012) (+ f y -.01) z :shadow nil)
-      (dotimes (i 6) (shape c :box '(.004 .008 .15) "#3a3a40" (+ x .019) (+ f y .1 (* i -.04)) z :shadow nil))
-      (shape c :box '(.02 .03 .1) "#8a8e92" (+ x .012) (+ f y .155) z :metal .6 :rough .4 :shadow nil))
-    ;; the diary: a school notebook on a nail
-    (destructuring-bind (x y z) *diary-at*
-      (shape c :box '(.16 .2 .015) "#4a6a52" x (+ f y) z :rot '(0 0 .06) :shadow nil)
-      (shape c :box '(.1 .03 .017) "#e8e0d0" x (+ f y .04) (- z .002) :rot '(0 0 .06) :shadow nil)
-      (shape c :box '(.012 .012 .03) "#8a8e92" x (+ f y .11) (- z .01) :shadow nil))
-    ;; the roll of paper by the window, and the strips over the gaps once the window is sealed
-    (destructuring-bind (x y z) *roll-at*
-      (shape c :cyl '(.05 .05 .1 10) "#f0ece0" x (+ f y) z :rot (list (/ pi 2) 0 0) :shadow nil)
-      (shape c :cyl '(.02 .02 .11 6) "#8a6440" x (+ f y) z :rot (list (/ pi 2) 0 0) :shadow nil))
     (let ((x (- *half-width* .085)))
       (dolist (z '(-1.33 1.33)) (push (shape c :box '(.012 1.2 .07) "#f0ece0" x (+ f 1.5) z :shadow nil) strips))
       (dolist (y '(.925 2.075)) (push (shape c :box '(.012 .07 2.66) "#f0ece0" x (+ f y) 0 :shadow nil) strips)))
-    ;; the hook by the door and the quilt, which hangs on the door itself and swings with it
-    (destructuring-bind (x y z) *hook-at*
-      (shape c :box '(.03 .03 .06) "#34363a" x (+ f y) (- z .02) :shadow nil))
+    ;; the quilt, which hangs on the door itself and swings with it
     (when *door*
       (setf quilt (group *door* .55 -.1 -.07))
       (shape quilt :box '(1.0 1.7 .05) "#5a2a5a" 0 0 0)
@@ -330,9 +309,6 @@ that could be lost. A jar opened and left waits for the same good."
     ;; the crate of jars under the washstand, and the jar that is being closed on top of it
     (destructuring-bind (x y z) (crate-point)
       (let ((g (group c x (+ f y) z)))
-        (shape g :box '(.5 .04 .36) "#7a5a3a" 0 .02 0)
-        (dolist (sz '(-.17 .17)) (shape g :box '(.5 .22 .03) "#7a5a3a" 0 .13 sz))
-        (dolist (sx '(-.24 .24)) (shape g :box '(.03 .22 .36) "#7a5a3a" sx .13 0))
         (setf jars (loop for i below 6 collect (jar-model g (- (* (mod i 3) .15) .15) .04 (- (* (floor i 3) .15) .075) "#e8eef0")))
         (setf can (jar-model g 0 .26 0))
         (let ((key (group can 0 .17 0)))                                  ; the seaming key on the lid

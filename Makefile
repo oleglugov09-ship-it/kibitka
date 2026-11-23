@@ -16,6 +16,7 @@ import:
 # With Slynk (127.0.0.1:4009, the port is in project/.slynk-port) and the LIVE package
 SLYNK_DIR ?= $(HOME)/src/sly/slynk
 live:
+	tools/make-models.sh
 	touch lisp/net.lisp   # it holds the fingerprint of all sources (the build version): must be recomputed on any edit
 	$(MAKE) -B $(LIBRARY) SYSTEM=kiosk-trip-live LISP_DIRS="lisp $(SLYNK_DIR)"
 	test -d project/.godot || $(MAKE) import

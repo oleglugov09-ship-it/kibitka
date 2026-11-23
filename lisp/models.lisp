@@ -7,9 +7,10 @@
 (in-package #:kiosk-trip)
 
 (defun settle-model (node shadow)
-  "Make the meshes under NODE look like the rest of the game: non-metals get almost no specular, as in MATERIAL."
+  "Make the meshes under NODE look like the rest of the game: non-metals get almost no specular, as in MATERIAL.
+A mesh whose name in Blender ends with _noshadow casts no shadow."
   (when (object-call node "is_class" "MeshInstance3D")
-    (unless shadow (object-set node "cast_shadow" 0))
+    (when (or (not shadow) (search "_noshadow" (princ-to-string (object-get node "name")))) (object-set node "cast_shadow" 0))
     (let ((mesh (object-get node "mesh")))
       (when mesh
         (dotimes (i (object-call mesh "get_surface_count"))
@@ -33,3 +34,52 @@ ROT is (x y z) in radians and SCALE is (x y z), as for SHAPE. A missing or broke
              (when rot (node-3d-set-rotation root (v3 (first rot) (second rot) (third rot))))
              (when scale (node-3d-set-scale root (v3 (first scale) (second scale) (third scale))))
              root))))
+
+;;; Moving a piece from code to Blender. Wrap the shapes of the piece - only those that never move, hide or get
+;;; clicked on their own - in (drawn (parent "NAME") ...) and run tools/to-blender.sh: the game runs once with
+;;; KIOSK_DRAW set to a folder and, instead of building those shapes, writes them to FOLDER/NAME.json, each with its
+;;; sizes, colour and place under PARENT; tools/draw-model.py makes models/NAME.blend of that file, the same to the
+;;; centimetre. Several forms may share a NAME and a PARENT: they make one model. PARENT may be a group that moves
+;;; or hides: the model moves and hides with it. Then the first form is replaced by (model parent "NAME") and the
+;;; others are deleted, and from there on the piece is edited in Blender. Without KIOSK_DRAW the forms are built as ever.
+
+(defvar *drawn* (make-hash-table :test 'equal) "With *DRAW-DIR*: a table from the name of a piece to ((form . shapes) ...).")
+
+(defun drawing-chain (parent)
+  "Return the places of PARENT and of the groups above it up to the root of the drawing, the nearest first."
+  (if (eq parent (first *drawing*))
+      '()
+      (let ((cell (gethash parent *drawn-groups*)))
+        (unless cell (error "DRAWN: a shape is put under a node that is not under the parent of the piece"))
+        (cons (rest cell) (drawing-chain (first cell))))))
+
+(defun json-of (v)
+  (cond ((null v) "null")
+        ((eq v t) "true")
+        ((keywordp v) (format nil "\"~(~a~)\"" v))
+        ((stringp v) (format nil "\"~a\"" v))
+        ((realp v) (format nil "~,5f" (float v 1d0)))
+        (t (format nil "[~{~a~^,~}]" (mapcar #'json-of v)))))
+
+(defun draw-out (root name form build)
+  "Run BUILD with the shapes it puts under ROOT written down, and write the piece NAME to NAME.json in *DRAW-DIR*.
+FORM names the place in the code: built again, a form replaces what it wrote before."
+  (let ((*drawing* (list root '())) (*batch* nil) (*tracking* nil))
+    (funcall build)
+    (let ((lines (loop for s in (reverse (second *drawing*))
+                       collect (destructuring-bind (parent kind dims rgb x y z &key emit energy rough metal rot scale alpha shadow unshaded) s
+                                 (format nil "{\"kind\":~a,\"dims\":~a,\"rgb\":~a,\"emit\":~a,\"energy\":~a,\"rough\":~a,\"metal\":~a,\"alpha\":~a,\"shadow\":~a,\"unshaded\":~a,\"chain\":~a}"
+                                         (json-of kind) (json-of dims) (json-of rgb) (json-of emit) (json-of energy) (json-of rough) (json-of metal)
+                                         (json-of alpha) (json-of (and shadow t)) (json-of (and unshaded t))
+                                         (json-of (cons (list (list x y z) (or rot '(0 0 0)) (or scale '(1 1 1))) (drawing-chain parent))))))))
+      (setf (gethash name *drawn*) (cons (cons form lines) (remove form (gethash name *drawn*) :key #'car)))
+      (let ((all (loop for (nil . ls) in (gethash name *drawn*) append ls)))
+        (with-open-file (out (format nil "~a/~a.json" *draw-dir* name) :direction :output :if-exists :supersede)
+          (format out "[~%~{~a~^,~%~}~%]~%" all))
+        (format t "~&DRAWN ~a: ~d~%" name (length all))))))
+
+(defmacro drawn ((parent name) &body body)
+  "Build BODY, static shapes put under PARENT; with KIOSK_DRAW set, write them down for Blender instead (see above)."
+  `(if *draw-dir*
+       (draw-out ,parent ,name ',(gensym "FORM") (lambda () ,@body))
+       (progn ,@body)))

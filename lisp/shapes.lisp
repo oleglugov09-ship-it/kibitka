@@ -112,6 +112,15 @@ A group is (node parent x y z yaw sx sz).")
 (defvar *batch* nil "See Batches below. While a batch is gathered: (root offsets lots). OFFSETS is a table from a group that only shifts its shapes to
 (parent x y z); LOTS a table from (mesh material shadow range) to the pending shapes of that lot.")
 
+(defvar *draw-dir* (ext:getenv "KIOSK_DRAW") "The folder pieces are written down into for Blender (models.lisp, DRAWN), or NIL: the usual game.")
+(defvar *drawing* nil "While a piece is written down for Blender: (root shapes), SHAPES the shapes noted so far; else NIL.")
+(defvar *drawn-groups* (make-hash-table :test 'eq) "With *DRAW-DIR*: a table from every group made to (parent position rotation scale).")
+
+(defun drawing-set (node slot v)
+  "With *DRAW-DIR*: note the new position (SLOT 1), rotation (2) or scale (3) of a group."
+  (let ((cell (and *draw-dir* (gethash node *drawn-groups*))))
+    (when cell (setf (nth slot cell) (list (vector3-x v) (vector3-y v) (vector3-z v))))))
+
 (defmacro with-solids (&body body)
   "Build BODY and hand the outlines of what was built to the solids grid."
   `(if *tracking*
@@ -125,6 +134,7 @@ A group is (node parent x y z yaw sx sz).")
 (defun tracked (node) (assoc node (car *tracking*) :test #'eq))
 
 (defun node-3d-set-position (node v)
+  (drawing-set node 1 v)
   (when *batch*
     (let ((cell (gethash node (second *batch*)))) (when cell (setf (rest cell) (list (vector3-x v) (vector3-y v) (vector3-z v))))))
   (let ((e (and *tracking* (tracked node))))
@@ -132,12 +142,14 @@ A group is (node parent x y z yaw sx sz).")
   (godot:node-3d-set-position node v))
 
 (defun node-3d-set-rotation (node v)
+  (drawing-set node 2 v)
   (unbatch node)
   (let ((e (and *tracking* (tracked node))))
     (when e (setf (sixth e) (vector3-y v))))
   (godot:node-3d-set-rotation node v))
 
 (defun node-3d-set-scale (node v)
+  (drawing-set node 3 v)
   (unbatch node)
   (let ((e (and *tracking* (tracked node))))
     (when e (setf (seventh e) (vector3-x v) (eighth e) (vector3-z v))))
@@ -278,6 +290,10 @@ far away, where they are a dot in the haze yet cost the same as a house. Glowing
                                               rot scale alpha (shadow t) unshaded)
   "Add a shape of kind KIND and dimensions DIMS under PARENT at the point (X Y Z).
 RGB is its color, ROT is (x y z) in radians and SCALE is (x y z). Return the MeshInstance3D."
+  (when *drawing*                                                         ; written down for Blender, not built
+    (push (list parent kind dims rgb x y z :emit emit :energy energy :rough rough :metal metal
+                :rot rot :scale scale :alpha alpha :shadow shadow :unshaded unshaded) (second *drawing*))
+    (return-from shape nil))
   (when (and *batch* (not *tracking*) (batch-offset parent))             ; noted down for the batch, not made a node
     (let* ((key (list (mesh-of kind dims) (material rgb :emit emit :energy energy :rough rough :metal metal :alpha alpha :unshaded unshaded)
                       (and shadow t) (shape-range kind dims scale emit)))
@@ -312,6 +328,7 @@ It lets a thing be assembled from shapes and moved as a whole."
     (node-3d-set-position g (v3 x y z))
     (when (and *tracking* (or (eq parent *world*) (tracked parent)))
       (push (list g parent x y z 0.0 1.0 1.0) (car *tracking*)))
+    (when *draw-dir* (setf (gethash g *drawn-groups*) (list parent (list x y z) (list 0 0 0) (list 1 1 1))))
     (when (and *batch* (not *tracking*) (batch-offset parent))
       (setf (gethash g (second *batch*)) (list parent (float x 1.0) (float y 1.0) (float z 1.0))))
     g))

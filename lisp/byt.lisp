@@ -14,44 +14,10 @@ The record player and the discs sit on the left of its bottom shelf.")
 (defparameter *shelf-z* -2.5)
 (defparameter *shelf-tops* '(.55 1.1 1.65) "The heights of the shelves above the floor.")
 
-(defun make-shelf (c)
-  (destructuring-bind (x0 x1) *shelf-x*
-    (dolist (x (list x0 (+ x0 (/ (- x1 x0) 3)) (- x1 (/ (- x1 x0) 3)) x1))
-      (dolist (dz '(-.24 .24))
-        (shape c :box '(.05 2.1 .05) "#34363a" x (+ *floor* 1.05) (+ *shelf-z* dz) :metal .5 :rough .5)))
-    (dolist (top *shelf-tops*)
-      (shape c :box (list (- x1 x0) .04 .54) "#8a6440" (/ (+ x0 x1) 2) (+ *floor* top -.02) *shelf-z*))))
-
 ;;; The overhead racks are like luggage racks on a train: right under the roof along both long walls, above
 ;;; the cards and pennants. You put the same things on them as on the shelf unit, looking up (SHELF-SPOT in trade.lisp).
 (defparameter *rack-top* 2.28 "The height of the overhead racks above the floor.")
 (defparameter *rack-z* '(-2.0 2.4) "The z extent, from and to, of the overhead racks along the wall.")
-
-(defun make-steps (c)
-  "Build the stepladder in front of the rack under C: two rails, two treads and a top to stand on."
-  (destructuring-bind (x z) *steps-at*
-    (let ((g (group c x *floor* (- z .28))) (wood "#8a6440") (dark "#5a3e26"))
-      (dolist (sx '(-.19 .19))
-        (shape g :box '(.04 .62 .04) dark sx .3 -.1 :rot '(.3 0 0))             ; the rails lean on the rack
-        (shape g :box '(.04 .58 .04) dark sx .28 .12 :rot '(-.22 0 0)))         ; and the back legs
-      (shape g :box '(.36 .03 .14) wood 0 .2 .07) (shape g :box '(.36 .03 .14) wood 0 .38 0)
-      (shape g :box '(.4 .035 .2) wood 0 .57 -.04)
-      g)))
-
-(defun make-racks (c)
-  "Build the overhead racks under C as a grating, like luggage nets on a train.
-They are lengthwise slats with sparse crossbars, so from below you can see what lies on them
-(a solid board right under the roof could not be seen through by a cat below)."
-  (destructuring-bind (z0 z1) *rack-z*
-    (dolist (sx '(-1 1))
-      (let ((x (* sx (- *half-width* .2))) (y (+ *floor* *rack-top* -.012)) (mid (/ (+ z0 z1) 2)))
-        (dolist (dx '(-.15 -.05 .05 .15))                                              ; slats along the wall
-          (shape c :box (list .022 .022 (- z1 z0)) "#8a6440" (+ x dx) y mid :shadow nil))
-        (loop for z from z0 to z1 by .55                                               ; crossbars
-              do (shape c :box '(.34 .018 .022) "#5a3e26" x (- y .02) z :shadow nil))
-        (shape c :box (list .02 .06 (- z1 z0)) "#5a3e26" (- x (* sx .18)) (+ y .03) mid :shadow nil)   ; a rim on the room side
-        (loop for z from (+ z0 .2) to (- z1 .2) by 1.1
-              do (shape c :box '(.34 .03 .03) "#34363a" x (- y .19) z :rot (list 0 0 (* sx -.6)) :metal .5 :rough .5))))))
 
 (defun fixture-surfaces ()
   "Return the surfaces things can be put on besides the floor and other things.
@@ -76,25 +42,10 @@ Each entry is (x z width depth height)."
 (defparameter *bunk-z* -1.25 "The z of the middle of the two bunks: they are by the rug wall, next to the rack.")
 (defparameter *top-bunk* 1.4 "The height of the upper bunk above the floor.")
 
-(defun make-top-bunk (c)
-  "Build the upper bunk under C: a fixed shelf above the fold-down one, with a short ladder at its foot."
-  (let* ((f *floor*) (g (group c (- .48 *half-width*) (+ f *top-bunk*) *bunk-z*)))
-    (shape g :box '(.72 .06 1.9) "#5a3e26" 0 0 0)
-    (shape g :box '(.68 .1 1.84) "#3f5f73" 0 .08 0 :shadow nil)                  ; mattress
-    (shape g :box '(.5 .09 .34) "#e8e0d0" 0 .17 -.72 :shadow nil)                ; pillow
-    (shape g :box '(.66 .03 1.0) "#a8843c" 0 .145 .38 :shadow nil)               ; blanket
-    (shape g :box '(.03 .12 1.9) "#3a2a1a" .36 .09 0)                            ; a rail so nobody rolls off
-    (dolist (sz '(-.9 .9))                                                       ; brackets to the wall
-      (shape g :box '(.6 .04 .04) "#34363a" -.04 -.2 sz :rot (list 0 0 .5) :metal .5 :rough .5))
-    (dolist (sx '(.12 .34))                                                      ; the ladder at the foot
-      (shape g :box '(.035 1.4 .035) "#5a3e26" sx -.7 .98))
-    (dolist (y '(-1.1 -.75 -.4 -.05)) (shape g :box '(.26 .03 .035) "#8a6440" .23 y .98))))
-
 (defun make-fold (c)
   "Build the fold-down bunk shelf under C on the wall with the rug, as on a train.
 Raised, it is pressed to the wall; folded down, it is a bed. Above it is the fixed upper bunk."
   (setf *fold-nodes* '())
-  (make-top-bunk c)
   ;; the hinge is 30 cm from the wall: the raised shelf stands on edge in front of the rug, mattress to the wall
   ;; (otherwise it would sink into the wall itself), underside to the room; folded down, it reaches the wall
   (let* ((x (- .3 *half-width*)) (f *floor*) (h (group c x (+ f .5) *bunk-z*)))
@@ -278,7 +229,6 @@ is always there; the lower one when it is folded down, otherwise there are the s
         (push (list g s) panes)))
     (let ((in (group c (- x .09) (+ f .95) 0)) (out (group c (+ x .09) (+ f .95) 0)))
       (shape in :box '(.3 .04 2.5) "#8a6440" -.15 -.02 0)
-      (shape c :box '(.2 .04 2.5) "#8a6440" x (+ f .93) 0)                       ; a board in the opening itself: the windowsill is continuous
       ;; the lower shutter: closed, it hangs along the wall under the window; window slid open, it is the counter sill
       (shape out :box '(.55 .05 2.6) "#8a6440" .275 -.025 0)
       (shape out :box '(.06 .06 2.5) "#d8a840" .5 -.015 0 :shadow nil)
@@ -343,30 +293,13 @@ is always there; the lower one when it is folded down, otherwise there are the s
   "Build the stove under C: a box stove level with the washstand, with a wide flat top for the frying pan,
 a wing with a ring for the kettle, and planks that stick out of the firebox while they burn."
   (destructuring-bind (x z) *stove-at*
-    (let* ((g (group c x *floor* z)) (iron "#1e1e22") (top *stove-top*) (legs .12) (body (- top .04 legs)) (mid (+ legs (/ body 2))))
-      (dolist (sx '(-.24 .24)) (dolist (sz '(-.2 .2)) (shape g :box (list .05 legs .05) iron sx (/ legs 2) sz)))
-      (shape g :box (list .56 body .48) iron 0 mid 0 :metal .4 :rough .7)
-      (shape g :box '(.64 .04 .54) "#2a2a30" 0 (- top .02) 0 :metal .4 :rough .6)
-      (shape g :box '(.04 .24 .22) "#2a2a30" .29 mid 0)                           ; the firebox, its door open
-      (shape g :box '(.03 .07 .18) "#2a2a30" .29 (+ legs .06) 0 :shadow nil)       ; the ash door: paper goes here
-      (shape g :box '(.05 .018 .035) "#b03a2c" .2 (+ top .01) -.66 :shadow nil)    ; a box of matches on the wing
-      (shape g :box '(.052 .006 .037) "#e8d060" .2 (+ top .022) -.66 :shadow nil)
+    (let* ((g (group c x *floor* z)) (legs .12) (body (- *stove-top* .04 legs)) (mid (+ legs (/ body 2))))
       (setf *stove-glow* (shape g :box '(.045 .14 .16) "#ff8030" .295 mid 0 :emit "#ff6010" :energy 3.0 :shadow nil))
       ;; the planks in the fire: one for every plank's worth of burning left, the last thrown in burns away first
       (setf *stove-planks*
             (loop for i below 6
                   collect (shape g :box '(.2 .03 .06) "#8a6440" (+ .33 (* .008 i)) (+ mid -.05 (* .02 (mod i 3))) (- (* .04 (mod i 4)) .06)   ; a palm's width out of the door, no more
                                  :rot (list 0 (* .12 (- (mod i 3) 1)) (* .06 (- (mod i 2) .5))) :shadow nil)))
-      (shape g :cyl (list .07 .07 (- 4.2 top) 8) iron -.2 (/ (+ 4.2 top) 2) .17 :metal .4 :rough .7)   ; the pipe through the roof to the outside
-      (shape g :box '(.36 .04 .36) "#3a3a40" -.2 2.72 .17 :metal .5 :rough .6)    ; the flashing on the roof
-      (shape g :cyl '(.2 .02 .14 8) iron -.2 4.3 .17 :metal .4 :rough .7)         ; the rain cap
-      (shape g :cyl '(.02 .02 .12 4) iron -.14 4.2 .17) (shape g :cyl '(.02 .02 .12 4) iron -.26 4.2 .17)
-      ;; the wing to the right of the firebox: a ring where the kettle boils (kettle.lisp)
-      (dolist (sx '(-.2 .2)) (shape g :box (list .05 legs .05) iron sx (/ legs 2) -.66))
-      (shape g :box (list .5 body .46) iron 0 mid -.47 :metal .4 :rough .7)
-      (shape g :box '(.58 .04 .5) "#2a2a30" 0 (- top .02) -.49 :metal .4 :rough .6)
-      (shape g :cyl '(.12 .12 .016 12) "#3a3a40" 0 (+ top .006) -.49 :metal .5 :rough .5 :shadow nil)
-      (shape g :cyl '(.07 .07 .02 10) "#5a2a1e" 0 (+ top .012) -.49 :emit "#ff5020" :energy .8 :shadow nil)   ; 12 mm above the ring under it
       (setf *stove-light* (light g "#ff7030" 0.0 4.5 .4 mid 0)))))
 
 (defun show-fire ()
@@ -415,41 +348,12 @@ The stove is shared."
 (defparameter *map-at* '(1.45 1.3 -1.77) "The position of the map on the window wall, to the left of the window: x, height above the floor, z.")
 
 (defun make-controls (c)
-  (let ((f *floor*))
-    (destructuring-bind (x y z) *switch-at*
-      (shape c :box '(.13 .17 .03) "#d8d2c0" x (+ f y) z :shadow nil)
-      (shape c :box '(.04 .07 .03) "#2a2a30" x (+ f y) (- z .02) :shadow nil))
-    ;; the thermometer on the wall by the window: the red column grows with warmth
-    (let ((g (group c (- *half-width* .1) (+ f 1.25) 1.5)))
-      (shape g :box '(.03 .5 .11) "#e8e4d8" 0 .25 0 :shadow nil)
-      (dotimes (i 6) (shape g :box '(.032 .006 .04) "#34363a" -.002 (+ .06 (* i .08)) .03 :shadow nil))
-      (shape g :ball '(.03 8 5) "#c02a22" -.02 .03 -.02 :shadow nil)
-      (setf *thermo* (shape g :box '(.034 1.0 .022) "#c02a22" -.02 .05 -.02 :shadow nil)))
-    ;; the map on the window wall, between the rack and the window
-    (destructuring-bind (x y z) *map-at*
-      (shape c :box '(.03 .62 .8) "#5a3e26" x (+ f y) z)
-      (shape c :box '(.03 .56 .74) "#d8d0b8" (- x .012) (+ f y) z :shadow nil)
-      (loop for i below 6 do (shape c :ball '(.022 6 4) "#a3262c" (- x .03) (+ f y (* .12 (sin (* i 1.9)))) (+ z -.28 (* i .112)) :shadow nil))
-      (shape c :box '(.01 .012 .62) "#6a5640" (- x .03) (+ f y) z :rot '(.12 0 0) :shadow nil))))
+  ;; the thermometer on the wall by the window: the red column grows with warmth
+  (let ((g (group c (- *half-width* .1) (+ *floor* 1.25) 1.5)))
+    (setf *thermo* (shape g :box '(.034 1.0 .022) "#c02a22" -.02 .05 -.02 :shadow nil))))
 
 (defparameter *washstand-at* '(1.18 2.27) "The x and z of the basin of the washstand.")
 (defparameter *washstand-top* .77 "The height of the washstand worktop: between a stool and the stove top.")
-
-(defun make-washstand (c)
-  "Build the washstand under C in the corner between the window and the door: a long worktop with an
-enamel basin and a water tank on the wall, and a cutting board with a knife on its left half."
-  (let* ((f *floor*) (top *washstand-top*) (g (group c (first *washstand-at*) f (- (second *washstand-at*) .3))))
-    (shape g :box '(.58 .04 1.3) "#8a6440" 0 top 0)                                              ; the worktop
-    (shape g :box (list .54 (- top .02) .62) "#5f7f7a" 0 (/ (- top .02) 2) .32)                   ; the cupboard under the basin
-    (shape g :box (list .02 (- top .14) .56) "#4f6f6a" -.275 (/ top 2) .32 :shadow nil)
-    (shape g :ball '(.02 6 4) "#d8a840" -.295 (+ (/ top 2) .06) .12 :metal .6 :rough .4 :shadow nil)
-    (dolist (sx '(-.25 .25)) (shape g :box (list .04 (- top .02) .04) "#5a3e26" sx (/ (- top .02) 2) -.61))    ; legs under the board half
-    (shape g :cyl '(.24 .19 .11 14) "#e8e4d8" 0 (+ top .075) .3 :rough .3)                        ; the basin
-    (shape g :cyl '(.2 .2 .012 14) "#8ab0c4" 0 (+ top .136) .3 :rough .1 :shadow nil)             ; water in it: a centimetre proud of the rim, or the two flicker
-    (shape g :cyl '(.1 .09 .22 12) "#d8d2c0" .2 (+ top .34) .3 :rough .4)                         ; the tank on the wall
-    (shape g :cyl '(.105 .105 .02 12) "#b8b2a0" .2 (+ top .46) .3 :shadow nil)
-    (shape g :cyl '(.012 .012 .07 6) "#8a8e92" .2 (+ top .2) .3 :metal .6 :rough .4 :shadow nil)  ; the push rod: lift it and water runs
-    (shape g :box '(.34 .025 .5) "#d8b880" -.02 (+ top .032) -.3 :shadow nil)))                   ; the cutting board; its knife chops (kettle.lisp)
 
 ;;; Interaction points. Everything that can be pressed has a position and a size (RADIUS); what fires is what the
 ;;; gaze rests on: we compute how far the gaze ray missed the middle of the thing in fractions of its size, and
@@ -785,4 +689,8 @@ the map."
 
 (defun make-byt (cart)
   "Build everything bolted down into the freshly assembled wagon CART."
-  (make-shelf cart) (make-racks cart) (make-steps cart) (make-fold cart) (make-table cart) (make-stove cart) (make-frost cart) (make-controls cart) (make-washstand cart) (make-window cart))
+  ;; what stands still is drawn in Blender (models/furniture.blend): the shelf unit, the overhead racks, the stepladder,
+  ;; the upper bunk, the stove with its pipe, the washstand, the switch, the thermometer's plate, the map, and the
+  ;; small things on the walls from home.lisp and uyut.lisp. What moves, glows or hides is built below
+  (model cart "furniture")
+  (make-fold cart) (make-table cart) (make-stove cart) (make-frost cart) (make-controls cart) (make-window cart))
