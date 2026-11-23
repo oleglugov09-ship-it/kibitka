@@ -11,3 +11,4 @@ build-web/
 export/
 project/bin/libgdecl.wasm
 project/.slynk-port-*
+*.blend1

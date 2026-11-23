@@ -25,25 +25,6 @@
 
 (defun kc (key) (getf *kc* key))
 
-(defun wall (cart side along from to holes)
-  "Build a wall of CART with the openings HOLES, a list of (a0 a1 y0 y1).
-ALONG is :z for a side wall and :x for an end wall."
-  ;; the walls go up under the roof without a gap: the roof is a half-ellipse wider than the walls, and above
-  ;; a side wall it is ~0.5 m higher than the wall top — side walls are stretched up to it, ends are closed by panels
-  (let* ((f *floor*) (rx (+ *half-width* .25))
-         (wh (+ *wall-height* (if (eq along :z) (+ (* 1.05 (sqrt (max 0 (- 1 (expt (/ (+ *half-width* .08) rx) 2))))) .08) .14))))
-    (flet ((put (a0 a1 y0 y1)
-             (when (and (> (- a1 a0) .01) (> (- y1 y0) .01))
-               (let ((len (- a1 a0)) (mid (/ (+ a0 a1) 2)) (y (+ f (/ (+ y0 y1) 2))))
-                 (if (eq along :z)
-                     (shape cart :box (list .16 (- y1 y0) (+ len .02)) (kc :body) side y mid)
-                     (shape cart :box (list (+ len .02) (- y1 y0) .16) (kc :body) mid y side))))))
-      (let ((a from))
-        (dolist (h (sort (copy-list holes) #'< :key #'first))
-          (destructuring-bind (h0 h1 y0 y1) h
-            (put a h0 0 wh) (put h0 h1 0 y0) (put h0 h1 y1 wh) (setf a h1)))
-        (put a to 0 wh)))))
-
 ;;; The carpet on the wall is a real one, pixelated (tools/make-carpet.py): one pixel is one knot.
 
 (defvar *carpet-mat* nil "The material with the picture of the wall carpet.")
@@ -75,42 +56,13 @@ Its width follows the picture. Return the mesh instance, or NIL when the picture
 (defun make-cart (root)
   (when *cart* (node-queue-free *cart*))
   (setf *cart* (group root) *bulbs* '() *glow* '())
-  (let* ((c *cart*) (f *floor*) (x *half-width*) (z *half-length*) (wh *wall-height*)
-         (win '(-1.3 1.3 .95 2.05)))                             ; the big window opening: z from and to, height from and to
-    ;; the underbody (the wheels belong to the truck, doroga.lisp)
-    (shape c :box (list 3.3 .25 6) (kc :dark) 0 (- f .14) 0)
-    ;; walls: the big window (x+), blank with the carpet (x−), blank with the shelving (z−), with the door (z+)
-    (wall c x :z (- z) z (list win))
-    (wall c (- x) :z (- z) z '())
-    (wall c (- z) :x (- x) x '())
-    (wall c z :x (- x) x '((-.5 .5 0 1.95)))
-    ;; golden battens
-    (dolist (sx '(-1 1)) (dolist (sz '(-1 1)) (shape c :box (list .14 (+ wh .1) .14) (kc :trim) (* sx x) (+ f (/ wh 2)) (* sz z))))
-    (dolist (sx '(-1 1))
-      (shape c :box (list .06 .1 (* 2 z)) (kc :trim) (* sx (+ x .05)) (+ f .05) 0)
-      (shape c :box (list .06 .1 (* 2 z)) (kc :trim) (* sx (+ x .05)) (+ f wh) 0))
-    ;; the wagon roof: planks along a half-ellipse, green outside, light wood inside
-    (let* ((rx (+ x .25)) (ry 1.05) (n 14))
-      (flet ((arc (a) (list (* (cos a) rx) (+ f wh (* (sin a) ry)))))
-        (dotimes (i n)
-          (destructuring-bind (x0 y0) (arc (* i (/ pi n)))
-            (destructuring-bind (x1 y1) (arc (* (1+ i) (/ pi n)))
-              (let ((len (+ (sqrt (+ (expt (- x1 x0) 2) (expt (- y1 y0) 2))) .02))
-                    (mx (/ (+ x0 x1) 2)) (my (/ (+ y0 y1) 2)) (ang (atan (- y1 y0) (- x1 x0))))
-                ;; the roof planks are thick and have a lining that casts a shadow too: a thin roof lets the sun through
-                (shape c :box (list (+ len .04) .2 (+ (* 2 z) .5)) (if (oddp i) (kc :roof) (kc :roof2)) mx my 0 :rot (list 0 0 ang))
-                (shape c :box (list (+ len .03) .04 (- (* 2 z) .1)) (kc :inside) (* mx .95) (- my .14) 0 :rot (list 0 0 ang)))))))
-      ;; the end panels under the roof
-      (dolist (sz '(-1 1))
-        (dolist (layer (list (list (kc :body) (* sz (+ z .06))) (list (kc :inside) (* sz (- z .06)))))   ; paint outside, lining inside
-          (let ((mi (gdext:make-object "MeshInstance3D")))
-            (object-set mi "mesh" (half-ellipse-mesh (+ rx .02) (+ ry .02)))
-            (object-set mi "material_override" (material (first layer) :double t))
-            (node-add-child c mi)
-            (node-3d-set-position mi (v3 0 (+ f wh -.02) (second layer)))))))
+  (let* ((c *cart*) (f *floor*) (x *half-width*) (z *half-length*) (wh *wall-height*))
+    ;; the body is drawn in Blender (models/kibitka-body.blend): the underbody, the walls with the window (x+) and
+    ;; the door (z+) openings, the golden battens, the roof with its lining and end panels, the floor.
+    ;; The wheels belong to the truck (doroga.lisp); what moves or glows is built below and in the other files
+    (model c "kibitka-body")
     (shape c :ball '(.28 12 6) "#ffd890" 0 (+ f wh .45) (- (- z) .05) :emit "#ffb050" :energy 2 :scale '(1 1 .2))
-    ;; inside: the floor, the carpet on the floor, the lining
-    (shape c :box (list (- (* 2 x) .1) .04 (- (* 2 z) .1)) (kc :floor) 0 (+ f .02) 0)
+    ;; inside: the carpet on the floor, the lining
     (shape c :box '(1.8 .02 2.8) "#2a3a6a" -.15 (+ f .05) 0)
     (shape c :box '(1.5 .025 2.5) "#d8a840" -.15 (+ f .055) 0)
     (shape c :box '(1.3 .03 2.3) "#2a3a6a" -.15 (+ f .06) 0)
@@ -140,18 +92,6 @@ Its width follows the picture. Return the mesh instance, or NIL when the picture
     (make-door c)
     (apply-lights)
     c))
-
-(defun half-ellipse-mesh (rx ry &optional (n 24))
-  "Return a half-ellipse mesh (a triangle fan) in the XY plane: the panel under the roof."
-  (let ((st (gdext:make-object "SurfaceTool")))
-    (object-call st "begin" 3)
-    (dotimes (i n)
-      (let ((a0 (* i (/ pi n))) (a1 (* (1+ i) (/ pi n))))
-        (object-call st "add_vertex" (v3 0 0 0))
-        (object-call st "add_vertex" (v3 (* rx (cos a0)) (* ry (sin a0)) 0))
-        (object-call st "add_vertex" (v3 (* rx (cos a1)) (* ry (sin a1)) 0))))
-    (object-call st "generate_normals")
-    (object-call st "commit")))
 
 (defun apply-lights ()
   "Show or hide the light inside (the lamp, the glow, the fairy lights) according to *LIGHTS-ON*."

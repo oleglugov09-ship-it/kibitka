@@ -24,6 +24,7 @@ live:
 # then an export with the web_dlink_nothreads_release template.
 web:
 	tools/names.py
+	tools/make-models.sh
 	web/build.sh
 	tools/pack-assets.py
 	tools/keep-raw.sh

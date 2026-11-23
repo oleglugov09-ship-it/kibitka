@@ -10,7 +10,7 @@
     :components ((:file "packages") (:file "delo") (:file "tverd")
                  (:file "random")
                  (:file "engine-classes")
-                 (:file "shapes")
+                 (:file "shapes") (:file "models")
                  (:file "economy")
                  (:file "profile")
                  (:file "textures")
