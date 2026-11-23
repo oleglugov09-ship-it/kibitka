@@ -42,7 +42,10 @@ class Tab:
                 print("ДИАЛОГ", msg["params"]["message"][:300], flush=True); self.send("Page.handleJavaScriptDialog", accept=False)
             elif m == "Runtime.consoleAPICalled":
                 text = " ".join(str(a.get("value", a.get("description", ""))) for a in msg["params"]["args"])
-                if msg["params"]["type"] == "error": print("[error]", text[:300], flush=True)
+                # the browser's own errors, and the game's: an error in a frame is an ordinary log line there
+                if (msg["params"]["type"] == "error" and "user://mods" not in text and "get_directories_at" not in text) \
+                        or "Error (" in text or "Ошибка (" in text:
+                    print("[error]", text[:300], flush=True)
             elif m == "Runtime.exceptionThrown":
                 print("ИСКЛЮЧЕНИЕ", msg["params"]["exceptionDetails"].get("exception", {}).get("description", "")[:300], flush=True)
             elif "id" in msg: self.replies[msg["id"]] = msg

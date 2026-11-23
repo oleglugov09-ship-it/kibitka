@@ -56,7 +56,8 @@ Each color is parsed only once."
           (object-set m "roughness" rough)
           (object-set m "metallic" metal)
           (object-set m "metallic_specular" (if (> metal 0) .5 .15))   ; non-metals get almost no specular - no sparkling far away
-          (when vertex (object-set m "vertex_color_use_as_albedo" t) (object-set m "vertex_color_is_srgb" t))   ; vertex colors are given in sRGB, like "#rrggbb"
+          ;; vertex colors are given in sRGB, like "#rrggbb"
+          (when vertex (object-set m "vertex_color_use_as_albedo" t) (object-set m "vertex_color_is_srgb" t))
           (when alpha (object-set m "transparency" 1))           ; TRANSPARENCY_ALPHA
           (when unshaded (object-set m "shading_mode" 0))        ; SHADING_MODE_UNSHADED
           (when double (object-set m "cull_mode" 2))             ; visible from both sides
@@ -253,7 +254,8 @@ Each shape is lifted through its chain of groups up to the root, which is under 
                               (object-set mmi "multimesh" mm)
                               (object-set mmi "material_override" mat)
                               (unless shadow (object-set mmi "cast_shadow" 0))
-                              (when range (object-set mmi "visibility_range_end" (+ range 60.0)))   ; a lot lies all over its cell: judged from the cell's middle
+                              ;; a lot lies all over its cell: judged from the cell's middle
+                              (when range (object-set mmi "visibility_range_end" (+ range 60.0)))
                               (node-add-child root mmi))))))
                lots))))
 
@@ -313,6 +315,31 @@ It lets a thing be assembled from shapes and moved as a whole."
     (when (and *batch* (not *tracking*) (batch-offset parent))
       (setf (gethash g (second *batch*)) (list parent (float x 1.0) (float y 1.0) (float z 1.0))))
     g))
+
+;;; Lamps. A lamp is a bulb that glows and, often, the light it gives; the two are put together here, so that every
+;;; lamp of one tone is the same colour, and so that there is one place to count the lights: each point light
+;;; costs the renderer another pass over everything it reaches.
+
+(defparameter *lamp-tones*
+  '(:warm   (:rgb "#ffe2a8" :glow "#ffcf8a" :light "#ffcf8a")             ; a bulb under a tin shade
+    :soft   (:rgb "#fff0c8" :glow "#ffe2a8" :light "#ffd9a0")             ; a globe, a chandelier
+    :amber  (:rgb "#ffcf8a" :glow "#ffb060" :light "#ffb866")             ; a sodium lamp
+    :window (:rgb "#ffcf7a" :glow "#ffb866" :light "#ffb866")             ; a window with somebody at home
+    :cold   (:rgb "#f4f6ff" :glow "#e8f0ff" :light "#dfe8ff")             ; a floodlight
+    :alarm  (:rgb "#ff3020" :glow "#ff2010" :light "#ff5a40"))            ; a red lamp
+  "The tones of lamp: the colour of the bulb, of its glow, and of the light it gives.")
+
+(defun lamp (parent tone kind dims x y z &key reach (power 2.0) at (shine 3) unshaded rot scale)
+  "Put a lamp of the tone TONE (a key of *LAMP-TONES*) under PARENT: a glowing bulb, the shape KIND of DIMS at (X Y Z), and,
+with REACH, the light it gives - a point light of that range and of POWER, at the bulb or, where the bulb is set in a
+wall and the light has to stand off it, at AT, a list (x y z). SHINE is how bright the bulb itself glows. Return the bulb."
+  (let* ((spec (or (getf *lamp-tones* tone) (error "No lamp of the tone ~s" tone)))
+         (bulb (shape parent kind dims (getf spec :rgb) x y z :emit (getf spec :glow) :energy shine
+                      :unshaded unshaded :rot rot :scale scale :shadow nil)))
+    (when reach
+      (destructuring-bind (lx ly lz) (or at (list x y z))
+        (light parent (getf spec :light) power reach lx ly lz)))
+    bulb))
 
 (defun light (parent rgb energy range x y z)
   "Add a point light (OmniLight3D) of color RGB, ENERGY and RANGE under PARENT at (X Y Z).

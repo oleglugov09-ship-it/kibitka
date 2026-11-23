@@ -23,6 +23,7 @@ live:
 # Browser: web/build.sh cross-compiles gdecl and the game for wasm32 (project/bin/libgdecl.wasm),
 # then an export with the web_dlink_nothreads_release template.
 web:
+	tools/names.py
 	web/build.sh
 	tools/keep-raw.sh
 	$(GODOT) --headless --path project --import

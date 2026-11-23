@@ -17,6 +17,8 @@
 (defparameter *mega-first* 24 "The number of cells the way runs straight and level for after the door: the threshold lies along them.")
 (defvar *mega-parts* nil "The parts of the place that is shown, a plist: :cells (the group the cells hang in), :turn and :tilt (what
 turns them against the wagon), :entry (the tunnel we came by), :at (the cell all is built around), and what its world added.")
+(defparameter *way-x* -1.8 "Where the middle of the way lies, to the right of the wagon's own middle, in metres: the wagon keeps to
+its lane, so the way is a little to its left.")
 (defvar *mega-cells* (make-hash-table) "The cells built right now: a table from a cell's number to its node.")
 
 ;;; The worlds. Which place lies behind the tunnel is *MEGA-WORLD*; what is known of each is in *WORLDS*, a plist
@@ -37,8 +39,10 @@ turns them against the wagon), :entry (the tunnel we came by), :at (the cell all
   "Make the world KEY known, with what PLIST says of it."
   (setf (getf *worlds* key) plist (getf *place-rules* key) (getf plist :rules))
   key)
-(defun world (key &optional default) "Return what is known under KEY of the world behind the tunnel, or DEFAULT." (getf (getf *worlds* *mega-world*) key default))
-(defun world-call (key &rest args) "Call the function the world behind the tunnel has under KEY, if it has one." (let ((f (world key))) (and f (apply f args))))
+(defun world (key &optional default) "Return what is known under KEY of the world behind the tunnel, or DEFAULT."
+       (getf (getf *worlds* *mega-world*) key default))
+(defun world-call (key &rest args) "Call the function the world behind the tunnel has under KEY, if it has one."
+       (let ((f (world key))) (and f (apply f args))))
 
 ;;; The zones. What is known of each kind of zone is in *MEGA-ZONES*; a world adds its own with ADD-ZONES. :NAME is
 ;;; what the corner of the screen says, :BUILD the function that builds a cell of it. :TURN is how many degrees a
@@ -48,13 +52,15 @@ turns them against the wagon), :entry (the tunnel we came by), :at (the cell all
 ;;; lit - are content, and the base mod sets them with TUNE-ZONES.
 
 (defvar *mega-zones* '() "The kinds of zones and what is known of each: see above.")
-(defun add-zones (plist) "Make the kinds of zones in PLIST known." (loop for (kind spec) on plist by #'cddr do (setf (getf *mega-zones* kind) (copy-list spec))))
+(defun add-zones (plist) "Make the kinds of zones in PLIST known."
+       (loop for (kind spec) on plist by #'cddr do (setf (getf *mega-zones* kind) (copy-list spec))))
 (defun tune-zones (plist)
   "Set what PLIST says of zones already known, leaving the rest of each as it is: PLIST goes from a kind of zone to a
 plist of what to set. The numbers of the zones are set this way by the base mod (project/mods/base/worlds.lisp)."
   (loop for (kind spec) on plist by #'cddr
         do (loop for (key value) on spec by #'cddr do (setf (getf (getf *mega-zones* kind) key) value))))
-(defun zone (kind key &optional default) "Return what is known under KEY of the zones of KIND, or DEFAULT." (getf (getf *mega-zones* kind) key default))
+(defun zone (kind key &optional default) "Return what is known under KEY of the zones of KIND, or DEFAULT."
+       (getf (getf *mega-zones* kind) key default))
 
 (defvar *zone-ends* (make-array 0 :adjustable t :fill-pointer t) "The cell each zone known so far ends before, by the zone's number.")
 
@@ -137,17 +143,21 @@ not a part of the cell's batch (shapes.lisp)."
                      (ecase kind
                        (:ink (object-set node "visible" (< ahead *mega-pen*)))
                        (:drop (destructuring-bind (x y z) numbers                       ; lowered ahead of us, lifted behind
-                                (node-3d-set-position node (v3 x (+ y (cond ((> ahead 130.0) (* 1.1 (- ahead 130.0))) ((< ahead -90.0) (* 1.1 (- -90.0 ahead))) (t 0.0))) z))))
+                                (node-3d-set-position node (v3 x
+                                                               (+ y (cond ((> ahead 130.0) (* 1.1 (- ahead 130.0)))
+                                                                          ((< ahead -90.0) (* 1.1 (- -90.0 ahead))) (t 0.0))) z))))
                        (:train (destructuring-bind (x y z way period phase) numbers      ; comes in, stands at the platform, goes
                                  (let* ((u (mod (+ phase (/ *time* period)) 1.0))
-                                        (off (cond ((< u .3) (* 2600.0 (expt (- 1.0 (/ u .3)) 2))) ((< u .7) 0.0) (t (- (* 2600.0 (expt (/ (- u .7) .3) 2)))))))
+                                        (off (cond ((< u .3) (* 2600.0 (expt (- 1.0 (/ u .3)) 2))) ((< u .7) 0.0)
+                                                   (t (- (* 2600.0 (expt (/ (- u .7) .3) 2)))))))
                                    (node-3d-set-position node (v3 x y (+ z (* way off)))))))
                        (:swing (destructuring-bind (amp period phase) numbers            ; a boom going from side to side
                                  (node-3d-set-rotation node (v3 0 (* amp (sin (+ phase (/ (* 6.283 *time*) period)))) 0))))
                        (:spin (destructuring-bind (yaw period) numbers                   ; a wheel turning
                                 (node-3d-set-rotation node (v3 0 yaw (/ (* 6.283 *time*) period)))))
                        (:press (destructuring-bind (x z y0 y1 period phase) numbers
-                                 (node-3d-set-position node (v3 x (+ y0 (* (- y1 y0) (+ .5 (* .5 (sin (+ phase (/ (* 6.283 *time*) period))))))) z)))))))))
+                                 (node-3d-set-position node (v3 x (+ y0 (* (- y1 y0) (+ .5 (* .5 (sin (+ phase (/ (* 6.283 *time*) period)))))))
+                                                                z)))))))))
              *mega-lives*)))
 
 ;;; Each kind of zone builds its cell in a function of its own (a single function for all of them grew past what
@@ -172,7 +182,7 @@ number picked by hand, and cannot fall together with another by mistake."
 ;;; A cell is built by its zone; then, if the zone says so, the hall around it (the megastructure's); then, every
 ;;; sixteenth cell, one of our own bus stops under a lamp.
 
-(defun mega-slab (g w rgb &optional (x -1.8))
+(defun mega-slab (g w rgb &optional (x *way-x*))
   "Lay a slab W metres wide along the cell G, its top just under the wheels."
   (shape g :box (list w 1.0 *mega-cell*) rgb x -.55 (- (/ *mega-cell* 2)) :shadow nil))
 
@@ -182,8 +192,7 @@ number picked by hand, and cannot fall together with another by mistake."
     (shape g :box '(9.0 .5 14.0) "#6f6e69" 8.6 -.3 -20.0 :shadow nil)
     (build-stop stop (* 7.0 (floor i 16)))
     (shape g :box '(.14 5.6 .14) "#3a3c40" 5.0 2.8 -15.0 :shadow nil)
-    (shape g :box '(.6 .2 .4) "#ffe2a8" 5.3 5.6 -15.0 :emit "#ffcf8a" :energy 3 :shadow nil)
-    (light g "#ffcf8a" 2.2 26.0 5.6 5.0 -15.0)))
+    (lamp g :warm :box '(.6 .2 .4) 5.3 5.6 -15.0 :reach 26.0 :power 2.2 :at (list 5.6 5.0 -15.0))))
 
 (defun build-mega-cell (cells i)
   "Build cell I under CELLS and return its group. Inside it x is to the right, y up, and the cell runs from z = 0
@@ -272,11 +281,11 @@ group. The cells themselves are built by STEP-MEGA-CELLS as the wagon goes."
 (defun build-tunnel-threshold (entry)
   (shape entry :box '(.8 7.0 330.0) "#3c3c40" -7.9 3.5 -35.0 :shadow nil)
   (shape entry :box '(.8 7.0 330.0) "#3c3c40" 4.3 3.5 -35.0 :shadow nil)
-  (shape entry :box '(13.0 .8 330.0) "#34343a" -1.8 7.4 -35.0 :shadow nil)
-  (shape entry :box '(11.4 .12 330.0) "#2c2c2f" -1.8 .0 -35.0 :shadow nil)                              ; its roadway
-  (loop for z from 126.0 downto -196.0 by 8.0 do (shape entry :box '(.5 .12 2.4) "#2a2620" -1.8 6.95 z :shadow nil))
+  (shape entry :box '(13.0 .8 330.0) "#34343a" *way-x* 7.4 -35.0 :shadow nil)
+  (shape entry :box '(11.4 .12 330.0) "#2c2c2f" *way-x* .0 -35.0 :shadow nil)                              ; its roadway
+  (loop for z from 126.0 downto -196.0 by 8.0 do (shape entry :box '(.5 .12 2.4) "#2a2620" *way-x* 6.95 z :shadow nil))
   (dolist (x '(-13.0 9.4)) (shape entry :box '(9.0 12.0 1.6) "#9a9890" x 6.0 -200.4 :shadow nil))
-  (shape entry :box '(31.4 4.6 1.6) "#9a9890" -1.8 10.0 -200.4 :shadow nil))
+  (shape entry :box '(31.4 4.6 1.6) "#9a9890" *way-x* 10.0 -200.4 :shadow nil))
 
 (add-door :tunnel
           :in (lambda () (and *tunnel* *mega* (> *dir* 0) (< (+ (first *tunnel*) 90.0) *dist* (- (second *tunnel*) 40.0))))
@@ -327,7 +336,8 @@ its air."
     (when *land* (object-set *land* "visible" (not in)))
     (when *world* (object-set *world* "visible" (not in)))
     (cond ((and in (null *mega-node*)) (setf *mega-node* (build-mega)))
-          ((and (not in) *mega-node*) (node-queue-free *mega-node*) (clrhash *mega-cells*) (clrhash *mega-lives*) (setf *mega-node* nil *mega-parts* nil)))
+          ((and (not in) *mega-node*) (node-queue-free *mega-node*) (clrhash *mega-cells*) (clrhash *mega-lives*)
+                (setf *mega-node* nil *mega-parts* nil)))
     (set-air (and in (or (world-call :air *mega-s*) (list :gloom 1.0))))
     (when (and in *mega-parts*)
       (step-mega-cells)

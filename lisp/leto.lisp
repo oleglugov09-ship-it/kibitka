@@ -42,7 +42,7 @@ a storm in its hour, clear otherwise."
 (defun leto-road (g i c mid)
   (mega-slab g 9.0 "#9a9484")
   (dolist (x '(-6.9 3.3)) (shape g :box (list 1.2 .9 c) "#b0a070" x -.52 mid :shadow nil))
-  (dolist (z (list 0.0 mid)) (shape g :box '(9.0 .02 .14) "#8d8a7c" -1.8 -.03 z :shadow nil))               ; the seams of the slabs
+  (dolist (z (list 0.0 mid)) (shape g :box '(9.0 .02 .14) "#8d8a7c" *way-x* -.03 z :shadow nil))               ; the seams of the slabs
   (shape g :box '(.28 8.5 .28) "#6a4a32" -8.6 4.2 -20.0 :shadow nil)
   (shape g :box '(2.4 .16 .16) "#6a4a32" -8.6 7.8 -20.0 :shadow nil)
   (dolist (x '(-9.6 -7.6)) (shape g :box (list .05 .05 c) "#20242c" x 7.7 mid :shadow nil))
@@ -63,20 +63,21 @@ or two of that leaf colour by the roadside."
   (flet ((r (k) (vr (+ i 5000.5) (float k))))
     (dotimes (k count)
       (let ((side (if (< (r (+ 10 k)) .5) -1 1)))
-        (leto-pine g (+ -1.8 (* side (+ near (* 170.0 (r (+ 20 k)) (r (+ 30 k)))))) (* (- c) (r (+ 40 k))) (+ .8 (* .8 (r (+ 50 k)))) needle)))
+        (leto-pine g (+ *way-x* (* side (+ near (* 170.0 (r (+ 20 k)) (r (+ 30 k)))))) (* (- c) (r (+ 40 k))) (+ .8 (* .8 (r (+ 50 k)))) needle)))
     (when (and birches (< (r 1) .6))
-      (leto-birch g (+ -1.8 (* (if (< (r 2) .5) -1 1) (+ 9.0 (* 6.0 (r 3))))) (* (- c) (r 4)) (+ .8 (* .5 (r 5))) birches))))
+      (leto-birch g (+ *way-x* (* (if (< (r 2) .5) -1 1) (+ 9.0 (* 6.0 (r 3))))) (* (- c) (r 4)) (+ .8 (* .5 (r 5))) birches))))
 
 (defun leto-sunflowers (g i c mid at &optional (head "#ffd21e"))
   "Put a field of sunflowers on either side of the road: the plants one can count by the roadside, and behind them
 the field as one sheet of the same yellow."
   (flet ((r (k) (vr (+ i 6000.5) (float k))))
     (dolist (side '(-1 1))
-      (let ((edge (+ -1.8 (* side (if (and (= at 8) (> side 0)) 22.0 8.4)))))               ; room for the bus stop
+      (let ((edge (+ *way-x* (* side (if (and (= at 8) (> side 0)) 22.0 8.4)))))               ; room for the bus stop
         (shape g :box (list 600.0 1.5 c) "#d2a416" (+ edge (* side 303.0)) .7 mid :shadow nil)             ; the field
         (shape g :box (list 3.0 1.3 c) "#3f7d28" (+ edge (* side 1.5)) .6 mid :shadow nil)                  ; its green edge
         (dotimes (k 14)
-          (let ((x (+ edge (* side (+ .3 (* 2.8 (r (+ 10 k (* 40 side)))))))) (z (* (- c) (/ (+ k (r (+ 30 k))) 14.0))) (h (+ 1.5 (* .5 (r (+ 50 k))))))
+          (let ((x (+ edge (* side (+ .3 (* 2.8 (r (+ 10 k (* 40 side)))))))) (z (* (- c) (/ (+ k (r (+ 30 k))) 14.0)))
+                   (h (+ 1.5 (* .5 (r (+ 50 k))))))
             (shape g :box (list .08 h .08) "#3f8f2e" x (/ h 2) z :shadow nil)
             (shape g :cyl '(.5 .5 .06 9) head x h z :rot (list (/ pi 2) (* side -.6) 0) :emit head :energy .35 :shadow nil)
             (shape g :cyl '(.19 .19 .08 8) "#6a3a12" x h z :rot (list (/ pi 2) (* side -.6) 0) :shadow nil)))))))
@@ -111,7 +112,8 @@ the field as one sheet of the same yellow."
                (shape g :box '(9.0 3.2 12.0) rgb bx 1.9 bz)
                (shape g :box '(7.4 7.4 12.6) "#b04a32" bx 3.6 bz :rot (list 0 0 (/ pi 4)) :scale '(1 .55 1))
                (dolist (dz '(-2.5 2.5))
-                 (shape g :box '(.1 1.3 1.6) (if lit "#ffcf70" "#dfeaf2") (- bx 4.56) 2.2 (+ bz dz) :emit (and lit "#ffb866") :energy 2.5 :shadow nil))))
+                 (shape g :box '(.1 1.3 1.6) (if lit "#ffcf70" "#dfeaf2") (- bx 4.56) 2.2 (+ bz dz) :emit (and lit "#ffb866") :energy 2.5
+                        :shadow nil))))
     (when lit                                                            ; a garland over the dance floor
       (dotimes (k 14)
         (let ((rgb (nth (mod k 4) '("#ffd21e" "#ff5a3a" "#5ad0ff" "#7dff7a"))))
@@ -136,11 +138,12 @@ the field as one sheet of the same yellow."
 
 ;;; The hours.
 
-(defzone zone-morning                                                        ; morning by the river: mist over the meadow, the pines coming out of it one by one
+;; morning by the river: mist over the meadow, the pines coming out of it one by one
+(defzone zone-morning
          (leto-road g i c mid)
          (if (= (mod (zone-cell i) 32) 20)
              (progn                                                       ; the river, and the bridge over it
-               (shape g :box (list 1400.0 .3 (- c 4.0)) "#8fc6ec" -1.8 -.3 mid :rough .1 :metal .3 :shadow nil)
+               (shape g :box (list 1400.0 .3 (- c 4.0)) "#8fc6ec" *way-x* -.3 mid :rough .1 :metal .3 :shadow nil)
                (shape g :box (list 420.0 .32 8.0) "#ffe9d2" -230.0 -.28 (- mid 6.0) :emit "#ffe9d2" :energy .5 :shadow nil)
                (dolist (x '(-6.5 2.9)) (shape g :box (list .25 1.1 c) "#f4f1e6" x .55 mid :shadow nil)))
              (leto-wood g i c "#2f7d48" :count 5 :birches "#74b848")))
@@ -177,13 +180,15 @@ the field as one sheet of the same yellow."
 
 (defun build-summer-far (g)
   "Put under G, in the wagon's axes, what does not go by: the land to the horizon and the town ahead."
-  (shape g :box '(5200.0 .3 5200.0) *summer-grass* -1.8 -.45 0.0 :shadow nil)
-  (let ((town (group g -1.8 0.0 (- *summer-town*))))
+  (shape g :box '(5200.0 .3 5200.0) *summer-grass* *way-x* -.45 0.0 :shadow nil)
+  (let ((town (group g *way-x* 0.0 (- *summer-town*))))
     (dotimes (k 22)
-      (let* ((x (- (* 60.0 k) 630.0 (* 40.0 (vr k 3.0)))) (h (+ 50.0 (* 150.0 (vr k 5.0) (vr k 6.0)))) (w (+ 34.0 (* 40.0 (vr k 7.0)))) (z (* 260.0 (- (vr k 8.0) .5))))
+      (let* ((x (- (* 60.0 k) 630.0 (* 40.0 (vr k 3.0)))) (h (+ 50.0 (* 150.0 (vr k 5.0) (vr k 6.0)))) (w (+ 34.0 (* 40.0 (vr k 7.0))))
+                (z (* 260.0 (- (vr k 8.0) .5))))
         (shape town :box (list w h 30.0) (if (evenp k) "#e9edf2" "#d6dde6") x (/ h 2) z :emit "#c9d6e6" :energy .35 :shadow nil)
         (dotimes (j 3)                                                   ; a few windows that show at night
-          (shape town :box '(3.0 3.0 .6) "#ffcf70" (+ x (* w (- (vr (+ k (* 9 j)) 11.0) .5) .8)) (* h (+ .2 (* .6 (vr (+ k (* 9 j)) 12.0)))) (+ z 15.4)
+          (shape town :box '(3.0 3.0 .6) "#ffcf70" (+ x (* w (- (vr (+ k (* 9 j)) 11.0) .5) .8)) (* h (+ .2 (* .6 (vr (+ k (* 9 j)) 12.0))))
+                 (+ z 15.4)
                  :emit "#ffb866" :energy 2.0 :unshaded t :shadow nil))))
     (shape town :cyl '(3.0 9.0 330.0 8) "#dfe4ea" 120.0 165.0 -80.0 :emit "#c9d6e6" :energy .35 :shadow nil)      ; the television tower
     (shape town :cyl '(13.0 13.0 14.0 10) "#dfe4ea" 120.0 215.0 -80.0 :emit "#c9d6e6" :energy .35 :shadow nil)
@@ -200,12 +205,13 @@ the field as one sheet of the same yellow."
     :evening  (:name "Вечер"                :build zone-evening)
     :night    (:name "Ночь"                 :build zone-night)))
 
-(defun summer-zone-kind (z) "Return the kind of the summer's zone number Z: the hours, round and round." (nth (* 2 (mod z (/ (length *summer-hours*) 2))) *summer-hours*))
+(defun summer-zone-kind (z) "Return the kind of the summer's zone number Z: the hours, round and round."
+       (nth (* 2 (mod z (/ (length *summer-hours*) 2))) *summer-hours*))
 
 (defun build-summer-parts (g turn entry)
   "Build what in the summer does not go by: the hill the tunnel comes out of, the land to the horizon and the town ahead."
   (declare (ignore turn))
-  (shape entry :box '(320.0 34.0 330.0) *summer-grass* -1.8 24.8 -35.0 :shadow nil)
+  (shape entry :box '(320.0 34.0 330.0) *summer-grass* *way-x* 24.8 -35.0 :shadow nil)
   (dolist (x '(-88.4 84.8)) (shape entry :box '(160.0 8.0 330.0) *summer-grass* x 3.9 -35.0 :shadow nil))
   (list :town (build-summer-far g)))
 
