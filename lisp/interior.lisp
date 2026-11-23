@@ -34,6 +34,8 @@ addresses on the first load; new parcels are brought to the window (trade.lisp).
   (destructuring-bind (w h d) (third (assoc kind *kinds*))
     (if (oddp spin) (values d h w) (values w h d))))
 
+(defun crate-model (kind) "Return the name of the model of a crate of KIND, :CRATE or :BOX (models/item-KIND.blend)." (format nil "item-~(~a~)" kind))
+
 (defun build-item (parent kind x y z spin &optional addr props)
   "Build a thing of KIND under PARENT at X and Z, its bottom at height Y above the floor.
 SPIN is its rotation in quarter turns, ADDR the town number on the side of a crate, PROPS its properties.
@@ -43,11 +45,7 @@ Return the node."
     (ecase (if (and (good-p kind) (not (member kind '(:milk :blin)))) :good kind)   ; milk and blini have clauses of their own
       ((:crate :box)
        (destructuring-bind (w h d) (third (assoc kind *kinds*))
-         (shape g :box (list w h d) wood 0 (/ h 2) 0)
-         (dolist (sx '(-1 1))                                   ; slats at the corners and across - a crate, not a cube
-           (dolist (sz '(-1 1)) (shape g :box (list .06 (+ h .01) .06) dark (* sx (- (/ w 2) .02)) (/ h 2) (* sz (- (/ d 2) .02))))
-           (shape g :box (list .03 .08 (+ d .02)) dark (* sx (/ w 2)) (* h .72) 0)
-           (shape g :box (list .03 .08 (+ d .02)) dark (* sx (/ w 2)) (* h .28) 0))
+         (model g (crate-model kind))
          (if addr                                                 ; a parcel: the address on all four sides, top and bottom -
              (let ((town (parcel-town addr)))                     ; the town's stamp: seen however it stands and from whichever shelf you look
                (let ((from (parcel-from addr)))                   ; a story parcel: the crate says who it is from, with a wax seal

@@ -126,18 +126,13 @@ the field as one sheet of the same yellow."
 (defun leto-fire (g)
   "Put a fire by the road, and those who sit round it."
   (let ((f (group g -14.0 0.0 -21.0)))
-    (dotimes (k 5) (shape f :cyl '(.16 .16 2.2 6) "#3a2416" 0 .5 0 :rot (list 0 (* k 1.26) 1.05) :shadow nil))
-    (shape f :cone '(.9 2.2 7) "#ff7a1e" 0 1.2 0 :emit "#ff7a1e" :energy 3 :unshaded t :shadow nil)
-    (shape f :cone '(.55 1.7 7) "#ffb02e" 0 1.3 0 :emit "#ffb02e" :energy 3 :unshaded t :shadow nil)
+    (model f "leto-fire")
     (live :press (shape f :cone '(.3 1.2 7) "#fff0a0" 0 1.4 0 :emit "#fff0a0" :energy 3 :unshaded t :shadow nil) 0.0 0.0 1.3 1.75 .7 0.0)
     (light f "#ff8a2e" 3.2 46.0 0 1.8 0)
     (dotimes (p 6)
       (let* ((a (+ .4 (* p 1.05))) (s (group f (* 3.6 (cos a)) 0.0 (* 3.6 (sin a)))))
         (node-3d-set-rotation s (v3 0 (- (/ pi 2) a) 0))
-        (shape s :cyl '(.28 .28 1.8 6) "#5a3a26" 0 .3 0 :rot (list 0 0 (/ pi 2)) :shadow nil)
-        (shape s :box '(.6 .85 .4) "#f1ede2" 0 1.05 0 :shadow nil)
-        (shape s :box '(.62 .16 .42) "#d8362b" 0 1.4 0 :shadow nil)
-        (shape s :ball '(.26 7 5) "#e8b890" 0 1.75 0 :shadow nil)))))
+        (model s "leto-sitter")))))
 
 ;;; The hours.
 

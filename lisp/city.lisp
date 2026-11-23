@@ -268,19 +268,14 @@ It is a sign on posts, behind it a paved lot and two rows of stalls under stripe
 stalls display what this town makes, with sellers behind them. This is where we park to trade:
 buyers and sellers come up at the sound of the bell (trade.lisp)."
   (let* ((g (lot d 1)) (tw (town-at d)) (makes (and tw (town-makes (town-index tw)))))
-    (dolist (sz '(-4.2 -18.6)) (shape g :box '(.14 3.6 .14) "#5a3e26" 3.6 1.8 sz))
-    (shape g :box '(.1 .7 14.5) "#2c4a7a" 3.6 3.4 -11.4 :shadow nil)
+    (model g "market")
     (sign g "РЫНОК" 3.54 3.4 -11.4 :h .5 :rgb "#e8e0d0")
-    (shape g :box '(15.0 .1 16.0) "#8a8880" 12.0 .32 -11.4 :shadow nil)                 ; paved lot
+                     ; paved lot
     (loop for row from 0 below 2
           do (loop for k from 0 below 4
                    do (let* ((x (+ 7.5 (* row 6.5))) (z (+ -17.0 (* k 3.8))) (stall (group g x .37 z))
                              (stripe (nth (mod (+ k row) 3) '("#a3262c" "#2c4a7a" "#3c5a48"))))
-                        (shape stall :box '(.9 .9 2.4) "#8a6440" 0 .45 0)                 ; stall counter
-                        (shape stall :box '(1.0 .06 2.5) "#6a4a2e" 0 .93 0 :shadow nil)
-                        (dolist (pz '(-1.2 1.2)) (shape stall :box '(.08 2.3 .08) "#5a3e26" .55 1.15 pz))
-                        (shape stall :box '(1.9 .06 2.8) "#e8e0d0" .1 2.3 0 :rot '(0 0 .12))        ; awning
-                        (dotimes (i 3) (shape stall :box '(1.92 .065 .46) stripe .1 2.3 (* (- i 1) .93) :rot '(0 0 .12) :shadow nil))
+                        (model stall "market-stall" 0.0 0.0 0.0 :paint (list stripe))
                         (when makes                                                         ; this town's goods
                           (dotimes (i 3)
                             ;; BUILD-ITEM places a thing 'above the wagon floor', so subtract the floor height
@@ -293,7 +288,7 @@ buyers and sellers come up at the sound of the bell (trade.lisp)."
                               (node-3d-set-rotation cat (v3 0 (- (/ pi 2)) 0))
                               (node-3d-set-scale (first (make-cat cat (+ (* 7 k) (* 3 row) (round d)))) (v3 .62 .62 .62)))))
                         (shape stall :box '(.6 .4 .5) "#7a5a3a" 1.4 .2 (if (evenp k) .8 -.8)))))        ; crate by the stall
-    (dolist (z '(-19.6 -3.2)) (shape g :box '(.5 .9 .5) "#55554f" 5.2 .8 z))                 ; litter bins at the entrance
+                     ; litter bins at the entrance
     g))
 
 (defun depot (g)
@@ -310,9 +305,9 @@ buyers and sellers come up at the sound of the bell (trade.lisp)."
 
 (defun kvas (g x z)
   "Add to G at (X, Z) a kvass barrel on wheels."
-  (shape g :cyl '(.9 .9 2.6 12) "#c9a13a" x 1.3 z :rot (list (/ pi 2) 0 0))
-  (dolist (sz '(-.7 .7)) (shape g :cyl '(.4 .4 .2 8) "#141416" (+ x .9) .4 (+ z sz) :rot (list 0 0 (/ pi 2))))
-  (sign g "КВАС" (- x .92) 1.4 z :h .6 :rgb "#6a3a2e"))
+  (let ((k (group g x 0 z)))
+    (model k "kvas")
+    (sign k "КВАС" -.92 1.4 0 :h .6 :rgb "#6a3a2e")))
 
 ;;; Laying out the buildings
 

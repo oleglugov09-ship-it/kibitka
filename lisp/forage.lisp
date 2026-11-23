@@ -45,38 +45,13 @@ gives nothing. The weather is not asked: it may have just changed, and the plant
          (find-if (lambda (s) (and (eq (first s) kind) (eql (second s) i))) (forage-spots place t))
          t)))
 
+(defun plant-model (kind)
+  "Return the name of the model of the plant that gives KIND (models/plant-KIND.blend); a mod's plant is a bush."
+  (format nil "plant-~(~a~)" (if (member kind '(:mushroom :toadstool :berry :apple :nut :herb)) kind :bush)))
+
 (defun build-plant (g kind)
   "Build in G the plant that gives the good KIND, with what grows around it."
-  (case kind
-    ((:mushroom :toadstool)
-     (shape g :cyl '(.16 .2 .22 8) "#5a4636" .5 .11 .3)                                             ; a stump
-     (dotimes (i 5) (shape g :box '(.03 .3 .16) "#4a7a48" (+ .5 (* .3 (cos (* i 1.3)))) .12 (+ .3 (* .3 (sin (* i 1.3)))) :rot (list .5 (* i 1.3) 0) :shadow nil))
-     (shape g :cyl '(.02 .028 .1 6) "#e8e0d0" 0 .05 0 :shadow nil)
-     (shape g :ball '(.07 8 5) (if (eq kind :toadstool) "#c02a22" "#8a5a34") 0 .11 0 :scale '(1 .55 1))
-     (when (eq kind :toadstool)
-       (loop for (x z) in '((.03 .01) (-.02 .03) (-.01 -.035)) do (shape g :ball '(.012 4 3) "#f0ece0" x .143 z :shadow nil))))
-    (:berry
-     (loop for (x z s) in '((0 0 .22) (.5 .3 .3) (-.4 .5 .26))
-           do (shape g :ball (list s 7 5) "#3c5a34" x (* s .6) z :scale '(1 .6 1))
-              (dotimes (i 5) (shape g :ball '(.022 5 3) "#a3202c" (+ x (* s .7 (cos (* i 1.3)))) (+ (* s .7) (* .05 (sin (* i 2.1)))) (+ z (* s .7 (sin (* i 1.3)))) :shadow nil))))
-    (:apple
-     (shape g :cyl '(.09 .13 1.5 7) "#4a3424" .9 .75 0)                                              ; an apple tree; the low branch is ours
-     (shape g :ball '(1.0 9 6) "#4a7a48" .9 2.1 0 :scale '(1 .75 1))
-     (shape g :box '(.9 .05 .05) "#4a3424" .45 1.25 0 :rot '(0 0 -.25))
-     (shape g :ball '(.3 7 5) "#4a7a48" 0 1.2 0 :scale '(1 .7 1) :shadow nil)
-     (dotimes (i 7) (shape g :ball '(.045 6 4) (if (evenp i) "#c8382c" "#d8a030") (+ .9 (* .8 (cos (* i .9)))) (+ 1.75 (* .3 (sin (* i 1.7)))) (* .8 (sin (* i .9))) :shadow nil))
-     (dotimes (i 3) (shape g :ball '(.045 6 4) "#c8382c" (* .12 (cos (* i 2.1))) 1.08 (* .12 (sin (* i 2.1))) :shadow nil))
-     (dotimes (i 3) (shape g :ball '(.04 6 4) "#b8862c" (+ .6 (* .25 i)) .04 (- (* .3 i) .3) :shadow nil)))   ; windfalls
-    (:nut
-     (shape g :ball '(.7 8 6) "#4a6a38" 0 .9 0 :scale '(1 1.1 1))                                    ; a hazel bush
-     (dotimes (i 4) (shape g :cyl '(.02 .03 1.0 5) "#4a3424" (* .15 (cos (* i 1.6))) .5 (* .15 (sin (* i 1.6))) :rot (list (* .2 (sin i)) 0 (* .2 (cos i)))))
-     (dotimes (i 6) (shape g :ball '(.03 6 4) "#8a5a34" (* .55 (cos (* i 1.1))) (+ .75 (* .2 (sin (* i 2.3)))) (* .55 (sin (* i 1.1))) :shadow nil)))
-    (:herb
-     (dotimes (i 9)
-       (let ((x (* .5 (cos (* i 2.4)) (/ i 9.0))) (z (* .5 (sin (* i 2.4)) (/ i 9.0))))
-         (shape g :box '(.012 .28 .012) "#5a7a3a" x .14 z :rot (list (* .1 (sin i)) 0 (* .1 (cos i))) :shadow nil)
-         (shape g :ball '(.025 5 3) (nth (mod i 3) '("#9a6ab8" "#e8d060" "#f0ece0")) x .29 z :shadow nil))))
-    (t (shape g :ball '(.3 7 5) "#4a6a38" 0 .25 0 :scale '(1 .8 1)))))                               ; a mod's plant we have no model for: a bush
+  (model g (plant-model kind)))
 
 (defun plant-height (kind) "Return the height at which the plant of KIND is picked." (case kind (:apple 1.1) (:nut .8) (t .12)))
 

@@ -36,6 +36,9 @@ VIEWS = [("outside-back-right", '(setf *view* :outside *orbit-yaw* .6 *orbit-pit
          ("road", """(progn (setf *orbit-dist* 34.0 *orbit-yaw* -1.2 *orbit-pitch* .5) (let ((d (+ *dist* 14.0))) (add-zebra d) (add-bus (+ d 10.0)) (add-stele (+ d 22.0) "ГОРОД") (build-scrap-depot (+ d 44.0)) (build-observatory (- d 50.0))) 1)"""),
          ("road-ahead", '(setf *orbit-dist* 50.0 *orbit-yaw* -2.4 *orbit-pitch* .45)'),
          ("road-behind", '(setf *orbit-dist* 60.0 *orbit-yaw* -.6 *orbit-pitch* .45)'),
+         ("misc", """(progn (setf *orbit-dist* 13.0 *orbit-yaw* -1.57 *orbit-pitch* .35) (loop for k in '(:mushroom :toadstool :berry :apple :nut :herb) for i from 0 do (build-plant (group *cart* 4.5 0.0 (- (* 2.2 i) 5.0)) k)) (mark-cow (group *cart* 8.0 0.0 0.0) 0 0 1.0 "#8a5a3a") (mark-cow (group *cart* 8.0 0.0 4.0) 0 0 2.5 "#e8e4d8") (kvas (group *cart*) 8.0 -5.0) (leto-fire (group *cart* 24.0 0.0 27.0)) 1)"""),
+         ("misc-far", '(setf *orbit-dist* 24.0 *orbit-yaw* -1.2 *orbit-pitch* .45)'),
+         ("misc-inside", '(setf *view* :inside *seat* nil *pos* (v3 0 0 1.8) *yaw* 0.0 *pitch* -.2)'),
          ("meta-room", '(progn (setf *meta* t *view* :inside *seat* nil *pos* (v3 0 0 2.8) *yaw* 0.0 *pitch* 0.0) (apply-meta) 1)'),
          ("meta-room-back", '(setf *pos* (v3 0 0 -2.8) *yaw* 3.1416)'),
          ("meta-room-side", '(setf *pos* (v3 2.4 0 0) *yaw* 1.5708)')]

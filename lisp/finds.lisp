@@ -75,10 +75,8 @@ Each place has its own set, the same for all players."
       (node-3d-set-rotation g (v3 0 (* 6 (vr x d)) 0))
       (case kind
         ((:mushroom :toadstool :berry :apple :herb :nut) (build-plant g kind))
-        (:bottle (shape g :cyl '(.035 .04 .2 8) "#3a7a4a" 0 .1 0 :rough .2 :alpha .8)
-                 (shape g :cyl '(.014 .03 .08 6) "#3a7a4a" 0 .24 0 :rough .2 :alpha .8))
-        (:paper (shape g :box '(.3 .16 .22) "#d8d2c0" 0 .08 0)
-                (shape g :box '(.31 .17 .02) "#6a5038" 0 .08 0 :shadow nil) (shape g :box '(.02 .17 .23) "#6a5038" 0 .08 0 :shadow nil)))
+        (:bottle (model g "find-bottle"))
+        (:paper (model g "find-paper")))
       g)))
 
 (defun find-places ()
