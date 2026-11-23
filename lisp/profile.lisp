@@ -14,10 +14,25 @@
   (let ((v (or (gethash name *timings*) (setf (gethash name *timings*) (vector 0 0.0 0.0)))))
     (incf (aref v 0)) (incf (aref v 1) ms) (setf (aref v 2) (max (aref v 2) ms))))
 
+(defvar *failed-steps* '() "The names of the steps that have failed in this run: the player is told of each once.")
+
+(defun step-failed (condition name)
+  "Report that the step NAME failed with CONDITION: to the console and the log (NOTE-ERROR), and, the first time
+this step fails, to the player - otherwise the wagon just stops doing something and nobody knows why."
+  (when (fboundp 'note-error) (funcall 'note-error condition name))
+  (unless (member name *failed-steps*)
+    (push name *failed-steps*)
+    (ignore-errors
+     (when (fboundp 'say)
+       (funcall 'say (format nil "Что-то сломалось (~(~a~)). Игра идёт дальше, но скажи об этом автору" name))))))
+
 (defmacro timed (name &body body)
+  "Run BODY, noting under NAME how long it took. An error in BODY is reported (STEP-FAILED) and goes no further: the
+steps of a frame are run through TIMED, so a step that fails does not take the rest of the frame down with it - nor
+the sending of the log at the end of the frame, which is how an error is ever heard of."
   (let ((t0 (gensym)))
     `(let ((,t0 (get-internal-real-time)))
-       (multiple-value-prog1 (progn ,@body)
+       (multiple-value-prog1 (handler-case (progn ,@body) (error (c) (step-failed c ,name) nil))
          (note-time ,name (/ (* 1000.0 (- (get-internal-real-time) ,t0)) internal-time-units-per-second))))))
 
 (defun note-frame (delta)

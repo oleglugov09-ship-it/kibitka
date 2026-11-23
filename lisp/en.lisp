@@ -1822,4 +1822,6 @@ otherwise the world and messages drift apart."
   "MAP OF THE REGION~%~%This road is not on it.~%~%Driven: ~,1f km~%To the town — as far as ever."
 "КАРТА ОБЛАСТИ~%~%Этого места на ней нет.~%~%Пройдено: ~,1f км"
   "MAP OF THE REGION~%~%This place is not on it.~%~%Driven: ~,1f km"
+"Что-то сломалось (~(~a~)). Игра идёт дальше, но скажи об этом автору"
+  "Something broke (~(~a~)). The game goes on, but tell the author about it"
 ) by #'cddr do (setf (gethash ru *en*) en))
