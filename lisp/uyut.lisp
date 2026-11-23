@@ -395,8 +395,8 @@ A dish costs more."
 (defun show-swatter () (when (un :swatter) (object-set (un :swatter) "visible" (and *swatter* t))))
 
 (defshared buy-swatter :swatter ()
-  (cond ((< *money* *swatter-price*) (say "На мухобойку не хватает денег"))
-        (t (decf *money* *swatter-price*) (setf *swatter* t)
+  (cond ((not (take-money *swatter-price*)) (say "На мухобойку не хватает денег"))
+        (t (setf *swatter* t)
            (show-swatter) (save-wall)
            (log-event :swatter :money *money*)
            (say-all "Купили мухобойку — висит у окна. Комар залетит — E по ней"))))

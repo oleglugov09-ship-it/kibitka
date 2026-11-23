@@ -34,13 +34,6 @@ in their paws.")
 
 (defun boost-factor () (if (< *time* *boost-until*) *water-boost* 1.0))
 
-(defun pay (sum)
-  "Pay SUM roubles.
-Return NIL and show a hint if there is not enough money."
-  (cond (*dev* t)                                                        ; on the dev polygon everything is free
-        ((< *money* sum) (say (format nil "Нужно ~/kiosk-trip::rub/, а у нас ~/kiosk-trip::rub/" sum *money*)) nil)
-        (t (decf *money* sum) t)))
-
 (defun give-good (kind text)
   "Put a good of KIND into the hands (if they are free) and say TEXT.
 Return true if the good was given."

@@ -111,7 +111,7 @@ The recipient pays as for a hand-delivered parcel and the post office keeps its 
     ((camp-parcel-p *carry*) (say "Авиапочта: «В лагерь самолёты не летают. Сами довезёте, тут недалеко»"))
     (t
       (let* ((addr (cdr *carry*)) (fee (airmail-fee addr)) (pay (- (delivery-pay) fee)))
-        (incf *money* pay)
+        (add-money pay)
         (setf *carry* nil *carry-from* nil)
         (show-carry) (save-interior)
         (award-pennant (parcel-town addr)) (note-quest :post)

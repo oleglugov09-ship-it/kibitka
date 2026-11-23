@@ -500,7 +500,7 @@ for the international session's children are handed to us.")
   "Hand the parcel in the paws to the camp. In summer the leader takes it and pays for the delivery; once
 the session is over the watchman takes it to send back to the parents, for half."
   (let* ((open (camp-open-p)) (pay (if open (delivery-pay) (ceiling (delivery-pay) 2))))
-    (incf *money* pay)
+    (add-money pay)
     (setf *carry* nil *carry-from* nil)
     (show-carry) (save-interior)
     (note-quest :post)

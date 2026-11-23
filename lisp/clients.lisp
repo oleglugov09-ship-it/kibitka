@@ -374,7 +374,7 @@ Return four values: what he now has in hand, whether that changed, what to say, 
              (cond ((and holding (null (cdr holding)) (wanted-p (car holding)))
                     (let ((price (good-price (car holding) price)))
                       (note-trade (car holding) :sold (getf props :shop))
-                      (incf *money* price)
+                      (add-money price)
                       (log-event :sold :price price :money *money* :dist (round *dist*))
                       (client-leave)
                       (values nil t (format nil "Продали за ~/kiosk-trip::rub/" price))))
@@ -391,8 +391,8 @@ Return four values: what he now has in hand, whether that changed, what to say, 
             ((and ration (< *talons* 1) (not *dev*))
              (values nil nil "Без талона не отпустят. Талоны даёт горсовет за ящик по наряду, довезённый туда, где его ждут"))
             (t (cond ((and sender (parcel-good addr)) (coop-pay (ceiling price 2)) (setf *first-crate* nil))   ; the plan pays to the account, once there is one
-                     (sender (incf *money* (ceiling price 2)))                           ; a sender pays a deposit, half; the rest on delivery
-                     (t (decf *money* price) (when (and ration (plusp *talons*)) (decf *talons*))))
+                     (sender (add-money (ceiling price 2)))                           ; a sender pays a deposit, half; the rest on delivery
+                     (t (take-money price) (when ration (use-talon))))
                (unless sender (note-trade kind :bought))
                (when (and sender (getf *client* :story)) (apply #'story-taken (getf *client* :story)))   ; the story is on its way
                (stop-flying (list node))
@@ -483,7 +483,7 @@ For a guest the deal is made by the driver."
                                                 "Секретарь горсовета отрывает от листа талон: «За снабжение. С талоном в магазине отпустят то, чего в городе мало: один в руки, по прейскуранту»."
                                                 "Горсовет выдал талон за ящик, которого ждали. Что с ним делать — в папке, закладка «ТАЛОНЫ»")
                                    (say-later (format nil "Горсовет выдал талоны: ~d. Теперь у нас ~d" (- *talons* had) *talons*)))))
-                           (progn (incf *money* price)
+                           (progn (add-money price)
                                   (setf done (format nil "Посылка вручена: +~/kiosk-trip::rub/" price))))
                        (settle-items) (refresh-seats) (save-interior)
                        (log-event (if (eq kind :buyer) :sold :delivered) :price price :town town :money *money* :dist (round *dist*))

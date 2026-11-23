@@ -340,7 +340,7 @@ driver's, so it returns to the hands, or it would be lost."
              (pot (if (eq (first place) :market) 14 (+ 4 (* 3 (length (second (second place)))))))
              (got (or (assoc key *busked*) (first (push (cons key 0) *busked*)))))
         (when (< (cdr got) pot)
-          (incf (cdr got)) (incf *money*)
+          (incf (cdr got)) (add-money 1)
           (when (= (cdr got) 1) (log-event :busk :dist (round *dist*) :money *money*))
           (say (if (< (cdr got) pot) "Котам нравится музыка: +5 коп." "Котам нравится музыка: +5 коп. Больше тут не накидают")))))))
 

@@ -228,8 +228,16 @@ A mod that brings a clash is told to rename the newcomer."
         ((< (+ *credit* *money*) sum) nil)
         (t (let ((from-account (min *credit* sum)))
              (decf *credit* from-account)
-             (decf *money* (- sum from-account))
+             (take-money (- sum from-account))
              t))))
+
+(defun coop-pay (sum)
+  "Pay SUM for the plan's work: to the account once the co-operative has one, in cash until then."
+  (if (paper-p :account) (incf *credit* sum) (add-money sum)))
+
+(defun draw-account (sum) "Take SUM off the co-operative's account: it is handed out in cash." (decf *credit* sum))
+
+(defun use-talon () "Hand over one ration coupon, if we hold any." (when (plusp *talons*) (decf *talons*)))
 
 ;;; ------------------------------------------------------------------ whose goods: the shop's or our own
 ;;; A co-operative may sell at an agreed price what it bought from a maker above the plan, what it gathered and

@@ -55,10 +55,6 @@ Return true if the paper is new."
     (when line (let ((*actor* nil)) (say-all line)))
     t))
 
-(defun coop-pay (sum)
-  "Pay SUM for the plan's work: to the account once the co-operative has one, in cash until then."
-  (if (paper-p :account) (incf *credit* sum) (incf *money* sum)))
-
 (defun save-papers () (unless (net-guest-p) (put-save :papers (list *licenses* *fines* *quest*))))
 (defun load-papers ()
   (let ((f (get-save :papers)) (old t))                          ; OLD: the save knows nothing of the co-operative's papers
@@ -268,7 +264,7 @@ and ask for a licence. Travelling light, we are never stopped."
          (cond (*fines* (say "Горсовет: сначала оплатите штрафы в участке — он рядом"))
                (t (let ((q (assoc (car *quest*) *quests*)))
                     (push (second q) *licenses*) (setf *quest* nil)
-                    (incf *money* (or (cdr (assoc (second q) *quest-money*)) 0))
+                    (add-money (or (cdr (assoc (second q) *quest-money*)) 0))
                     (save-papers) (log-event :license :kind (second q))
                     (say-all (format nil (line :chairman-gives) (sixth q)))))))
         (*quest* (say (quest-label)))

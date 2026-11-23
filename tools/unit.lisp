@@ -19,12 +19,12 @@
 (defvar *find-nodes* '()) (defvar *stop-ds* '()) (defvar *observatory* nil) (defvar *depot-d* nil)
 (defvar *airmail-d* nil) (defvar *plane* nil) (defvar *client* nil) (defvar *stamp* nil) (defvar *items* (quote ())) (defvar *carry* nil) (defvar *gnome-nodes* (quote ())) (defvar *gnome-told* nil)
 (defvar *calendar-notes* '()) (defvar *omens* '()) (defvar *jars* 0)
-(defvar *lid* nil) (defvar *papers* 0) (defvar *money* 0) (defvar *dev* nil)
+(defvar *lid* nil) (defvar *papers* 0) (defvar *dev* nil)
 (defun reset-vista ()) (defun clear-land ()) (defun clear-roads ())
 (defun net-guest-p () nil) (defun put-save (key form) (declare (ignore key)) form) (defun get-save (key) (declare (ignore key)) nil)
 (defun say-all (text) text) (defun log-event (&rest r) (declare (ignore r)))
 
-(dolist (f '("delo" "tverd" "random" "economy" "land" "karta" "razmetka" "goods" "plan" "istorii" "places" "prikol" "bumagi" "debt" "people" "zagranitsa"))
+(dolist (f '("delo" "tverd" "random" "economy" "kassa" "land" "karta" "razmetka" "goods" "plan" "istorii" "places" "prikol" "bumagi" "debt" "people" "zagranitsa"))
   (load (merge-pathnames (concatenate 'string f ".lisp") cl-user::*here*)))
 
 ;; the content lives in mods: the core ships none. INCLUDE here is plain LOAD from the mod's folder

@@ -56,7 +56,8 @@ Return NIL if there is no save."
       (destructuring-bind (dist money fuel planks onboard &optional (dir 1) day) g
         (when (and (integerp day) (<= 0 day 100000000)) (setf *day-t* (* 10.0 day)))  ; the day cycle goes on, not restarts
         (when (eql dir -1) (setf *dir* -1 *yaw-now* pi *lane-now* *lane-x*))       ; stood nose backwards: still do
-        (setf *money* (round money) *fuel* (float fuel 1.0) *planks* (max 0 (round planks)) *onboard* onboard
+        (put-money (round money))
+        (setf *fuel* (float fuel 1.0) *planks* (max 0 (round planks)) *onboard* onboard
               *game-saved* g)
         (when (> dist 20) (relocate dist))
         t))))

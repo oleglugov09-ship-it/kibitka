@@ -131,7 +131,7 @@ The action is shared: once one player picks it up, it is gone for everyone."
 (defshared sell-finds :sell ()
   (cond ((zerop (+ *bottles* *papers*)) (say "Сдавать нечего: бутылки и макулатура лежат у остановок и заправок"))
         (t (let ((sum (+ (* *bottle-price* *bottles*) (* *paper-price* *papers*))))
-             (incf *money* sum)
+             (add-money sum)
              (log-event :recycled :bottles *bottles* :papers *papers* :money *money*)
              (say-all (format nil "Сдали ~d бутылок и ~d связок: +~/kiosk-trip::rub/" *bottles* *papers* sum))
              (note-quest :clean (+ *bottles* *papers*))

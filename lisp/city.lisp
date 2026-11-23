@@ -396,7 +396,6 @@ when they are *CITY-AHEAD* away and removed as a whole."
 
 (defvar *fuel* 1.0 "The fuel tank level; 1 means full.")
 (defvar *at-station* nil "True while we stand at a gas station.")
-(defvar *money* 10 "The number of roubles in the pocket.")
 
 (defshared pour-fuel :fuel ()
   "Fill up for *FUEL-CHUNK* roubles, or for as much as the money and the room in the tank allow.
@@ -420,8 +419,8 @@ The wallet is shared, so anyone can refuel."
   "Buy a bundle of planks for the stove."
   (when *at-station*
     (destructuring-bind (n price) *plank-price*
-      (cond ((< *money* price) (say "На доски не хватает"))
-            (t (decf *money* price) (incf *planks* n) (say-all (format nil "Купили досок: ~d за ~/kiosk-trip::rub/" n price)))))))
+      (cond ((not (take-money price)) (say "На доски не хватает"))
+            (t (incf *planks* n) (say-all (format nil "Купили досок: ~d за ~/kiosk-trip::rub/" n price)))))))
 
 (defun buy-planks () "Buy planks on P at a gas station; return T if we are at one." (when *at-station* (take-planks) t))
 (defvar *fuel-told* nil)
@@ -435,7 +434,7 @@ The wallet is shared, so anyone can refuel."
 
 (defshared cheat-money :money ()
   "Add a hundred roubles to the shared wallet for free; the F8 cheat."
-  (incf *money* 100)
+  (add-money 100)
   (log-event :cheat :what :money :money *money* :dist (round *dist*))
   (say-all (format nil "Чит: +5 р. В кошельке ~/kiosk-trip::rub/" *money*)))
 
@@ -472,7 +471,8 @@ Once we stop there the ladder lowers by itself: only at such places can one get 
 
 (defun reset-city ()
   (setf *stations* '() *at-station* nil
-        *fuel* *start-fuel* *money* *start-money* *fuel-told* nil))
+        *fuel* *start-fuel* *fuel-told* nil)
+  (put-money *start-money*))
 
 (defun onboard-fuel ()
   "Set the starting fuel to exactly enough to reach the first town's market.

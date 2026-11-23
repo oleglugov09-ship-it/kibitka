@@ -11,7 +11,7 @@
                  (:file "random")
                  (:file "engine-classes")
                  (:file "shapes") (:file "models")
-                 (:file "economy")
+                 (:file "economy") (:file "kassa")
                  (:file "profile")
                  (:file "textures")
                  (:file "land") (:file "karta") (:file "razmetka")
