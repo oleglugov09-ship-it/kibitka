@@ -3,13 +3,17 @@
     blender -b --python tools/draw-model.py -- FOLDER/NAME.json models/NAME.blend
 
 Every shape becomes the same solid in the same place; the shapes of one look are joined into one object named after
-its colour, so the game draws each look once. Objects that cast no shadow in the game end with _noshadow.
+its colour, so the game draws each look once. Objects that cast no shadow in the game have _noshadow in the name;
+_r110 and _r320 at the end say how far the object is drawn. With the word solids after the two paths (a piece of
+the world, not of the wagon) every shape that stands in the way gets a cube named solid: the game reads those as
+obstacles and does not draw them. Colours given as paints become the materials paint0, paint1, ...: the game repaints them.
 Axes: the game's x, y (up), z are Blender's x, z, -y. Run by tools/to-blender.sh.
 """
 import bpy, bmesh, json, math, sys
 from mathutils import Matrix, Euler
 
-src, dst = sys.argv[sys.argv.index("--") + 1:][:2]
+args = sys.argv[sys.argv.index("--") + 1:]
+src, dst = args[:2]; SOLIDS = "solids" in args[2:]
 M = Matrix(((1, 0, 0, 0), (0, 0, -1, 0), (0, 1, 0, 0), (0, 0, 0, 1)))
 UP = Matrix.Rotation(-math.pi / 2, 4, 'X')          # Blender's solids stand along z, the game's along y
 
@@ -25,7 +29,9 @@ def place(pos, rot, scale):
 
 
 def material(s):
-    name = s["rgb"] + (f" emit {s['emit']} {s['energy']:g}" if s["emit"] else "") + (f" metal {s['metal']:g}" if s["metal"] else "") \
+    paint = PAINT.index(s["rgb"]) if s["rgb"] in PAINT and not s["emit"] and not s["alpha"] else None
+    if paint is not None and paint < len(SHOW): s = dict(s, rgb=SHOW[paint])      # shown in a livery of its own; the game repaints it
+    name = (f"paint{paint}" if paint is not None else s["rgb"]) + (f" emit {s['emit']} {s['energy']:g}" if s["emit"] else "") + (f" metal {s['metal']:g}" if s["metal"] else "") \
         + (f" rough {s['rough']:g}" if abs(s["rough"] - .9) > 1e-6 else "") + (f" alpha {s['alpha']:g}" if s["alpha"] else "") + (" unshaded" if s["unshaded"] else "")
     m = bpy.data.materials.get(name)
     if m: return m
@@ -67,16 +73,52 @@ def solid(bm, s, T):
     return vs
 
 
+def reach(s):
+    """How far the game draws a shape of this size (lisp/shapes.lisp SHAPE-RANGE): trifles are not drawn far away."""
+    if s["emit"]: return ""
+    k, d = s["kind"], s["dims"]
+    size = max(d[:3]) if k == "box" else max(2 * d[0], 2 * d[1], d[2]) if k == "cyl" else max(2 * d[0], d[1]) if k == "cone" else 2 * d[0]
+    size *= max(s["chain"][0][2])
+    return "_r110" if size < .7 else "_r320" if size < 2.6 else ""
+
+
+def obstacle(s):
+    """The box the game must not let one walk through (lisp/shapes.lisp COMMIT-SOLIDS), as (x y z yaw w h d), or None."""
+    k, d = s["kind"], s["dims"]
+    if k not in ("box", "cyl", "cone", "rock") or s["alpha"]: return None
+    if any(abs(link[1][0]) >= .2 or abs(link[1][2]) >= .2 for link in s["chain"][:1]): return None
+    w, h, dp = (d[0], d[1], d[2]) if k == "box" else (2 * max(d[0], d[1]), d[2], 2 * max(d[0], d[1])) if k == "cyl" else (2 * d[0], d[1], 2 * d[0]) if k == "cone" else (2 * d[0],) * 3
+    (x, y, z), rot, sc = s["chain"][0]; yaw = rot[1]; sx, sy, sz = sc
+    for pos, prot, psc in s["chain"][1:]:
+        ox, oz, pyaw = x * psc[0], z * psc[2], prot[1]
+        x, z = pos[0] + ox * math.cos(pyaw) + oz * math.sin(pyaw), pos[2] + oz * math.cos(pyaw) - ox * math.sin(pyaw)
+        y = y * psc[0] + pos[1]; yaw += pyaw; sx *= psc[0]; sz *= psc[2]; sy *= psc[0]
+    w, h, dp = w * sx, h * sy, dp * sz
+    if not (y - h / 2 < 1.1 and y + h / 2 > .5 and h / 2 >= .17 and min(w, dp) / 2 >= .03): return None
+    return x, y, z, yaw, w, h, dp
+
+
 bpy.ops.wm.read_factory_settings(use_empty=True)
-lots = {}
-for s in json.load(open(src)):
+data = json.load(open(src))
+if isinstance(data, list): data = {"paint": [], "show": [], "shapes": data}
+PAINT, SHOW = data["paint"], data["show"]
+lots = {}; solids = []
+for s in data["shapes"]:
     T = Matrix.Identity(4)
     for link in s["chain"]: T = place(*link) @ T
-    m = material(s); key = m.name + ("" if s["shadow"] else "_noshadow")
+    m = material(s); key = (m.name, ("" if s["shadow"] else "_noshadow") + reach(s))
     if key not in lots: lots[key] = (bmesh.new(), m)
     solid(lots[key][0], s, M @ T)
+    if SOLIDS and obstacle(s): solids.append(obstacle(s))
+lots = {f"{n:02d}_{name.split(' ')[0]}{tail}": v for n, ((name, tail), v) in enumerate(lots.items())}
+if solids:                                   # what cannot be walked through: cubes named solid, read by the game, not drawn
+    cube = bpy.data.meshes.new("solid"); bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1.0); bm.to_mesh(cube); bm.free()
+    col = bpy.data.collections.new("solids"); bpy.context.scene.collection.children.link(col)
+    for x, y, z, yaw, w, h, dp in solids:
+        ob = bpy.data.objects.new("solid", cube); col.objects.link(ob); ob.display_type = "WIRE"
+        ob.matrix_world = M @ Matrix.Translation((x, y, z)) @ Matrix.Rotation(yaw, 4, 'Y') @ Matrix.Diagonal((w, h, dp, 1))
 for key, (bm, m) in lots.items():
     me = bpy.data.meshes.new(key); bm.to_mesh(me); bm.free(); me.materials.append(m)
     bpy.context.scene.collection.objects.link(bpy.data.objects.new(key, me))
 bpy.ops.wm.save_as_mainfile(filepath=dst)
-print("draw-model:", dst, len(lots), "objects")
+print("draw-model:", dst, len(lots), "objects", len(solids), "solids")

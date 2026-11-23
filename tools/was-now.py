@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Was and now: the same views of the wagon shot in two browser builds and put side by side.
 
-    tools/was-now.py WAS-DIR NOW-DIR OUT-DIR      # two folders like export/web; OUT-DIR/NN-name.png, was on the left
+    tools/was-now.py WAS NOW OUT-DIR      # WAS and NOW: a folder like export/web, or the address of a build on a site
+                                          # (https://.../play/index.html); OUT-DIR/NN-name.png, was on the left
 
 No window and no sound (tools/web-eyes.py); each build takes about two minutes. The views: the wagon from four
 sides outside and four ways inside. The swaying is switched off, the hour of day is whatever the fresh game starts at.
@@ -18,20 +19,24 @@ VIEWS = [("outside-back-right", '(setf *view* :outside *orbit-yaw* .6 *orbit-pit
          ("inside-to-window", '(setf *pos* (v3 -.9 0 0) *yaw* -1.5708 *pitch* 0.0)'),
          ("inside-to-carpet", '(setf *pos* (v3 .9 0 0) *yaw* 1.5708 *pitch* .1)'),
          ("inside-up", '(setf *pos* (v3 0 0 0) *yaw* 0.0 *pitch* 1.2)'),
-         ("inside-down", '(setf *pos* (v3 0 0 .5) *yaw* 0.0 *pitch* -1.1)')]
+         ("inside-down", '(setf *pos* (v3 0 0 .5) *yaw* 0.0 *pitch* -1.1)'),
+         ("stops-right", """(progn (setf *view* :outside *orbit-dist* 22.0 *orbit-yaw* 1.2 *orbit-pitch* .45) (loop for k in '(1 3 4 5 8 10 14 17) for n from 0 do (let ((g (group *cart* (if (< n 4) 7.0 -7.0) 0.0 (- (* 6.5 (mod n 4)) 14.0)))) (funcall (if (fboundp 'stop-look) 'stop-look 'build-stop) g (* 7.0 k)))) 1)"""),
+         ("stops-left", '(setf *orbit-yaw* -1.9 *orbit-pitch* .35)')]
 
 
 def shoot(folder, tag):
-    server = subprocess.Popen([sys.executable, "-m", "http.server", "8765", "--bind", "127.0.0.1"], cwd=folder, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    site = folder.startswith("http")
+    server = None if site else subprocess.Popen([sys.executable, "-m", "http.server", "8765", "--bind", "127.0.0.1"], cwd=folder, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     try:
         time.sleep(1)
+        if server and server.poll() is not None: sys.exit("was-now: port 8765 is taken - somebody else's server would be filmed instead of " + folder)
         steps = ["go", "wait:50", "click:350,174", "wait:4"] + ["click:480,200", "wait:1"] * 4 + ["lisp:(when *debug-on* (toggle-debug))", "wait:1"]
         for name, form in VIEWS: steps += ["lisp:" + form, "wait:2", f"shot:{out}/.{tag}-{name}.png"]
-        r = subprocess.run([os.path.join(here, "web-eyes.py"), "http://127.0.0.1:8765/index.html?dev", tempfile.mkdtemp()] + steps, capture_output=True, text=True, timeout=400)
+        r = subprocess.run([os.path.join(here, "web-eyes.py"), (folder if site else "http://127.0.0.1:8765/index.html") + "?dev", tempfile.mkdtemp()] + steps, capture_output=True, text=True, timeout=400)
         bad = [l for l in r.stdout.splitlines() if "Ошибка" in l or "Error" in l or "prompt" in l or "нет ответа" in l]
         if bad: print(tag, "\n".join(bad[:8]))
     finally:
-        server.terminate(); server.wait()
+        if server: server.terminate(); server.wait()
 
 
 shoot(was, "was"); shoot(now, "now")

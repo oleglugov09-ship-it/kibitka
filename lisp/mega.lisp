@@ -191,7 +191,7 @@ number picked by hand, and cannot fall together with another by mistake."
   "Put one of our bus stops by the way in the cell G, under a lamp."
   (let ((stop (group g *stop-x* 0.0 -20.0)))
     (shape g :box '(9.0 .5 14.0) "#6f6e69" 8.6 -.3 -20.0 :shadow nil)
-    (build-stop stop (* 7.0 (floor i 16)))
+    (stop-look stop (* 7.0 (floor i 16)))
     (shape g :box '(.14 5.6 .14) "#3a3c40" 5.0 2.8 -15.0 :shadow nil)
     (lamp g :warm :box '(.6 .2 .4) 5.3 5.6 -15.0 :reach 26.0 :power 2.2 :at (list 5.6 5.0 -15.0))))
 

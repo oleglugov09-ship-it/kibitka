@@ -3,6 +3,7 @@
 # without a window and sound so that it writes the pieces down, and make models/NAME.blend of each.
 #
 #   tools/to-blender.sh            needs the desktop build (`make live`)
+#   SOLIDS=1 tools/to-blender.sh   for pieces of the world: what stands in the way gets a cube named solid (an obstacle)
 #
 # A models/NAME.blend that is already there is left alone: it may have been edited by hand since.
 set -euo pipefail
@@ -13,6 +14,6 @@ for json in "$dir"/*.json; do
   [ -f "$json" ] || continue
   name=$(basename "${json%.json}")
   if [ -f "models/$name.blend" ]; then echo "to-blender: models/$name.blend уже есть, не трогаю"; continue; fi
-  "${BLENDER:-$HOME/.local/bin/blender}" -b --python tools/draw-model.py -- "$json" "$PWD/models/$name.blend" 2>&1 | grep "draw-model:\|Error" || true
+  "${BLENDER:-$HOME/.local/bin/blender}" -b --python tools/draw-model.py -- "$json" "$PWD/models/$name.blend" ${SOLIDS:+solids} 2>&1 | grep "draw-model:\|Error" || true
 done
 rm -rf "$dir"

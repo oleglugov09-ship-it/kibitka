@@ -442,21 +442,6 @@ That is in front of its nose when we drive forward."
     (loop for i below 6 for c = (nth (mod (+ i (round d)) 5) '("#3f6f73" "#a8843c" "#8a4038" "#55708a" "#b0aa98"))
           do (shape g :box '(.04 .5 .5) c .78 (+ .8 (* .52 (mod i 2)) (* .1 (mod i 3))) (- (* i .56) 1.4) :shadow nil))))
 
-(defun stop-wing (g)
-  "Build under G a wing: a slanted canopy on two leaning supports, with a rayed sun on the wall."
-  (shape g :box '(2.8 .16 4.6) "#7f8a8c" -.1 2.75 0 :rot '(0 0 -.2))
-  (dolist (sz '(-1 1)) (shape g :box '(.22 3.0 .3) "#6e6e6a" .75 1.45 (* sz 1.8) :rot '(0 0 .22)))
-  (shape g :box '(.14 1.7 3.2) "#3f6f73" 1.0 1.2 0)
-  (shape g :cyl '(.5 .5 .05 12) "#c9a13a" .92 1.45 0 :rot (list 0 0 (/ pi 2)) :shadow nil)
-  (loop for i below 8 for a = (* i (/ pi 4))
-        do (shape g :box '(.04 .08 .5) "#c9a13a" .92 (+ 1.45 (* .8 (sin a))) (* .8 (cos a)) :rot (list a 0 0) :shadow nil)))
-
-(defun stop-arch (g)
-  "Build under G a shell arch: a vault of slabs, every other one painted."
-  (loop for i below 7 for a = (* (+ i .5) (/ pi 7))
-        do (shape g :box '(.16 .95 3.4) (if (evenp i) "#55708a" "#b0aa98") (+ .2 (* 1.9 (cos a) -1) 1.0) (* 2.1 (sin a)) 0
-                  :rot (list 0 0 (+ a (/ pi 2))))))
-
 (defun add-stop (d)
   "Add a bus stop at path coordinate D; each is different, BUILD-STOP (stops.lisp) picks the look.
 On the highway there is an identical one opposite, across the road, for those driving back.
@@ -465,7 +450,7 @@ Sometimes cats wait at it (STOP-SPOT says where)."
     (destructuring-bind (x y z) (side-point (if (> side 0) *stop-x* (- *lane-x* *stop-x*)) d 0.0)
       (let ((g (keep (group *world* x y z) d)))
         (node-3d-set-rotation g (v3 0 (- (if (> side 0) 0 pi) (road-frame d)) 0))
-        (build-stop g d)                                                       ; seventeen looks - stops.lisp
+        (stop-look g d)                                                        ; eighteen looks - stops.lisp
         (shape g :box '(2.4 .12 4.2) "#5a5a58" -.2 .06 0)                      ; floor slab
         (stop-bench g)
         (shape g :box '(.08 2.6 .08) "#5a5a58" -1.2 1.3 2.4)                   ; bus stop sign on a post
