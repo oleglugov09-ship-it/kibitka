@@ -21,6 +21,11 @@ live:
 	$(MAKE) -B $(LIBRARY) SYSTEM=kiosk-trip-live LISP_DIRS="lisp $(SLYNK_DIR)"
 	test -d project/.godot || $(MAKE) import
 
+# The same build for a quick look while working: the models and the fingerprint of the build are left as they
+# are (a build made this way must not meet other builds over the network), so only what has changed is compiled.
+quick:
+	$(MAKE) -B $(LIBRARY) SYSTEM=kiosk-trip-live LISP_DIRS="lisp $(SLYNK_DIR)"
+
 # Browser: web/build.sh cross-compiles gdecl and the game for wasm32 (project/bin/libgdecl.wasm),
 # then an export with the web_dlink_nothreads_release template.
 web:
@@ -36,4 +41,4 @@ web:
 	mkdir -p export/web
 	$(GODOT) --headless --path project --export-release "Web" ../export/web/index.html
 
-.PHONY: import live web
+.PHONY: import live quick web

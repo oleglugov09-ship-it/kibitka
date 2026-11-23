@@ -211,6 +211,7 @@ Each entry is (INDEX FRACTION): the stretch before town number INDEX and the fra
 Their NEXT is the ring-road path coordinate they come out at.")
 (defvar *hub* nil "The position of the Crossroads, as (X Z).")
 (defvar *way* '() "The planned turns in order, each as (WHERE TO DIRECTION); see ROUTE.")
+(define-fields turn where to dir)
 (defvar *spoke-stations* '() "The path coordinates of the gas stations on the spokes to the Crossroads.")
 
 (defun curve-edge (d0 ax az ath bx bz bth next)
@@ -309,9 +310,9 @@ The result is (LENGTH . TURNS), or NIL if no route is found within DEPTH turns."
         (try (max 0.0 (gap target)) '()))
       (when (> depth 0)
         (dolist (turn (turns-from e dir))
-          (when (>= (gap (first turn)) -1.0)
-            (let ((more (route (second turn) (third turn) target (1- depth))))
-              (when more (try (+ (max 0.0 (gap (first turn))) (car more)) (cons turn (cdr more)))))))))
+          (when (>= (gap (turn-where turn)) -1.0)
+            (let ((more (route (turn-to turn) (turn-dir turn) target (1- depth))))
+              (when more (try (+ (max 0.0 (gap (turn-where turn))) (car more)) (cons turn (cdr more)))))))))
     best))
 
 (defvar *dir* 1 "The driving direction: +1 is towards growing path coordinates, -1 is back.")
@@ -338,11 +339,11 @@ Return NIL if D is not on the way."
       (let* ((e (edge-of pos)) (ringp (eq e (ring))) (turn (or (first way) (default-turn e dir))))
         (flet ((gap (to) (if ringp (ring-gap pos to dir) (* dir (- to pos)))))
           (when (and (eq (edge-of d) e) (>= (gap d) -40.0)
-                     (or (null turn) (not ringp) (<= (gap d) (gap (first turn)))))
+                     (or (null turn) (not ringp) (<= (gap d) (gap (turn-where turn)))))
             (return (+ total (max 0.0 (gap d)))))
           (unless turn (return nil))
-          (incf total (max 0.0 (gap (first turn))))
-          (setf pos (second turn) dir (third turn) way (rest way)))))))
+          (incf total (max 0.0 (gap (turn-where turn))))
+          (setf pos (turn-to turn) dir (turn-dir turn) way (rest way)))))))
 
 (defun way-to (d) (or (way-on d) (abs (- d *dist*))))
 
@@ -407,9 +408,9 @@ The driver decides; a guest follows (net.lisp moves the guest by itself when the
 path coordinate jumps)."
   (unless (net-guest-p)
     (let* ((e (edge-of *dist*)) (turn (first *way*)))
-      (flet ((take (turn) (when (eq turn (first *way*)) (pop *way*)) (hop (second turn) (third turn))))
+      (flet ((take (turn) (when (eq turn (first *way*)) (pop *way*)) (hop (turn-to turn) (turn-dir turn))))
         (cond ((eq e (ring))
-               (cond ((and turn (<= 0.0 (* *dir* (- *dist* (first turn))) 30.0)) (take turn))
+               (cond ((and turn (<= 0.0 (* *dir* (- *dist* (turn-where turn))) 30.0)) (take turn))
                      ((>= *dist* (edge-d1 e)) (hop (+ (edge-d0 e) (- *dist* (edge-d1 e)))))        ; a new lap
                      ((< *dist* (edge-d0 e)) (hop (- (edge-d1 e) (- (edge-d0 e) *dist*) .01)))))
               ((if (> *dir* 0) (>= *dist* (- (edge-d1 e) .5)) (<= *dist* (+ (edge-d0 e) .5)))

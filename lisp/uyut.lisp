@@ -435,7 +435,7 @@ In the swamp a mosquito flies into the wagon: it whines, circles around the head
 ;;; ------------------------------------------------------------------ sleep
 
 (defun step-sleep (delta)
-  (let ((abed (and *seat* (member (first *seat*) '(:fold :top)) (not (net-guest-p)))) (day (daylight (sky-now))))
+  (let ((abed (and (lying-p) (not (net-guest-p)))) (day (daylight (sky-now))))
     (cond (*sleep*
            (when (or (not abed) (> day .7) (not (all-abed-p)))
              (setf *time-scale* (first *sleep*) *sleep* nil *doze* 0.0)

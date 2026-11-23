@@ -228,14 +228,14 @@ Its x points sideways to the right and its z backwards along the path."
 
 (defun beam-between (parent a b &key (thick .05) (rgb "#16161a") (sag 0.0))
   "Add a beam or wire between points A and B, given in the coordinates of PARENT.
-SAG is how far it sags in the middle."
+SAG is how far it sags in the middle. Return the pieces it is made of."
   (let ((mid (list (/ (+ (first a) (first b)) 2) (- (/ (+ (second a) (second b)) 2) sag) (/ (+ (third a) (third b)) 2))))
     (loop for (p q) in (if (plusp sag) (list (list a mid) (list mid b)) (list (list a b)))
-          do (let* ((dx (- (first q) (first p))) (dy (- (second q) (second p))) (dz (- (third q) (third p)))
-                    (flat (sqrt (+ (* dx dx) (* dz dz)))) (len (sqrt (+ (* flat flat) (* dy dy)))))
-               (shape parent :box (list thick thick len) rgb
-                      (/ (+ (first p) (first q)) 2) (/ (+ (second p) (second q)) 2) (/ (+ (third p) (third q)) 2)
-                      :rot (list (- (atan dy (max flat 1e-4))) (atan dx dz) 0) :shadow nil)))))
+          collect (let* ((dx (- (first q) (first p))) (dy (- (second q) (second p))) (dz (- (third q) (third p)))
+                         (flat (sqrt (+ (* dx dx) (* dz dz)))) (len (sqrt (+ (* flat flat) (* dy dy)))))
+                    (shape parent :box (list thick thick len) rgb
+                           (/ (+ (first p) (first q)) 2) (/ (+ (second p) (second q)) 2) (/ (+ (third p) (third q)) 2)
+                           :rot (list (- (atan dy (max flat 1e-4))) (atan dx dz) 0) :shadow nil)))))
 
 (defun chimney-smoke (parent x y z &key (size 1.2) (amount 8) (life 6.0) (rgb "#d4d4d8"))
   "Add chimney smoke under PARENT at (X Y Z) and return the particles node.

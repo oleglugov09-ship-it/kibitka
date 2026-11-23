@@ -30,6 +30,9 @@ Walking towards the rack in front of it, one goes up tread by tread; a step asid
 (defparameter *bounds* '(-1.4 1.4 -2.55 2.68) "The bounds x0 x1 z0 z1 on the wagon floor, right up to the back wall with the door.")
 
 (defparameter *sit-reach* 1.3 "The distance to a seat within which one can sit down.")
+(define-fields seat what x z yaw eye)   ; WHAT is :top, :fold, :stool, :bed, :crate or :meta; EYE is the height of the eyes there
+(defun eye-height () "Return the height of our eyes above the floor: of the seat we are on, or standing." (if *seat* (seat-eye *seat*) *eye*))
+(defun lying-p () "Return true if we are lying on one of the two bunks." (and *seat* (member (seat-what *seat*) '(:fold :top)) t))
 (defvar *seat* nil "The seat we are sitting on, or NIL.")
 (defvar *camera* nil)
 (defvar *pos* (v3 .2 0 .9) "The position where we stand (x, -, z).")
@@ -276,7 +279,7 @@ The meta room and waiting at the bus stop are not remembered."
       (let ((k (if (or *seat* *meta*) 0.0 (steps-climb x z))))
         (setf *on-steps* (> k .5)
               *steps-up* (+ *steps-up* (* .3 (- (* k *steps-rise*) *steps-up*)))))
-      (setf *eye-now* (+ (* *floor* (- 1 down)) (if *seat* (fifth *seat*) *eye*) *jump-y* *steps-up*
+      (setf *eye-now* (+ (* *floor* (- 1 down)) (eye-height) *jump-y* *steps-up*
                          (if (and (not *meta*) (outdoors-p x z)) (ground-rise x z) 0.0)))        ; outside — along the ground
       (node-3d-set-position *camera* (v3 x *eye-now* z)))
     (when *torch-node* (object-set *torch-node* "visible" t))

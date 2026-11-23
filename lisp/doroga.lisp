@@ -229,14 +229,7 @@ Wires are strung to the neighboring poles.")
 
 (defun wire (a b d)
   "Add a sagging wire between points A and B, kept at path coordinate D."
-  (let ((mid (list (/ (+ (first a) (first b)) 2) (- (/ (+ (second a) (second b)) 2) .55) (/ (+ (third a) (third b)) 2))))
-    (loop for (p q) in (list (list a mid) (list mid b))
-          do (let* ((dx (- (first q) (first p))) (dy (- (second q) (second p))) (dz (- (third q) (third p)))
-                    (flat (sqrt (+ (* dx dx) (* dz dz)))) (len (sqrt (+ (* flat flat) (* dy dy)))))
-               (keep (shape *world* :box (list .035 .035 len) "#16161a"
-                            (/ (+ (first p) (first q)) 2) (/ (+ (second p) (second q)) 2) (/ (+ (third p) (third q)) 2)
-                            :rot (list (- (atan dy flat)) (atan dx dz) 0) :shadow nil)
-                     d)))))
+  (dolist (piece (beam-between *world* a b :thick .035 :sag .55)) (keep piece d)))
 
 (defun add-pole (d)
   (when (bare-at d) (return-from add-pole nil))                         ; no poles on the bridge or in the tunnel

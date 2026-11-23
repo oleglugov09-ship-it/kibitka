@@ -237,7 +237,7 @@ Type 1 is a connect, 2 a disconnect, 3 an incoming packet."
 (defun my-place ()
   "Return where we are in the wagon: x, z, yaw, whether inside, and eye height above the floor."
   (list (vector3-x *pos*) (vector3-z *pos*) (float (- (mod (+ *yaw* pi) (* 2 pi)) pi) 1.0) (and (eq *view* :inside) (not *meta*) t)
-        (if *seat* (fifth *seat*) *eye*)))
+        (eye-height)))
 
 ;;; The host
 

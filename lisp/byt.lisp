@@ -161,7 +161,7 @@ As many are placed as there are players.")
 The bunk shelf is handled separately (FIXTURE-USABLES)."
   (unless *seat*
     (loop for seat in (seats-here)
-          unless (member (first seat) '(:fold :top))
+          unless (member (seat-what seat) '(:fold :top))
             collect (let ((seat seat))
                       (destructuring-bind (what x z yaw eye) seat
                         (declare (ignore what))
@@ -180,13 +180,13 @@ is always there; the lower one when it is folded down, otherwise there are the s
 
 (defun toggle-fold ()
   (setf *fold-down* (not *fold-down*))
-  (when (and (not *fold-down*) *seat* (eq (first *seat*) :fold)) (setf *seat* nil))
+  (when (and (not *fold-down*) *seat* (eq (seat-what *seat*) :fold)) (setf *seat* nil))
   (refresh-seats)
   (say (if *fold-down* "Полка откинута · E по ней — лечь" "Полка поднята")))
 
 (defun lie-on-bunk (kind)
   "Lie down on the bunk KIND (:FOLD is the lower one, :TOP the upper), or get up if we lie there."
-  (if (and *seat* (eq (first *seat*) kind))
+  (if (and *seat* (eq (seat-what *seat*) kind))
       (setf *seat* nil)
       (let ((seat (assoc kind (fold-seats))))
         (when seat (setf *seat* seat *pos* (v3 (second seat) 0 (third seat)) *yaw* (fourth seat) *pitch* .55)))))
@@ -375,7 +375,7 @@ These are the map, the stove, the light switch, the ladder, the window and the b
            (when *fold-down* (usable (- .85 *half-width*) .5 (+ *bunk-z* .7) (lambda () "E — поднять полку") #'toggle-fold))
            (if *fold-down*
                (usable (- .5 *half-width*) .62 *bunk-z*
-                       (lambda () (if (and *seat* (eq (first *seat*) :fold)) "E — встать" "E — лечь на полку")) #'sit-on-bunk)
+                       (lambda () (if (and *seat* (eq (seat-what *seat*) :fold)) "E — встать" "E — лечь на полку")) #'sit-on-bunk)
                (usable (- .32 *half-width*) .8 *bunk-z* (lambda () "E — откинуть полку") #'toggle-fold))
            ;; raised, the shelf stands on edge and its golden handles are up at chest height: E on either folds it down
            (unless *fold-down* (usable (- .31 *half-width*) 1.05 (- *bunk-z* .7) (lambda () "E — откинуть полку") #'toggle-fold nil 2.6 .16))
@@ -384,7 +384,7 @@ These are the map, the stove, the light switch, the ladder, the window and the b
                    (lambda () (if *fold-down* "E — поднять полку" "E — откинуть полку")) #'toggle-fold)
            ;; the upper bunk: E on its mattress
            (usable (- .5 *half-width*) (+ *top-bunk* .15) *bunk-z*
-                   (lambda () (if (and *seat* (eq (first *seat*) :top)) "E — слезть" "E — лечь на верхнюю полку"))
+                   (lambda () (if (and *seat* (eq (seat-what *seat*) :top)) "E — слезть" "E — лечь на верхнюю полку"))
                    (lambda () (lie-on-bunk :top)) nil 2.6 .3))))
 
 (defun usables ()

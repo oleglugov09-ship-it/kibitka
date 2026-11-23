@@ -160,7 +160,7 @@ That is the body, the truck under it, everything bolted on inside, the things an
     (let* ((range (* *fuel* *tank-km* 1000.0))                       ; how far the tank will last
            (wish (* *speed* gap))
            (free (if (<= wish range) wish (+ range (* 2.5 (- gap (/ range *speed*))))))
-           (to-turn (if *way* (max 0.0 (- (way-to (first (first *way*))) 5.0)) free))                 ; not past the next turn
+           (to-turn (if *way* (max 0.0 (- (way-to (turn-where (first *way*))) 5.0)) free))                 ; not past the next turn
            (driven (if *auto* (min free to-turn (max 0.0 (way-to (car *auto*)))) free)))               ; autopilot stops at target
       (setf *fuel* (max 0.0 (- *fuel* (/ (min driven range) (* 1000 *tank-km*)))))     ; gasoline goes by distance, not time
       (log-event :away :gap (round gap) :driven (round driven) :dist (round (+ *dist* (* *dir* driven))) :fuel *fuel*)

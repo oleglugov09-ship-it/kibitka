@@ -23,7 +23,7 @@
 
 (defun my-look ()
   (+ *outfit* (* 10 (1+ *fur*)) (case *torch* (:beam 100) (:chin 200) (t 0)) (* 1000 (my-hold))
-     (if (and *seat* (member (first *seat*) '(:fold :top))) 100000 0)))                 ; lying on a bunk        ; hundreds: torch, as a beam or under the chin (uyut.lisp)
+     (if (lying-p) 100000 0)))                 ; lying on a bunk        ; hundreds: torch, as a beam or under the chin (uyut.lisp)
 
 (defun load-look ()
   (let ((form (get-save :look)))

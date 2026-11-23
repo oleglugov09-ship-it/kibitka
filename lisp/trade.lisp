@@ -73,7 +73,7 @@ PLACE is the rounded path coordinate of the stay.")
 (defun hand-point ()
   "Return where our hands are in wagon coordinates: a little ahead of and below the eyes."
   (v3 (- (vector3-x *pos*) (* .35 (sin *yaw*)))
-      (+ (if (outdoors-p (vector3-x *pos*) (vector3-z *pos*)) 0.0 *floor*) (if *seat* (fifth *seat*) *eye*) -.3)
+      (+ (if (outdoors-p (vector3-x *pos*) (vector3-z *pos*)) 0.0 *floor*) (eye-height) -.3)
       (- (vector3-z *pos*) (* .35 (cos *yaw*)))))
 
 (defun paws-point (&optional (z 0.0))
