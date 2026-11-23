@@ -6,7 +6,7 @@ before the first frame, and most of that was pictures kept as PNG and music kept
 
 For every project/textures/*/*.png a .webp is written next to it (lossy, or lossless where the picture has
 transparency), and for every project/discs/*.wav an .mp3. The game reads the small copy when it is there
-(lisp/sound.lisp, PACKED-PATH; the jukebox skips a .wav that has an .mp3), and the browser build packs only the
+(lisp/files.lisp, PACKED-PATH; the jukebox skips a .wav that has an .mp3), and the browser build packs only the
 small copies (project/export_presets.cfg, exclude_filter). The sources stay what they were: the generators in
 tools/ still write PNG and WAV, and a run from the project folder without this script still works.
 Needs Pillow with WebP, and ffmpeg for the music.

@@ -1,5 +1,5 @@
 #!/bin/bash
-# The game reads textures, sounds and discs itself, as bytes (lisp/sound.lisp FILE-BYTES).
+# The game reads textures, sounds and discs itself, as bytes (lisp/files.lisp FILE-BYTES).
 # So that on export Godot packs the source files rather than its own reprocessed versions,
 # each one gets the "keep" import (in the editor: Import → Keep File). Run from `make web`.
 set -euo pipefail

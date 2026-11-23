@@ -20,6 +20,14 @@
 
 (defun client-kind (kind key) "Return what is declared under KEY for the client KIND." (getf (rest (assoc kind *client-kinds*)) key))
 
+(defun client-says (kind key &rest args)
+  "Call what the client KIND declares under KEY - its sign, its hint, its words - with ARGS.
+A kind that is not declared, or declares no such thing, is an error that names both: calling whatever was found
+used to end in 'not a valid function name NIL', which says nothing of who came to the window."
+  (let ((f (client-kind kind key)))
+    (unless (functionp f) (error "The client kind ~s declares no ~s (the kinds: ~{~s~^ ~})" kind key (mapcar #'car *client-kinds*)))
+    (apply f args)))
+
 (defclient :buyer
   :sign (lambda (price good town dest) (declare (ignore town dest))
           (format nil "КУПЛЮ ~a · ~/kiosk-trip::rub/" (string-upcase (good-name (or good :milk))) price))
@@ -80,7 +88,7 @@
 It is shown while we are not looking at anything specific."
   (when (and *client* (> (getf *client* :arrive 0.0) 0)) (return-from client-hint "Клиент идёт к окну"))
   (when *client*
-    (funcall (client-kind (getf *client* :kind) :hint) (getf *client* :price) (client-good) (getf *client* :town) (getf *client* :dest))))
+    (client-says (getf *client* :kind) :hint (getf *client* :price) (client-good) (getf *client* :town) (getf *client* :dest))))
 
 ;;; Where we are parked
 
@@ -203,7 +211,7 @@ WHO is the key of a person we know by name (people.lisp): he comes as himself, n
     (node-3d-set-rotation g (v3 0 (- (/ pi 2)) 0))
     (node-3d-set-scale (first cat) (v3 .72 .72 .72))
     (when face (person-dress (first cat) (second cat) (third face)))
-    (sign g (funcall (client-kind kind :sign) price good town dest)
+    (sign g (client-says kind :sign price good town dest)
           0 1.42 0 :h .13 :yaw 0.0)
     g))
 
@@ -292,7 +300,7 @@ The driver keeps count; guests are sent a description, see CLIENT-VIEW."
           (t (let ((coming (client-kind kind :coming))) (say (if (functionp coming) (funcall coming town) coming)))))))
 
 (defun client-words (kind price town dest)
-  (funcall (client-kind kind :words) price (client-good) town dest))
+  (client-says kind :words price (client-good) town dest))
 
 ;;; The client over the network: the driver sends guests a description, guests draw the same one and send their actions
 

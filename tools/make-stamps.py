@@ -53,7 +53,7 @@ def camp(d, c):        # a campfire: the pioneer camp
     d.polygon([(20, 9), (27, 24), (24, 30), (16, 30), (13, 24)], fill=PAPER); d.polygon([(20, 17), (23, 26), (17, 26)], fill=c)
     d.line([(9, 37), (31, 31)], fill=PAPER, width=3); d.line([(9, 31), (31, 37)], fill=PAPER, width=3)
 
-CAMP = 99  # the camp's number in a parcel's address (CAMP-ADDR in life.lisp)
+CAMP = 99  # the camp's number in a parcel's address (*CAMP-TOWN* in life.lisp)
 
 TOWNS = [(river, (63, 111, 147)), (military, (92, 110, 62)), (factory, (163, 38, 44)), (university, (106, 58, 110)),
          (village, (201, 161, 58)), (port, (44, 74, 122)), (admin, (122, 42, 36)), (outpost, (74, 128, 148)),
