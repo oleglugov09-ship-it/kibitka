@@ -65,7 +65,6 @@ Without the autopilot the truck brakes at once; to drive, call (kiosk-trip::go-t
 (live-fn regen () "Rebuild the land and the roadside with the current parameters, at the same path coordinate."
   (let ((d *dist*))
     (reset-segments)
-    (rebuild-chunks)
     (dolist (p *props*) (node-queue-free (car p)))
     (setf *props* '())
     (remhash :props *spans*)                 ; the roadside trees — anew
@@ -80,7 +79,6 @@ Without the autopilot the truck brakes at once; to drive, call (kiosk-trip::go-t
 (live-fn style (&optional what)
   "Set the textures to WHAT: :painted, :pixel, :pbr for soft PBR, or NIL for none."
   (setf *style* what) (apply-style)
-  (rebuild-chunks)
   what)
 
 (live-fn discs () "Re-read the discs in project/discs/ and return them with what is playing."

@@ -244,8 +244,15 @@ These are the hills and mountains whose slopes the road follows."
                 (row-pads r) (pads-at d)
                 *row* r)))))
 
+(defvar *baking* (and (ext:getenv "KIOSK_BAKE") t) "True while the map is being baked from the formulas (bake.lisp): only then are
+the formulas of the land and of the roads asked; the game itself reads the baked map.")
+
 (defun road-y (d)
-  "Return the road height at path coordinate D, interpolated between rows computed two meters apart."
+  "Return the road height at path coordinate D: from the baked road (zemlya.lisp), two metres between its points."
+  (if *baking* (formula-road-y d) (baked-road-y d)))
+
+(defun formula-road-y (d)
+  "Return the road height at path coordinate D as the formulas make it, interpolated between rows computed two meters apart."
   (let* ((k (floor d 2)) (f (/ (- d (* 2 k)) 2.0)) (a (row-ry (row-near (* 2.0 k)))))
     (+ a (* f (- (row-ry (row-near (* 2.0 (1+ k)))) a)))))
 

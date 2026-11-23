@@ -103,11 +103,15 @@ That is the body, the truck under it, everything bolted on inside, the things an
   (add-layout-twins)
   (make-pivots root)
   (make-sky root)
+  (unless *baking* (make-terrain root))                   ; the land: the baked map, drawn by Terrain3D (zemlya.lisp). The world stands on it
   (start-trip)
   (read-mega-paints)
   (read-places)                                           ; where things stand in the wagon: from the Blender files (mesta.lisp)
   (make-kibitka *rig*)
   (make-camera *rig*)
+  (unless *baking*
+    (object-call *terrain* "set_camera" *camera*)
+    (load-water *land*))
   (load-place)
   (load-game)
   (make-sound root)
@@ -155,7 +159,14 @@ That is the body, the truck under it, everything bolted on inside, the things an
       (if (> driven 60) (jump-dist (+ *dist* (* *dir* driven))) (incf *dist* (* *dir* driven)))))
   (incf *day-t* (* gap *time-scale*)))
 
+(defvar *bake-wanted* *baking* "True until the map is baked, in a run that is not a game but the baking of the map (bake.lisp).")
+
 (defmethod process ((root trip-root) delta)
+  (when *bake-wanted*                                      ; on the first frame, once the scene stands: bake and leave
+    (setf *bake-wanted* nil)
+    (bake-map root)
+    (object-call (object-call root "get_tree") "quit")
+    (return-from process nil))
   (let ((now (object-call (gdext:singleton "Time") "get_ticks_msec")))
     (when *last-ticks*
       (let ((gap (- (/ (- now *last-ticks*) 1000.0) delta)))

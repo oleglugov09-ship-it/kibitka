@@ -70,7 +70,8 @@ The string form is for materials, which are cached by colour."
   (let ((m (water-material)) (ice (eq *season* :winter)))
     (object-set m "albedo_color" (hex (if ice "#b8d0e0" *water-rgb*)))
     (object-set m "roughness" (if ice .5 .3))
-    (object-set m "emission_enabled" (not ice))))
+    (object-set m "emission_enabled" (not ice)))
+  (terrain-season))
 
 (defun set-season (season)
   (setf *season* season *season-clock* 0.0)

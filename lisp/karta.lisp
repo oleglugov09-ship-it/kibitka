@@ -23,7 +23,8 @@ Between *ROAD-NEAR* and this the two blend smoothly.")
   "A road on the map.
 It covers path coordinates D0 to D1, holds points every *MAP-STEP* (x, z, heading) and records
 in NEXT where its end leads."
-  d0 d1 xs zs ths next)
+  d0 d1 xs zs ths next
+  ys)                          ; the road's height at every point: baked with the map (bake.lisp), read from roads.bin
 
 (defvar *edges* '() "All the roads of the map; the first one is the ring road.")
 (defvar *road-grid* (make-hash-table) "The map from a map cell to the road points in it, each as (ROAD . POINT-INDEX).")
@@ -108,8 +109,10 @@ neither the map nor the land already laid out is touched (turning around, a new 
   (clrhash *rows*)
   (unless (and *edges* (eql *map-seed* *trip-seed*))
     (clrhash *road-grid*)
-    (setf *edges* (list (make-ring)) *map-seed* *trip-seed*)
-    (make-spokes)
+    (setf *map-seed* *trip-seed*)
+    (cond (*baking* (setf *edges* (list (make-ring))) (make-spokes))   ; the roads are being drawn from the formulas (bake.lisp)
+          ((load-roads))                                                ; the game: they are data, baked with the map (zemlya.lisp)
+          (t (error "The map is not baked: there is no ~a. Run tools/bake-map.sh" *roads-path*)))
     (mapc #'index-edge *edges*)
     (when *land* (clear-land) (clear-roads))))
 
@@ -177,7 +180,14 @@ into the ground (except on a bridge over a chasm, where the land has dropped awa
     (+ (road-y d) h)))
 
 (defun land-height (x z)
-  "Return the land height at the map point (X, Z).
+  "Return the land height at the map point (X, Z): what the baked map has there (zemlya.lisp), and beyond the
+map the flat land around it."
+  (if *baking*
+      (formula-land-height x z)
+      (or (terrain-height x z) *terrain-ground*)))
+
+(defun formula-land-height (x z)
+  "Return the land height at the map point (X, Z) as the formulas of the land make it: this is what is baked.
 The second value is the nearest road as (PATH-COORDINATE SIDEWAYS DISTANCE ROAD), or NIL.
 Several roads or sections may be nearby: their strips are blended by proximity, and the one
 right underfoot (closer than about 12 m) outweighs all the others, so that a neighbouring

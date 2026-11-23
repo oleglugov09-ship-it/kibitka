@@ -335,6 +335,7 @@ its air."
   (step-doors)
   (let ((in (inside-mega-p)))
     (when *land* (object-set *land* "visible" (not in)))
+    (when *terrain* (object-set *terrain* "visible" (not in)))
     (when *world* (object-set *world* "visible" (not in)))
     (cond ((and in (null *mega-node*)) (setf *mega-node* (build-mega)))
           ((and (not in) *mega-node*) (node-queue-free *mega-node*) (clrhash *mega-cells*) (clrhash *mega-lives*)
