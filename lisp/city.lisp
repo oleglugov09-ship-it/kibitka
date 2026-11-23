@@ -209,23 +209,13 @@ It has a main building, a striped chimney and a gatehouse."
 
 (defun culture-house (g)
   "Add to G the house of culture, with a columned portico, a pediment and steps."
-  (body g 18.0 11.0 38.0 "#b0a57e" 16.0 0)
-  (shape g :box '(5.0 .6 26.0) "#8a8a84" 13.5 .3 0)
-  (dotimes (i 6) (shape g :cyl '(.55 .6 8.0 10) "#c8bf9c" 12.6 4.6 (- (* i 4.4) 11)))
-  (shape g :box '(5.4 1.6 26.0) "#b0a57e" 13.5 9.4 0)
-  (shape g :box '(.14 5.0 3.0) "#4a3020" 15.95 2.8 0 :shadow nil)
+  (model g "culture-house")
   (window-rows g 3 16.0 0 38.0 :first 2.6 :step 3.2)
   (sign g "ДОМ КУЛЬТУРЫ" 10.7 9.4 0 :h 1.2 :rgb "#6a3a2e"))
 
 (defun plaza (g)
   "Add to G the square: paving slabs, a monument on a pedestal, a flower bed, benches and a flagpole."
-  (shape g :box '(12.0 .2 48.0) "#6e6c68" 9.0 .1 0 :shadow nil)
-  (shape g :box '(2.6 2.4 2.6) "#85857f" 8.0 1.3 0)
-  (shape g :box '(.9 2.6 .7) "#4c5052" 8.0 3.8 0) (shape g :ball '(.4 8 5) "#4c5052" 8.0 5.4 0)
-  (shape g :box '(1.6 .3 .3) "#4c5052" 7.2 4.7 .2 :rot '(0 0 .5))                 ; the arm points the way
-  (shape g :cyl '(3.0 3.0 .3 14) "#5a4a3a" 8.0 .25 -15) (shape g :cyl '(2.6 2.6 .34 14) "#8a4038" 8.0 .27 -15 :shadow nil)
-  (dolist (z '(-7 7)) (shape g :box '(.5 .45 2.2) "#6a5038" 5.0 .45 z))
-  (shape g :box '(.1 9.0 .1) "#8a8a84" 6.0 4.5 18) (shape g :box '(.05 .9 1.5) "#a3262c" 6.0 8.4 18.8 :shadow nil))
+  (model g "plaza"))
 
 (defun tower (g)
   "Add to G a tower block of twelve storeys."
@@ -251,60 +241,24 @@ It is :SWAMP (a hut on stilts) by a swamp, :TAVERN in a pine forest outside town
     (:tavern (tavern-station g))
     (:swamp (swamp-station g))))
 
-(defun old-pump (g x z)
-  (shape g :box '(.6 1.5 .5) "#a3262c" x .75 z) (shape g :cyl '(.32 .32 .12 12) "#e8e0d0" x 1.75 z :rot (list (/ pi 2) 0 0))
-  (shape g :box '(.62 .3 .3) "#d8d4c4" x 1.1 z :shadow nil))
-
 (defun tavern-station (g)
   "Add to G a tavern in the deep forest.
 It is a log house with a porch, a lantern and smoke from the chimney, with an old pump in the yard."
-  (shape g :box '(16.0 .12 26.0) "#5a5048" 11.0 .06 0 :shadow nil)
-  (shape g :box '(9.0 4.2 12.0) "#6a5038" 16.0 2.1 0)
-  (dolist (s '(-1 1)) (shape g :box '(6.4 .3 13.0) "#3a2a1e" (+ 16.0 (* s 2.5)) 5.7 0 :rot (list 0 0 (* s -.62))))
-  (loop for y from .5 to 4.0 by .7 do (shape g :box '(.1 .08 12.0) "#4a3424" 11.48 y 0 :shadow nil))
-  (shape g :box '(3.4 .2 8.0) "#5a3e26" 9.8 3.3 0 :rot '(0 0 .12))
-  (dolist (z '(-3.6 3.6)) (shape g :box '(.22 3.2 .22) "#5a3e26" 8.4 1.6 z))
-  (shape g :box '(3.0 .3 8.0) "#7a5a3a" 9.9 .3 0)
-  (dolist (z '(-2.6 2.6)) (shape g :box '(.14 1.5 1.3) "#e8c070" 11.45 2.3 z :emit "#ffb050" :energy 1.3 :shadow nil))
-  (shape g :box '(.14 2.6 1.4) "#3a2a1e" 11.45 1.3 0 :shadow nil)
-  (shape g :box '(.9 2.0 .9) "#5a4a44" 18.0 7.2 -3.0) (chimney-smoke g 18.0 8.4 -3.0 :size 1.4)
-  (shape g :box '(.2 .2 .2) "#ffd080" 8.4 3.0 3.6 :emit "#ffa040" :energy 3 :shadow nil)
-  (shape g :box '(.2 .9 5.0) "#3a2a1e" 8.3 4.3 0 :shadow nil)
-  (sign g "ТРАКТИР · БЕНЗИН" 8.18 4.3 0 :h .5 :rgb "#e8c070")
-  (old-pump g 6.5 -6.0)
-  (loop for i below 7 do (shape g :cyl '(.16 .16 1.1 6) "#7a5a3a" (+ 12.0 (* .34 (mod i 4))) (+ .18 (* .3 (floor i 4))) 8.0 :rot (list (/ pi 2) 0 0)))
-  (shape g :cyl '(.7 .7 .12 12) "#4a3424" 12.5 .8 -7.5 :rot (list 0 .3 (/ pi 2))))
+  (model g "station-tavern")
+  (chimney-smoke g 18.0 8.4 -3.0 :size 1.4)
+  (sign g "ТРАКТИР · БЕНЗИН" 8.18 4.3 0 :h .5 :rgb "#e8c070"))
 
 (defun swamp-station (g)
   "Add to G the gas station by the swamp: a hut on stilts, a boardwalk and barrels.
 Fly swatters are sold only here."
-  (shape g :box '(12.0 .14 22.0) "#6a5a48" 9.0 .07 0 :shadow nil)
-  (dolist (x '(12.5 18.5)) (dolist (z '(-3.5 3.5)) (shape g :box '(.35 3.4 .35) "#3a2a1e" x .7 z)))
-  (shape g :box '(7.6 .3 9.0) "#5a4636" 15.5 2.4 0)
-  (shape g :box '(6.4 3.0 7.4) "#5a6a4a" 15.5 4.0 0)
-  (dolist (s '(-1 1)) (shape g :box '(4.6 .25 8.4) "#3a3a34" (+ 15.5 (* s 1.8)) 6.3 0 :rot (list 0 0 (* s -.55))))
-  (shape g :box '(.12 1.2 1.6) "#e8c070" 12.25 4.2 0 :emit "#b0d060" :energy 1.2 :shadow nil)
-  (beam-between g '(11.6 2.5 2.5) '(8.0 .1 2.5) :thick .9 :rgb "#5a4636")
+  (model g "station-swamp")
   (sign g "БЕНЗИН У БОЛОТА" 12.2 5.9 0 :h .5 :rgb "#d8d4c4")
-  (shape g :box '(.12 .8 3.2) "#3c4638" 4.4 2.6 9.0 :shadow nil) (shape g :box '(.14 2.6 .14) "#3a2a1e" 4.4 1.3 9.0)
-  (sign g "МУХОБОЙКИ" 4.3 2.6 9.0 :h .42 :rgb "#e8e060")
-  (old-pump g 6.5 -5.0) (old-pump g 6.5 -2.5)
-  (dolist (z '(5.0 6.3)) (shape g :cyl '(.5 .5 1.3 10) "#3f6f73" 11.0 .65 z)))
+  (sign g "МУХОБОЙКИ" 4.3 2.6 9.0 :h .42 :rgb "#e8e060"))
 
 (defun plain-station (g)
   "Add to G an ordinary gas station.
 It has a canopy with a red stripe, three pumps, a booth and a price stele."
-  (shape g :box '(16.0 .2 28.0) "#55554f" 11.0 .1 0 :shadow nil)
-  (shape g :box '(9.0 .5 14.0) "#d8d4c4" 9.5 5.2 0)
-  (shape g :box '(9.1 .22 14.1) "#a3262c" 9.5 5.05 0 :shadow nil)
-  (dolist (sx '(6.0 13.0)) (dolist (sz '(-5.5 5.5)) (shape g :box '(.3 5.0 .3) "#8a8a84" sx 2.5 sz)))
-  (dolist (sz '(-4 0 4))
-    (shape g :box '(.7 1.7 .9) (if (zerop sz) "#a8843c" "#a3262c") 9.5 .95 sz)
-    (shape g :box '(.72 .4 .6) "#d8d4c4" 9.5 1.45 sz :shadow nil))
-  (body g 5.0 3.0 6.0 "#84807a" 17.0 -8)
-  (shape g :box '(.12 1.3 3.4) "#d8c890" 16.95 1.8 -8 :emit "#ffd890" :energy .7 :shadow nil)
-  (shape g :box '(.3 7.0 .3) "#8a8a84" 4.5 3.5 12)
-  (shape g :box '(.3 2.6 2.2) "#2a2c30" 4.5 6.0 12)
+  (model g "station-plain")
   (sign g "АЗС" 4.3 6.6 12 :h .9 :rgb "#d8d4c4") (sign g "76   0.40" 4.3 5.6 12 :h .5 :rgb "#c9a13a")
   (sign g "АЗС" 5.0 5.06 0 :h .8 :rgb "#d8d4c4"))
 
@@ -344,11 +298,7 @@ buyers and sellers come up at the sound of the bell (trade.lisp)."
 
 (defun depot (g)
   "Add to G the depot we set out from, a long warehouse with a loading ramp and gates."
-  (body g 16.0 7.0 46.0 "#6f757c" 9.0 0)
-  (shape g :box '(16.6 .4 46.6) "#4c4e52" 17.0 7.2 0 :shadow nil)
-  (shape g :box '(2.5 1.1 40.0) "#55554f" 7.8 .55 0)
-  (dolist (z '(-12 0 12)) (shape g :box '(.14 3.6 5.0) (if (zerop z) "#3c4638" "#5a5a58") 8.95 2.9 z :shadow nil))
-  (loop for (bx bz) in '((7.4 -16) (7.6 -14.6) (7.3 6) (7.5 17)) do (shape g :box '(.8 .5 .9) "#8a6440" bx 1.35 bz))
+  (model g "depot")
   (sign g "СКЛАД № 3" 8.85 5.6 0 :h 1.2 :rgb "#d8d4c4"))
 
 (defun parked-car (g x z)
@@ -512,8 +462,7 @@ The wallet is shared, so anyone can refuel."
     (unless *fuel-out* (setf *fuel-out* t) (log-event :fuel-out :money *money* :dist (round *dist*) :next-station (next-station *dist*)))
     (setf *speed* (min *speed* 2.5)))
   (when (> *fuel* .05) (setf *fuel-out* nil))                       ; empty tank: we coast along, barely moving
-  (when (and (< *fuel* .15) (not *fuel-told*)) (setf *fuel-told* t) (say "Бак почти пуст. Ищи заправку"))
-  )
+  (when (and (< *fuel* .15) (not *fuel-told*)) (setf *fuel-told* t) (say "Бак почти пуст. Ищи заправку")))
 
 (defun step-station ()
   "Track whether we stand at a gas station.

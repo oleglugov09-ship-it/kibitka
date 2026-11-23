@@ -28,6 +28,8 @@ VIEWS = [("outside-back-right", '(setf *view* :outside *orbit-yaw* .6 *orbit-pit
          ("cars-left", '(setf *orbit-yaw* -2.1 *orbit-pitch* .4)'),
          ("landmarks", """(progn (setf *orbit-dist* 120.0 *orbit-yaw* .8 *orbit-pitch* .5) (loop for f in '(mark-windmill mark-plane mark-church mark-pumpjacks mark-mast mark-elevator mark-ferris-wheel mark-watchtower mark-old-bus mark-radar mark-farm mark-rocket) for i from 0 do (funcall f (group *cart* (* 75.0 (cos (* i .5236))) 0.0 (* 75.0 (sin (* i .5236)))))) 1)"""),
          ("landmarks-back", '(setf *orbit-yaw* -2.3 *orbit-pitch* .5)'),
+         ("buildings", """(progn (setf *orbit-dist* 70.0 *orbit-yaw* 1.57 *orbit-pitch* .45) (loop for f in '(culture-house plaza tavern-station swamp-station plain-station depot biplane) for i from 0 do (funcall f (group *cart* -40.0 (if (eq f 'biplane) 12.0 0.0) (- (* 34.0 i) 100.0)))) 1)"""),
+         ("buildings-far", '(setf *orbit-dist* 110.0 *orbit-yaw* 2.3 *orbit-pitch* .4)'),
          ("meta-room", '(progn (setf *meta* t *view* :inside *seat* nil *pos* (v3 0 0 2.8) *yaw* 0.0 *pitch* 0.0) (apply-meta) 1)'),
          ("meta-room-back", '(setf *pos* (v3 0 0 -2.8) *yaw* 3.1416)'),
          ("meta-room-side", '(setf *pos* (v3 2.4 0 0) *yaw* 1.5708)')]

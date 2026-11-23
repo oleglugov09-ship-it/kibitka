@@ -61,13 +61,7 @@ It is at full strength in the settlement and fades out a kilometre and a half aw
 
 (defun biplane (g)
   "Build a crop-duster biplane in G (nose towards -z); its propeller spins by itself."
-  (shape g :cyl '(.7 .5 7.5 10) "#e8e0d0" 0 0 0 :rot (list (/ pi 2) 0 0))
-  (shape g :box '(11.0 .14 1.6) "#3c5a48" 0 -.5 -1.2) (shape g :box '(12.0 .14 1.6) "#3c5a48" 0 1.5 -1.4)
-  (dolist (x '(-4 4)) (shape g :box '(.1 2.0 .1) "#3a3a40" x .5 -1.3))
-  (shape g :box '(3.6 .12 1.2) "#3c5a48" 0 .3 3.6) (shape g :box '(.12 1.6 1.2) "#3c5a48" 0 1.0 3.6)
-  (shape g :cyl '(1.3 1.3 .06 10) "#8a8e92" 0 0 -3.9 :rot (list (/ pi 2) 0 0) :alpha .35 :shadow nil)
-  (shape g :ball '(.14 6 4) "#ff3020" -5.4 1.5 -1.4 :emit "#ff2010" :energy 4 :shadow nil)
-  (shape g :ball '(.14 6 4) "#30ff60" 5.4 1.5 -1.4 :emit "#20ff40" :energy 4 :shadow nil))
+  (model g "biplane"))
 
 (defun launch-plane ()
   "Launch the plane: it takes off ahead on the right, climbs and leaves to the left over the road."
