@@ -26,6 +26,8 @@ VIEWS = [("outside-back-right", '(setf *view* :outside *orbit-yaw* .6 *orbit-pit
          ("stops-left", '(setf *orbit-yaw* -1.9 *orbit-pitch* .35)'),
          ("cars-right", """(progn (setf *orbit-dist* 26.0 *orbit-yaw* 1.0 *orbit-pitch* .4) (loop for (n k) in '((1 nil) (0 nil) (2 nil) (1 :fire) (1 :ambulance) (1 :police) (1 :milk) (1 :bread) (1 :lavka) (1 :army) (1 :runaway)) for i from 0 do (let ((g (make-car n k))) (object-call g "reparent" *cart*) (godot:node-3d-set-position g (v3 (if (< i 6) 14.0 -14.0) 0.0 (- (* 9.0 (mod i 6)) 22.0))) (godot:node-3d-set-rotation g (v3 0 1.5708 0)))) 1)"""),
          ("cars-left", '(setf *orbit-yaw* -2.1 *orbit-pitch* .4)'),
+         ("landmarks", """(progn (setf *orbit-dist* 120.0 *orbit-yaw* .8 *orbit-pitch* .5) (loop for f in '(mark-windmill mark-plane mark-church mark-pumpjacks mark-mast mark-elevator mark-ferris-wheel mark-watchtower mark-old-bus mark-radar mark-farm mark-rocket) for i from 0 do (funcall f (group *cart* (* 75.0 (cos (* i .5236))) 0.0 (* 75.0 (sin (* i .5236)))))) 1)"""),
+         ("landmarks-back", '(setf *orbit-yaw* -2.3 *orbit-pitch* .5)'),
          ("meta-room", '(progn (setf *meta* t *view* :inside *seat* nil *pos* (v3 0 0 2.8) *yaw* 0.0 *pitch* 0.0) (apply-meta) 1)'),
          ("meta-room-back", '(setf *pos* (v3 0 0 -2.8) *yaw* 3.1416)'),
          ("meta-room-side", '(setf *pos* (v3 2.4 0 0) *yaw* 1.5708)')]
