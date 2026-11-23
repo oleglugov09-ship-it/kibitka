@@ -11,7 +11,7 @@ over Slynk and prints what matched and what didn't. The exit code is the number 
 Needs the `make live` build and free Slynk ports P0 and P1. The player's real saves are hidden for the
 duration of the check and put back afterwards; the check does not write to the game log (KIOSK_NOLOG).
 """
-import glob, os, shutil, subprocess, sys, time
+import glob, os, re, shutil, subprocess, sys, time
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(ROOT, "tools"))

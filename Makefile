@@ -25,6 +25,9 @@ live:
 # then an export with the web_dlink_nothreads_release template.
 web:
 	tools/names.py
+	# the fingerprint of all sources (the build version) is in lisp/net.lisp, computed when that file is compiled:
+	# if any source has changed since it was last compiled for the browser, it must be compiled again
+	if [ ! -e build-web/lisp--net.o ] || [ -n "$$(find lisp project/mods -name '*.lisp' -newer build-web/lisp--net.o | head -1)" ]; then touch lisp/net.lisp; fi
 	tools/make-models.sh
 	web/build.sh
 	tools/pack-assets.py
