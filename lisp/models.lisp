@@ -51,26 +51,32 @@ A mesh whose name in Blender has _noshadow in it casts no shadow; one that ends 
   (dotimes (i (object-call node "get_child_count"))
     (settle-model (object-call node "get_child" i) shadow)))
 
-(defvar *models* (make-hash-table :test 'equal) "A table from the name of a model to (scene . solids). SCENE is the model as read
+(defvar *models* (make-hash-table :test 'equal) "A table from the name of a model to (scene solids points surfaces), see TAKE-PLACES. SCENE is the model as read
 from the file: a node that is never put into the tree; every MODEL puts a copy of it, and the copies share the meshes.
 SOLIDS are its obstacles: the objects named solid... in Blender, each a cube stretched over what cannot be walked through,
 as (x y z yaw width height depth) - they are not drawn.")
 
-(defun take-solids (root)
-  "Take the objects named solid... out of the model ROOT and return what they cover, each as (x y z yaw w h d)."
-  (let ((solids '()))
+(defun take-places (root)
+  "Take out of the model ROOT what is there for the rules, not for the eye, and return it as three lists.
+Objects named solid...: obstacles, each as (x y z yaw w h d). Empties named at_NAME: points, each as (name x y z).
+Cubes named surface_NAME: the top face is a place to stand or put things, each as (name x top z width depth)."
+  (let ((solids '()) (points '()) (surfaces '()))
     (loop for child across (node-get-children root)
-          when (eql 0 (search "solid" (princ-to-string (object-get child "name"))))
-            do (let ((at (object-get child "position")) (rot (object-get child "rotation")) (size (object-get child "scale")))
-                 (push (list (vector3-x at) (vector3-y at) (vector3-z at) (vector3-y rot)
-                             (abs (vector3-x size)) (abs (vector3-y size)) (abs (vector3-z size)))
-                       solids))
-               (object-call root "remove_child" child)
-               (godot:node-queue-free child))
-    solids))
+          do (let ((name (princ-to-string (object-get child "name"))))
+               (flet ((starts (prefix) (eql 0 (search prefix name))))
+                 (when (or (starts "solid") (starts "at_") (starts "surface_"))
+                   (let ((at (object-get child "position")) (rot (object-get child "rotation")) (size (object-get child "scale")))
+                     (let ((x (vector3-x at)) (y (vector3-y at)) (z (vector3-z at))
+                           (w (abs (vector3-x size))) (h (abs (vector3-y size))) (d (abs (vector3-z size))))
+                       (cond ((starts "solid") (push (list x y z (vector3-y rot) w h d) solids))
+                             ((starts "at_") (push (list (subseq name 3) x y z) points))
+                             (t (push (list (subseq name 8) x (+ y (/ h 2)) z w d) surfaces)))))
+                   (object-call root "remove_child" child)
+                   (godot:node-queue-free child)))))
+    (list solids points surfaces)))
 
 (defun model-entry (name)
-  "Return (scene . solids) of the model NAME, read once; NIL (and an error in the log) when the file is missing or broken."
+  "Return (scene solids points surfaces) of the model NAME, read once; NIL (and an error in the log) when the file is missing or broken."
   (or (gethash name *models*)
       (let* ((path (format nil "res://models/~a.glb" name))
              (root (and (file-here-p path)
@@ -78,9 +84,22 @@ as (x y z yaw width height depth) - they are not drawn.")
                           (and (eql 0 (object-call doc "append_from_buffer" (file-bytes path) "" state))
                                (object-call doc "generate_scene" state))))))
         (cond ((null root) (note-error (format nil "модель ~a не прочитана" path) "model") nil)
-              (t (let ((solids (take-solids root)))
+              (t (let ((places (take-places root)))
                    (settle-model root t)
-                   (setf (gethash name *models*) (cons root solids))))))))
+                   (setf (gethash name *models*) (cons root places))))))))
+
+(defun model-point (model name)
+  "Return the point NAME of MODEL (an empty named at_NAME in its Blender file) as (x y z), or NIL."
+  (rest (assoc name (third (model-entry model)) :test #'string=)))
+
+(defun model-surface (model name)
+  "Return the surface NAME of MODEL (a cube named surface_NAME in its Blender file) as (x top z width depth), or NIL."
+  (rest (assoc name (fourth (model-entry model)) :test #'string=)))
+
+(defun model-surfaces (model prefix)
+  "Return the surfaces of MODEL whose names begin with PREFIX, each as (x top z width depth), in the order of their names."
+  (mapcar #'rest (sort (remove-if-not (lambda (s) (eql 0 (search prefix (first s)))) (copy-list (fourth (model-entry model))))
+                       #'string< :key #'first)))
 
 (defun paint-model (node paint)
   "Give the meshes under NODE whose material is named paint0, paint1, ... in Blender the colours of the list PAINT."
@@ -111,7 +130,7 @@ A missing or broken file is logged as an error, and NIL is returned."
       (when rot (godot:node-3d-set-rotation root (v3 (first rot) (second rot) (third rot))))
       (when scale (godot:node-3d-set-scale root (v3 (first scale) (second scale) (third scale))))
       (when *tracking*
-        (loop for (sx sy sz yaw w h d) in (cdr entry)
+        (loop for (sx sy sz yaw w h d) in (second entry)
               do (push (list parent :box (list w h d) (+ x sx) (+ y sy) (+ z sz) (list 0.0 yaw 0.0) nil) (cdr *tracking*))))
       root)))
 

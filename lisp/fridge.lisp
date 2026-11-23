@@ -89,8 +89,9 @@ A shelf has four places, two by two, like a section of the rack in small; things
 
 (defun dryer-surface ()
   "Return the dryer as (x z width depth height)."
-  (destructuring-bind (sx sz) *stove-at*
-    (list (- sx .02) (- sz .45) .5 1.2 *dryer-top*)))                      ; long enough for four things in a row
+  (or *dryer-surface*                                                     ; from the appliances model (mesta.lisp)
+      (destructuring-bind (sx sz) *stove-at*
+        (list (- sx .02) (- sz .45) .5 1.2 *dryer-top*))))                      ; long enough for four things in a row
 
 (defun on-dryer-p (spec)
   (destructuring-bind (cx cz w d top) (dryer-surface)

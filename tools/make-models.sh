@@ -7,6 +7,8 @@
 #   tools/make-models.sh -B       export everything
 #
 # What goes into the model: every mesh of the file, with its modifiers applied; cameras and lights stay behind.
+# Empties named at_NAME and cubes named surface_NAME are places the game's rules read (lisp/mesta.lisp); cubes named
+# solid are obstacles. None of them is drawn.
 # Axes: the game's x (right), y (up), z (along the wagon, the door at +z) are Blender's x, z and -y; a metre is a
 # metre; the origin of the file is the point the game places. Needs Blender 4.2 or newer (BLENDER to choose one).
 set -euo pipefail
@@ -20,7 +22,7 @@ for blend in models/*.blend models/*/*.blend; do
   if [ "${1:-}" != "-B" ] && [ -f "$glb" ] && [ ! "$blend" -nt "$glb" ]; then continue; fi
   "$blender" -b "$blend" --python-expr "
 import bpy
-for ob in bpy.data.objects: ob.select_set(ob.type == 'MESH')
+for ob in bpy.data.objects: ob.select_set(ob.type in ('MESH', 'EMPTY'))
 bpy.ops.export_scene.gltf(filepath='$PWD/$glb', export_format='GLB', use_selection=True, export_apply=True,
                           export_yup=True, export_cameras=False, export_lights=False)
 " > /dev/null

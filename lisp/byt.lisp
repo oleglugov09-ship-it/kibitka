@@ -24,8 +24,9 @@ The record player and the discs sit on the left of its bottom shelf.")
 Each entry is (x z width depth height)."
   (destructuring-bind (x0 x1) *shelf-x*
     (append (loop for top in *shelf-tops* collect (list (/ (+ x0 x1) 2) *shelf-z* (- x1 x0) .54 top))
-            (destructuring-bind (z0 z1) *rack-z*                                       ; overhead racks
-              (loop for sx in '(-1 1) collect (list (* sx (- *half-width* .2)) (/ (+ z0 z1) 2) .36 (- z1 z0) *rack-top*)))
+            (or *rack-surfaces*                                                    ; overhead racks: from the furniture model (mesta.lisp)
+                (destructuring-bind (z0 z1) *rack-z*
+                  (loop for sx in '(-1 1) collect (list (* sx (- *half-width* .2)) (/ (+ z0 z1) 2) .36 (- z1 z0) *rack-top*))))
             (list (stove-surface))                                                 ; the stove top: cooking happens here (uyut.lisp)
             (fridge-surfaces) (list (dryer-surface))                               ; the fridge shelves and the dryer above the stove (fridge.lisp)
             ;; with the window slid open there is one shared windowsill: through the opening, from our edge to the

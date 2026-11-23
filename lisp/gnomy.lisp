@@ -67,10 +67,14 @@ Return the group node."
 
 ;;; ------------------------------------------------------------------ trophy shelves in the wagon
 
+(defparameter *trophy-x* 0.0 "The middle of the shelves of figures, across the wagon.")
+(defparameter *trophy-z* 2.65 "The z of the shelves of figures: on the back wall, above the door.")
+(defparameter *trophy-tops* '(2.07 2.47) "The heights of the two shelves of figures above the floor.")
+
 (defun trophy-spot (i)
   "Return the spot of gnome I on the shelf as (x height-above-floor z rotation).
 The gnomes stand on two shelves above the door, nine to a shelf, facing the room."
-  (list (+ -1.0 (* .25 (mod i 9))) (if (< i 9) 2.07 2.47) (- *half-length* .2) 0.0))
+  (list (+ *trophy-x* (* .25 (- (mod i 9) 4))) (if (< i 9) (first *trophy-tops*) (second *trophy-tops*)) *trophy-z* 0.0))
 
 (defun show-trophies ()
   (loop for (i . node) in *trophies* do (object-set node "visible" (gnome-found-p i))))
