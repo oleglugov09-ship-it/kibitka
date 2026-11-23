@@ -230,6 +230,21 @@ These are the hills and mountains whose slopes the road follows."
   (* (row-rise row) 2
      (- (fbm (+ (* x *big-scale*) 11) (+ (* (row-d row) *big-scale*) (* (row-seed row) 3.1))) .5)))
 
+(defvar *seam-jump* nil "How much higher the ring road starts than it ends, in metres: the formulas of the land do not
+close by themselves. NIL until asked; forgotten when the places are planned anew.")
+(defparameter *seam-run* 230.0 "The length of road before the seam of the ring over which the road is brought to the height of its start.")
+
+(defun seam-lift (d)
+  "Return what is added to the height of the ring road at path coordinate D so that its end meets its start:
+nothing but on the last *SEAM-RUN* metres before the seam, out in the fields beyond the last town."
+  (let ((e (and (fboundp 'ring) (funcall 'ring))))
+    (if (and e (funcall 'ring-d-p d) (> d (- (funcall 'edge-d1 e) *seam-run*)))
+        (let ((d0 (funcall 'edge-d0 e)) (d1 (funcall 'edge-d1 e)))
+          (unless *seam-jump*
+            (setf *seam-jump* (- (level-road-y d0 (raw-road-y d0)) (level-road-y d1 (raw-road-y d1)))))
+          (* *seam-jump* (sstep (- d1 *seam-run*) d1 d)))
+        0.0)))
+
 (defun row-at (d)
   (let ((r *row*))
     (if (and r (eql (row-d r) d) (eql (row-seed r) *trip-seed*))
@@ -240,7 +255,7 @@ These are the hills and mountains whose slopes the road follows."
                             :lake (weight :water :lake d) :river (weight :water :river d) :river-x (river-x d)
                             :meadow (weight :veg :meadow d)
                             :dry (min 1.0 (+ (weight :veg :autumn d) (* .6 (weight :veg :rocky d)) (weight :veg :steppe d))))))
-          (setf (row-ry r) (level-road-y d (raw-road-y d))
+          (setf (row-ry r) (+ (level-road-y d (raw-road-y d)) (seam-lift d))
                 (row-pads r) (pads-at d)
                 *row* r)))))
 

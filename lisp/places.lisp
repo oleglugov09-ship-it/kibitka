@@ -185,7 +185,7 @@ It is called before the land is built."
     ;; exits, entries and the Crossroads go last: they take the height of the ring road, and every level section above changes it
     (plan-junctions))
   (clrhash *rows*)
-  (setf *row* nil))
+  (setf *row* nil *seam-jump* nil))
 
 ;;; ------------------------------------------------------------------ helpers
 

@@ -26,7 +26,7 @@
 
 (defun terrain-texture (name)
   "Return a Terrain3D texture asset made of the land picture NAME of the current style, or NIL without the picture.
-The pictures are nearly grey, the colour comes from the map: so they are set twice as bright, as the old land had them."
+The pictures are nearly grey, the colour comes from the map; the shader doubles them (texture_gain)."
   (let ((path (texture-path (or *style* :pixel) name)))
     (when (picture-here-p path)
       (let ((img (gdext:make-object "Image")) (flat (gdext:make-object "Image"))
@@ -43,7 +43,6 @@ The pictures are nearly grey, the colour comes from the map: so they are set twi
         (object-call albedo "set_image" img) (object-call normal "set_image" flat)
         (object-call asset "set_asset_name" (string-downcase (symbol-name name)))
         (object-call asset "set_albedo_texture" albedo) (object-call asset "set_normal_texture" normal)
-        (object-call asset "set_albedo_color" (color 2.0 2.0 2.0 1.0))
         (object-call asset "set_uv_scale" (/ 1.0 *ground-tile*))
         (gdext:setf-reference (gethash (list :albedo name) *terrain-keep*) albedo)
         (gdext:setf-reference (gethash (list :normal name) *terrain-keep*) normal)
@@ -67,12 +66,15 @@ The pictures are nearly grey, the colour comes from the map: so they are set twi
       (loop for name in *terrain-textures* for id from 0
             do (let ((asset (terrain-texture name))) (when asset (object-call assets "set_texture_asset" id asset))))
       (object-call material "set_world_background" 1)                    ; FLAT beyond the regions
-      (object-call material "set_texture_filtering" (if (eq *style* :pixel) 3 0))   ; NEAREST for pixel pictures
+      (object-call material "set_macro_variation_enabled" t)             ; large patches a little lighter and darker: the tiles do not show
+      (object-call material "set_texture_filtering" (if (eq *style* :pixel) 2 0))   ; NEAREST_ANISOTROPIC for pixel pictures: square pixels near, no shimmer far
       (when shader
         (gdext:setf-reference (gethash :shader *terrain-keep*) shader)
         (object-call material "set_shader_override" shader)
         (object-call material "set_shader_override_enabled" t))
-      (object-call material "set_shader_param" "ground_level" *terrain-ground*))
+      (object-call material "set_shader_param" "ground_level" *terrain-ground*)
+      (object-call material "set_shader_param" "macro_variation1" (color .80 .82 .78 1.0))
+      (object-call material "set_shader_param" "macro_variation2" (color .90 .88 .86 1.0)))
     (setf *terrain-data* (object-get terrain "data"))
     ;; the regions are loaded one by one: Terrain3D's own loading of a whole directory divides by zero in the browser build
     (when directory
@@ -86,12 +88,21 @@ The pictures are nearly grey, the colour comes from the map: so they are set twi
     (terrain-season) (terrain-shift)
     terrain))
 
+(defvar *terrain-shown* t "False while the terrain is hidden: behind a door the base world is not there.")
+
+(defun terrain-show (on)
+  "Show the terrain or hide it. Neither its VISIBLE nor its render layers hide what Terrain3D draws, so a hidden
+terrain is drawn a hundred kilometres below: out of everybody's sight."
+  (unless (eq (and on t) *terrain-shown*)
+    (setf *terrain-shown* (and on t))
+    (terrain-shift)))
+
 (defun terrain-param (name value)
   (when *terrain* (object-call (object-get *terrain* "material") "set_shader_param" name value)))
 
 (defun terrain-shift ()
   "Tell the terrain where the scene's origin is on the map."
-  (destructuring-bind (ox oy oz) *origin* (terrain-param "world_shift" (v3 ox oy oz))))
+  (destructuring-bind (ox oy oz) *origin* (terrain-param "world_shift" (v3 ox (if *terrain-shown* oy (+ oy 100000.0)) oz))))
 
 (defun terrain-season ()
   "Tint the grass of the terrain for the season: as SEASON-GRASS does a colour."

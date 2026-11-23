@@ -143,4 +143,4 @@ disable_install_audio_busses=true
 disable_install_audio_busses=true
 
 [editor_plugins]
-enabled=PackedStringArray("res://addons/maaacks_menus_template/plugin.cfg")
+enabled=PackedStringArray("res://addons/maaacks_menus_template/plugin.cfg", "res://addons/terrain_3d/plugin.cfg")

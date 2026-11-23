@@ -13,7 +13,23 @@ rm -f project/terrain/data/*.res project/terrain/water/*.res project/terrain/wat
 tmp=$(mktemp -d)
 KIOSK_BAKE=1 KIOSK_BAKE_SHADER="$tmp/terrain3d.gdshader" KIOSK_NOLOG=1 KIOSK_SOLO=1 XDG_DATA_HOME="$tmp/data" \
   timeout 7200 godot --path project --headless --audio-driver Dummy 2>&1 | grep "BAKE\|Ошибка\|ERROR" || true
-tools/terrain-shader.py "$tmp/terrain3d.gdshader" project/terrain/terrain.gdshader    # Terrain3D's own shader, with the game's changes
+mkdir -p build && cp "$tmp/terrain3d.gdshader" build/terrain3d.gdshader         # kept: tools/terrain-shader.py can be run again without baking
+tools/terrain-shader.py build/terrain3d.gdshader project/terrain/terrain.gdshader    # Terrain3D's own shader, with the game's changes
+# The scene for the Godot editor. The region size is left at Terrain3D's own 256: a scene that sets it after the data crashes
+cat > project/terrain/terrain.tscn <<'SCENE'
+[gd_scene format=3]
+
+[ext_resource type="Terrain3DMaterial" path="res://terrain/material.res" id="1"]
+[ext_resource type="Terrain3DAssets" path="res://terrain/assets.res" id="2"]
+
+[node name="Terrain3D" type="Terrain3D"]
+data_directory = "res://terrain/data"
+material = ExtResource("1")
+assets = ExtResource("2")
+collision_mode = 0
+mesh_lods = 7
+vertex_spacing = 4.0
+SCENE
 rm -rf "$tmp"
 ls project/terrain/data | wc -l
 du -sh project/terrain

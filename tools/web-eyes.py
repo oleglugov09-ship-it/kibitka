@@ -11,6 +11,7 @@ Steps, in order:  go            load the page            wait:SECONDS
                   click:X,Y     left click (960x540)     key:K[,HOLD]   a letter, or space enter esc tab up down
                   shot:FILE.png a screenshot             js:EXPRESSION  evaluate in the page and print
                   lisp:FORMS    evaluate in the game (only with ?dev in the address) and print the answer
+                  ready[:SEC]   wait until the game answers such a question, SEC seconds at most (300): the page is loaded
                   rec:SECONDS:DIR  record frames into DIR/0000.png ... (for a GIF: tools/make-gif.py)
 The lobby: "set out alone" is at 350,174, "open a route" at 350,201; the intro cards turn on a click at 480,200.
 The game takes about 40 s to start under the software renderer. ?dev and ?torture go into the address.
@@ -69,6 +70,14 @@ try:
         elif op == "shot":
             r = call("Page.captureScreenshot", format="png")
             if r.get("data"): open(arg, "wb").write(base64.b64decode(r["data"])); print("снимок", arg, flush=True)
+        elif op == "ready":                # ready[:SECONDS] - wait until the game answers (only with ?dev): the page takes its time to load
+            t0 = time.time(); limit = float(arg or 300); ok = False
+            while time.time() - t0 < limit and not ok:
+                send("Runtime.evaluate", expression="(window.__lisp = window.__lisp || []).length || window.__lisp.push('(+ 20 22)')")
+                pump(1.0)
+                r = call("Runtime.evaluate", expression="(window.__lispOut && window.__lispOut.length) ? window.__lispOut.shift() : null", returnByValue=True)
+                ok = r.get("result", {}).get("value") is not None
+            print("ГОТОВО за" if ok else "НЕ ДОЖДАЛИСЬ за", round(time.time() - t0), "с", flush=True)
         elif op == "lisp":                 # with ?dev: evaluate Lisp text in the game and print the answer (dev.lisp STEP-JS-REPL)
             send("Runtime.evaluate", expression=f"(window.__lisp = window.__lisp || []).push({json.dumps(arg)})")
             for _ in range(40):

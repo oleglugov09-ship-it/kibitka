@@ -82,6 +82,17 @@ uniform float distant_normal_scale : hint_range(1.0, 10.0, 0.1) = 2.0;
 uniform float blend_sharpness : hint_range(0, 1) = 0.5;
 group_uniforms;
 
+group_uniforms macro_variation;
+uniform vec3 macro_variation1 : source_color = vec3(1.);
+uniform vec3 macro_variation2 : source_color = vec3(1.);
+uniform float macro_variation_slope : hint_range(0., 1.)  = 0.333;
+uniform highp sampler2D noise_texture : source_color, FILTER_METHOD, repeat_enable;
+uniform float noise1_scale : hint_range(0.001, 1.) = 0.04; // Used for macro variation 1. Scaled up 10x
+uniform float noise1_angle : hint_range(0, 6.283) = 0.;
+uniform vec2 noise1_offset = vec2(0.5);
+uniform float noise2_scale : hint_range(0.001, 1.) = 0.076;	// Used for macro variation 2. Scaled up 10x
+group_uniforms;
+
 
 group_uniforms mipmaps;
 uniform float bias_distance : hint_range(0.0, 16384.0, 0.1) = 512.0;
@@ -109,6 +120,7 @@ varying vec3 v_camera_pos;
 uniform vec3 world_shift = vec3(0.);
 uniform vec3 season_color : source_color = vec3(1.);
 uniform float season_amount = 0.0;
+uniform float texture_gain = 2.0;   // the pictures of the land are nearly grey, the place gives the colour
 
 ////////////////////////
 // Vertex
@@ -642,7 +654,16 @@ void fragment() {
 	float distant_normal_amplifier = clamp(max(length(base_ddx.xz), length(base_ddy.xz)), 1., distant_normal_scale);
 	mat.normal_map_depth *= distant_normal_amplifier;
 
-	
+		// Macro variation. 2 lookups
+	{
+		float noise1 = texture(noise_texture, rotate_vec2(fma(uv, vec2(noise1_scale * .1), noise1_offset) , vec2(cos(noise1_angle), sin(noise1_angle)))).r;
+		float noise2 = texture(noise_texture, uv * noise2_scale * .1).r;
+		vec3 macrov = mix(macro_variation1, vec3(1.), noise1);
+		macrov *= mix(macro_variation2, vec3(1.), noise2);
+		mat.albedo_height.rgb *= mix(vec3(1.0), macrov, clamp(w_normal.y + macro_variation_slope, 0., 1.));
+	}
+
+
 	// Wetness/roughness modifier, converting 0 - 1 range to -1 to 1 range, clamped to Godot roughness values 
 	float wetness = 0.;
 	float roughness = clamp(mat.normal_rough.a - wetness, 0., 1.);
@@ -654,7 +675,14 @@ void fragment() {
 	specular = clamp(specular + wetness, 0., 1.);
 
 	// Apply PBR
-	ALBEDO = clamp(mat.albedo_height.rgb * mix(color_map.rgb, season_color, season_amount * color_map.a), 0., 1.);
+	vec3 place_color = color_map.rgb;
+	vec3 ground = mat.albedo_height.rgb;
+#if CURRENT_RENDERER == RENDERER_COMPATIBILITY
+	// here the texture arrays come as they are stored, not made linear: do it by hand
+	place_color = pow(place_color, vec3(2.2));
+	ground = pow(ground, vec3(2.2));
+#endif
+	ALBEDO = clamp(ground * texture_gain * mix(place_color, season_color, season_amount * color_map.a), 0., 1.);
 	ROUGHNESS = 1.0 + 0. * roughness;
 	SPECULAR = 0. * specular;
 	// Repack final normal map value

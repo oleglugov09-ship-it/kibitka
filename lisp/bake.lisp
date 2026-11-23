@@ -181,19 +181,14 @@ apart - x, z, heading and height. Numbers are 32-bit integers: millimetres, and 
                                          (push (list rx rz) out))))))))
     (sort out (lambda (a b) (or (< (first a) (first b)) (and (= (first a) (first b)) (< (second a) (second b))))))))
 
-(defun save-editor-scene ()
-  "Save what the Godot editor needs to open the map and paint on it: the terrain's textures (assets.res), its
-material (material.res) and a scene with a Terrain3D node that reads the baked regions (terrain.tscn)."
-  (let ((saver (gdext:singleton "ResourceSaver")) (scene (gdext:make-object "PackedScene"))
-        (material (object-get *terrain* "material")) (assets (object-get *terrain* "assets")))
+(defun save-editor-resources ()
+  "Save what the Godot editor needs to show the map as the game does and to paint on it: the terrain's textures
+(assets.res) and its material (material.res). The scene that uses them, terrain.tscn, is written by tools/bake-map.sh."
+  (let ((saver (gdext:singleton "ResourceSaver")))
     (terrain-param "world_shift" (v3 0.0 0.0 0.0)) (terrain-param "season_amount" 0.0)
-    (object-call saver "save" assets "res://terrain/assets.res")
-    (object-call saver "save" material "res://terrain/material.res")
-    (object-call *terrain* "set_data_directory" "res://terrain/data")
-    (object-set *terrain* "name" "Terrain3D")
-    (object-call scene "pack" *terrain*)
-    (object-call saver "save" scene "res://terrain/terrain.tscn")
-    (format t "~&BAKE editor scene: res://terrain/terrain.tscn~%")))
+    (object-call saver "save" (object-get *terrain* "assets") "res://terrain/assets.res")
+    (object-call saver "save" (object-get *terrain* "material") "res://terrain/material.res")
+    (format t "~&BAKE editor resources: assets.res, material.res~%")))
 
 (defun dump-terrain-shader (path)
   "Write Terrain3D's own shader, as it makes it for a terrain like ours, to the file PATH: tools/terrain-shader.py
@@ -201,6 +196,7 @@ makes the game's shader of it."
   (let* ((terrain (new-object "Terrain3D")) (material (progn (node-add-child *root* terrain) (object-get terrain "material"))))   ; it has a material once it is in the tree
     (object-call material "set_auto_shader_enabled" nil)
     (object-call material "set_world_background" 1)
+    (object-call material "set_macro_variation_enabled" t)
     (object-call material "set_shader_override_enabled" t)
     (let* ((shader (object-call material "get_shader_override")) (code (and shader (object-get shader "code"))))
       (when (and code (plusp (length code)))
@@ -213,6 +209,7 @@ makes the game's shader of it."
   (let* ((*season* :summer) (regions (bake-regions)) (t0 (get-internal-real-time)) (wet 0))
     (let ((path (ext:getenv "KIOSK_BAKE_SHADER"))) (when path (dump-terrain-shader path)))
     (make-terrain root nil)
+    (object-call *terrain* "set_free_editor_textures" nil)             ; or the textures are gone by the time they are saved for the editor
     (format t "~&BAKE: ~d regions~%" (length regions))
     (loop for (rx rz) in regions for k from 1
           do (let ((water (bake-region *terrain-data* rx rz)))
@@ -223,6 +220,6 @@ makes the game's shader of it."
     (object-call *terrain* "set_save_16_bit" t)                          ; heights to the millimetre in half the bytes
     (object-call *terrain-data* "save_directory" "res://terrain/data")
     (bake-roads)
-    (save-editor-scene)
+    (save-editor-resources)
     (format t "~&BAKE done: ~d regions, ~d with water, ~d s~%" (length regions) wet
             (round (- (get-internal-real-time) t0) internal-time-units-per-second))))
