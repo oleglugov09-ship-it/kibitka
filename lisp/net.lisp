@@ -625,6 +625,41 @@ record our edit as 'what the driver has'."
         (setf *net-planks-delta* (+ *net-planks-delta* (- (third sig) (third *net-sig*)))
               *net-sig* sig *net-hold* (+ *time* .8) *net-resend* 1)))))
 
+(defun guest-follow ()
+  "Keep our copy of the wagon where the driver's is: waiting at a bus stop, we stand and watch for it; riding, we
+drive at its speed and close the gap; and the things in the wagon are brought in line."
+  (let ((h *net-host*))
+    (when (and h *net-joined*)
+      (cond ((eq *net-wait* :pick) (halt) (guest-pick-stop h))
+            (*net-wait*
+             (halt)
+             (place-truck h)
+             (let ((gap (- *net-wait* (getf h :dist))))
+               ;; the wagon stands and is not coming to us (the driver is trading, the autopilot target is nearer than
+               ;; our bus stop): after 12 seconds we assume we walked to it ourselves
+               (if (< (getf h :speed) .4) (incf *wait-stood* (/ 1.0 60)) (setf *wait-stood* 0.0))
+               (cond ((or (and (< (abs gap) 9) (< (getf h :speed) .4)) (> *wait-stood* 12.0))
+                      (setf *wait-stood* 0.0)
+                      (guest-aboard))
+                     ((< (* *dir* gap) -25) (setf *net-wait* :pick)
+                      (say "Кибитка проехала мимо. Ждёшь на следующей остановке")))))
+            (t (let ((diff (- (getf h :dist) *dist*)))
+                 (set-speed (getf h :speed))
+                 (cond ((< diff -60) (relocate (getf h :dist)))          ; the driver 'turned around' to a town behind
+                       ((> diff 60) (jump-dist (getf h :dist)))
+                       (t (incf *dist* (* .08 diff)))))))
+      (guest-apply-items))))
+
+(defun guest-report ()
+  "Tell the driver where we are and how we look, and, while an edit of ours is not yet taken, what we moved."
+  (when (and (not *net-lost*) *net-joined* (guest-linked-p))
+    (destructuring-bind (x z yaw inside eye) (my-place)
+      (guest-send (list :p *net-name* x z yaw inside (and (realp *net-wait*) *net-wait*) *net-ver* eye (my-look))))
+    (when (> *net-resend* 0)
+      (decf *net-resend*)
+      (guest-send (list :e *net-ver* (mapcar #'car *items*) (switches) *net-planks-delta* *took* *net-fed*))
+      (setf *net-planks-delta* 0 *took* nil *net-fed* 0))))
+
 (defun step-guest (tick)
   (guest-rejoin)
   (note-own-edit)
@@ -658,34 +693,8 @@ record our edit as 'what the driver has'."
                (1 (linked))
                (2 (lost (if *net-joined* "Связь с водителем пропала. F2 — лобби" "Водитель не отвечает. F2 — лобби")))
                (3 (dolist (m (peer-msgs (cdr e))) (noting :guest-take (guest-take m)))))))))
-  (let ((h *net-host*))
-    (when (and h *net-joined*)
-      (cond ((eq *net-wait* :pick) (halt) (guest-pick-stop h))
-            (*net-wait*
-             (halt)
-             (place-truck h)
-             (let ((gap (- *net-wait* (getf h :dist))))
-               ;; the wagon stands and is not coming to us (the driver is trading, the autopilot target is nearer than
-               ;; our bus stop): after 12 seconds we assume we walked to it ourselves
-               (if (< (getf h :speed) .4) (incf *wait-stood* (/ 1.0 60)) (setf *wait-stood* 0.0))
-               (cond ((or (and (< (abs gap) 9) (< (getf h :speed) .4)) (> *wait-stood* 12.0))
-                      (setf *wait-stood* 0.0)
-                      (guest-aboard))
-                     ((< (* *dir* gap) -25) (setf *net-wait* :pick)
-                      (say "Кибитка проехала мимо. Ждёшь на следующей остановке")))))
-            (t (let ((diff (- (getf h :dist) *dist*)))
-                 (set-speed (getf h :speed))
-                 (cond ((< diff -60) (relocate (getf h :dist)))          ; the driver 'turned around' to a town behind
-                       ((> diff 60) (jump-dist (getf h :dist)))
-                       (t (incf *dist* (* .08 diff)))))))
-      (guest-apply-items)))
-  (when (and tick (not *net-lost*) *net-joined* (guest-linked-p))
-    (destructuring-bind (x z yaw inside eye) (my-place)
-      (guest-send (list :p *net-name* x z yaw inside (and (realp *net-wait*) *net-wait*) *net-ver* eye (my-look))))
-    (when (> *net-resend* 0)
-      (decf *net-resend*)
-      (guest-send (list :e *net-ver* (mapcar #'car *items*) (switches) *net-planks-delta* *took* *net-fed*))
-      (setf *net-planks-delta* 0 *took* nil *net-fed* 0))))
+  (guest-follow)
+  (when tick (guest-report)))
 
 ;;; The other players in the wagon
 
