@@ -14,10 +14,13 @@
 (defvar *lang* :ru "The game language: :ru or :en.")
 (defvar *en* (make-hash-table :test #'equal) "The table mapping a Russian string to its English string.")
 
-(defun tr (text)
+(defun tr (text &optional context)
   "Return TEXT in the game language.
-Anything missing from the table (and any non-string) is returned as is."
-  (if (and (eq *lang* :en) (stringp text)) (or (gethash text *en*) text) text))
+Anything missing from the table (and any non-string) is returned as is. The same words may need another translation
+in another place: with CONTEXT, a string, the table is first asked for the key \"CONTEXT|TEXT\"."
+  (if (and (eq *lang* :en) (stringp text))
+      (or (and context (gethash (concatenate 'string context "|" text) *en*)) (gethash text *en*) text)
+      text))
 
 ;;; EXT:OCTETS-TO-STRING of this ECL (26.5.5) must not be called: on 4192 characters or more (the size of
 ;;; its buffer) it adds a position where it means a count, takes its buffer for full for ever, and grows it

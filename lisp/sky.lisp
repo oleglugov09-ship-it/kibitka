@@ -42,6 +42,8 @@ there the day does not reach, whatever the hour (marks.lisp sets it every frame)
 from end to end only in clear air (mega.lisp sets it by the zone).")
 (defvar *sky-hour* nil "The second of the day cycle the sky is to show whatever the clock says, or NIL: in the summer
 behind the tunnel the hour belongs to the place, and the clock of the game stands still (leto.lisp).")
+(defvar *sun-turn* 0.0 "How far the sun and the moon are turned about the wagon, in radians: behind a door the way bends
+and the place is turned about us, and the lights of the sky turn with it (mega.lisp).")
 (defun sky-now () "Return the second of the day cycle the sky shows." (or *sky-hour* *day-t*))
 
 (defvar *haze* 0.0 "How much pale haze stands in the megastructure where we are, from 0 (pitch dark) to 1: the cold
@@ -97,7 +99,7 @@ sourceless light in which far things show as dark shapes (marks.lisp sets it by 
   (setf *moon* (shape (or *turn* root) :ball '(6 16 10) "#f0ecdc" 0 0 0 :emit "#e8e4d0" :energy 1.6 :shadow nil :unshaded t)))
 
 (defun step-sky (delta)
-  (unless *sky-hour* (incf *day-t* (* delta *time-scale*)))
+  (when (place-rule :clock) (incf *day-t* (* delta *time-scale*)))      ; where the clock stands, the calendar does not turn
   (let* ((day (daylight (sky-now))) (ph (day-phase (sky-now)))
          ;; the lights move in steps of ~0.2 degrees, not every frame: rotating a light shifts the shadow map,
          ;; and the shadow edges ripple
@@ -118,8 +120,8 @@ sourceless light in which far things show as dark shapes (marks.lisp sets it by 
     ;; the sun rises on the left (x-) and sets on the window side (x+). A light shines along the node's -Z:
     ;; the downward tilt is the light's elevation, the turn goes from -pi/2 (shining toward x+) to pi/2
     (flet ((elev (a) (if (< a (/ pi 2)) a (- pi a))))
-      (node-3d-set-rotation *sun* (v3 (- (max .03 (elev (min sun-a pi)))) (- (min sun-a pi) (/ pi 2)) 0))
-      (node-3d-set-rotation *moon-light* (v3 (- (max .15 (elev moon-a))) (- moon-a (/ pi 2)) 0)))
+      (node-3d-set-rotation *sun* (v3 (- (max .03 (elev (min sun-a pi)))) (+ (- (min sun-a pi) (/ pi 2)) (sun-step *sun-turn*)) 0))
+      (node-3d-set-rotation *moon-light* (v3 (- (max .15 (elev moon-a))) (+ (- moon-a (/ pi 2)) (sun-step *sun-turn*)) 0)))
     (object-set *sun* "light_energy" (if sun-up (* (- 1.0 *gloom*) (+ .15 (* 1.4 day)) (- 1 (* .7 (wx :cloud)))) 0.0))
     (object-set *env* "fog_sky_affect" (if *sky-hour* 0.0 .25))            ; in the summer the haze lies on the land and leaves the sky clean
     (let ((fog (+ (if *sky-hour* .0007 *fog-base*) (* .012 (wx :fog)) (* .004 (wx :rain)) (* .006 (wx :snow)) (* .0022 *gloom*))))

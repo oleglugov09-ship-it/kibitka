@@ -15,10 +15,8 @@
 
 (defun summer-zone (s)
   "Return the number of the summer zone at S metres along the way, and how far through it we are, from 0 to 1."
-  (let ((first (* *mega-first* *mega-cell*)) (len (* *mega-zone* *mega-cell*)))
-    (if (< s first)
-        (values 0 (/ (max s 0.0) first))
-        (multiple-value-bind (z rest) (floor (- s first) len) (values (1+ z) (/ rest len))))))
+  (multiple-value-bind (z start cells) (way-zone (floor s *mega-cell*))
+    (values z (/ (- (max s 0.0) (* start *mega-cell*)) (* cells *mega-cell*)))))
 
 (defun summer-hour (s)
   "Return the second of the day cycle the sky shows at S metres along the way: each zone holds its hour, and over
@@ -140,7 +138,7 @@ the field as one sheet of the same yellow."
 
 (defzone zone-morning                                                        ; morning by the river: mist over the meadow, the pines coming out of it one by one
          (leto-road g i c mid)
-         (if (= at 4)
+         (if (= (mod (zone-cell i) 32) 20)
              (progn                                                       ; the river, and the bridge over it
                (shape g :box (list 1400.0 .3 (- c 4.0)) "#8fc6ec" -1.8 -.3 mid :rough .1 :metal .3 :shadow nil)
                (shape g :box (list 420.0 .32 8.0) "#ffe9d2" -230.0 -.28 (- mid 6.0) :emit "#ffe9d2" :energy .5 :shadow nil)
@@ -150,26 +148,28 @@ the field as one sheet of the same yellow."
 (defzone zone-noon                                                           ; noon: sunflowers to the horizon on either side
          (leto-road g i c mid)
          (leto-sunflowers g i c mid at)
-         (when (= at 12)                                                  ; a water tower over the field
+         (when (= (zone-cell i) 30)                                        ; a water tower over the field
            (shape g :cyl '(5.0 5.0 34.0 10) "#e8e4d8" 260.0 17.0 mid :shadow nil)
            (shape g :cyl '(7.5 7.5 8.0 10) "#c8472e" 260.0 38.0 mid :shadow nil)))
 
 (defzone zone-storm                                                          ; the storm: the same field under a cloud, burning yellow against it
          (leto-road g i c mid)
          (leto-sunflowers g i c mid at "#ffd83a")
-         (when (= at 6) (leto-pine g -40.0 -20.0 1.8 "#2a7a44")))
+         (when (= (mod (zone-cell i) 16) 6) (leto-pine g -40.0 -20.0 1.8 "#2a7a44")))
 
 (defzone zone-evening                                                        ; the golden hour: the road goes by the gates of the camp
          (leto-road g i c mid)
-         (if (= at 3)
-             (leto-camp g i c nil)
-             (leto-wood g i c "#2a7540" :near (if (member at '(2 4 5)) 110.0 14.0) :count 6 :birches "#8fb832")))
+         (let ((k (- (zone-cell i) 26)))                                  ; the camp stands once in the hour, and the wood stands back from it
+           (if (zerop k)
+               (leto-camp g i c nil)
+               (leto-wood g i c "#2a7540" :near (if (<= -1 k 2) 110.0 14.0) :count 6 :birches "#8fb832"))))
 
 (defzone zone-night                                                          ; night: a fire by the road, the lamps of the camp, and morning after it
          (leto-road g i c mid)
-         (cond ((= at 3) (leto-camp g i c t))
-               (t (leto-wood g i c "#1f5a3a" :near (if (member at '(2 4 5)) 110.0 22.0) :count 6)
-                  (when (= at 11) (leto-fire g)))))
+         (let ((k (- (zone-cell i) 14)))                                  ; the lamps of the camp early in the night, the fire later
+           (cond ((zerop k) (leto-camp g i c t))
+                 (t (leto-wood g i c "#1f5a3a" :near (if (<= -1 k 2) 110.0 22.0) :count 6)
+                    (when (= (zone-cell i) 34) (leto-fire g))))))
 
 ;;; The town one drives towards and never reaches. It hangs in the wagon's own axes, straight ahead, so it stays
 ;;; as far as it was however long we drive: pale blocks and a television tower in the haze by day, their windows
@@ -194,15 +194,13 @@ the field as one sheet of the same yellow."
 
 (add-zones
  '(;; flat land, a road that bends a little
-    :morning  (:name "Утро"                 :build zone-morning  :turn 2.0)
-    :noon     (:name "Полдень"              :build zone-noon     :turn 1.5)
-    :storm    (:name "Гроза"                :build zone-storm    :turn 1.5)
-    :evening  (:name "Вечер"                :build zone-evening  :turn 2.0)
-    :night    (:name "Ночь"                 :build zone-night    :turn 2.0)))
+    :morning  (:name "Утро"                 :build zone-morning)
+    :noon     (:name "Полдень"              :build zone-noon)
+    :storm    (:name "Гроза"                :build zone-storm)
+    :evening  (:name "Вечер"                :build zone-evening)
+    :night    (:name "Ночь"                 :build zone-night)))
 
 (defun summer-zone-kind (z) "Return the kind of the summer's zone number Z: the hours, round and round." (nth (* 2 (mod z (/ (length *summer-hours*) 2))) *summer-hours*))
-
-(defun summer-gloom (s) "Return how dark it is S metres in: the summer is under the sky, and the dark ends with the tunnel." (- 1.0 (sstep 150.0 235.0 s)))
 
 (defun build-summer-parts (g turn entry)
   "Build what in the summer does not go by: the hill the tunnel comes out of, the land to the horizon and the town ahead."
@@ -212,9 +210,10 @@ the field as one sheet of the same yellow."
   (list :town (build-summer-far g)))
 
 (defun summer-air (s)
-  "Set the air of the summer S metres in: the sky shows the hour of the place and the weather is its own, the clock
-of the game stands still, and the picture is in full colour, not a faded film."
-  (setf *sky-hour* (summer-hour s) *wx-force* (summer-weather s) *haze* 0.0 *fog-inside* nil)
-  (juice (- 1.0 *gloom*)))
+  "Return the air of the summer S metres in: it is under the sky, so the dark ends with the tunnel; the sky shows the
+hour of the place and the weather is its own; the picture is in full colour, not a faded film."
+  (list :gloom (- 1.0 (sstep 150.0 235.0 s)) :hour (summer-hour s) :weather (summer-weather s) :juice 1.0))
 
-(add-world :summer :flag "summer" :kind 'summer-zone-kind :parts 'build-summer-parts :gloom 'summer-gloom :air 'summer-air)
+(add-world :summer :flag "summer" :kind 'summer-zone-kind :parts 'build-summer-parts :air 'summer-air
+           :rules '()                                                    ; nothing of the ring goes on here, and the clock stands
+           :offmap "КАРТА ОБЛАСТИ~%~%Этой дороги на ней нет.~%~%Проехано: ~,1f км~%До города — всё столько же.")

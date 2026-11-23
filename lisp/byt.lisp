@@ -734,7 +734,7 @@ the map."
   (format nil "~{~a~^~%~}"
           (remove nil (list (debt-hud)                                      ; the loan, the account, the coupons: on the papers in the folder
                             (let ((net (net-hud))) (and (plusp (length net)) net))
-                            (cond ((inside-mega-p) (mega-name))                 ; no destination in the megastructure: only where we are
+                            (cond ((not (place-rule :destination)) (mega-name))  ; no destination behind a door: only where we are
                                   (*auto* (format nil "Автопилот → ~a · ~,1f км" (cdr *auto*) (/ (max 0 (way-to (car *auto*))) 1000))))))))
 
 ;;; Every frame

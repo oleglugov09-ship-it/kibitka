@@ -259,7 +259,7 @@ A window, building mode or the outside view lowers it."
   "Return a radio bulletin on what is ahead.
 Each time it is about something different."
   (incf *radio-n*)
-  (when (inside-mega-p)                                      ; no station reaches the megastructure
+  (unless (place-rule :radio)                                ; no station reaches the place
     (return-from radio-line (nth (mod *radio-n* 4) '("Радио: шипение" "Радио: шипение, и в нём что-то вроде счёта"
                                                     "Радио: тишина" "Радио: …точного времени… — и снова шипение"))))
   (when (evenp *radio-n*)                                    ; every other time: about what we ourselves delivered (istorii.lisp)

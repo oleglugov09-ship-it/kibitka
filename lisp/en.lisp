@@ -1818,4 +1818,8 @@ otherwise the world and messages drift apart."
 "Night"
 "ПИОНЕРСКИЙ ЛАГЕРЬ «ЛАСТОЧКА»"
 "PIONEER CAMP «LASTOCHKA»"
+"КАРТА ОБЛАСТИ~%~%Этой дороги на ней нет.~%~%Проехано: ~,1f км~%До города — всё столько же."
+  "MAP OF THE REGION~%~%This road is not on it.~%~%Driven: ~,1f km~%To the town — as far as ever."
+"КАРТА ОБЛАСТИ~%~%Этого места на ней нет.~%~%Пройдено: ~,1f км"
+  "MAP OF THE REGION~%~%This place is not on it.~%~%Driven: ~,1f km"
 ) by #'cddr do (setf (gethash ru *en*) en))

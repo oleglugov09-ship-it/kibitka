@@ -9,7 +9,7 @@
 
 (defparameter *mega-lift* '(6 .45) "The cell at which the platform starts down, and how steeply it goes: metres down per metre forward.")
 
-(defparameter *mega-order* '(:metro :quarry :dam :reactor :factory :pipes :communal :archive :paper :rail :statues :garages :spiral :poles :columns)
+(defvar *mega-order* '(:metro :quarry :dam :reactor :factory :pipes :communal :archive :paper :rail :statues :garages :spiral :poles :columns)
   "The kinds of zones, after the first one. Late-Soviet things grown past all measure: a workshop, a communal
 corridor, a garage co-operative, a heating main, a left-luggage hall, an avenue of busts.")
 
@@ -19,22 +19,22 @@ corridor, a garage co-operative, a heating main, a left-luggage hall, an avenue 
 ;;; walls, slits of day: T, or :DEEP with a floor far below, or :LAMPS with lamps on that floor too.
 
 (add-zones
-  '(:lift     (:name "Спуск"                :build zone-lift     :haze .5  :sun 1.4 :fog .0009 :bare t)
-    :metro    (:name "Метро"                :build zone-metro    :haze .5  :sun 0.0 :fog .0009)
-    :quarry   (:name "Карьер"               :build zone-quarry   :haze .7  :sun 3.0 :fog .0009 :turn 3.0 :steep .05 :way -1 :down t)
-    :dam      (:name "Плотина"              :build zone-dam      :haze .5  :sun 1.4 :fog .0012 :turn .6 :way 1 :hall t)
-    :reactor  (:name "Энергоблок"           :build zone-reactor  :haze .5  :sun 1.0 :fog .0016 :turn 1.5)
-    :factory  (:name "Конвейер"             :build zone-factory  :haze .5  :turn 1.5)
-    :pipes    (:name "Теплотрасса"          :build zone-pipes    :haze .24 :turn 4.5 :steep .07 :hall :lamps)
-    :communal (:name "Коммуналка"           :build zone-communal :haze .38 :turn 1.0)
-    :archive  (:name "Архив"                :build zone-archive  :haze .34 :turn 2.0)
-    :paper    (:name "Письмо"               :build zone-paper    :haze .55 :turn 4.5)
-    :rail     (:name "Сортировочная"        :build zone-rail     :haze .3  :turn 2.0 :steep .015 :hall :deep)
-    :statues  (:name "Аллея трудовой славы" :build zone-statues  :haze .3  :turn 1.5 :hall t)
-    :garages  (:name "Гаражный кооператив"  :build zone-garages  :haze .3  :turn 5.0 :steep .045 :hall :deep)
-    :spiral   (:name "Пандус"               :build zone-spiral   :haze .12 :turn 6.0 :steep .07 :way 1 :down t)
-    :poles    (:name "Микрорайон на сваях"  :build zone-poles    :haze .3  :turn 4.0 :hall :lamps)
-    :columns  (:name "Вестибюль"            :build zone-columns  :haze .22 :turn 2.5 :hall t)))
+  '(:lift     (:name "Спуск"                :build zone-lift :bare t)
+    :metro    (:name "Метро"                :build zone-metro)
+    :quarry   (:name "Карьер"               :build zone-quarry :way -1 :down t)
+    :dam      (:name "Плотина"              :build zone-dam :way 1 :hall t)
+    :reactor  (:name "Энергоблок"           :build zone-reactor)
+    :factory  (:name "Конвейер"             :build zone-factory)
+    :pipes    (:name "Теплотрасса"          :build zone-pipes :hall :lamps)
+    :communal (:name "Коммуналка"           :build zone-communal)
+    :archive  (:name "Архив"                :build zone-archive)
+    :paper    (:name "Письмо"               :build zone-paper)
+    :rail     (:name "Сортировочная"        :build zone-rail :hall :deep)
+    :statues  (:name "Аллея трудовой славы" :build zone-statues :hall t)
+    :garages  (:name "Гаражный кооператив"  :build zone-garages :hall :deep)
+    :spiral   (:name "Пандус"               :build zone-spiral :way 1 :down t)
+    :poles    (:name "Микрорайон на сваях"  :build zone-poles :hall :lamps)
+    :columns  (:name "Вестибюль"            :build zone-columns :hall t)))
 
 (defun mega-zone-kind (z)
   "Return the kind of the megastructure's zone number Z: the way down first, then the others, the first time round in
@@ -49,7 +49,7 @@ the order they are listed and after that shuffled, never the same twice in a row
 
 (defun mega-lift-drop (j)
   "Return how far cell J goes down without tilting: on the way down from the tunnel the platform we stand on stays level."
-  (and (<= (first *mega-lift*) j (1- *mega-first*)) (* (second *mega-lift*) *mega-cell*)))
+  (and (<= (first *mega-lift*) j (1- (zone :lift :cells))) (* (second *mega-lift*) *mega-cell*)))
 
 (defun build-mega-parts (g turn entry)
   "Build what in the megastructure does not go by, and return it as a plist."
@@ -97,14 +97,13 @@ the order they are listed and after that shuffled, never the same twice in a row
     (object-set (getf parts :lift) "visible" (and (eq here :lift) (> *mega-s* 196.0)))))
 
 (defun mega-air (s)
-  "Set the air of the megastructure S metres in: the haze and the murk of the zone come on slowly; no sky, no weather."
-  (let* ((kind (mega-kind (floor s *mega-cell*))) (haze (zone kind :haze 0.0)) (fog (zone kind :fog .0047)))
-    (setf *haze* (+ *haze* (* .012 (- haze *haze*)))
-          *fog-inside* (+ (or *fog-inside* fog) (* .012 (- fog (or *fog-inside* fog))))
-          *sky-hour* nil *wx-force* nil)
-    (juice 0.0)))
+  "Return the air of the megastructure S metres in: no day and no sky, the haze and the murk of the zone."
+  (let ((kind (mega-kind (floor s *mega-cell*))))
+    (list :gloom 1.0 :haze (zone kind :haze 0.0) :fog (zone kind :fog .0047))))
 
-(add-world :mega :flag "tunnel" :kind 'mega-zone-kind :drop 'mega-lift-drop :parts 'build-mega-parts :step 'step-mega-parts :air 'mega-air)
+(add-world :mega :flag "tunnel" :kind 'mega-zone-kind :drop 'mega-lift-drop :parts 'build-mega-parts :step 'step-mega-parts :air 'mega-air
+           :rules '(:clock t)                                            ; nothing of the ring goes on here, but time passes
+           :offmap "КАРТА ОБЛАСТИ~%~%Этого места на ней нет.~%~%По эстакаде пройдено: ~,1f км~%Сколько осталось — не написано.")
 
 ;;; What the megastructure's zones are built of.
 

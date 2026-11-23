@@ -17,7 +17,7 @@
                  (:file "land") (:file "karta") (:file "razmetka")
                  (:file "world")
                  (:file "cart")
-                 (:file "sky")
+                 (:file "place") (:file "sky")
                  (:file "en") (:file "walk")
                  (:file "door")
                  (:file "sound") (:file "save") (:file "stamps")

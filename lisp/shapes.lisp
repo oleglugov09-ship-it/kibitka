@@ -108,6 +108,9 @@ centimeter, so random rocks share meshes too."
 (defvar *tracking* nil "The build record while one is being taken, (groups . shapes), else NIL.
 A group is (node parent x y z yaw sx sz).")
 
+(defvar *batch* nil "See Batches below. While a batch is gathered: (root offsets lots). OFFSETS is a table from a group that only shifts its shapes to
+(parent x y z); LOTS a table from (mesh material shadow range) to the pending shapes of that lot.")
+
 (defmacro with-solids (&body body)
   "Build BODY and hand the outlines of what was built to the solids grid."
   `(if *tracking*
@@ -121,16 +124,20 @@ A group is (node parent x y z yaw sx sz).")
 (defun tracked (node) (assoc node (car *tracking*) :test #'eq))
 
 (defun node-3d-set-position (node v)
+  (when *batch*
+    (let ((cell (gethash node (second *batch*)))) (when cell (setf (rest cell) (list (vector3-x v) (vector3-y v) (vector3-z v))))))
   (let ((e (and *tracking* (tracked node))))
     (when e (setf (third e) (vector3-x v) (fourth e) (vector3-y v) (fifth e) (vector3-z v))))
   (godot:node-3d-set-position node v))
 
 (defun node-3d-set-rotation (node v)
+  (unbatch node)
   (let ((e (and *tracking* (tracked node))))
     (when e (setf (sixth e) (vector3-y v))))
   (godot:node-3d-set-rotation node v))
 
 (defun node-3d-set-scale (node v)
+  (unbatch node)
   (let ((e (and *tracking* (tracked node))))
     (when e (setf (seventh e) (vector3-x v) (eighth e) (vector3-z v))))
   (godot:node-3d-set-scale node v))
@@ -178,21 +185,110 @@ Each shape is lifted through its chain of groups up to the root, which is under 
     (:cone (max (* 2 (first dims)) (second dims)))
     ((:ball :rock) (* 2 (first dims)))))
 
+;;; Batches. A thing built of many shapes costs the renderer one draw for every shape. While WITH-BATCH runs,
+;;; shapes put straight under its root - or under groups that only shift them - are not made into nodes but
+;;; noted down, and at the end all that share a mesh and a material become one MultiMesh: one draw for the lot.
+;;; A shape that has to be a node of its own after all (it will move) is made one by SOLO; a group that is turned,
+;;; scaled or set moving takes its shapes out of the batch.
+
+(defstruct (pending (:constructor pending (key args)))
+  "A shape noted down in a batch: KEY is what it shares with the others of its lot, ARGS the arguments of SHAPE."
+  key args)
+
+(defun batch-offset (parent)
+  "Return the shift of PARENT against the root of the batch as a list (x y z), or NIL if its shapes cannot be batched."
+  (cond ((eq parent (first *batch*)) '(0.0 0.0 0.0))
+        (t (let ((cell (gethash parent (second *batch*))))
+             (when cell
+               (let ((up (batch-offset (first cell))))
+                 (and up (mapcar #'+ up (rest cell)))))))))
+
+(defun solo (thing)
+  "Make the pending shape THING a node of its own and return the node; anything else is returned as it is."
+  (if (pending-p thing)
+      (let ((lot (gethash (pending-key thing) (third *batch*))))
+        (setf (gethash (pending-key thing) (third *batch*)) (remove thing lot))
+        (let ((*batch* nil)) (apply #'shape (pending-args thing))))
+      thing))
+
+(defun unbatch (group)
+  "Take GROUP out of the batch: it is going to turn, grow or move, so its shapes become nodes of their own."
+  (when (and *batch* (gethash group (second *batch*)))
+    (let ((mine '()))
+      (maphash (lambda (key lot) (declare (ignore key)) (dolist (p lot) (when (eq (first (pending-args p)) group) (push p mine)))) (third *batch*))
+      (mapc #'solo mine))
+    (remhash group (second *batch*))
+    (loop for child being the hash-keys of (second *batch*) using (hash-value cell)        ; and the groups under it with it
+          when (eq (first cell) group) collect child into children
+          finally (mapc #'unbatch children))))
+
+(defun place-transform (x y z rot scale)
+  "Return the Transform3D of a shape at (X Y Z) turned by ROT, (x y z) in radians as Godot turns a node, and scaled by SCALE."
+  (destructuring-bind (&optional (a 0.0) (b 0.0) (c 0.0)) rot
+    (destructuring-bind (&optional (sx 1.0) (sy 1.0) (sz 1.0)) scale
+      (let ((ca (cos a)) (sa (sin a)) (cb (cos b)) (sb (sin b)) (cc (cos c)) (sc (sin c)))
+        (transform3d (basis (vector3 (* sx (+ (* cb cc) (* sb sa sc))) (* sx ca sc) (* sx (- (* cb sa sc) (* sb cc))))
+                            (vector3 (* sy (- (* sb sa cc) (* cb sc))) (* sy ca cc) (* sy (+ (* sb sc) (* cb sa cc))))
+                            (vector3 (* sz sb ca) (* sz (- sa)) (* sz cb ca)))
+                     (vector3 x y z))))))
+
+(defun commit-batch ()
+  "Turn what the batch has gathered into nodes under its root: a MultiMesh for every lot, a plain node for a lot of one."
+  (destructuring-bind (root offsets lots) *batch*
+    (declare (ignore offsets))
+    (let ((batch *batch*) (*batch* nil))
+      (maphash (lambda (key lot)
+                 (cond ((null lot))
+                       ((null (rest lot)) (apply #'shape (pending-args (first lot))))
+                       (t (destructuring-bind (mesh mat shadow range) key
+                            (let ((mm (gdext:make-object "MultiMesh")) (mmi (gdext:make-object "MultiMeshInstance3D")))
+                              (object-set mm "transform_format" 1)                  ; TRANSFORM_3D
+                              (object-set mm "mesh" mesh)
+                              (object-set mm "instance_count" (length lot))
+                              (loop for p in lot for n from 0
+                                    do (destructuring-bind (parent kind dims rgb x y z &key rot scale &allow-other-keys) (pending-args p)
+                                         (declare (ignore kind dims rgb))
+                                         (destructuring-bind (ox oy oz) (let ((*batch* batch)) (batch-offset parent))
+                                           (object-call mm "set_instance_transform" n (place-transform (+ ox x) (+ oy y) (+ oz z) rot scale)))))
+                              (object-set mmi "multimesh" mm)
+                              (object-set mmi "material_override" mat)
+                              (unless shadow (object-set mmi "cast_shadow" 0))
+                              (when range (object-set mmi "visibility_range_end" (+ range 60.0)))   ; a lot lies all over its cell: judged from the cell's middle
+                              (node-add-child root mmi))))))
+               lots))))
+
+(defmacro with-batch ((root) &body body)
+  "Build BODY, gathering the shapes put under ROOT into as few draws as there are different ones among them."
+  `(if (or *batch* *tracking*)
+       (progn ,@body)
+       (let ((*batch* (list ,root (make-hash-table :test 'eq) (make-hash-table :test 'equal))))
+         (multiple-value-prog1 (progn ,@body) (commit-batch)))))
+
+(defun shape-range (kind dims scale emit)
+  "Return how far a shape of this size is drawn, in metres, or NIL for as far as the eye sees: trifles are not drawn
+far away, where they are a dot in the haze yet cost the same as a house. Glowing things are seen from afar."
+  (unless emit
+    (let ((size (* (shape-size kind dims) (if scale (max (first scale) (second scale) (third scale)) 1.0))))
+      (cond ((< size *small-size*) *small-range*)
+            ((< size *medium-size*) *medium-range*)))))
+
 (defun shape (parent kind dims rgb x y z &key emit (energy 1.5) (rough .9) (metal 0.0)
                                               rot scale alpha (shadow t) unshaded)
   "Add a shape of kind KIND and dimensions DIMS under PARENT at the point (X Y Z).
 RGB is its color, ROT is (x y z) in radians and SCALE is (x y z). Return the MeshInstance3D."
+  (when (and *batch* (not *tracking*) (batch-offset parent))             ; noted down for the batch, not made a node
+    (let* ((key (list (mesh-of kind dims) (material rgb :emit emit :energy energy :rough rough :metal metal :alpha alpha :unshaded unshaded)
+                      (and shadow t) (shape-range kind dims scale emit)))
+           (p (pending key (list parent kind dims rgb x y z :emit emit :energy energy :rough rough :metal metal
+                                 :rot rot :scale scale :alpha alpha :shadow shadow :unshaded unshaded))))
+      (push p (gethash key (third *batch*)))
+      (return-from shape p)))
   (let ((mi (gdext:make-object "MeshInstance3D")))
     (object-set mi "mesh" (mesh-of kind dims))
     (object-set mi "material_override" (material rgb :emit emit :energy energy :rough rough
                                                      :metal metal :alpha alpha :unshaded unshaded))
     (unless shadow (object-set mi "cast_shadow" 0))
-    ;; trifles are not drawn far away: handles, frames, signs and wires a hundred meters off are a dot in the
-    ;; haze, yet cost the same draw call as a house. Glowing things are seen from afar - leave them alone.
-    (unless emit
-      (let ((size (* (shape-size kind dims) (if scale (max (first scale) (second scale) (third scale)) 1.0))))
-        (cond ((< size *small-size*) (object-set mi "visibility_range_end" *small-range*))
-              ((< size *medium-size*) (object-set mi "visibility_range_end" *medium-range*)))))
+    (let ((range (shape-range kind dims scale emit))) (when range (object-set mi "visibility_range_end" range)))
     (node-add-child parent mi)
     (node-3d-set-position mi (v3 x y z))
     (when rot (node-3d-set-rotation mi (v3 (first rot) (second rot) (third rot))))
@@ -214,6 +310,8 @@ It lets a thing be assembled from shapes and moved as a whole."
     (node-3d-set-position g (v3 x y z))
     (when (and *tracking* (or (eq parent *world*) (tracked parent)))
       (push (list g parent x y z 0.0 1.0 1.0) (car *tracking*)))
+    (when (and *batch* (not *tracking*) (batch-offset parent))
+      (setf (gethash g (second *batch*)) (list parent (float x 1.0) (float y 1.0) (float z 1.0))))
     g))
 
 (defun light (parent rgb energy range x y z)

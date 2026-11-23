@@ -40,6 +40,7 @@ The core in `lisp/` is logic only; what the game shows comes from two mods.
 | `guide.lisp` | the pages of the guide book, what the radio says when it has nothing to report |
 | `lines.lisp` | what the named characters say (the sergeant, the chairman) |
 | `en.lisp` | English for all of the above |
+| `worlds.lisp` | the places behind the tunnel: how long each zone is, how the way bends in it, how it is lit; the hours of the summer |
 
 Each table is declared empty in the core with a docstring that describes its shape; a mod fills it
 with `(setf *table* '(...))`. Without `base` the game has no world to plan and will not start; without

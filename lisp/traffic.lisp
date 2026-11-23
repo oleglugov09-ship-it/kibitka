@@ -192,7 +192,7 @@ in the car's lane. Return NIL when there is nothing to fear."
   "Move the cars by DELTA seconds, each in its own direction (:DIR, along the path or against it) in its lane.
 Oncoming cars drive past; a car going our way catches up, goes around in the oncoming lane and returns
 to its own lane."
-  (unless (or *meta* (net-guest-p) (inside-mega-p))                    ; the driver sends the cars to a guest (sync.lisp); no cars in the megastructure
+  (unless (or *meta* (net-guest-p) (not (place-rule :traffic)))         ; the driver sends the cars to a guest (sync.lisp); no cars where the place has none
     (flet ((oncoming (v gap &optional kind) (add-car (+ *dist* (* *dir* (+ 330.0 gap))) v (- *dir*) kind))
            (passing (v gap &optional kind) (add-car (- *dist* (* *dir* (+ 120.0 gap))) v *dir* kind)))
       (when (> *time* *next-car*)                                      ; an oncoming car, sometimes one on business
