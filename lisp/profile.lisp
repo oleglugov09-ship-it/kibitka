@@ -18,13 +18,19 @@
 
 (defun step-failed (condition name)
   "Report that the step NAME failed with CONDITION: to the console and the log (NOTE-ERROR), and, the first time
-this step fails, to the player - otherwise the wagon just stops doing something and nobody knows why."
+this step fails, to the player - otherwise the wagon just stops doing something and nobody knows why. The player
+is told the report has gone to the author when it has: when the log is being sent."
   (when (fboundp 'note-error) (funcall 'note-error condition name))
   (unless (member name *failed-steps*)
     (push name *failed-steps*)
     (ignore-errors
      (when (fboundp 'say)
-       (funcall 'say (format nil "Что-то сломалось (~(~a~)). Игра идёт дальше, но скажи об этом автору" name))))))
+       ;; the report goes to the author by itself, with the log (log.lisp); the player is not asked to pass it on
+       (let ((sent (and (boundp '*log-http*) (symbol-value '*log-http*) (fboundp 'log-url) (funcall 'log-url)
+                        (not (ext:getenv "KIOSK_NOLOG")))))
+         (funcall 'say (if sent
+                           (format nil "Что-то сломалось (~(~a~)). Игра идёт дальше, проблема отправлена автору" name)
+                           (format nil "Что-то сломалось (~(~a~)). Игра идёт дальше" name))))))))
 
 (defmacro timed (name &body body)
   "Run BODY, noting under NAME how long it took. An error in BODY is reported (STEP-FAILED) and goes no further: the
