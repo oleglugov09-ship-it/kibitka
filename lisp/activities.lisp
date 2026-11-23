@@ -63,7 +63,7 @@ The ball counts as at least 10 screen pixels wide, so a far plate is still fair 
   (hold-model kind)
   (ecase kind
     (:tir (with-act (shots hits) (setf shots 5 hits 0))
-          (dolist (p *tir-plates*) (setf (seventh p) t) (object-set (first p) "visible" t)))
+          (dolist (p *tir-plates*) (setf (plate-alive p) t) (object-set (plate-node p) "visible" t)))
     (:fish (with-act (phase tries) (setf phase :aim tries 3)))
     (:mine (with-act (strikes found) (setf strikes 10 found 0)) (reset-rock))
     (:goat (with-act (pulls good mood until) (setf pulls 6 good 0 mood :eats until 1.2))
@@ -91,8 +91,8 @@ The ball counts as at least 10 screen pixels wide, so a far plate is still fair 
           (t (hint (format nil "ТИР · выстрелов: ~d · попаданий: ~d · ЛКМ — стрелять по тарелочкам" shots hits))
              (when (and click (plusp shots))
                (decf shots)
-               (let ((hit (find-if (lambda (p) (and (seventh p) (aimed-at-p (object-get (first p) "global_position") .3))) *tir-plates*)))
-                 (when hit (setf (seventh hit) nil) (object-set (first hit) "visible" nil) (incf hits)))
+               (let ((hit (find-if (lambda (p) (and (plate-alive p) (aimed-at-p (object-get (plate-node p) "global_position") .3))) *tir-plates*)))
+                 (when hit (setf (plate-alive hit) nil) (object-set (plate-node hit) "visible" nil) (incf hits)))
                (setf *pitch* (min 1.3 (+ *pitch* .03)))                            ; the rifle kicks
                (when (zerop shots) (setf done (+ time .8))))))))
 
@@ -178,32 +178,32 @@ The ball counts as at least 10 screen pixels wide, so a far plate is still fair 
   (let ((coal '()))
     (loop while (< (length coal) 5) do (pushnew (random (length *rock*)) coal))
     (loop for block in *rock* for i from 0
-          do (setf (fourth block) (and (member i coal) t) (fifth block) nil)
-             (object-set (first block) "material_override" (material "#5a554e"))
-             (node-3d-set-scale (first block) (v3 1 1 1)))))
+          do (setf (block-coal block) (and (member i coal) t) (block-broken block) nil)
+             (object-set (block-node block) "material_override" (material "#5a554e"))
+             (node-3d-set-scale (block-node block) (v3 1 1 1)))))
 
 (defun step-mine-act (click)
   (with-act (time strikes found note done)
     (cond (done (when (> time done) (end-act found)))
           (t (hint (format nil "ШАХТА · ударов: ~d · угля: ~d из 3 · ЛКМ — бить по породе~@[ · ~a~]" strikes found note))
              (when click
-               (let ((block (find-if (lambda (b) (and (not (fifth b)) (let ((at (object-get (first b) "global_position")))
+               (let ((block (find-if (lambda (b) (and (not (block-broken b)) (let ((at (object-get (block-node b) "global_position")))
                                                                          (and (near-eye-p at 4.0) (aimed-at-p at .28)))))
                                      *rock*)))
                  (when block
                    (decf strikes)
-                   (setf (fifth block) t)
-                   (cond ((fourth block)                                       ; coal: a black lump stays in the hole
+                   (setf (block-broken block) t)
+                   (cond ((block-coal block)                                       ; coal: a black lump stays in the hole
                           (incf found) (setf note "Уголь!")
-                          (object-set (first block) "material_override" (material "#121216" :rough .5))
-                          (node-3d-set-scale (first block) (v3 .7 .7 .7)))
-                         (t (let ((near (count-if (lambda (b) (and (fourth b) (<= (abs (- (second b) (second block))) 1)
-                                                                   (<= (abs (- (third b) (third block))) 1)))
+                          (object-set (block-node block) "material_override" (material "#121216" :rough .5))
+                          (node-3d-set-scale (block-node block) (v3 .7 .7 .7)))
+                         (t (let ((near (count-if (lambda (b) (and (block-coal b) (<= (abs (- (block-x b) (block-x block))) 1)
+                                                                   (<= (abs (- (block-y b) (block-y block))) 1)))
                                                   *rock*)))
                               (setf note (format nil "Пусто. Угля рядом: ~d" near))   ; the colour of the chip says how much coal is around
-                              (object-set (first block) "material_override"
+                              (object-set (block-node block) "material_override"
                                           (material (nth (min near 3) '("#8a857c" "#c9a13a" "#d8782a" "#c0392b"))))
-                              (node-3d-set-scale (first block) (v3 1 1 .25)))))
+                              (node-3d-set-scale (block-node block) (v3 1 1 .25)))))
                    (cond ((>= found 3) (setf note "Ящик полон!" done (+ time 1.0)))
                          ((zerop strikes) (setf note "Кирка затупилась. Пустая порода" done (+ time 1.0)))))))))))
 

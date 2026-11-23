@@ -42,11 +42,6 @@ Return true if the good was given."
            (show-carry) (save-interior)
            (say text) t)))
 
-(defun start-wait (seconds text done)
-  (if *wait* (say "Погоди, ещё не закончил")
-      (progn (setf *wait* (make-job :until (+ *time* seconds) :done done :actor *actor* :carry *carry*) *pending* t)
-             (say text))))
-
 ;;; ------------------------------------------------------------------ what each booth does
 
 ;;; A booth is declared once with DEFBOOTH: what its window says, what E does, what stands next to it and
@@ -131,6 +126,8 @@ Return T if a train ride was pending (GO-TO-TOWN then does nothing itself)."
 
 (defvar *goat* nil "Manka the goat by her booth: the node, as built with the booth.")
 (defvar *goat-milk* nil "The milk in Manka's pail: a node that grows as the pail fills.")
+(define-fields plate node x y z swing speed alive)
+(define-fields block node x y coal broken)
 (defvar *rock* '() "The rock face of the mine, as built with its booth: entries of (node x y coal broken).")
 
 (defun build-rock (g)

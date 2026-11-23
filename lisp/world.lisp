@@ -50,7 +50,6 @@ apart flicker.")
 (defvar *dist* 0.0 "The distance travelled, in metres.")
 (defvar *props* '() "The list of (node . d), in ascending order of d.")
 (defvar *bridges* '())
-(defvar *river-side* 0)
 
 ;;; The land
 
@@ -527,7 +526,7 @@ Turn turns the world and the sun to the course; Rig tilts the wagon with the cam
 The land (Land) is a separate node; it outlives a rebuild of the world."
   (when *world* (node-queue-free *world*))
   (unless *land* (setf *land* (group parent)))
-  (setf *world* (group parent) *dist* 0.0 *props* '() *bridges* '() *river-side* 0
+  (setf *world* (group parent) *dist* 0.0 *props* '() *bridges* '()
         *origin* (list 0.0 0.0 0.0))
   (node-3d-set-position *land* (v3 0 0 0))
   (clrhash *spans*) (clrhash *listed*) (clear-solids)                       ; a new world — nothing has been built yet

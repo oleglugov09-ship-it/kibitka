@@ -135,6 +135,8 @@ The forms: (:always), (:short [good]), (:plenty [good]), (:rationed), (:season s
       (:no-talons (zerop *talons*))
       (:rich (>= *credit* 20000)))))
 
+(define-fields met key meetings life-step day world-heard)   ; DAY: the day we last spoke; -1 never, -2 said goodbye for good
+
 (defun person-record (key)
   (or (assoc key *people-met*) (first (push (list key 0 0 -1 nil) *people-met*))))
 
@@ -142,25 +144,25 @@ The forms: (:always), (:short [good]), (:plenty [good]), (:rationed), (:season s
   "Return what the person KEY says to us in TOWN now, as 'who: «words»', and remember the meeting.
 Return NIL if we have already spoken today or there is nothing left to say."
   (let* ((p (rest (assoc key *people*))) (rec (person-record key)) (day (person-day)))
-    (when (and p (/= (fourth rec) day))
-      (setf (fifth rec)                                                ; what is no longer true may be said again one day
+    (when (and p (/= (met-day rec) day))
+      (setf (met-world-heard rec)                                                ; what is no longer true may be said again one day
             (remove-if-not (lambda (heard) (let ((w (find heard (getf p :world) :key #'second :test #'equal)))
                                              (and w (person-cond-p (first w) town))))
-                           (fifth rec)))
+                           (met-world-heard rec)))
       (let* ((news (find-if (lambda (w) (and (not (eq (first (first w)) :always)) (person-cond-p (first w) town)
-                                             (not (member (second w) (fifth rec) :test #'equal))))
+                                             (not (member (second w) (met-world-heard rec) :test #'equal))))
                             (getf p :world)))
              (lives (getf p :life))
-             (life (and (< (third rec) (length lives))                               ; a step of the life waits for its quarter of our story
-                        (<= (floor (* 4 (third rec)) (length lives)) (debt-quarter))
-                        (nth (third rec) lives)))
+             (life (and (< (met-life-step rec) (length lives))                               ; a step of the life waits for its quarter of our story
+                        (<= (floor (* 4 (met-life-step rec)) (length lives)) (debt-quarter))
+                        (nth (met-life-step rec) lives)))
              (idle (find-if (lambda (w) (eq (first (first w)) :always)) (getf p :world)))
-             (line (cond (news (push (second news) (fifth rec)) (second news))
-                         (life (incf (third rec)) life)
+             (line (cond (news (push (second news) (met-world-heard rec)) (second news))
+                         (life (incf (met-life-step rec)) life)
                          (idle (second idle)))))
         (when line
-          (incf (second rec))
-          (setf (fourth rec) day)
+          (incf (met-meetings rec))
+          (setf (met-day rec) day)
           (save-people)
           (format nil "~a: «~a»" (tr (getf p :who)) (tr line)))))))
 
@@ -178,26 +180,26 @@ Return NIL if we have already spoken today or there is nothing left to say."
 (defun exile-line (key)
   "Return what the dismissed person KEY says when met away from the post, once; then they are gone for good."
   (let ((p (rest (assoc key *people*))) (rec (person-record key)))
-    (when (and (getf p :exile) (/= (fourth rec) -2))
-      (setf (fourth rec) -2)                                                       ; said: will not turn up again
+    (when (and (getf p :exile) (/= (met-day rec) -2))
+      (setf (met-day rec) -2)                                                       ; said: will not turn up again
       (save-people)
       (format nil "~a: «~a»" (tr (getf p :who)) (tr (getf p :exile))))))
 
 (defun acting-line (key)
   "Return the line of whoever stands in for the person KEY who has left, once a day."
   (let* ((p (rest (assoc key *people*))) (rec (person-record (acting-key key))) (day (person-day)))
-    (when (and (getf p :acting) *acting-lines* (/= (fourth rec) day))
-      (setf (fourth rec) day)
-      (incf (second rec))
+    (when (and (getf p :acting) *acting-lines* (/= (met-day rec) day))
+      (setf (met-day rec) day)
+      (incf (met-meetings rec))
       (save-people)
-      (format nil "~a: «~a»" (tr (getf p :acting)) (tr (nth (mod (+ (second rec) (sxhash key)) (length *acting-lines*)) *acting-lines*))))))
+      (format nil "~a: «~a»" (tr (getf p :acting)) (tr (nth (mod (+ (met-meetings rec) (sxhash key)) (length *acting-lines*)) *acting-lines*))))))
 
 (defun person-speaks (place &optional town)
   "Return the line of someone met at PLACE in TOWN who has not spoken today, or NIL.
 The one tied to this very town goes before the ones met anywhere. Where the post is empty, the one acting
 speaks instead. A dismissed person may be met once more among the buyers or on the fishing stage."
   (let* ((posts (remove-if-not (lambda (e) (person-here-p (rest e) place town)) *people*))
-         (here (remove-if-not (lambda (e) (and (person-in-post-p (first e)) (/= (fourth (person-record (first e))) (person-day)))) posts)))
+         (here (remove-if-not (lambda (e) (and (person-in-post-p (first e)) (/= (met-day (person-record (first e))) (person-day)))) posts)))
     (setf *person-spoke* nil)
     (or (and (or (equal place '(:window :buyer)) (equal place '(:booth 0)))
              (some (lambda (f) (and (eq (second f) :fired)

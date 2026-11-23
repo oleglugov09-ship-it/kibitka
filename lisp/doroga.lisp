@@ -467,7 +467,6 @@ BACK is for those driving back."
 
 (defvar *street-player* nil)
 (defvar *street-vol* 0.0 "The volume of the street music, 0..1.")
-(defvar *street-told* nil "The start of the town that has already been announced.")
 
 (defun street-file ()
   (or (find-if #'file-here-p '("res://discs/street.mp3" "res://discs/street.wav"))
@@ -494,7 +493,7 @@ BACK is for those driving back."
 (defun reset-roadside ()
   "Start the roadside from scratch for a new trip.
 The nodes are already gone together with the previous World."
-  (setf *roadside* '() *stops* '() *towns* '() *town-upto* 0.0 *town-n* 0 *street-told* nil
+  (setf *roadside* '() *stops* '() *towns* '() *town-upto* 0.0 *town-n* 0
         *departed* nil *dir* 1 *yaw-now* 0.0 *lane-now* 0.0)
   (halt)
   (clrhash *pole-wires*) (clrhash *built-towns*)

@@ -126,6 +126,20 @@ FILL-TEXT puts there what the function returns now, so the text follows the para
 
 (defvar *untranslated* '() "The strings that had no translation and were shown in Russian in English mode (inspect from the REPL).")
 
+;;; Records kept as lists. Most of the game's records are plain lists - they go into saves, over the network and
+;;; into mods as they are - and a field read as (FIFTH REC) says nothing. DEFINE-FIELDS names the fields in their
+;;; order: (define-fields quest key grants) defines QUEST-KEY and QUEST-GRANTS, which can also be SETF. The record
+;;; stays a list.
+
+(defmacro define-fields (record &rest fields)
+  "Name the FIELDS, in their order, of RECORD, a kind of record kept as a list."
+  `(progn
+     ,@(loop for field in fields for i from 0
+             for name = (intern (cl:format nil "~a-~a" record field))
+             append `((defun ,name (record) (nth ,i record))
+                      (defun (setf ,name) (value record) (setf (nth ,i record) value))))
+     ',record))
+
 (defvar *actor* nil "The guest on whose behalf the driver is performing a shared action right now (sync.lisp).
 NIL means we are acting for ourselves.")
 (defvar *said* '() "The lines said to the guest during this action; they are sent to the guest in the reply.")

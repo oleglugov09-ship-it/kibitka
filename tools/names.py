@@ -13,7 +13,21 @@ root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 kinds = (("function", r"^\((?:defun|defmacro|defgeneric|defshared) \(?([^\s()]+)"),
          ("variable", r"^\((?:defvar|defparameter|defconstant) ([^\s()]+)"),
          ("structure", r"^\(defstruct \(?([^\s()]+)"))
+def fields(text):
+    """The functions DEFINE-FIELDS defines in TEXT: (define-fields quest key need) makes QUEST-KEY and QUEST-NEED."""
+    return [f"{record}-{field}" for record, rest in re.findall(r"^\(define-fields (\S+) ([^()]*)\)", text, re.M) for field in rest.split()]
+
+
 bad = 0
+places = collections.defaultdict(list)
+for path in sorted(glob.glob(os.path.join(root, "lisp", "*.lisp"))):
+    text = open(path, encoding="utf-8").read()
+    for name in fields(text) + re.findall(kinds[0][1], text, re.M):
+        places[name].append(os.path.basename(path))
+for name, where in sorted(places.items()):
+    if len(where) > 1 and name in {f for p in glob.glob(os.path.join(root, "lisp", "*.lisp")) for f in fields(open(p, encoding="utf-8").read())}:
+        bad += 1
+        print(f"function {name} is defined {len(where)} times, once by DEFINE-FIELDS: {', '.join(where)}")
 for kind, pattern in kinds:
     places = collections.defaultdict(list)
     for path in sorted(glob.glob(os.path.join(root, "lisp", "*.lisp"))):
@@ -34,6 +48,8 @@ now = set()
 for _kind, pattern in kinds:
     for path in glob.glob(os.path.join(root, "lisp", "*.lisp")):
         now.update(re.findall(pattern, open(path, encoding="utf-8").read(), re.M))
+for path in glob.glob(os.path.join(root, "lisp", "*.lisp")):
+    now.update(fields(open(path, encoding="utf-8").read()))
 before = set()
 for rev in ("HEAD", "HEAD~25"):
     for _kind, pattern in kinds:
