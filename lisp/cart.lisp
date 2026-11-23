@@ -63,9 +63,7 @@ Its width follows the picture. Return the mesh instance, or NIL when the picture
     (model c "kibitka-body")
     (shape c :ball '(.28 12 6) "#ffd890" 0 (+ f wh .45) (- (- z) .05) :emit "#ffb050" :energy 2 :scale '(1 1 .2))
     ;; inside: the carpet on the floor, the lining
-    (shape c :box '(1.8 .02 2.8) "#2a3a6a" -.15 (+ f .05) 0)
-    (shape c :box '(1.5 .025 2.5) "#d8a840" -.15 (+ f .055) 0)
-    (shape c :box '(1.3 .03 2.3) "#2a3a6a" -.15 (+ f .06) 0)
+    (model c "small-things")
     ;; the carpet wall: the layers go strictly one after another from the wall into the room, with no
     ;; coinciding planes (otherwise they flicker): the wall's inner face at −x+0.08 → lining → carpet → border → centre
     (let ((w0 (+ (- x) .08)))
@@ -77,9 +75,6 @@ Its width follows the picture. Return the mesh instance, or NIL when the picture
           (shape c :box '(.01 1.5 2.4) (kc :carpet2) (layer 2.5) (+ f 1.25) 0)
           (shape c :box '(.01 1.36 2.26) (kc :carpet) (layer 3.5) (+ f 1.25) 0))))
     ;; the lamp, the light, the fairy lights
-    (shape c :cyl '(.008 .008 .7 4) "#2a2a2e" 0 (+ f wh .7) 0 :shadow nil)                        ; the cord from the roof
-    (shape c :cyl '(.07 .27 .2 14) "#c8643a" 0 (+ f wh .26) 0 :shadow nil)                        ; a cloth shade
-    (shape c :cyl '(.28 .28 .03 14) "#e0b050" 0 (+ f wh .165) 0 :shadow nil)                      ; its trim
     (push (shape c :ball '(.09 10 6) "#ffe8b0" 0 (+ f wh .11) 0 :emit "#ffc070" :energy 3 :shadow nil) *glow*)
     (push (light c "#ffb070" 4.2 3.7 0 (+ f wh .1) 0) *glow*)       ; a short reach: lights cast no shadows here, and a longer one lit the ground under the wagon through its floor
     (push (light c "#ff8060" 1.2 4 -.6 (+ f 1.4) -.2) *glow*)

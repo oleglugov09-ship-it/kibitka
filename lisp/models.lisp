@@ -19,21 +19,32 @@ A mesh whose name in Blender ends with _noshadow casts no shadow."
   (dotimes (i (object-call node "get_child_count"))
     (settle-model (object-call node "get_child" i) shadow)))
 
+(defvar *models* (make-hash-table :test 'equal) "A table from the name of a model to its scene as read from the file: a node
+that is never put into the tree; every MODEL puts a copy of it, and the copies share the meshes.")
+
+(defun model-scene (name)
+  "Return the scene of the model NAME, read once; NIL (and an error in the log) when the file is missing or broken."
+  (or (gethash name *models*)
+      (let* ((path (format nil "res://models/~a.glb" name))
+             (root (and (file-here-p path)
+                        (let ((doc (gdext:make-object "GLTFDocument")) (state (gdext:make-object "GLTFState")))
+                          (and (eql 0 (object-call doc "append_from_buffer" (file-bytes path) "" state))
+                               (object-call doc "generate_scene" state))))))
+        (cond ((null root) (note-error (format nil "модель ~a не прочитана" path) "model") nil)
+              (t (settle-model root t)
+                 (setf (gethash name *models*) root))))))
+
 (defun model (parent name &optional (x 0.0) (y 0.0) (z 0.0) &key rot scale (shadow t))
   "Put the model NAME (project/models/NAME.glb) under PARENT at the point (X Y Z) and return its root Node3D.
 ROT is (x y z) in radians and SCALE is (x y z), as for SHAPE. A missing or broken file is logged as an error, and NIL is returned."
-  (let* ((path (format nil "res://models/~a.glb" name))
-         (root (and (file-here-p path)
-                    (let ((doc (gdext:make-object "GLTFDocument")) (state (gdext:make-object "GLTFState")))
-                      (and (eql 0 (object-call doc "append_from_buffer" (file-bytes path) "" state))
-                           (object-call doc "generate_scene" state))))))
-    (cond ((null root) (note-error (format nil "модель ~a не прочитана" path) "model") nil)
-          (t (settle-model root shadow)
-             (node-add-child parent root)
-             (node-3d-set-position root (v3 x y z))
-             (when rot (node-3d-set-rotation root (v3 (first rot) (second rot) (third rot))))
-             (when scale (node-3d-set-scale root (v3 (first scale) (second scale) (third scale))))
-             root))))
+  (let* ((scene (model-scene name)) (root (and scene (object-call scene "duplicate"))))
+    (when root
+      (unless shadow (settle-model root nil))
+      (node-add-child parent root)
+      (node-3d-set-position root (v3 x y z))
+      (when rot (node-3d-set-rotation root (v3 (first rot) (second rot) (third rot))))
+      (when scale (node-3d-set-scale root (v3 (first scale) (second scale) (third scale))))
+      root)))
 
 ;;; Moving a piece from code to Blender. Wrap the shapes of the piece - only those that never move, hide or get
 ;;; clicked on their own - in (drawn (parent "NAME") ...) and run tools/to-blender.sh: the game runs once with

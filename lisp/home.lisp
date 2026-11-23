@@ -304,8 +304,7 @@ that could be lost. A jar opened and left waits for the same good."
     ;; the quilt, which hangs on the door itself and swings with it
     (when *door*
       (setf quilt (group *door* .55 -.1 -.07))
-      (shape quilt :box '(1.0 1.7 .05) "#5a2a5a" 0 0 0)
-      (dotimes (i 3) (dotimes (j 5) (shape quilt :box '(.3 .3 .052) (if (evenp (+ i j)) "#7a3a5a" "#3f5f73") (- (* i .33) .33) (- (* j .33) .66) -.002 :shadow nil))))
+      (model quilt "quilt"))
     ;; the crate of jars under the washstand, and the jar that is being closed on top of it
     (destructuring-bind (x y z) (crate-point)
       (let ((g (group c x (+ f y) z)))

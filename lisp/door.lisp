@@ -30,10 +30,7 @@ It cannot be lowered while moving."
   "Build the door and the porch on wagon CART."
   (let* ((f *floor*) (z *half-length*)
          (hinge (group cart -.55 (+ f 1.0) (+ z .1))))
-    (shape hinge :box '(1.1 2.0 .08) (kc :roof) .55 0 0)
-    (shape hinge :box '(1.0 .06 .1) (kc :trim) .55 .55 0)
-    (shape hinge :box '(1.0 .06 .1) (kc :trim) .55 -.55 0)
-    (shape hinge :cyl '(.05 .05 .06 10) (kc :trim) .95 0 -.07 :rot (list (/ pi 2) 0 0) :metal .8 :rough .3)
+    (model hinge "door")
     (setf *door* hinge)
     ;; the porch: a platform with railings on all sides
     (let ((p (group cart 0 0 0)))
@@ -43,8 +40,7 @@ It cannot be lowered while moving."
             ;; the deck and the railings are drawn in Blender (models/porch.blend); the ladder moves, so it is built here
             (model cart "porch")
             (let ((h (group p 0 (- f .1) (+ z1 .3))))
-              (dolist (sx '(-.27 .27)) (shape h :box '(.05 1.05 .05) (pc :rail) sx -.52 0 :metal .5 :rough .5))
-              (loop for i below 3 do (shape h :box '(.56 .04 .16) (pc :deck) 0 (- -.25 (* i .32)) 0 :metal .5 :rough .6))
+              (model h "ladder")
               (setf *ladder* h)))))
       p))
   (apply-ladder)

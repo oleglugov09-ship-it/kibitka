@@ -170,9 +170,7 @@ At a fork one can thus see where the other road goes. At most two new ribbons ar
 
 (defun truck-wheel (c x z)
   (let ((w (group c x *wheel-r* z)))
-    (shape w :cyl (list *wheel-r* *wheel-r* .42 14) "#141416" 0 0 0 :rot (list 0 0 (/ pi 2)))
-    (shape w :cyl (list (* .5 *wheel-r*) (* .5 *wheel-r*) .44 10) "#8a8a84" 0 0 0 :rot (list 0 0 (/ pi 2)))
-    (shape w :box (list .46 .1 (* 1.5 *wheel-r*)) "#55554f" 0 0 0)          ; a spoke - so that the turning is visible
+    (model w "wheel")
     (push w *wheels*)))
 
 (defun make-team (c)

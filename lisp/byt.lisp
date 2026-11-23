@@ -49,12 +49,7 @@ Raised, it is pressed to the wall; folded down, it is a bed. Above it is the fix
   ;; the hinge is 30 cm from the wall: the raised shelf stands on edge in front of the rug, mattress to the wall
   ;; (otherwise it would sink into the wall itself), underside to the room; folded down, it reaches the wall
   (let* ((x (- .3 *half-width*)) (f *floor*) (h (group c x (+ f .5) *bunk-z*)))
-    (shape h :box '(.72 .06 1.9) "#5a3e26" .18 0 0)
-    (shape h :box '(.68 .1 1.84) "#7a3a34" .18 .08 0 :shadow nil)                ; mattress
-    (shape h :box '(.5 .09 .34) "#e8e0d0" .18 .17 -.72 :shadow nil)              ; pillow
-    (shape h :box '(.66 .03 1.0) "#3f6f73" .18 .145 .38 :shadow nil)             ; blanket
-    (dolist (sz '(-.8 .8)) (shape h :box '(.5 .03 .06) "#3a2a1a" .2 -.045 sz))   ; crossbars underneath
-    (dolist (sz '(-.7 .7)) (shape h :box '(.04 .05 .22) "#d8a840" .55 -.01 sz :metal .6 :rough .4 :shadow nil))   ; handles on the edge
+    (model h "bunk")
     (push (list h (/ pi 2)) *fold-nodes*)
     (apply-fold)))
 
@@ -86,34 +81,23 @@ As many are placed as there are players.")
 (defun make-table (c)
   (let* ((f *floor*) (tx (first *table-at*)) (tz (second *table-at*)) (top *table-top*)
          (g (group c 0 f 0)))
-    (shape g :box '(.62 .05 1.0) "#8a6440" tx top tz)
-    (shape g :box '(.58 .012 .96) "#e8e0d0" tx (+ top .03) tz :shadow nil)                 ; tablecloth
-    (dolist (sx '(-.26 .26)) (dolist (sz '(-.44 .44)) (shape g :box '(.05 .5 .05) "#5a3e26" (+ tx sx) (/ top 2) (+ tz sz))))
-    ;; a plate of bagels
-    (shape g :cyl '(.2 .16 .02 14) "#f0ede4" (+ tx .08) (+ top .045) (+ tz .0) :shadow nil)
+    (model g "table")
     (setf *bagel-nodes*
           (loop for i below 6 for a = (* i (/ (* 2 pi) 6))
                 collect (let ((bg (group g (+ tx .08 (* .115 (cos a))) (+ top .07) (+ tz (* .115 (sin a))))))
-                          (shape bg :cyl '(.065 .065 .028 10) "#c8964a" 0 0 0 :shadow nil)
-                          (shape bg :cyl '(.026 .026 .03 6) "#f0ede4" 0 0 0 :shadow nil)
+                          (model bg "bagel")
                           bg)))
     (setf *cup-nodes*
           (loop for (x z) in *cup-spots*
                 collect (let ((cup (group g x (+ top .035) z)))
                           ;; a tea glass in a metal holder, as on a train
-                          (shape cup :cyl '(.03 .03 .085 10) "#8a4a1c" 0 .058 0 :shadow nil)                           ; tea
-                          (shape cup :cyl '(.036 .034 .11 10) "#d8e8f0" 0 .065 0 :alpha .28 :rough .1 :shadow nil)      ; the glass
-                          (shape cup :cyl '(.041 .041 .06 10) "#b0b4b8" 0 .04 0 :metal .8 :rough .35)                  ; the holder
-                          (shape cup :cyl '(.05 .052 .012 10) "#b0b4b8" 0 .006 0 :metal .8 :rough .35 :shadow nil)     ; its foot
-                          (shape cup :box '(.008 .06 .012) "#b0b4b8" .072 .045 0 :metal .8 :rough .35 :shadow nil)     ; the handle
-                          (dolist (y '(.018 .072)) (shape cup :box '(.034 .008 .012) "#b0b4b8" .057 y 0 :metal .8 :rough .35 :shadow nil))
+                          (model cup "cup")
                           (object-set cup "visible" nil)
                           cup)))
     (setf *stool-nodes*
           (loop for (x z) in *stools*
                 collect (let ((st (group g x 0 z)))
-                          (shape st :cyl '(.17 .17 .04 10) "#7a3a34" 0 .32 0)
-                          (dolist (a '(.5 2.6 4.7)) (shape st :box '(.04 .3 .04) "#5a3e26" (* .11 (cos a)) .15 (* .11 (sin a))))
+                          (model st "stool")
                           (object-set st "visible" nil)
                           st)))
     (setf *table* g *stools-shown* 0)
@@ -221,40 +205,32 @@ is always there; the lower one when it is folded down, otherwise there are the s
   (let* ((x *half-width*) (f *floor*) (panes '()) (sills '()))
     (dolist (s '(-1 1))
       (let ((g (group c x (+ f 1.5) (* s .65))))
-        (shape g :box '(.03 1.1 1.3) "#a8c4d0" 0 0 0 :alpha .22 :rough .1 :shadow nil)
-        (dolist (dy '(-.55 .55)) (shape g :box '(.05 .04 1.3) "#34363a" 0 dy 0 :metal .5 :rough .5 :shadow nil))
-        (dolist (dz '(-.65 .65)) (shape g :box '(.05 1.1 .04) "#34363a" 0 0 dz :metal .5 :rough .5 :shadow nil))
+        (model g "window-pane")
         (frost-pane g)
         (rain-pane g)                                                  ; mood.lisp
         (push (list g s) panes)))
     (let ((in (group c (- x .09) (+ f .95) 0)) (out (group c (+ x .09) (+ f .95) 0)))
-      (shape in :box '(.3 .04 2.5) "#8a6440" -.15 -.02 0)
+      (model in "sill-in")
       ;; the lower shutter: closed, it hangs along the wall under the window; window slid open, it is the counter sill
-      (shape out :box '(.55 .05 2.6) "#8a6440" .275 -.025 0)
-      (shape out :box '(.06 .06 2.5) "#d8a840" .5 -.015 0 :shadow nil)
+      (model out "sill-out")
       (push (list in (/ pi 2) 0.0) sills)
       (push (list out (- (/ pi 2)) 0.0) sills))
     ;; the upper shutter: closed, it is pressed to the wall above the window; slid open, it is an awning over the counter
     (let ((up (group c (+ x .1) (+ f 2.07) 0)))
-      (shape up :box '(.05 .55 2.6) "#8a6440" 0 .275 0)
-      (shape up :box '(.06 .06 2.5) "#d8a840" .01 .5 0 :shadow nil)
+      (model up "shutter")
       (push (list up 0.0 (- (+ (/ pi 2) .3))) sills))
     ;; the step under the window outside: it folds out together with the windowsills, the customer stands on it
     (let ((step (group c (+ x .1) *step-y* 0)))
-      (shape step :box '(.95 .06 2.3) "#5a3e26" .48 0 0)
-      (shape step :box '(.9 .02 2.2) "#8a6440" .48 .04 0 :shadow nil)
+      (model step "step")
       ;; legs and stairs are separate: they exist only while the step is folded out
       (let ((legs (group step 0 0 0)))
-        (dolist (sz '(-1.0 1.0)) (shape legs :box '(.06 1.2 .06) "#34363a" .88 -.62 sz :metal .5 :rough .5))
-        (loop for i below 3 do (shape legs :box '(.5 .04 .16) "#5a3e26" .62 (- -.3 (* i .3)) 1.25 :shadow nil))
+        (model legs "step-legs")
         (setf *step-legs* legs))
       ;; folded, it hangs down along the side under the window (not up: it would cover the glass)
       (push (list step (- (/ pi 2)) 0.0) sills))
     ;; the bell hangs in the opening when the window is slid open: you call a customer with it
     (let ((bell (group c (+ x .02) (+ f 1.98) 0)))
-      (shape bell :cyl '(.006 .006 .14 4) "#34363a" 0 -.07 0 :shadow nil)
-      (shape bell :cyl '(.03 .075 .1 10) "#d8a840" 0 -.19 0 :metal .8 :rough .3 :shadow nil)
-      (shape bell :ball '(.022 6 4) "#8a6a20" 0 -.26 0 :shadow nil)
+      (model bell "bell")
       (setf *bell-node* bell))
     (setf *window-nodes* (list :panes panes :sills sills))
     (apply-window)))

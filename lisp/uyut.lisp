@@ -500,31 +500,21 @@ In the swamp a mosquito flies into the wagon: it whines, circles around the head
     (destructuring-bind (x y z) *camera-at*
       (let ((g (group c x (+ f y) z)))
         (setf (getf *uyut* :camera-node) g)
-        (shape g :box '(.07 .11 .17) "#2a2a2e" 0 0 0)
-        (shape g :cyl '(.04 .04 .05 10) "#16161a" -.05 0 0 :rot (list 0 0 (/ pi 2)))
-        (shape g :box '(.03 .03 .05) "#8a8e92" 0 .07 .04 :metal .6 :rough .4)
-        (shape g :box '(.01 .22 .01) "#5a3e26" .02 .16 0 :shadow nil)))
+        (model g "camera")))
     ;; the radio is the front of the radiogram (jukebox.lisp): here are only its lit dial and its knob
     (destructuring-bind (x y z) *radio-at*
       (let ((g (group c x (+ f y) z)))
-        (shape g :cyl '(.025 .025 .02 8) "#d8d4c4" -.005 -.06 .1 :rot (list 0 0 (/ pi 2)) :shadow nil)
-        (shape g :box '(.01 .05 .2) "#2a2a2e" 0 .0 0 :shadow nil)
         (setf (getf *uyut* :radio-dial)
               (shape g :box '(.012 .035 .18) "#ffd890" -.004 0 0 :emit "#ffc060" :energy 2.0 :shadow nil))))
     ;; the guitar on the wall by the door
     (destructuring-bind (x y z) *guitar-at*
       (let ((g (group c x (+ f y) z)))
-        (shape g :cyl '(.19 .19 .08 14) "#b8763a" 0 -.22 0 :rot (list (/ pi 2) 0 0))
-        (shape g :cyl '(.14 .14 .08 14) "#b8763a" 0 .04 0 :rot (list (/ pi 2) 0 0))
-        (shape g :cyl '(.05 .05 .09 10) "#2a1a12" 0 -.14 0 :rot (list (/ pi 2) 0 0) :shadow nil)
-        (shape g :box '(.05 .6 .03) "#5a3e26" 0 .44 -.01)
-        (shape g :box '(.07 .12 .03) "#3a2a1e" 0 .78 -.01)
+        (model g "guitar")
         (setf (getf *uyut* :guitar) g)))
     ;; the fly swatter by the window and the mosquito
     (destructuring-bind (x y z) *swatter-at*
       (let ((g (group c x (+ f y) z)))
-        (shape g :box '(.012 .34 .014) "#5a3e26" 0 -.12 0 :shadow nil)
-        (shape g :box '(.012 .16 .13) "#a3262c" 0 .13 0 :shadow nil)
+        (model g "swatter")
         (setf (getf *uyut* :swatter) g)))
     (let ((m (shape c :ball '(.018 5 3) "#16161a" 0 (+ f 1.4) 0 :shadow nil)))
       (object-set m "visible" nil)
@@ -532,9 +522,7 @@ In the swamp a mosquito flies into the wagon: it whines, circles around the head
             (getf *uyut* :mosquito-player) (player m (wav-stream (sound-path "mosquito") :loop t) :positional t :db -6.0 :bus "Кибитка" :play nil)))
     ;; dice on the tea table
     (let ((g (group c (+ (first *table-at*) .2) (+ f *table-top*) (- (second *table-at*) .3))))
-      (shape g :cyl '(.045 .035 .09 10) "#5a3e26" 0 .045 0)
-      (shape g :box '(.035 .035 .035) "#f0ece0" .02 .0175 .12 :rot '(0 .4 0))
-      (shape g :box '(.035 .035 .035) "#f0ece0" -.03 .0175 .17 :rot '(0 1.1 0))
+      (model g "dice")
       (let ((l (gdext:make-object "Label3D")))
         (object-set l "text" "")
         (object-set l "pixel_size" .002)
