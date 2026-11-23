@@ -92,6 +92,10 @@ Cubes named surface_NAME: the top face is a place to stand or put things, each a
   "Return the point NAME of MODEL (an empty named at_NAME in its Blender file) as (x y z), or NIL."
   (rest (assoc name (third (model-entry model)) :test #'string=)))
 
+(defun model-points (model prefix)
+  "Return the points of MODEL whose names begin with PREFIX, each as (x y z)."
+  (loop for (name . at) in (third (model-entry model)) when (eql 0 (search prefix name)) collect at))
+
 (defun model-surface (model name)
   "Return the surface NAME of MODEL (a cube named surface_NAME in its Blender file) as (x top z width depth), or NIL."
   (rest (assoc name (fourth (model-entry model)) :test #'string=)))
@@ -104,17 +108,18 @@ Cubes named surface_NAME: the top face is a place to stand or put things, each a
 (defun paint-model (node paint)
   "Give the meshes under NODE whose material is named paint0, paint1, ... in Blender the colours of the list PAINT."
   (when (object-call node "is_class" "MeshInstance3D")
-    (let* ((mesh (object-get node "mesh")) (m (and mesh (plusp (object-call mesh "get_surface_count")) (object-call mesh "surface_get_material" 0)))
+    (dotimes (surface (let ((mesh (object-get node "mesh"))) (if mesh (object-call mesh "get_surface_count") 0)))
+     (let* ((m (object-call (object-get node "mesh") "surface_get_material" surface))
            (name (if m (princ-to-string (object-get m "resource_name")) "")))
       (when (and (> (length name) 5) (eql 0 (search "paint" name)) (digit-char-p (char name 5)))
         (let* ((rgb (nth (digit-char-p (char name 5)) paint)) (ws (words name)) (glow (member "emit" ws :test #'string=)))
           (when rgb                                                 ; "paint1 emit own 0.5": it glows with its own colour
-            (object-call node "set_surface_override_material" 0
+            (object-call node "set_surface_override_material" surface
                          (if glow
                              (material rgb :emit rgb :energy (let ((v (ignore-errors (let ((*read-eval* nil)) (read-from-string (third glow))))))
                                                                (if (realp v) (float v 1.0) 1.0)))
                              (material rgb :rough (/ (round (* 100 (object-get m "roughness"))) 100.0)
-                                           :metal (/ (round (* 100 (object-get m "metallic"))) 100.0)))))))))
+                                           :metal (/ (round (* 100 (object-get m "metallic"))) 100.0))))))))))
   (dotimes (i (object-call node "get_child_count"))
     (paint-model (object-call node "get_child" i) paint)))
 

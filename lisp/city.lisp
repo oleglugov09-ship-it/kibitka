@@ -121,41 +121,45 @@ The foundation goes 4 m into the ground, so on a slope there is no gap under the
         do (shape g :box '(.14 1.1 1.3) "#e8c070" (- x .07) (+ first (* (random floors) step))
                   (+ z (* (- (random 1.0) .5) d .85)) :emit "#ffc060" :energy .9 :shadow nil)))
 
+(defparameter *section* 16.0 "The length of one entrance section of a panel block, in metres; it is 12 m deep.")
+
+(defun house-sections (g floors n x z rgb &key (lit 3))
+  "Set N entrance sections of FLOORS storeys (5, 9 or 12) side by side along z under G: the facade at X, the middle at Z.
+A section is drawn in Blender (models/doma/house-section-FLOORS.blend); RGB paints the walls, the balconies take
+turns in three colours. Up to LIT windows are lit: at the points at_lit_... of the model. Return the length built."
+  (let ((file (format nil "house-section-~d" floors)))
+    (dotimes (i n)
+      (model g file x 0.0 (+ z (* (- i (/ (1- n) 2)) *section*)) :paint (list rgb (nth (mod i 3) '("#9a9488" "#7f8a8c" "#a8a08c")))))
+    (let ((points (model-points file "lit_")))
+      (when points
+        (loop repeat (random (1+ lit))
+              do (destructuring-bind (px py pz) (nth (random (length points)) points)
+                   (shape g :box '(.14 1.25 1.35) "#e8c070" (+ x px) py (+ z (* (- (random n) (/ (1- n) 2)) *section*) pz)
+                          :emit "#ffc060" :energy .9 :shadow nil)))))
+    (* n *section*)))
+
 (defun panel-house (g floors w d x z &key slogan)
-  "Add to G a panel apartment block of FLOORS storeys standing along the street.
-It has ribbon windows, columns of balconies and entrances with canopies."
-  (let* ((h (* floors 2.8)) (rgb (nth (random 4) '("#7b7d82" "#84807a" "#6f757c" "#8a7d6e"))))
-    (body g w h d rgb x z)
-    (shape g :box (list (+ w .4) .5 (+ d .4)) "#4c4e52" (+ x (/ w 2)) (+ h .25) z :shadow nil)
-    (window-rows g floors x z d :lit (+ 2 floors))
-    (end-mosaic g (+ x (/ w 2)) (+ z (/ d 2) .1) 0 w h)
-    (end-mosaic g (+ x (/ w 2)) (- z (/ d 2) .1) pi w h)
-    (let ((n (max 2 (round d 16))))
-      (dotimes (i n)
-        (let ((bz (+ z (* (- (/ (+ i .5) n) .5) d))))
-          (shape g :box (list .9 (- h 3.2) 2.6) (nth (mod i 3) '("#9a9488" "#7f8a8c" "#a8a08c")) (- x .4) (+ 1.8 (/ h 2)) bz :shadow nil)
-          (shape g :box '(1.6 .15 2.4) "#55554f" (- x .8) 2.6 (+ bz 4.5) :shadow nil)          ; entrance canopy
-          (shape g :box '(.12 2.1 1.2) "#4a3020" (- x .06) 1.05 (+ bz 4.5) :shadow nil))))    ; door
+  "Add to G a panel apartment block of FLOORS storeys standing along the street, about D metres long:
+entrance sections set side by side (HOUSE-SECTIONS), a mosaic on each end wall."
+  (declare (ignore w))
+  (let* ((h (* floors 2.8)) (rgb (nth (random 4) '("#7b7d82" "#84807a" "#6f757c" "#8a7d6e")))
+         (len (house-sections g floors (max 2 (round d *section*)) x z rgb :lit (+ 2 floors))))
+    (end-mosaic g (+ x 6.0) (+ z (/ len 2) .1) 0 12.0 h)
+    (end-mosaic g (+ x 6.0) (- z (/ len 2) .1) pi 12.0 h)
     (when slogan
-      (shape g :box (list .2 .2 (* d .7)) "#3a3a40" (+ x 1) (+ h .8) z :shadow nil)
+      (shape g :box (list .2 .2 (* len .7)) "#3a3a40" (+ x 1) (+ h .8) z :shadow nil)
       (sign g slogan (+ x 1) (+ h 2.0) z :h 2.4 :rgb "#a3262c"))))
 
 (defun end-on-blocks (g floors n)
-  "Add to G N blocks of FLOORS storeys standing end-on to the street, 34 m apart.
+  "Add to G N blocks of FLOORS storeys standing end-on to the street, 34 m apart: three sections each.
 Between them are courtyards."
   (dotimes (i n)
-    (let* ((z (* (- i (/ (1- n) 2)) 34.0)) (h (* floors 2.8)) (len 52.0)
-           (rgb (nth (random 3) '("#84807a" "#8a7d6e" "#7b7d82"))))
-      (shape g :box (list len (+ h 4) 12.0) rgb (+ 9 (/ len 2)) (- (/ h 2) 2) z)
-      (shape g :box (list (+ len .4) .5 12.4) "#4c4e52" (+ 9 (/ len 2)) (+ h .25) z :shadow nil)
-      ;; the end facing the street: a blank wall with a mosaic, windows on the sides
+    (let* ((z (* (- i (/ (1- n) 2)) 34.0)) (h (* floors 2.8))
+           (rgb (nth (random 3) '("#84807a" "#8a7d6e" "#7b7d82")))
+           (block (group g 33.0 0 (+ z 6.0))))                                  ; turned: the sections run away from the street
+      (node-3d-set-rotation block (v3 0 (/ pi 2) 0))
+      (house-sections block floors 3 0.0 0.0 rgb)
       (end-mosaic g 8.9 z (- (/ pi 2)) 12.0 h)
-      (dolist (sz '(-1 1))
-        (dotimes (f floors)
-          (shape g :box (list (* len .9) 1.25 .12) "#2e333b" (+ 9 (/ len 2)) (+ 1.6 (* f 2.8)) (+ z (* sz 6.05)) :shadow nil))
-        (loop repeat (random 4)
-              do (shape g :box '(1.3 1.1 .14) "#e8c070" (+ 12 (random (- len 6))) (+ 1.6 (* (random floors) 2.8)) (+ z (* sz 6.07))
-                        :emit "#ffc060" :energy .9 :shadow nil)))
       (when (< i (1- n))                                                        ; courtyard: swings and a sandbox
         (shape g :box '(.1 2.2 .1) "#3f6f73" 24 1.1 (+ z 15)) (shape g :box '(.1 2.2 .1) "#3f6f73" 24 1.1 (+ z 19))
         (shape g :box '(.1 .1 4.2) "#3f6f73" 24 2.2 (+ z 17))
@@ -208,14 +212,11 @@ It has a main building, a striped chimney and a gatehouse."
   (model g "plaza"))
 
 (defun tower (g)
-  "Add to G a tower block of twelve storeys."
+  "Add to G a tower block of twelve storeys: one section of the kit."
   (let ((h (* 12 2.8)))
-    (body g 16.0 h 16.0 "#7b7d82" 18.0 0)
-    (window-rows g 12 18.0 0 16.0 :lit 8)
-    (end-mosaic g 26.0 8.1 0 16.0 h)
-    (end-mosaic g 26.0 -8.1 pi 16.0 h)
-    (dolist (sz '(-1 1)) (shape g :box (list 1.0 (- h 3) 2.4) "#9a9488" 17.6 (+ 1.5 (/ h 2)) (* sz 5) :shadow nil))
-    (shape g :box '(4.0 2.6 4.0) "#5c5e62" 26.0 (+ h 1.3) 0 :shadow nil)))
+    (house-sections g 12 1 18.0 0.0 "#7b7d82" :lit 8)
+    (end-mosaic g 24.0 8.1 0 12.0 h)
+    (end-mosaic g 24.0 -8.1 pi 12.0 h)))
 
 (defun station-kind (d)
   "Return the kind of gas station at path coordinate D.

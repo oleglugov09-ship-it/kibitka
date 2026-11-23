@@ -52,6 +52,9 @@ VIEWS = [("outside-back-right", '(setf *view* :outside *orbit-yaw* .6 *orbit-pit
          ("cats", """(progn (setf *view* :outside *orbit-dist* 13.0 *orbit-yaw* -1.57 *orbit-pitch* .1) (loop for look below 5 do (loop for row below 2 do (let ((g (group *cart* -5.0 0.0 (+ -3.2 (* 1.5 look) (* .75 row))))) (godot:node-3d-set-rotation g (v3 0 -1.57 0)) (godot:node-3d-set-position g (v3 (- -4.6 (* 1.3 row)) 0.0 (- (* 1.5 look) 3.0))) (make-cat g (+ look (* 3 row) 1) look)))) (loop for marks in '((:tie :hat :folder) (:glasses :bun :book) (:shades :bow) (:white) (:kerchief) (:kerchief-white :cap) (:officer)) for i from 0 do (let ((g (group *cart* -7.4 0.0 (- (* 1.2 i) 3.6)))) (godot:node-3d-set-rotation g (v3 0 -1.57 0)) (let ((c (make-cat g (+ i 2)))) (person-dress (first c) (second c) marks)))) 1)"""),
          ("cats-near", '(setf *orbit-dist* 11.0 *orbit-yaw* -1.25 *orbit-pitch* .16)'),
          ("cats-side", '(setf *orbit-dist* 12.0 *orbit-yaw* -1.95 *orbit-pitch* .3)'),
+         ("houses", """(progn (setf *view* :outside *orbit-dist* 70.0 *orbit-yaw* 1.2 *orbit-pitch* .25 *seed* (rs-for 5) *mosaic-town* 0) (let ((g (group *cart* -30.0 0.0 0.0))) (godot:node-3d-set-rotation g (v3 0 3.1416 0)) (panel-house g 5 12.0 62.0 0.0 -50.0) (panel-house g 9 12.0 66.0 0.0 30.0 :slogan "МИРУ МИР") (tower (group g -18.0 0.0 90.0))) 1)"""),
+         ("houses-near", '(setf *orbit-dist* 34.0 *orbit-yaw* 1.45 *orbit-pitch* .12)'),
+         ("houses-end", '(setf *orbit-dist* 90.0 *orbit-yaw* 2.3 *orbit-pitch* .3)'),
          ("meta-room", '(progn (setf *meta* t *view* :inside *seat* nil *pos* (v3 0 0 2.8) *yaw* 0.0 *pitch* 0.0) (apply-meta) 1)'),
          ("meta-room-back", '(setf *pos* (v3 0 0 -2.8) *yaw* 3.1416)'),
          ("meta-room-side", '(setf *pos* (v3 2.4 0 0) *yaw* 1.5708)')]
