@@ -215,83 +215,37 @@ FIRST and LAST mark the portals."
     (node-3d-set-scale (first (make-cat c n)) (v3 .62 .62 .62))
     c))
 
-(defun diner-table (g x z &optional umbrella)
-  "Build in group G a standing table at (X Z); with UMBRELLA it is an outdoor one."
-  (shape g :cyl '(.05 .05 .7 6) "#8a8e92" x .35 z)
-  (shape g :cyl '(.5 .5 .05 10) "#e4e0d4" x .72 z)
-  (shape g :box '(.12 .16 .12) "#c9a13a" (+ x .15) .83 (- z .1) :shadow nil)
-  (when umbrella
-    (shape g :cyl '(.03 .03 2.2 6) "#8a8e92" x 1.1 z :shadow nil)
-    (shape g :cone '(1.3 .5 8) umbrella x 2.3 z)))
-
 (defun diner-apron (g name rgb)
   "Build in group G what all diners share: a parking lot, a signpost by the road, a lamp, a bin, cars."
-  (shape g :box '(24.0 .1 36.0) "#4e4d4a" 13.0 .03 0 :shadow nil)
-  (shape g :box '(.25 6.4 .25) "#8a8a84" 1.6 3.2 15.0)
-  (shape g :box '(.3 1.5 5.2) rgb 1.6 5.6 15.0 :shadow nil)
+  (model g "diner-apron" 0.0 0.0 0.0 :paint (list rgb))
   (sign g name 1.42 5.6 15.0 :h .62 :rgb "#f0ece0")
   (sign g name 1.78 5.6 15.0 :h .62 :rgb "#f0ece0" :yaw (/ pi 2))
-  (shape g :box '(.13 5.6 .13) "#5a5e60" 4.0 2.8 -12.0)
-  (shape g :box '(.5 .12 .26) "#ffe2a0" 4.0 5.62 -12.0 :emit "#ffd080" :energy 1.6 :shadow nil)
-  (shape g :cyl '(.25 .2 .6 8) "#3c4638" 7.2 .32 -2.0)
   (flood g 7.0 4.5 0 :range 26.0 :rgb rgb :energy 2.2)              ; at night the sign floods the lot with its colour
   (parked-car g 6.5 (- -9 (random 3.0)))
   (when (zerop (random 2)) (parked-car g 6.3 (+ 10 (random 3.0)))))
 
 (defun diner-glass (g name rgb)
   "Build in group G the 'Steklyashka' diner: a glass pavilion under a flat roof, letters on the roof."
-  (shape g :box '(12.0 .4 18.0) "#8a8a84" 17.0 .2 0)
-  (shape g :box '(10.6 3.2 16.6) "#a8c8d0" 17.0 2.0 0 :alpha .3 :rough .1 :shadow nil)
-  (shape g :box '(.4 3.2 16.6) "#d8d4c4" 22.1 2.0 0)
-  (dolist (x '(11.75 16.9)) (dolist (z '(-8.3 0 8.3)) (shape g :box '(.28 3.2 .28) "#e4e0d4" x 2.0 z)))
-  (shape g :box '(13.6 .5 19.6) "#e4e0d4" 16.6 3.85 0)
-  (shape g :box '(.3 .9 19.6) rgb 9.75 3.85 0 :shadow nil)
-  (dolist (z '(-6 6)) (shape g :box '(.12 1.2 .12) "#8a8a84" 10.6 4.6 z :shadow nil))
+  (model g "diner-glass" 0.0 0.0 0.0 :paint (list rgb))
   (sign g name 10.5 5.5 0 :h 1.4 :rgb rgb)
-  (shape g :box '(8.0 .1 .5) "#fff0c8" 17.0 3.5 0 :emit "#ffe0a0" :energy 1.8 :shadow nil)
-  (shape g :box '(1.0 1.1 9.0) "#8a6440" 20.6 .95 0)
-  (loop for z in '(-5.5 0 5.5) for i from 0
-        do (shape g :box '(1.1 .08 1.1) "#e4e0d4" 15.0 1.1 z :shadow nil) (shape g :box '(.1 .7 .1) "#8a8e92" 15.0 .75 z :shadow nil)
-           (diner-cat g 15.0 (+ z .9) pi (+ i 3)))
+  (loop for z in '(-5.5 0 5.5) for i from 0 do (diner-cat g 15.0 (+ z .9) pi (+ i 3)))
   (diner-cat g 20.0 2.0 (- (/ pi 2)) 11)
-  (diner-table g 8.0 -5.0 rgb) (diner-table g 8.0 5.0 "#e4e0d4")
   (diner-cat g 8.0 -4.1 pi 7) (diner-cat g 8.9 5.2 (- (/ pi 2)) 20))
 
 (defun diner-grill (g name rgb)
   "Build in group G a shashlik house: a log cabin, a canopy on posts, a smoking grill, fairy lights."
-  (shape g :box '(6.0 3.0 7.0) "#6a5038" 19.0 1.5 -3.0)
-  (dolist (s '(-1 1)) (shape g :box '(4.0 .2 7.6) "#4c4e52" (+ 19.0 (* s 1.6)) 3.75 -3.0 :rot (list 0 0 (* s -.5))))
-  (shape g :box '(.12 1.2 1.6) "#e8c070" 15.95 1.7 -3.0 :emit "#ffc060" :energy 1.0 :shadow nil)
+  (model g "diner-grill" 0.0 0.0 0.0 :paint (list rgb))
   (sign g name 15.8 3.3 -3.0 :h .8 :rgb "#f0ece0")
-  (shape g :box '(.3 .9 6.4) rgb 15.9 3.3 -3.0 :shadow nil)
-  (shape g :box '(7.4 .16 10.0) "#5a4636" 12.0 3.0 2.0 :rot '(0 0 .06))
-  (dolist (x '(8.6 15.4)) (dolist (z '(-2.6 6.6)) (shape g :box '(.2 3.0 .2) "#5a4636" x 1.5 z)))
-  (loop for i below 9 do (shape g :ball '(.07 6 4) (nth (mod i 5) *fairy*) 8.6 (- 2.7 (* .12 (sin (* (/ i 8) pi)))) (+ -2.6 (* i 1.15))
-                                :emit (nth (mod i 5) *fairy*) :energy 3 :shadow nil))
-  (loop for z in '(-.5 2.5 5.5) for i from 0
-        do (shape g :box '(1.8 .08 .9) "#8a6440" 12.0 .78 z) (shape g :box '(.1 .78 .1) "#5a4636" 12.0 .39 z)
-           (dolist (s '(-1 1)) (shape g :box '(1.8 .06 .3) "#6a5038" 12.0 .45 (+ z (* s .75))))
-           (when (< i 2) (diner-cat g 12.0 (+ z .75) pi (+ 14 (* i 9)))))
-  ;; the grill
-  (shape g :box '(1.7 .28 .6) "#2a2c30" 7.0 .95 9.0)
-  (dolist (sx '(-.7 .7)) (shape g :box '(.08 .9 .08) "#2a2c30" (+ 7.0 sx) .45 9.0))
-  (shape g :box '(1.5 .04 .45) "#ff7a30" 7.0 1.08 9.0 :emit "#ff5a10" :energy 2.5 :shadow nil)
+  (loop for z in '(-.5 2.5) for i from 0 do (diner-cat g 12.0 (+ z .75) pi (+ 14 (* i 9))))
   (chimney-smoke g 7.0 1.3 9.0 :size .9 :amount 10 :life 5.0)
-  (diner-cat g 7.0 9.9 pi 2)
-  (loop for i below 5 do (shape g :cyl '(.14 .14 1.0 6) "#7a5a3a" (+ 9.2 (* .3 (mod i 3))) (+ .15 (* .28 (floor i 3))) 10.5 :rot (list (/ pi 2) 0 0))))
+  (diner-cat g 7.0 9.9 pi 2))
 
 (defun diner-kiosk (g name rgb)
   "Build in group G a round pavilion with a serving window, standing tables and a barrel of kvass."
-  (shape g :cyl '(3.3 3.3 3.0 8) "#d8d4c4" 15.0 1.5 0)
-  (shape g :cyl '(3.36 3.36 .7 8) rgb 15.0 .55 0 :shadow nil)
-  (shape g :cone '(4.6 1.9 8) rgb 15.0 3.95 0)
-  (shape g :box '(.2 1.1 2.6) "#ffe6b0" 11.75 2.0 0 :emit "#ffd890" :energy 1.3 :shadow nil)
-  (shape g :box '(.7 .08 2.8) "#8a6440" 11.5 1.4 0)
+  (model g "diner-kiosk" 0.0 0.0 0.0 :paint (list rgb))
   (sign g name 11.55 3.25 0 :h .6 :rgb "#f0ece0")
   (diner-cat g 13.0 0 (- (/ pi 2)) 5)
-  (loop for (x z) in '((8.0 -4.0) (7.4 .5) (8.4 4.5)) for i from 0
-        do (diner-table g x z (when (oddp i) rgb))
-           (diner-cat g (+ x .8) z (- (/ pi 2)) (+ 9 (* i 7))))
+  (loop for (x z) in '((8.0 -4.0) (7.4 .5) (8.4 4.5)) for i from 0 do (diner-cat g (+ x .8) z (- (/ pi 2)) (+ 9 (* i 7))))
   (kvas g 9.0 9.5))
 
 (defun build-diner (d name kind rgb)

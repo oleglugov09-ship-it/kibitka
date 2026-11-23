@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Was and now: the same views of the wagon shot in two browser builds and put side by side.
 
-    tools/was-now.py WAS NOW OUT-DIR      # WAS and NOW: a folder like export/web, or the address of a build on a site
+    tools/was-now.py WAS NOW OUT-DIR [WORD...]    # with words, only the views whose names contain one of them
+                                          # WAS and NOW: a folder like export/web, or the address of a build on a site
                                           # (https://.../play/index.html); OUT-DIR/NN-name.png, was on the left
 
 No window and no sound (tools/web-eyes.py); each build takes about two minutes. The views: the wagon from four
@@ -9,7 +10,7 @@ sides outside and four ways inside. The swaying is switched off, the hour of day
 """
 import os, subprocess, sys, tempfile, time
 from PIL import Image
-was, now, out = sys.argv[1:4]; here = os.path.dirname(os.path.abspath(__file__)); os.makedirs(out, exist_ok=True)
+was, now, out = sys.argv[1:4]; only = sys.argv[4:]; here = os.path.dirname(os.path.abspath(__file__)); os.makedirs(out, exist_ok=True)
 VIEWS = [("outside-back-right", '(setf *view* :outside *orbit-yaw* .6 *orbit-pitch* .25 *sway* 0.0 *sky-hour* 650.0 *orbit-dist* 9.0) (set-season :spring) (set-weather :clear 600)'),
          ("outside-front-right", '(setf *orbit-yaw* 2.5 *orbit-pitch* .2)'),
          ("outside-front-left", '(setf *orbit-yaw* -2.5 *orbit-pitch* .35)'),
@@ -30,9 +31,15 @@ VIEWS = [("outside-back-right", '(setf *view* :outside *orbit-yaw* .6 *orbit-pit
          ("landmarks-back", '(setf *orbit-yaw* -2.3 *orbit-pitch* .5)'),
          ("buildings", """(progn (setf *orbit-dist* 70.0 *orbit-yaw* 1.57 *orbit-pitch* .45) (loop for f in '(culture-house plaza tavern-station swamp-station plain-station depot biplane) for i from 0 do (funcall f (group *cart* -40.0 (if (eq f 'biplane) 12.0 0.0) (- (* 34.0 i) 100.0)))) 1)"""),
          ("buildings-far", '(setf *orbit-dist* 110.0 *orbit-yaw* 2.3 *orbit-pitch* .4)'),
+         ("diners", """(progn (setf *orbit-dist* 40.0 *orbit-yaw* -1.57 *orbit-pitch* .45) (loop for f in '(diner-glass diner-grill diner-kiosk) for rgb in '("#a3262c" "#3f6f73" "#c9a13a") for i from 0 do (let ((g (group *cart* 6.0 0.0 (- (* 40.0 i) 40.0)))) (diner-apron g "КАФЕ" rgb) (funcall f g "КАФЕ" rgb))) 1)"""),
+         ("diners-high", '(setf *orbit-dist* 60.0 *orbit-yaw* -1.0 *orbit-pitch* .8)'),
          ("meta-room", '(progn (setf *meta* t *view* :inside *seat* nil *pos* (v3 0 0 2.8) *yaw* 0.0 *pitch* 0.0) (apply-meta) 1)'),
          ("meta-room-back", '(setf *pos* (v3 0 0 -2.8) *yaw* 3.1416)'),
          ("meta-room-side", '(setf *pos* (v3 2.4 0 0) *yaw* 1.5708)')]
+
+
+SETUP = VIEWS[0][1]                       # the first view also stops the swaying and fixes the hour and the weather
+if only: VIEWS = [("setup", SETUP)] + [v for v in VIEWS if any(w in v[0] for w in only)]
 
 
 def shoot(folder, tag):
