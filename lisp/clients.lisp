@@ -436,6 +436,31 @@ For a guest the deal is made by the driver."
     (show-carry))
   (when (stringp words) (say words)))
 
+;;; The plan's crate reaching its town is one event, whichever way the crate came: over the windowsill or by air.
+
+(defun crate-delivered (addr price town)
+  "The plan's crate ADDR has reached its town TOWN, and PRICE is the pay for carrying it. Put it into the shop,
+pay the co-operative (with the premium, if the town was short of the good) and hand out what the town gives:
+coupons, and with the fourth pennant the account. Return what was paid and what to say about it."
+  (let ((had *talons*) (premium (deliver-cargo addr)) (done nil))
+    (setf price (+ price premium))
+    ;; the fourth town on the wall and a crate handed over: from now on the state pays by transfer
+    (when (and (>= (logcount *pennants*) 4) (not (paper-p :account)))
+      (grant-paper :account
+                   "Вместе с накладной получатель протягивает конверт. ИЗВЕЩЕНИЕ сберкассы: кооперативу «Кибитка» открыт расчётный счёт. За госгруз теперь платят не в руки, а переводом. Бензин и ссуда спишутся со счёта сами; наличными его выдают в сберкассе, дверь «ЗАРПЛАТА», раз в неделю."
+                   "Кооперативу открыли счёт: за ящики по наряду теперь платят переводом. Подробности — в папке, закладка «СЧЁТ»"))
+    (coop-pay price) (save-plan)
+    (setf done (cond ((and (plusp premium) (paper-p :account))
+                      (format nil "Наряд сдан: ~/kiosk-trip::rub/ на счёт кооператива, из них премия ~/kiosk-trip::rub/" price premium))
+                     ((plusp premium) (format nil "Наряд сдан: +~/kiosk-trip::rub/, из них премия ~/kiosk-trip::rub/" price premium))
+                     (t (format nil "Наряд сдан: +~/kiosk-trip::rub/ В ~a этого уже хватает — премии нет. Где не хватает — в ведомости над холодильником" price (town-name town)))))
+    (when (> *talons* had)
+      (or (grant-paper :talons
+                       "Секретарь горсовета отрывает от листа талон: «За снабжение. С талоном в магазине отпустят то, чего в городе мало: один в руки, по прейскуранту»."
+                       "Горсовет выдал талон за ящик, которого ждали. Что с ним делать — в папке, закладка «ТАЛОНЫ»")
+          (say-later (format nil "Горсовет выдал талоны: ~d. Теперь у нас ~d" (- *talons* had) *talons*))))
+    (values price done)))
+
 (defun step-client (delta)
   ;; parked at a market with a parcel for this town: the recipient comes up by himself
   (let ((place (place-here)))
@@ -466,23 +491,7 @@ For a guest the deal is made by the driver."
                        (fly (cdr it) (paws-point (spec-z (car it))) :dur .4 :free t)   ; reaches out a paw and takes it
                        (lift-item it)
                        (if (and (eq kind :recipient) (parcel-good (spec-addr (car it))))       ; the plan's crate: into the shop, pay to the account
-                           (let ((had *talons*) (premium (deliver-cargo (spec-addr (car it)))))
-                             (setf price (+ price premium))
-                             ;; the fourth town on the wall and a crate handed over: from now on the state pays by transfer
-                             (when (and (>= (logcount *pennants*) 4) (not (paper-p :account)))
-                               (grant-paper :account
-                                            "Вместе с накладной получатель протягивает конверт. ИЗВЕЩЕНИЕ сберкассы: кооперативу «Кибитка» открыт расчётный счёт. За госгруз теперь платят не в руки, а переводом. Бензин и ссуда спишутся со счёта сами; наличными его выдают в сберкассе, дверь «ЗАРПЛАТА», раз в неделю."
-                                            "Кооперативу открыли счёт: за ящики по наряду теперь платят переводом. Подробности — в папке, закладка «СЧЁТ»"))
-                             (coop-pay price) (save-plan)
-                             (setf done (cond ((and (plusp premium) (paper-p :account))
-                                               (format nil "Наряд сдан: ~/kiosk-trip::rub/ на счёт кооператива, из них премия ~/kiosk-trip::rub/" price premium))
-                                              ((plusp premium) (format nil "Наряд сдан: +~/kiosk-trip::rub/, из них премия ~/kiosk-trip::rub/" price premium))
-                                              (t (format nil "Наряд сдан: +~/kiosk-trip::rub/ В ~a этого уже хватает — премии нет. Где не хватает — в ведомости над холодильником" price (town-name town)))))
-                             (when (> *talons* had)
-                               (or (grant-paper :talons
-                                                "Секретарь горсовета отрывает от листа талон: «За снабжение. С талоном в магазине отпустят то, чего в городе мало: один в руки, по прейскуранту»."
-                                                "Горсовет выдал талон за ящик, которого ждали. Что с ним делать — в папке, закладка «ТАЛОНЫ»")
-                                   (say-later (format nil "Горсовет выдал талоны: ~d. Теперь у нас ~d" (- *talons* had) *talons*)))))
+                           (multiple-value-setq (price done) (crate-delivered (spec-addr (car it)) price town))
                            (progn (add-money price)
                                   (setf done (format nil "Посылка вручена: +~/kiosk-trip::rub/" price))))
                        (things-changed t)

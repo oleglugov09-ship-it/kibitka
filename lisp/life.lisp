@@ -499,11 +499,12 @@ for the international session's children are handed to us.")
 (defun camp-parcel ()
   "Hand the parcel in the paws to the camp. In summer the leader takes it and pays for the delivery; once
 the session is over the watchman takes it to send back to the parents, for half."
-  (let* ((open (camp-open-p)) (pay (if open (delivery-pay) (ceiling (delivery-pay) 2))))
+  (let* ((open (camp-open-p)) (pay (if open (delivery-pay) (ceiling (delivery-pay) 2))) (addr (cdr *carry*)))
     (add-money pay)
     (empty-paws)
     (show-carry) (save-interior)
     (note-quest :post)
+    (let ((answer (story-delivered addr))) (when answer (say-later answer)))   ; a story's parcel moves its story on here too
     (log-event :camp-parcel :pay pay :open open)
     (say-all (if open
                  (format nil "Вожатая: «Отряд, построиться — почта!» Посылка вручена: +~/kiosk-trip::rub/" pay)

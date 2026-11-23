@@ -110,15 +110,20 @@ The recipient pays as for a hand-delivered parcel and the post office keeps its 
       (say "Авиапочта: принеси сюда посылку в руках (ЛКМ по ней на полке)"))
     ((camp-parcel-p *carry*) (say "Авиапочта: «В лагерь самолёты не летают. Сами довезёте, тут недалеко»"))
     (t
-      (let* ((addr (cdr *carry*)) (fee (airmail-fee addr)) (pay (- (delivery-pay) fee)))
-        (add-money pay)
+      (let* ((addr (cdr *carry*)) (fee (airmail-fee addr)) (pay (- (delivery-pay) fee)) (crate nil))
+        ;; the plan's crate is the plan's crate by air too: it goes into the shop of its town and is paid as at the window
+        (if (parcel-good addr)
+            (multiple-value-setq (pay crate) (crate-delivered addr pay (parcel-town addr)))
+            (add-money pay))
         (empty-paws)
         (show-carry) (save-interior)
         (award-pennant (parcel-town addr)) (note-quest :post)
         (let ((answer (story-delivered addr t))) (when answer (say-later answer)))
         (log-event :airmail :to addr :fee fee :money *money*)
         (setf *next-plane* 0.0)                                        ; the plane takes off with it right away
-        (say-all (format nil "Посылка в ~a улетела самолётом: +~/kiosk-trip::rub/ (почта удержала ~/kiosk-trip::rub/)" (town-name (parcel-town addr)) pay fee))))))
+        (say-all (if crate
+                     (format nil "Ящик по наряду в ~a улетел самолётом (почта удержала ~/kiosk-trip::rub/). ~a" (town-name (parcel-town addr)) fee crate)
+                     (format nil "Посылка в ~a улетела самолётом: +~/kiosk-trip::rub/ (почта удержала ~/kiosk-trip::rub/)" (town-name (parcel-town addr)) pay fee)))))))
 
 (defun dalny-usables ()
   (let ((place (walk-place)))
