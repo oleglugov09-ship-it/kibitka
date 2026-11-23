@@ -244,9 +244,13 @@ Return our own result; the guests answer later (*ANSWERS*)."
              (run-text text)))))
 
 (defun guest-run (hex)
-  "Evaluate, as a guest, the text in HEX sent by the driver and answer with what came out."
+  "Evaluate, as a guest, the text in HEX sent by the driver and answer with what came out.
+Only a game opened for development does that: one started on the dev polygon (?dev in the browser), or the
+desktop build with the live session in it. Anyone can open a room and be the driver, and a player's game must
+not run whatever a stranger sends it."
   (let ((text (hex-text hex)))
-    (when text (guest-send (list :a :ran (text-hex (run-text text)))))))
+    (when (and text (or *dev* (find-package '#:live)))
+      (guest-send (list :a :ran (text-hex (run-text text)))))))
 
 (defun host-ran (p hex)
   "Record, as the driver, the answer HEX of guest P to a patch."
