@@ -112,7 +112,7 @@ The recipient pays as for a hand-delivered parcel and the post office keeps its 
     (t
       (let* ((addr (cdr *carry*)) (fee (airmail-fee addr)) (pay (- (delivery-pay) fee)))
         (add-money pay)
-        (setf *carry* nil *carry-from* nil)
+        (empty-paws)
         (show-carry) (save-interior)
         (award-pennant (parcel-town addr)) (note-quest :post)
         (let ((answer (story-delivered addr t))) (when answer (say-later answer)))

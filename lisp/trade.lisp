@@ -90,6 +90,14 @@ PLACE is the rounded path coordinate of the stay.")
 
 (defvar *carry-props* '() "The properties of the thing in the paws, as in its record: see *PROP-KEYS* in goods.lisp.")
 
+(defun set-carry (carry &optional props from)
+  "Take CARRY, (KIND . TOWN-INDEX-OR-NIL), into the paws with its properties PROPS; FROM is the record of the thing
+if it was picked up from its place. With CARRY NIL the paws are empty. What is carried, its properties and where it
+came from change together, and only here. SHOW-CARRY afterwards shows it."
+  (setf *carry* carry *carry-from* (and carry from) *carry-props* (and carry props)))
+
+(defun empty-paws () "Nothing is carried any more." (set-carry nil))
+
 (defun carry-prop (key) "Return the property KEY of the thing in the paws." (getf *carry-props* key))
 (defun (setf carry-prop) (value key) (setf *carry-props* (clean-props (list* key value *carry-props*))) value)
 
@@ -286,16 +294,15 @@ Return T if something was done."
                       (push (cons spec node) *items*)
                       (fly node (node-3d-get-position node) :from (hand-point)))      ; from hand to its place
                     (setf *last-put* (list spec *time* *carry-from*)))
-                  (setf *carry* nil *carry-from* nil) (show-carry)
+                  (empty-paws) (show-carry)
                   (refresh-seats) (save-interior))
                  (t (say "Посмотри, куда поставить: полка, подоконник, пол")))
            t))
         (t (let ((it (item-in-sight)))
              (when it
                (fly (cdr it) (hand-point) :dur .2 :free t)                           ; from its place into hand
-               (setf *items* (remove it *items*) *carry* (cons (first (car it)) (sixth (car it))) *carry-from* (car it)
-                     *took* (car it)
-                     *carry-props* (spec-props (car it)))
+               (setf *items* (remove it *items*) *took* (car it))
+               (set-carry (cons (first (car it)) (sixth (car it))) (spec-props (car it)) (car it))
                (show-carry) (settle-items) (refresh-seats) (save-interior)
                t)))))
 
@@ -305,13 +312,13 @@ That means the guest's edit was rejected (someone got there first). An item just
 the driver's, so the hands go empty, or there would be a copy; an item just put down is missing at the
 driver's, so it returns to the hands, or it would be lost."
   (cond ((and *carry* *carry-from* (member *carry-from* specs :test #'equal))
-         (setf *carry* nil *carry-from* nil) (show-carry)
+         (empty-paws) (show-carry)
          (say "Эту вещь взял кто-то другой"))
         ((and (not *carry*) *last-put* (< (- *time* (second *last-put*)) 3.0)
               (not (member (first *last-put*) specs :test #'equal))
               (not (and (third *last-put*) (member (third *last-put*) specs :test #'equal))))   ; unless it has returned to its old place
-         (setf *carry* (cons (first (first *last-put*)) (sixth (first *last-put*))) *carry-props* (spec-props (first *last-put*))
-               *carry-from* nil *last-put* nil)
+         (set-carry (cons (first (first *last-put*)) (sixth (first *last-put*))) (spec-props (first *last-put*)))
+         (setf *last-put* nil)
          (show-carry)
          (say "Поставить не вышло — вещь снова в руках"))))
 
@@ -320,7 +327,7 @@ driver's, so it returns to the hands, or it would be lost."
   (when *carry*
     (let ((spec (carry-spec)))
       (push (cons spec (apply #'build-item *cart* spec)) *items*))
-    (setf *carry* nil *carry-from* nil)
+    (empty-paws)
     (show-carry) (refresh-seats) (save-interior)))
 
 (defun carry-hint ()

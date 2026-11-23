@@ -548,7 +548,7 @@ stand on the windowsill, the same as by hand."
          (say "У водителя другая версия игры. Нужна одинаковая сборка"))
     (:g (destructuring-bind (changed kind addr words props) (rest msg) (guest-dealt changed kind addr words props)))
     (:x (if (eq (second msg) :drop)
-            (progn (setf *carry* nil *carry-from* nil) (show-carry) (say "Эту вещь уже забрали"))
+            (progn (empty-paws) (show-carry) (say "Эту вещь уже забрали"))
             (setf *edit-rejected* t)))
     (:r (guest-done (rest msg)))                              ; the driver did our action
     (:play (start-play (second msg)))                         ; the driver let us into the booth game (igry.lisp)
@@ -780,7 +780,8 @@ trouble and waiting at a bus stop."
   ;; we were a guest and are leaving for good: hands empty, and things, money, tank and place on the road are ours again.
   ;; (When returning to the same room after a dropped link we touch nothing: the thing in hand is still ours.)
   (when (and (eq *net-role* :guest) *cart* (not *rejoining*))
-    (setf *carry* nil *carry-from* nil *auto* nil *net-role* nil)
+    (empty-paws)
+    (setf *auto* nil *net-role* nil)
     (show-carry)
     (start-trip)
     (set-items (load-interior))

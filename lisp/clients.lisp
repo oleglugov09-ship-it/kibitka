@@ -419,7 +419,7 @@ For a guest the deal is made by the driver."
   (cond ((net-guest-p)
          (guest-send (list :a :take (second entry) (car *carry*) (cdr *carry*) *carry-props*)))
         (t (multiple-value-bind (carry changed words props) (stall-deal entry *carry* *carry-props*)
-             (when changed (setf *carry* carry *carry-from* nil *carry-props* props) (show-carry))
+             (when changed (set-carry carry props) (show-carry))
              (say words)))))
 
 (defun host-deal (p z kind addr props)
@@ -432,7 +432,7 @@ For a guest the deal is made by the driver."
 (defun guest-dealt (changed kind addr words props)
   "Handle, on a guest, the driver's answer to our deal."
   (when changed
-    (setf *carry* (and kind (cons kind addr)) *carry-from* nil *carry-props* (and (props-ok-p props) props))
+    (set-carry (and kind (cons kind addr)) (and (props-ok-p props) props))
     (show-carry))
   (when (stringp words) (say words)))
 

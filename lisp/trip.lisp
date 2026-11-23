@@ -65,7 +65,8 @@ Return NIL if there is no save."
 (defun new-game ()
   "Start from the depot: the starting things, money and tank."
   (when *auto* (setf *auto* nil))
-  (setf *carry* nil *carry-from* nil *onboard* 0 *planks* 6)
+  (empty-paws)
+  (setf *onboard* 0 *planks* 6)
   (reset-world)                                           ; every part of the state goes back to the start (delo.lisp)
   (show-carry)
   (start-trip)

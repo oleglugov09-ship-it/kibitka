@@ -297,7 +297,8 @@ The point must be no farther than REACH and within the angle CONE of the view di
   "Put the coal from the paws into the stove: it burns three times longer than a plank.
 The stove is shared."
   (when (and *carry* (eq (car *carry*) :coal))
-    (setf *carry* nil *carry-from* nil *fire* (min 600.0 (+ *fire* (* *coal-burn* *plank-burn*))) *cold-told* nil)
+    (empty-paws)
+    (setf *fire* (min 600.0 (+ *fire* (* *coal-burn* *plank-burn*))) *cold-told* nil)
     (show-carry) (save-interior)
     (say "Уголь в печке: гореть будет долго")))
 

@@ -253,7 +253,7 @@ that could be lost. A jar opened and left waits for the same good."
          (when (>= (cdr *can*) *can-turns*)
            (let ((dish (jar-of (car *can*))))
              (setf *can* nil)
-             (setf *carry* (cons dish nil) *carry-from* nil *carry-props* '())
+             (set-carry (cons dish nil))
              (show-carry) (show-home) (save-interior)
              (log-event :canned :dish dish)
              (say (format nil "Закатано: ~a. Не испортится, а зимой стоит дороже" (second (assoc dish *kinds*)))))))

@@ -38,7 +38,7 @@ in their paws.")
   "Put a good of KIND into the hands (if they are free) and say TEXT.
 Return true if the good was given."
   (cond (*carry* (say "Руки заняты — сначала поставь то, что несёшь, на полку") nil)
-        (t (setf *carry* (cons kind nil) *carry-from* nil *carry-props* '())
+        (t (set-carry (cons kind nil))
            (show-carry) (save-interior)
            (say text) t)))
 

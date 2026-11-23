@@ -487,7 +487,7 @@ for the international session's children are handed to us.")
           (t (let ((pay (round (* (if (dish-p kind) 12 6) (list-price (raw-of kind))))))   ; an organisation pays by transfer, on its own scale
                (incf (cdr *camp-fed*))
                (coop-pay pay)
-               (setf *carry* nil *carry-from* nil)
+               (empty-paws)
                (show-carry)
                (let ((turn (add-deeds *rush-town* 1)))                              ; the factory keeps the camp: a deed with its director
                  (save-plan) (save-interior)
@@ -501,7 +501,7 @@ for the international session's children are handed to us.")
 the session is over the watchman takes it to send back to the parents, for half."
   (let* ((open (camp-open-p)) (pay (if open (delivery-pay) (ceiling (delivery-pay) 2))))
     (add-money pay)
-    (setf *carry* nil *carry-from* nil)
+    (empty-paws)
     (show-carry) (save-interior)
     (note-quest :post)
     (log-event :camp-parcel :pay pay :open open)

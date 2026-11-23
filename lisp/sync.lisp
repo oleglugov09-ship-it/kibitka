@@ -135,8 +135,9 @@ The same thing still in the paws keeps the properties we know: a long job answer
   (when (and (listp reply) (= (length reply) 5))
     (destructuring-bind (kind addr said pending props) reply
       (when (and (carry-ok-p kind addr props) (listp said) (every #'stringp said))
-        (unless (and *carry* (eq kind (car *carry*)) (eql addr (cdr *carry*)) (null props)) (setf *carry-props* props))
-        (setf *carry* (and kind (cons kind addr)) *carry-from* nil *remote-wait* (and pending t))
+        (set-carry (and kind (cons kind addr))
+                   (if (and *carry* (eq kind (car *carry*)) (eql addr (cdr *carry*)) (null props)) *carry-props* props))
+        (setf *remote-wait* (and pending t))
         (show-carry)
         (dolist (text said) (say text))))))
 
