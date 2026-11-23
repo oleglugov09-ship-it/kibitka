@@ -76,12 +76,7 @@ With AUTO it goes to the slots of automatic copies, and the hand-made ones are l
                (loop for (key form) on sections by #'cddr do (setf (gethash key *saves*) form))
                (pushnew :world *saves-dirty*)
                (flush-saves))
-             (empty-paws) (setf *auto* nil)
-             (show-carry)
-             (start-trip)
-             (set-items (load-interior))
-             (unless (load-game) (setf *onboard* 0))
-             (load-world)
+             (own-world-again)
              (log-event :restore :slot slot)
              (say (format nil "Мир восстановлен из копии: ~a. Прежний мир тоже сохранён копией" (third f)))))))
 

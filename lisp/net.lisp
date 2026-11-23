@@ -780,13 +780,8 @@ trouble and waiting at a bus stop."
   ;; we were a guest and are leaving for good: hands empty, and things, money, tank and place on the road are ours again.
   ;; (When returning to the same room after a dropped link we touch nothing: the thing in hand is still ours.)
   (when (and (eq *net-role* :guest) *cart* (not *rejoining*))
-    (empty-paws)
-    (setf *auto* nil *net-role* nil)
-    (show-carry)
-    (start-trip)
-    (set-items (load-interior))
-    (unless (load-game) (setf *onboard* 0))
-    (load-world))                                         ; papers, finds, booths, gnomes, the wall are ours again, not the host's
+    (setf *net-role* nil)                                 ; first: what follows must not take us for a guest
+    (own-world-again))                                    ; papers, finds, booths, gnomes, the wall are ours again, not the host's
   (when (eq *view* :wait)                                 ; waited at a bus stop: back into the wagon
     (setf *view* :inside *seat* nil *pos* (v3 0 0 1.2))
     (when *cart* (node-3d-set-position *cart* (v3 0 0 0)) (node-3d-set-rotation *cart* (v3 0 0 0))))

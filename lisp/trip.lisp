@@ -62,6 +62,17 @@ Return NIL if there is no save."
         (when (> dist 20) (relocate dist))
         t))))
 
+(defun own-world-again ()
+  "Put our own world back from the save, whole: a copy has been restored, or we have left someone else's room.
+The order matters. START-TRIP lays the road out anew and with it puts the money and the tank back to the start
+(RESET-CITY), so LOAD-GAME comes after it; LOAD-WORLD comes last, as at launch."
+  (empty-paws) (setf *auto* nil)
+  (show-carry)
+  (start-trip)
+  (set-items (load-interior))
+  (unless (load-game) (setf *onboard* 0))
+  (load-world))
+
 (defun new-game ()
   "Start from the depot: the starting things, money and tank."
   (when *auto* (setf *auto* nil))
