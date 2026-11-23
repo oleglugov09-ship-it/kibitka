@@ -46,7 +46,7 @@ and REACH are passed on to USABLE. RADIUS is the target size: a booth window is 
 is small."
   (destructuring-bind (wx wy wz) (road-pos d x)
     (multiple-value-bind (lx lz) (cart-local wx wz)
-      (usable lx (+ (- wy (road-y *dist*)) up (- *floor*)) lz label action nil reach radius))))
+      (usable lx (+ (- wy (road-y *dist*)) up (- *floor*)) lz label action :reach reach :radius radius))))
 
 ;;; ------------------------------------------------------------------ where you can get out
 

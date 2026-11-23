@@ -399,8 +399,7 @@ These are the bell in the slid-open window (E) and what the client put on the wi
                                        (format nil (if (paper-p :account) "ЛКМ — взять ящик по наряду: ~a в ~a · платит ~/kiosk-trip::rub/ на счёт" "ЛКМ — взять ящик по наряду: ~a в ~a · платит ~/kiosk-trip::rub/") (good-name (parcel-good (offer-addr entry))) (place-name (parcel-town (offer-addr entry))) (getf *client* :price))
                                        (format nil "ЛКМ — взять посылку в ~a · платит ~/kiosk-trip::rub/" (place-name (parcel-town (offer-addr entry))) (getf *client* :price)))
                                    (format nil "ЛКМ — купить ~a за ~/kiosk-trip::rub/ · у тебя ~/kiosk-trip::rub/" (good-name (offer-kind entry)) (getf *client* :price) *money*)))))
-                             (lambda () (take-from-stall entry))
-                             :hand)))))))
+                             (lambda () (take-from-stall entry)) :hand :hand)))))))
 
 (defun make-bell-sound (root)
   "Build the bell sound under ROOT: a decaying chord of two sines, no file needed."

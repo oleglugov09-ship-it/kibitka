@@ -257,17 +257,17 @@
                                         ((plusp *kettle-tea*) (format nil "E — налить: ~a · осталось стаканов: ~d" (brew-name) *kettle-tea*))
                                         (*kettle-water* "E — взять чайник: вода в нём холодная")
                                         (t "E — взять чайник: он пустой")))
-                       #'use-table-kettle nil 2.6 .16))
+                       #'use-table-kettle :radius .16))
              (usable (+ (first *washstand-at*) .1) (+ *washstand-top* .25) (second *washstand-at*)
                      (lambda () (if (eq *kettle-at* :paw) "E — набрать воды в чайник" "Умывальник. С чайником в лапе — набрать воды"))
-                     #'use-washstand nil 2.6 .3)
+                     #'use-washstand :radius .3)
              (destructuring-bind (rx ry rz) *kettle-ring*
-               (usable (+ sx rx) (+ ry .1) (+ sz rz) #'ring-label #'use-ring nil 2.6 .2))
-             (destructuring-bind (x y z) (board-point) (usable x (+ y .02) z #'board-label #'use-board nil 2.6 .24))
+               (usable (+ sx rx) (+ ry .1) (+ sz rz) #'ring-label #'use-ring :radius .2))
+             (destructuring-bind (x y z) (board-point) (usable x (+ y .02) z #'board-label #'use-board :radius .24))
              (if *pan-on*
-                 (usable (+ sx .3) (+ *stove-top* .05) sz (lambda () "E — повесить сковородку на гвоздь") #'toggle-pan nil 2.6 .1)
+                 (usable (+ sx .3) (+ *stove-top* .05) sz (lambda () "E — повесить сковородку на гвоздь") #'toggle-pan :radius .1)
                  (destructuring-bind (nx ny nz) *pan-nail*
-                   (usable (+ sx nx) ny (+ sz nz) (lambda () "E — поставить сковородку на печку") #'toggle-pan nil 2.6 .2)))))))
+                   (usable (+ sx nx) ny (+ sz nz) (lambda () "E — поставить сковородку на печку") #'toggle-pan :radius .2)))))))
 
 (defun step-kettle (delta)
   "Heat the kettle on the burning stove by DELTA seconds and let the steam rise once it has boiled.

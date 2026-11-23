@@ -83,8 +83,8 @@ void fragment() {
   "Return the things to press for the curtains: the gathered cloth at the sides, or the drawn cloth anywhere."
   (let ((x (- *half-width* .2)))
     (if *curtains-shut*
-        (loop for z in '(-.9 0.0 .9) collect (usable x 1.45 z (lambda () "E — раздвинуть шторы") #'toggle-curtains nil 2.6 .5))
-        (loop for z in '(-1.3 1.3) collect (usable x 1.45 z (lambda () "E — задёрнуть шторы") #'toggle-curtains nil 2.6 .2)))))
+        (loop for z in '(-.9 0.0 .9) collect (usable x 1.45 z (lambda () "E — раздвинуть шторы") #'toggle-curtains :radius .5))
+        (loop for z in '(-1.3 1.3) collect (usable x 1.45 z (lambda () "E — задёрнуть шторы") #'toggle-curtains :radius .2)))))
 
 (defcommon :curtains :value (and *curtains-shut* t) :spec '(:member t nil)
   :accept (lambda (shut) (setf *curtains-shut* shut)))

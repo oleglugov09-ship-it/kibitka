@@ -140,8 +140,7 @@ is nearby."
                      (destructuring-bind (x y z yaw) (trophy-spot i)
                        (declare (ignore yaw))
                        (usable x (+ y .12) z (lambda () (format nil "Гномик-~a · ~a" (string-downcase (gnome-name i)) (gnome-home i)))
-                               (lambda () (say (format nil "Найдено гномиков: ~d из ~d" (gnome-count) (length *gnome-plan*))))
-                               nil 2.6))))))
+                               (lambda () (say (format nil "Найдено гномиков: ~d из ~d" (gnome-count) (length *gnome-plan*))))))))))
 
 (defun gnome-lines (from to)
   "Return the gnome list lines for numbers FROM through TO.

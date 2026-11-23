@@ -326,18 +326,18 @@ that could be lost. A jar opened and left waits for the same good."
 
 (defun home-usables ()
   "Return the things to press for the calendar, the diary, the winter things and the jars."
-  (list (usable (first *calendar-at*) (second *calendar-at*) (third *calendar-at*) #'calendar-label #'use-calendar nil 2.6 .15)
-        (usable (first *diary-at*) (second *diary-at*) (third *diary-at*) (lambda () "E — дневник поездки") #'use-diary nil 2.6 .13)
+  (list (usable (first *calendar-at*) (second *calendar-at*) (third *calendar-at*) #'calendar-label #'use-calendar :radius .15)
+        (usable (first *diary-at*) (second *diary-at*) (third *diary-at*) (lambda () "E — дневник поездки") #'use-diary :radius .13)
         (usable (first *sheet-at*) (second *sheet-at*) (third *sheet-at*)
-                (lambda () (format nil "E — ведомость снабжения: ~a и соседи" (town-name (trade-town)))) #'use-sheet nil 2.6 .16)
+                (lambda () (format nil "E — ведомость снабжения: ~a и соседи" (town-name (trade-town)))) #'use-sheet :radius .16)
         (usable (first *roll-at*) (second *roll-at*) (third *roll-at*)
                 (lambda () (if (member :window *insulation*) "E — отклеить бумагу с окна"
                                (format nil "E — заклеить окно на зиму: ~d связки макулатуры · у нас ~d" *seal-papers* *papers*)))
-                (lambda () (toggle-insulation :window)) nil 2.6 .12)
+                (lambda () (toggle-insulation :window)) :radius .12)
         (usable (first *hook-at*) (second *hook-at*) (third *hook-at*)
                 (lambda () (if (member :door *insulation*) "E — снять одеяло с двери" "E — завесить дверь одеялом на зиму"))
-                (lambda () (toggle-insulation :door)) nil 2.6 .12)
-        (destructuring-bind (x y z) (crate-point) (usable x (+ y .3) z #'jar-label #'use-jars nil 2.6 .28))))
+                (lambda () (toggle-insulation :door)) :radius .12)
+        (destructuring-bind (x y z) (crate-point) (usable x (+ y .3) z #'jar-label #'use-jars :radius .28))))
 
 (defun step-home (delta)
   "Keep the calendar's promises about the weather and turn the seaming key."

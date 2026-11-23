@@ -148,13 +148,13 @@ As many are placed as there are players.")
   (when (table-shown-p)
     (let ((tx (first *table-at*)) (tz (second *table-at*)) (top *table-top*))
       (append
-       (list (usable tx top tz nil nil nil 2.6 .5)                 ; the tabletop itself is a blocker: the stools are behind it
+       (list (usable tx top tz nil nil :radius .5)                 ; the tabletop itself is a blocker: the stools are behind it
              (usable (+ tx .08) (+ top .08) tz
                    (lambda () (if (some (lambda (n) (object-get n "visible")) *bagel-nodes*) "E — съесть сушку" "Сушки кончились"))
-                   #'eat-bagel nil 2.6 .22))
+                   #'eat-bagel :radius .22))
        (loop for cup in *cup-nodes* for (x z) in *cup-spots*
              when (object-get cup "visible")
-               collect (let ((cup cup)) (usable x (+ top .07) z (lambda () "E — выпить чай") (lambda () (drink-tea cup)) nil 2.6 .09)))))))
+               collect (let ((cup cup)) (usable x (+ top .07) z (lambda () "E — выпить чай") (lambda () (drink-tea cup)) :radius .09)))))))
 
 (defun seat-usables ()
   "Return the usables for seats you can sit on by looking at them: stools and mattresses.
@@ -166,8 +166,7 @@ The bunk shelf is handled separately (FIXTURE-USABLES)."
                       (destructuring-bind (what x z yaw eye) seat
                         (declare (ignore what))
                         (usable x (max .2 (- eye .6)) z (lambda () "E — сесть")
-                                (lambda () (sit-on seat -.05))
-                                nil 2.6 .3))))))
+                                (lambda () (sit-on seat -.05)) :radius .3))))))
 
 (defun fold-seats ()
   "Return the places given by the bunks and the table.
@@ -341,7 +340,7 @@ The stove is shared."
 ;;; the window) wins when you look right at it. A thing with no action is a blocker: looking at the table means
 ;;; the table, not the stool behind it. You can sit only on the seat you are looking at.
 
-(defstruct (usable (:constructor usable (x y z label action &optional hand (reach 2.6) (radius .22))))
+(defstruct (usable (:constructor usable (x y z label action &key hand (reach 2.6) (radius .22))))
   "A thing you look at and press: a point in the wagon (X, Y above the floor, Z) and its size RADIUS.
 LABEL is a function that returns the hint, ACTION is what to do (NIL makes a blocker: it does
 nothing but hides what is behind it). With HAND it is taken by hand (LMB), otherwise it is an
@@ -360,7 +359,7 @@ These are the map, the stove, the light switch, the ladder, the window and the b
            ;; the ash door under the firebox: waste paper goes in here
            (usable (+ (first *stove-at*) .3) .14 (second *stove-at*)
                    (lambda () (format nil "E — сжечь связку макулатуры: полминуты огня · связок ~d" *papers*))
-                   #'burn-paper nil 2.6 .13)
+                   #'burn-paper :radius .13)
            (usable (first *switch-at*) (second *switch-at*) (third *switch-at*)
                    (lambda () (if *lights-on* "E — выключить свет" "E — включить свет"))
                    (lambda () (setf *lights-on* (not *lights-on*)) (apply-lights)))
@@ -368,9 +367,9 @@ These are the map, the stove, the light switch, the ladder, the window and the b
            (when (or (> *door-k* .6) (> (vector3-z *pos*) 2.95))
              (usable 0.0 .1 3.95 (lambda () (if *ladder-down* "E — поднять лесенку" "E — опустить лесенку")) #'toggle-ladder))
            ;; the window: anywhere on the glass, wherever you look
-           (unless *curtains-shut* (usable 1.5 1.5 -.9 #'window-label #'toggle-window nil 2.6 .5))     ; drawn curtains are in the way
-           (unless *curtains-shut* (usable 1.5 1.5 0.0 #'window-label #'toggle-window nil 2.6 .5))
-           (unless *curtains-shut* (usable 1.5 1.5 .9 #'window-label #'toggle-window nil 2.6 .5))
+           (unless *curtains-shut* (usable 1.5 1.5 -.9 #'window-label #'toggle-window :radius .5))     ; drawn curtains are in the way
+           (unless *curtains-shut* (usable 1.5 1.5 0.0 #'window-label #'toggle-window :radius .5))
+           (unless *curtains-shut* (usable 1.5 1.5 .9 #'window-label #'toggle-window :radius .5))
            ;; the bunk shelf: raised, E on it folds it down; folded down, E on it seats you,
            ;; E on the yellow handles on the edge or on the wall above it raises it
            (when *fold-down* (usable (- .85 *half-width*) .5 (- *bunk-z* .7) (lambda () "E — поднять полку") #'toggle-fold))
@@ -380,14 +379,14 @@ These are the map, the stove, the light switch, the ladder, the window and the b
                        (lambda () (if (and *seat* (eq (seat-what *seat*) :fold)) "E — встать" "E — лечь на полку")) #'sit-on-bunk)
                (usable (- .32 *half-width*) .8 *bunk-z* (lambda () "E — откинуть полку") #'toggle-fold))
            ;; raised, the shelf stands on edge and its golden handles are up at chest height: E on either folds it down
-           (unless *fold-down* (usable (- .31 *half-width*) 1.05 (- *bunk-z* .7) (lambda () "E — откинуть полку") #'toggle-fold nil 2.6 .16))
-           (unless *fold-down* (usable (- .31 *half-width*) 1.05 (+ *bunk-z* .7) (lambda () "E — откинуть полку") #'toggle-fold nil 2.6 .16))
+           (unless *fold-down* (usable (- .31 *half-width*) 1.05 (- *bunk-z* .7) (lambda () "E — откинуть полку") #'toggle-fold :radius .16))
+           (unless *fold-down* (usable (- .31 *half-width*) 1.05 (+ *bunk-z* .7) (lambda () "E — откинуть полку") #'toggle-fold :radius .16))
            (usable (- .1 *half-width*) 1.05 *bunk-z*
                    (lambda () (if *fold-down* "E — поднять полку" "E — откинуть полку")) #'toggle-fold)
            ;; the upper bunk: E on its mattress
            (usable (- .5 *half-width*) (+ *top-bunk* .15) *bunk-z*
                    (lambda () (if (and *seat* (eq (seat-what *seat*) :top)) "E — слезть" "E — лечь на верхнюю полку"))
-                   (lambda () (lie-on-bunk :top)) nil 2.6 .3))))
+                   (lambda () (lie-on-bunk :top)) :radius .3))))
 
 (defun usables ()
   "Return everything that can be pressed right now.

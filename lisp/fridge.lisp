@@ -106,8 +106,8 @@ A shelf has four places, two by two, like a section of the rack in small; things
   (destructuring-bind (fx fz) *fridge-at*
     (let ((half (/ (first *fridge-size*) 2)) (y (* (second *fridge-size*) .62)))
       (list (if *fridge-open*
-                (usable (+ fx half .26) y (- fz half .05) (lambda () "E — закрыть холодильник") #'toggle-fridge nil 2.6 .28)
-                (usable (+ fx half .04) y fz (lambda () "E — открыть холодильник") #'toggle-fridge nil 2.6 .3))))))
+                (usable (+ fx half .26) y (- fz half .05) (lambda () "E — закрыть холодильник") #'toggle-fridge :radius .28)
+                (usable (+ fx half .04) y fz (lambda () "E — открыть холодильник") #'toggle-fridge :radius .3))))))
 
 (defun step-spoil ()
   "At every dawn throw away what goes bad and stood outside the fridge; the driver counts.
