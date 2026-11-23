@@ -71,7 +71,8 @@ their last edit, :node the figure at the bus stop, :told true once the driver ha
 (defvar *net-clock* 0.0)
 (defvar *net-ver* 0 "The number of the arrangement of things.")
 (defvar *net-specs* nil "The host's arrangement that *NET-VER* corresponds to.")
-(defvar *net-others* '() "The other players in the game, each a list (id name x z yaw inside).")
+(defvar *net-others* '() "The other players in the game, each a list (id name x z yaw inside eye look): see the fields below.")
+(define-fields other id name x z yaw inside eye look)   ; ID 0 is the driver; INSIDE: in the wagon; EYE: eye height; LOOK: see LOOK.LISP
 (defvar *net-avatars* '() "The cats of the other players, each (id :group node :cat cat :head head :x :z :yaw :y :hop).")
 (defvar *net-host* nil "The guest's last state from the host (a plist).")
 (defvar *net-seen* 0.0 "The time the host last responded, kept by a guest.")
@@ -557,19 +558,21 @@ stand on the windowsill, the same as by hand."
     (:s (destructuring-bind (you seed dist speed day-t season weather fuel money planks fire fold departed ver others
                              &optional client world)
             (rest msg)
-          (when (listp client) (noting :guest-client (guest-client client)))
-          (when (and world *net-joined*) (noting :apply-world (apply-world world)))
           (unless (and (integerp you) (integerp seed) (far-p dist) (small-p speed) (far-p day-t)
                        (member season *seasons*) (keywordp weather) (small-p fuel) (integerp money) (integerp planks)
                        (small-p fire 1000) (integerp ver) (listp others) (< (length others) 20)
-                       (every (lambda (o) (and (fits o '(integer string t t t t t t)) (look-ok-p (eighth o))
-                                               (small-p (third o)) (small-p (fourth o)) (small-p (fifth o)) (small-p (seventh o) 3)))
+                       (every (lambda (o) (and (fits o '(integer string t t t t t t)) (look-ok-p (other-look o))
+                                               (small-p (other-x o)) (small-p (other-z o)) (small-p (other-yaw o)) (small-p (other-eye o) 3)))
                               others))
             (return-from guest-take nil))
           (setf *net-id* you *net-seen* *time* *net-lost* nil
                 *net-host* (list :seed seed :dist dist :speed speed :departed departed :ver ver)
-                *net-others* (remove you others :key #'first))
+                *net-others* (remove you others :key #'other-id))
           (unless *net-joined* (guest-first *net-host*))
+          ;; the client and the world of this message: only now, when the message has been checked and, for the
+          ;; first one, our copy of the driver's world is built
+          (when (listp client) (noting :guest-client (guest-client client)))
+          (when world (noting :apply-world (apply-world world)))
           (setf *day-t* day-t *fuel* fuel *departed* departed)
           (put-money money)
           (unless (eq season *season*) (set-season season))
@@ -681,7 +684,7 @@ Height goes by the eyes: a cat is scaled so that its eyes are at the height of t
 (*EYE*); when the player sits down, the cat drops by the same amount (the bell-shaped coat sinks
 into the seat, as if it sat). A position arrives several times a second: the cat does not jump to
 it but walks there smoothly, hopping as it goes."
-  (let ((shown (remove-if-not #'sixth *net-others*)))
+  (let ((shown (remove-if-not #'other-inside *net-others*)))
     (setf *net-avatars*
           (remove-if (lambda (a) (unless (find (first a) shown :key #'first) (node-queue-free (getf (rest a) :group)) t)) *net-avatars*))
     (dolist (o shown)
@@ -735,9 +738,9 @@ it but walks there smoothly, hopping as it goes."
   "Return who is in the game, with the driver marked: for the Tab list."
   (flet ((names (list) (format nil "~{~a~^, ~}" list)))
     (case *net-role*
-      (:host (names (cons (format nil "~a (водитель)" *net-name*) (mapcar #'second *net-others*))))
+      (:host (names (cons (format nil "~a (водитель)" *net-name*) (mapcar #'other-name *net-others*))))
       (:guest (names (cons *net-name* (loop for o in *net-others*
-                                            collect (if (eql (first o) 0) (format nil "~a (водитель)" (second o)) (second o))))))
+                                            collect (if (eql (other-id o) 0) (format nil "~a (водитель)" (other-name o)) (other-name o))))))
       (t *net-name*))))
 
 (defun net-hud ()

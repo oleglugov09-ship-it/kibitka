@@ -114,9 +114,7 @@ A shelf has four places, two by two, like a section of the rack in small; things
 Mushrooms on the dryer are dried instead."
   (unless (net-guest-p)
     (let ((day (today)))
-      (cond ((or (null *spoil-day*) (< day *spoil-day*)) (setf *spoil-day* day))      ; the first look, or the clock was turned back
-            ((> day *spoil-day*)
-             (setf *spoil-day* day)
+      (on-new-day (*spoil-day* day)
              (let* ((dry (remove-if-not (lambda (spec) (and (dried-of (spec-kind spec)) (on-dryer-p spec))) (mapcar #'car *items*)))
                     (bad (remove-if-not (lambda (spec) (and (trait (spec-kind spec) :spoils) (not (in-fridge-p spec))
                                                             (not (and (on-dryer-p spec) (dried-of (spec-kind spec))))))      ; the dryer saves only what dries
@@ -134,7 +132,7 @@ Mushrooms on the dryer are dried instead."
                  (save-interior)
                  (log-event :spoiled :n (length bad) :dist (round *dist*))
                  (say-all (format nil "За ночь испортилось: ~d шт. Молоко, рыбу и грибы на ночь убирай в холодильник — он у стены с ковром"
-                                  (length bad))))))))))
+                                  (length bad)))))))))
 
 (defstate :fridge :clear (lambda () (setf *fridge-open* nil *spoil-day* nil)) :show (lambda () (apply-fridge)))
 

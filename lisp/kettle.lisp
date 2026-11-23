@@ -91,7 +91,7 @@
 
 (defun player-here-p (number)
   "Return true if the player NUMBER is in the game: ourselves or one of the others."
-  (or (eql number (my-number)) (and (member number *net-others* :key #'first) t)))
+  (or (eql number (my-number)) (and (member number *net-others* :key #'other-id) t)))
 
 (defun move-kettle (to text)
   (setf *kettle-at* to *kettle-heat* 0.0 *kettle-holder* (and (eq to :paw) (my-number)))

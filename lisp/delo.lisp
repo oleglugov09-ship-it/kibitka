@@ -141,6 +141,18 @@ FILL-TEXT puts there what the function returns now, so the text follows the para
                       (defun (setf ,name) (value record) (setf (nth ,i record) value))))
      ',record))
 
+;;; Things that happen once a day. Each keeps the day it last ran in a variable of its own (what happens at dawn
+;;; is not the same for the fridge, the weather and the money-lender, and after a save is read each has its own
+;;; catching up to do); what they share is how a new day is told from the first look and from a clock turned back.
+
+(defmacro on-new-day ((place day) &body body)
+  "Run BODY if DAY is later than the day remembered in PLACE, and remember DAY there.
+The first look (PLACE is NIL) and a clock turned back only remember the day: nothing happened overnight."
+  (let ((d (gensym "DAY")))
+    `(let ((,d ,day))
+       (cond ((or (null ,place) (< ,d ,place)) (setf ,place ,d) nil)
+             ((> ,d ,place) (setf ,place ,d) ,@body)))))
+
 (defvar *actor* nil "The guest on whose behalf the driver is performing a shared action right now (sync.lisp).
 NIL means we are acting for ourselves.")
 (defvar *said* '() "The lines said to the guest during this action; they are sent to the guest in the reply.")

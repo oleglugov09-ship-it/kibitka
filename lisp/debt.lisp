@@ -201,9 +201,7 @@ The driver reads a card, everyone gets a line; the percent and his patience coun
   "At dawn, if the man has waited too long, his people take the dearest thing on board against the percent."
   (unless (net-guest-p)
     (let ((day (today)))
-      (cond ((or (null *seize-day*) (< day *seize-day*)) (setf *seize-day* day))
-            ((> day *seize-day*)
-             (setf *seize-day* day)
+      (on-new-day (*seize-day* day)
              (when (and (shark-met-p) (shark-overdue-p day))
                (let ((best (first (sort (remove-if-not (lambda (spec) (and (good-p (spec-kind spec)) (null (spec-addr spec)))) (mapcar #'car *items*))
                                         #'> :key (lambda (spec) (good-base (raw-of (spec-kind spec))))))))
@@ -214,7 +212,7 @@ The driver reads a card, everyone gets a line; the percent and his patience coun
                    (save-plan)
                    (log-event :seized :good (first best) :left *shark*)
                    (say-all (format nil "Ночью заходили люди Аркадия Семёновича: забрали ~a в счёт процентов. Он сидит в комиссионном, в Первомайске"
-                                    (good-name (first best))))))))))))
+                                    (good-name (first best)))))))))))
 
 ;;; The wage. A co-operative may pay its members a wage from its account (the law of 1988): at the savings
 ;;; bank's side door the whole account comes out in cash, with nothing kept back, but once a week only.

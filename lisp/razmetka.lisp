@@ -25,7 +25,7 @@ When the names run out they go round again with a number: 'Zarechny-2'."
 FROM is where the previous town ended (the start of the stretch leading to this one)."
   from start end index title
   memory                       ; it has the street you remember
-  stele centre plaza)
+  plaza)
 
 (defvar *towns* '() "The towns (TOWN structures) in ascending path coordinate; those left far behind are dropped.")
 

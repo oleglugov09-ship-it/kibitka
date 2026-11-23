@@ -118,10 +118,8 @@ with the last one written would look unchanged."
   "At the start of a day make the weather the calendar foretold for it; the driver alone does it."
   (unless (net-guest-p)
     (let ((day (today)))
-      (cond ((or (null *weather-day*) (< day *weather-day*)) (setf *weather-day* day))   ; the first look, or the clock was turned back
-            ((> day *weather-day*)
-             (setf *weather-day* day)
-             (set-weather (day-weather day) 7))))))
+      (on-new-day (*weather-day* day)
+             (set-weather (day-weather day) 7)))))
 
 ;; the season's clock is the driver's: a guest's calendar then counts the same days to the turn of the season
 (defcommon :season :value (list *season* (round *season-clock* 60)) :spec '(keyword integer) :driver t

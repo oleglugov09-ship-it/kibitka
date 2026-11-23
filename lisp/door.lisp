@@ -137,7 +137,7 @@ smoothly, over a couple of metres: no step at the kerb."
   "Return true if anyone (we or another player) is walking on the ground outside right now."
   (and (not *meta*)
        (or (outdoors-p (vector3-x *pos*) (vector3-z *pos*))
-           (some (lambda (o) (and (sixth o) (outdoors-p (third o) (fourth o)))) *net-others*))))                   ; the truck itself
+           (some (lambda (o) (and (other-inside o) (outdoors-p (other-x o) (other-z o)))) *net-others*))))                   ; the truck itself
 
 (defun walkable-p (x z)
   "Return true if one may stand at point (X Z).
