@@ -143,57 +143,29 @@ void fragment() {
 The room is visible only while we are in it."
   (when *meta-node* (node-queue-free *meta-node*))
   (unless *space-mat* (gdext:setf-reference *space-mat* (shader-material *space-shader*)))
-  (let* ((r (group rig)) (f *floor*) (h *meta-height*))
+  (let* ((r (group rig)) (f *floor*))
     (setf *meta-node* r *meta-curtains* '())
     (destructuring-bind (x0 x1 z0 z1) *meta-room*
       (let ((w (- x1 x0)) (l (- z1 z0)) (zc (/ (+ z0 z1) 2)) (xc (/ (+ x0 x1) 2)))
-        ;; checkered floor, ceiling, walls: darker at the bottom, golden battens
+        ;; the ceiling, the walls with the window frame, the pelmet, the wainscot, the table with its chairs and candles,
+        ;; the clock case and the gramophone are drawn in Blender (models/meta-room.blend); the checkered floor is a shader
         (mesh-node r (box-mesh w .1 l) (shader-material *checker-shader* "a" (hex (mc :tile1)) "b" (hex (mc :tile2)) "tile" .6)
                    xc (- f .05) zc)
-        (shape r :box (list w .1 l) (mc :ceiling) xc (+ f h .05) zc)
-        (flet ((wall-z (x)                                         ; a wall across x, running along z
-                 (shape r :box (list .1 h l) (mc :wall) x (+ f (/ h 2)) zc))
-               (wall-x (z)
-                 (shape r :box (list w h .1) (mc :wall) xc (+ f (/ h 2)) z)))
-          (wall-z x0) (wall-x z0) (wall-x z1)
-          ;; the window wall: below the window, above it, on both sides
-          (destructuring-bind (wz0 wz1 wy0 wy1) *meta-window*
-            (shape r :box (list .1 wy0 l) (mc :wall) x1 (+ f (/ wy0 2)) zc)
-            (shape r :box (list .1 (- h wy1) l) (mc :wall) x1 (+ f (/ (+ h wy1) 2)) zc)
-            (shape r :box (list .1 (- wy1 wy0) (- wz0 z0)) (mc :wall) x1 (+ f (/ (+ wy0 wy1) 2)) (/ (+ z0 wz0) 2))
-            (shape r :box (list .1 (- wy1 wy0) (- z1 wz1)) (mc :wall) x1 (+ f (/ (+ wy0 wy1) 2)) (/ (+ wz1 z1) 2))
-            ;; golden frame and glazing bars; there is no glass, space shows straight through
-            (let ((t3 (mc :trim)) (xw (- x1 .02)) (ym (+ f (/ (+ wy0 wy1) 2))) (wh (- wy1 wy0)))
-              (shape r :box (list .14 .08 (+ (- wz1 wz0) .16)) t3 xw (+ f wy0) zc)
-              (shape r :box (list .14 .08 (+ (- wz1 wz0) .16)) t3 xw (+ f wy1) zc)
-              (dolist (z (list wz0 wz1)) (shape r :box (list .14 (+ wh .08) .08) t3 xw ym z))
-              (loop for z from (+ wz0 1.2) below (- wz1 .1) by 1.2
-                    do (shape r :box (list .06 wh .04) t3 xw ym z))
-              (shape r :box (list .06 .04 (- wz1 wz0)) t3 xw (+ f wy0 (* .55 wh)) zc))
-            ;; curtains: two, made of folds in two shades; a pelmet with a golden edge
-            (let ((half (/ (- wz1 wz0) 2)) (xs (- x1 .16)))
-              (dolist (side '(-1 1))
-                (let ((g (group r xs (+ f (/ (+ wy0 wy1 .3) 2)) (if (< side 0) (- wz0 .1) (+ wz1 .1)))) (n 8))
-                  (dotimes (i n)
-                    (shape g :box (list (if (evenp i) .07 .1) (+ (- wy1 wy0) .3) (/ (+ half .12) n))
-                           (if (evenp i) (mc :velvet) (mc :velvet2)) 0 0 (* (- side) (+ .5 i) (/ (+ half .12) n))))
-                  (push (cons g side) *meta-curtains*)))
-              (shape r :box (list .16 .32 (+ (- wz1 wz0) .5)) (mc :velvet) xs (+ f wy1 .2) zc)
-              (shape r :box (list .17 .04 (+ (- wz1 wz0) .5)) (mc :trim) xs (+ f wy1 .04) zc))))
-        ;; wainscot panels and battens along the three blank walls
-        (shape r :box (list .12 .9 l) (mc :wainscot) (+ x0 .02) (+ f .45) zc)
-        (dolist (z (list (+ z0 .02) (- z1 .02))) (shape r :box (list w .9 .12) (mc :wainscot) xc (+ f .45) z))
-        (shape r :box (list .14 .05 l) (mc :trim) (+ x0 .04) (+ f .92) zc)
-        (dolist (z (list (+ z0 .04) (- z1 .04))) (shape r :box (list w .05 .14) (mc :trim) xc (+ f .92) z))
-        (shape r :box (list .14 .08 l) (mc :trim) (+ x0 .04) (+ f h -.06) zc)
-        (dolist (z (list (+ z0 .04) (- z1 .04))) (shape r :box (list w .08 .14) (mc :trim) xc (+ f h -.06) z))
+        (model r "meta-room")
+        ;; curtains: two, made of folds in two shades; they slide
+        (destructuring-bind (wz0 wz1 wy0 wy1) *meta-window*
+          (let ((half (/ (- wz1 wz0) 2)) (xs (- x1 .16)))
+            (dolist (side '(-1 1))
+              (let ((g (group r xs (+ f (/ (+ wy0 wy1 .3) 2)) (if (< side 0) (- wz0 .1) (+ wz1 .1)))) (n 8))
+                (dotimes (i n)
+                  (shape g :box (list (if (evenp i) .07 .1) (+ (- wy1 wy0) .3) (/ (+ half .12) n))
+                         (if (evenp i) (mc :velvet) (mc :velvet2)) 0 0 (* (- side) (+ .5 i) (/ (+ half .12) n))))
+                (push (cons g side) *meta-curtains*)))))
         ;; light: candles on the table, a cold one from the window (follows the curtains), lilac ambient
         (destructuring-bind (tx tz) *meta-table*
           (light r "#ffc890" 1.6 5.5 tx (+ f 1.2) tz)
           (setf *window-light* (light r "#a090ff" 1.2 7.0 (- x1 .8) (+ f 1.8) zc)))))
-    (make-meta-table r f)
     (make-meta-clock r f)
-    (make-gramophone r f)
     ;; the planet outside the window, and butterflies both in the room and outside
     (mesh-node r (let ((m (gdext:make-object "SphereMesh")))
                    (object-set m "radius" 11.0) (object-set m "height" 22.0)
@@ -206,65 +178,15 @@ The room is visible only while we are in it."
     (apply-meta)
     r))
 
-(defun make-meta-table (r f)
-  "Build under R, at floor height F, the round table with a tablecloth, two cups and a candlestick.
-Two chairs facing each other are built with it."
-  (destructuring-bind (tx tz) *meta-table*
-    (shape r :cyl '(.06 .08 .72 10) (mc :wood) tx (+ f .36) tz)
-    (shape r :cyl '(.32 .32 .03 20) (mc :wood) tx (+ f .015) tz)
-    (shape r :cyl '(.5 .5 .03 28) (mc :wood) tx (+ f .735) tz)
-    (shape r :cyl '(.53 .58 .3 28) (mc :cloth) tx (+ f .6) tz)
-    (shape r :cyl '(.53 .53 .012 28) (mc :cloth) tx (+ f .757) tz)
-    (dolist (s '(-1 1))
-      (let ((cz (+ tz (* s .25))))
-        (shape r :cyl '(.09 .09 .01 16) "#f0e8f0" tx (+ f .767) cz)
-        (shape r :cyl '(.045 .04 .07 12) "#f0e8f0" tx (+ f .805) cz)
-        (shape r :cyl '(.038 .038 .005 12) "#5a3020" tx (+ f .838) cz))
-      ;; chair: the back is on the side away from the table
-      (let ((g (group r tx f (+ tz (* s .85)))))
-        (shape g :box '(.46 .05 .46) (mc :wood2) 0 .46 0)
-        (shape g :box '(.42 .03 .42) (mc :velvet) 0 .5 0)
-        (dolist (c '((-1 -1) (-1 1) (1 -1) (1 1)))
-          (shape g :box '(.05 .46 .05) (mc :wood) (* (first c) .19) .23 (* (second c) .19)))
-        (shape g :box '(.46 .55 .05) (mc :wood2) 0 .75 (* s .21))
-        (shape g :box '(.48 .05 .07) (mc :trim) 0 1.04 (* s .21))))
-    ;; candlestick: two candles, the flames barely glow
-    (shape r :cyl '(.05 .07 .04 12) (mc :trim) tx (+ f .78) tz)
-    (dolist (dz '(-.06 .06))
-      (shape r :cyl '(.018 .018 .16 8) "#f4ecd8" tx (+ f .88) (+ tz dz))
-      (shape r :ball '(.018 8 6) "#ffd890" tx (+ f .975) (+ tz dz) :emit "#ffc070" :energy 1.2 :shadow nil))))
-
 (defun make-meta-clock (r f)
   "Build under R, at floor height F, the grandfather clock by the blank wall.
 Its pendulum is swung by STEP-META."
   (destructuring-bind (x0 x1 z0 z1) *meta-room*
     (declare (ignore x1 z1))
     (let ((g (group r (+ x0 .32) f (+ z0 1.1))))
-      (shape g :box '(.42 2.0 .5) (mc :wood) 0 1.0 0)
-      (shape g :box '(.46 .12 .54) (mc :wood2) 0 .06 0)
-      (shape g :box '(.48 .14 .56) (mc :wood2) 0 2.05 0)
-      (shape g :box '(.04 .3 .3) (mc :trim) .2 2.25 0)
-      (shape g :cyl '(.17 .17 .02 24) "#e8e0d0" .22 1.62 0 :rot (list 0 0 (/ pi 2)))
-      (shape g :cyl '(.19 .19 .015 24) (mc :trim) .215 1.62 0 :rot (list 0 0 (/ pi 2)))
-      (shape g :box '(.01 .12 .015) "#201820" .235 1.66 0)
-      (shape g :box '(.01 .015 .1) "#201820" .235 1.62 .04)
-      (shape g :box '(.02 1.0 .36) "#140c18" .21 .85 0)
       (let ((p (group g .23 1.32 0)))
-        (shape p :box '(.015 .7 .015) (mc :trim) 0 -.35 0)
-        (shape p :cyl '(.08 .08 .02 16) (mc :trim) 0 -.72 0 :rot (list 0 0 (/ pi 2)))
+        (model p "meta-pendulum")
         (setf *pendulum* p)))))
-
-(defun make-gramophone (r f)
-  "Build under R, at floor height F, the gramophone where the wagon's record player stands.
-The same disc is heard from here, and left click works as it does there."
-  (destructuring-bind (jx jz) *jukebox-at*
-    (let ((g (group r jx f jz)))
-      (shape g :box '(.5 .5 .5) (mc :wood) 0 .25 0)
-      (shape g :box '(.54 .04 .54) (mc :trim) 0 .5 0)
-      (shape g :cyl '(.2 .2 .02 24) "#181018" 0 .53 0)
-      (shape g :cyl '(.015 .015 .35 8) (mc :trim) .18 .7 .12)
-      (shape g :cone '(.3 .55 24) (mc :trim) .2 1.0 .12 :rot (list 0 0 (- (* pi .3))))
-      (shape g :cyl '(.06 .06 .06 12) (mc :trim) .15 .82 .12))))
 
 (defun butterflies (parent at extents amount)
   "Add AMOUNT golden butterflies under PARENT and return their particle node.
