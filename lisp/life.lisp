@@ -168,9 +168,9 @@ Its x points to the right of the road and its z backwards along the path."
 (defun step-speaker ()
   "Say the loudspeaker's line once we have parked at a market and the first message has faded."
   (let ((place (place-here)))
-    (cond ((and place (eq (first place) :market))
-           (unless (eql *speaker-told* (third place))
-             (setf *speaker-told* (third place) *speaker-due* (cons (+ *time* 9.0) (third place)))))
+    (cond ((and place (market-p place))
+           (unless (eql *speaker-told* (place-town place))
+             (setf *speaker-told* (place-town place) *speaker-due* (cons (+ *time* 9.0) (place-town place)))))
           ((> *speed* 2.0) (setf *speaker-told* nil *speaker-due* nil)))
     (when (and *speaker-due* (> *time* (car *speaker-due*)) (not (and *toast* (> (cdr *toast*) 0))))
       (let ((line (speaker-line (cdr *speaker-due*))))

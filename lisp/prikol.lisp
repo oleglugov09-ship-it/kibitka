@@ -347,7 +347,7 @@ booth to booth, and a gas station next door does not switch them off."
   ;; the whistle in Krasny Kut: at the market customers come up by themselves, without the bell
   (unless (net-guest-p)
     (let ((place (place-here)))
-      (cond ((and place (eq (first place) :market) (rush-p (third place)))
+      (cond ((and place (market-p place) (rush-p (place-town place)))
              (unless *rush-told* (setf *rush-told* t) (say-all "Гудок! Смена идёт с завода — покупатели подходят сами и платят щедрее"))
              (when (and (null *client*) (> *window-k* .9) (> (- *time* *rush-bell*) 7.0))
                (setf *rush-bell* *time*) (ring-bell)))

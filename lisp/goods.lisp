@@ -119,10 +119,10 @@ That is the good sought or a dish made from it (blini will do for milk)."
 (defun step-market-note ()
   "Announce what is traded here once the wagon stops at a market (once per arrival)."
   (let ((place (place-here)))
-    (cond ((and place (eq (first place) :market))
-           (unless (or (eql *market-told* (third place)) (and *toast* (> (cdr *toast*) 0)))
-             (setf *market-told* (third place))
-             (say-all (format nil "Рынок. ~a~:[~;. Гудок: смена идёт с завода!~]" (market-note (third place)) (rush-p (third place))))))
+    (cond ((and place (market-p place))
+           (unless (or (eql *market-told* (place-town place)) (and *toast* (> (cdr *toast*) 0)))
+             (setf *market-told* (place-town place))
+             (say-all (format nil "Рынок. ~a~:[~;. Гудок: смена идёт с завода!~]" (market-note (place-town place)) (rush-p (place-town place))))))
           ((> *speed* 2.0) (setf *market-told* nil)))))
 
 ;;; The record of a thing is (kind x height z spin [address [properties]]). The properties are a list of

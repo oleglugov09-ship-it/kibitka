@@ -342,7 +342,7 @@ driver's, so it returns to the hands, or it would be lost."
     (when (and place (<= (decf *busk-timer* (* delta (if *guitar-on* *busk-live* 1))) 0))        ; live music: twice as often
       (setf *busk-timer* *busk-every*)
       (let* ((key (place-key place))
-             (pot (if (eq (first place) :market) 14 (+ 4 (* 3 (length (second (second place)))))))
+             (pot (if (market-p place) 14 (+ 4 (* 3 (length (stop-cats (place-stop place)))))))
              (got (or (assoc key *busked*) (first (push (cons key 0) *busked*)))))
         (when (< (cdr got) pot)
           (incf (cdr got)) (add-money 1)
@@ -354,7 +354,7 @@ driver's, so it returns to the hands, or it would be lost."
 (defun step-onboard ()
   (unless (or (net-guest-p) *lobby-open* (>= *onboard* 9) (and *toast* (> (cdr *toast*) 0))
               (and (boundp '*show*) (symbol-value '*show*)))                 ; a card is on the screen: a hint under it would be lost
-    (let ((market (let ((p (place-here))) (and p (eq (first p) :market) (zerop (third p))))))
+    (let ((market (let ((p (place-here))) (and p (market-p p) (zerop (place-town p))))))
       (case *onboard*
         (0 (when (> *time* 2)
              (say "В кузове три посылки и молоко. Бензина — только до рынка в Заречном") (setf *onboard* 1)))

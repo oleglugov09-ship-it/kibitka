@@ -90,7 +90,16 @@ It is (:market PATH TOWN-INDEX) at a market or (:stop STOP) at a bus stop with c
       (cond (drop (list :market (car drop) (cdr drop)))
             (stop (list :stop stop))))))
 
-(defun place-key (place) (round (if (eq (first place) :market) (second place) (first (second place)))))
+;;; What PLACE-HERE returns is read through these: a market has a path coordinate and a town, a bus stop has its
+;;; record from *STOPS* (doroga.lisp), which has a path coordinate and the cats waiting there.
+(defun market-p (place) "Return true if PLACE, what PLACE-HERE returned, is a market." (eq (first place) :market))
+(defun place-d (place) "Return the path coordinate of the market PLACE." (second place))
+(defun place-town (place) "Return the number of the town of the market PLACE." (third place))
+(defun place-stop (place) "Return the record of the bus stop PLACE." (second place))
+(defun stop-d (stop) "Return the path coordinate of the bus stop record STOP." (first stop))
+(defun stop-cats (stop) "Return the cats waiting at the bus stop record STOP." (second stop))
+
+(defun place-key (place) (round (if (market-p place) (place-d place) (stop-d (place-stop place)))))
 
 (defun parcels-for (town)
   "Return how many parcels we have for town TOWN (on the shelves and in hand)."
@@ -338,18 +347,18 @@ A guest asks the driver to do it."
   (let ((place (place-here))
         (was (when *client* (prog1 (getf *client* :kind) (client-leave)))))
     (cond ((null place) (say "Динь! Никого: зови на рынке в городе или на остановке, где ждут"))
-          ((and (eq (first place) :market) (plusp (parcels-for (third place)))
+          ((and (market-p place) (plusp (parcels-for (place-town place)))
                 (not (eq was :recipient)))                          ; the recipient was just dismissed: call someone else
-           (client-come :recipient :town (third place)))           ; first the one who is waiting for a parcel
+           (client-come :recipient :town (place-town place)))           ; first the one who is waiting for a parcel
           (t (let* ((key (place-key place))
                     (visit (or (assoc key *visits*)
-                               (first (push (cons key (if (eq (first place) :market) *market-clients* (length (second (second place)))))
+                               (first (push (cons key (if (market-p place) *market-clients* (length (stop-cats (place-stop place)))))
                                             *visits*)))))
                (cond ((<= (cdr visit) 0) (say "Динь! Все уже разошлись. Езжай дальше"))
                      (t (decf (cdr visit))
-                        (if (eq (first place) :market)
-                            (client-come (pick-kind) :town (third place))
-                            (client-come :buyer :stop (second place))))))))))
+                        (if (market-p place)
+                            (client-come (pick-kind) :town (place-town place))
+                            (client-come :buyer :stop (place-stop place))))))))))
 
 (defun sill-item (test)
   "Return an item on the windowsill that satisfies TEST, or NIL.
@@ -464,11 +473,11 @@ coupons, and with the fourth pennant the account. Return what was paid and what 
 (defun step-client (delta)
   ;; parked at a market with a parcel for this town: the recipient comes up by himself
   (let ((place (place-here)))
-    (when (and place (not *client*) (eq (first place) :market) (plusp (parcels-for (third place)))
+    (when (and place (not *client*) (market-p place) (plusp (parcels-for (place-town place)))
                (> *window-k* .9)
                (not (member (place-key place) *met*)))
       (push (place-key place) *met*)
-      (client-come :recipient :town (third place))))
+      (client-come :recipient :town (place-town place))))
   (when (and *client* (<= (getf *client* :arrive 0.0) 0))
     (let ((kind (getf *client* :kind)))
       (cond ((> *speed* .6) (client-leave "Тронулись — клиент остался"))
