@@ -139,7 +139,8 @@ At a fork one can thus see where the other road goes. At most two new ribbons ar
                        do (dolist (s (gethash (+ (* 100003 ix) iz) *road-grid*))
                             (pushnew (floor (+ (edge-d0 (car s)) (* (cdr s) *map-step*)) *road-piece*) want))))
         (maphash (lambda (k node) (unless (member k want) (node-queue-free node) (remhash k *road-pieces*))) *road-pieces*)
-        (dolist (k (let ((here (floor *dist* *road-piece*))) (sort want #'< :key (lambda (k) (abs (- k here))))))   ; the road under the wheels first
+        (dolist (k (sort want #'< :key (lambda (k) (multiple-value-bind (px pz) (road-point (* (+ k .5) *road-piece*))   ; the nearest first:
+                                                   (+ (abs (- px x)) (abs (- pz z)))))))                         ; the road under the wheels, then the others
           (unless (gethash k *road-pieces*)
             (if (< made 2)
                 (progn (setf (gethash k *road-pieces*) (build-road-piece k)) (incf made))

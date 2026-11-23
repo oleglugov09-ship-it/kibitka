@@ -21,7 +21,9 @@ rep("varying vec3 v_camera_pos;", """varying vec3 v_camera_pos;
 uniform vec3 world_shift = vec3(0.);
 uniform vec3 season_color : source_color = vec3(1.);
 uniform float season_amount = 0.0;
-uniform float texture_gain = 2.0;   // the pictures of the land are nearly grey, the place gives the colour""")
+uniform float texture_gain = 3.6;    // the pictures of the land are nearly grey (about 0.22 once linear), the place gives the colour:
+                                     // set by eye against the old land, which came out this bright
+uniform float texture_contrast = 0.5; // how much of the picture's light and dark is kept: all of it is too restless underfoot""")
 rep("v_camera_pos = MAIN_CAM_INV_VIEW_MATRIX[3].xyz;", "v_camera_pos = MAIN_CAM_INV_VIEW_MATRIX[3].xyz + world_shift;")
 rep("v_vertex = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;", "v_vertex = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;\n\tv_vertex.xz += world_shift.xz;\n\tvec3 target_pos = _target_pos + world_shift;")
 rep("v_vertex_xz_dist = length(v_vertex.xz - _target_pos.xz);", "v_vertex_xz_dist = length(v_vertex.xz - target_pos.xz);")
@@ -34,6 +36,7 @@ rep("ALBEDO = mat.albedo_height.rgb * color_map.rgb;\n\tROUGHNESS = roughness;\n
     "\t// here the texture arrays come as they are stored, not made linear: do it by hand\n"
     "\tplace_color = pow(place_color, vec3(2.2));\n\tground = pow(ground, vec3(2.2));\n"
     "#endif\n"
+    "\tground = mix(vec3(0.22), ground, texture_contrast);\n"
     "\tALBEDO = clamp(ground * texture_gain * mix(place_color, season_color, season_amount * color_map.a), 0., 1.);\n\tROUGHNESS = 1.0 + 0. * roughness;\n\tSPECULAR = 0. * specular;")
 assert "_target_pos" not in s.split("void vertex()")[1].split("void fragment()")[0].replace("vec3 target_pos = _target_pos + world_shift;", ""), "another use of _target_pos"
 open(out, "w").write(s); print("terrain-shader:", out, len(s))

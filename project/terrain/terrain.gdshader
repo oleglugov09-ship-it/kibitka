@@ -120,7 +120,9 @@ varying vec3 v_camera_pos;
 uniform vec3 world_shift = vec3(0.);
 uniform vec3 season_color : source_color = vec3(1.);
 uniform float season_amount = 0.0;
-uniform float texture_gain = 2.0;   // the pictures of the land are nearly grey, the place gives the colour
+uniform float texture_gain = 3.6;    // the pictures of the land are nearly grey (about 0.22 once linear), the place gives the colour:
+                                     // set by eye against the old land, which came out this bright
+uniform float texture_contrast = 0.5; // how much of the picture's light and dark is kept: all of it is too restless underfoot
 
 ////////////////////////
 // Vertex
@@ -682,6 +684,7 @@ void fragment() {
 	place_color = pow(place_color, vec3(2.2));
 	ground = pow(ground, vec3(2.2));
 #endif
+	ground = mix(vec3(0.22), ground, texture_contrast);
 	ALBEDO = clamp(ground * texture_gain * mix(place_color, season_color, season_amount * color_map.a), 0., 1.);
 	ROUGHNESS = 1.0 + 0. * roughness;
 	SPECULAR = 0. * specular;
