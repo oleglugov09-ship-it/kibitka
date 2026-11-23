@@ -104,6 +104,7 @@ That is the body, the truck under it, everything bolted on inside, the things an
   (make-pivots root)
   (make-sky root)
   (start-trip)
+  (read-places)                                           ; where things stand in the wagon: from the Blender files (mesta.lisp)
   (make-kibitka *rig*)
   (make-camera *rig*)
   (load-place)
@@ -214,7 +215,7 @@ That is the body, the truck under it, everything bolted on inside, the things an
     (step-trade delta)
     (step-auto delta)
     (step-net delta)
-    (step-lobby) (step-lang) (step-debug) (step-cheats)
+    (step-lobby) (step-lang) (step-debug) (step-cheats) (step-js-repl)
     (step-look)
     (timed :meta (step-meta delta))))
 

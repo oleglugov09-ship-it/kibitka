@@ -18,6 +18,21 @@
                               (and (stringp q) (search "dev" q)))))
                    t)))
 
+;;; A REPL for the browser build in dev mode (?dev): the page puts Lisp text into window.__lisp (an array)
+;;; and gets each answer back in window.__lispOut. It is how tools/web-eyes.py sets up a scene to film
+;;; (the step js:). Only with ?dev: in a normal game nothing reads the page.
+
+(defun step-js-repl ()
+  (when (and *dev* (object-call (gdext:singleton "OS") "has_feature" "web"))
+    (let ((text (ignore-errors (object-call (gdext:singleton "JavaScriptBridge") "eval"
+                                            "(window.__lisp && window.__lisp.length) ? window.__lisp.shift() : ''"))))
+      (when (and (stringp text) (plusp (length text)))
+        (let ((answer (run-text text)))
+          (ignore-errors
+           (object-call (gdext:singleton "JavaScriptBridge") "eval"
+                        (cl:format nil "(window.__lispOut = window.__lispOut || []).push(String.fromCodePoint(~{~d~^,~}))"
+                                   (map 'list #'char-code answer)))))))))
+
 ;;; A torture test for the memory of the browser build (the page address with ?torture). The game's data
 ;;; are lists of numbers, keywords and strings held in local variables while more is allocated; if the
 ;;; collector cannot see a local, it frees what is still in use, and what comes back is garbage. Each round

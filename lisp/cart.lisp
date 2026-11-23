@@ -12,7 +12,8 @@
 (defparameter *kc*
   '(:body "#7a2a24" :trim "#d8a840" :roof "#2a4a3e" :roof2 "#2e5244" :wood "#8a6440" :dark "#4a3020"
     :floor "#a07a50" :cloth "#b84a34" :inside "#c89a6a" :carpet "#8a1a22" :carpet2 "#e0b050" :carpet3 "#2a3a7a")
-  "The wagon colours.")
+  "The wagon colours of what is still built in code (the lining behind the carpet, the plain carpet).
+The body, the door and the furniture are painted in their Blender files (models/kibitka).")
 (defvar *cam-course* 0.0 "The course the outside camera looks along; it catches up with the road course smoothly.")
 (defparameter *sway* 1.0 "The strength of the wagon sway (0 means no sway).")
 (defparameter *fairy* '("#ff6060" "#ffd060" "#60ff90" "#60c0ff" "#d070ff"))

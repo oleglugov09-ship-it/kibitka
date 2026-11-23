@@ -291,6 +291,7 @@ drawn in Blender (models/booth-INDEX.blend); the light, the smoke and the seller
     (make-cat cat (+ 3 (* 5 index)))))
 
 (defun build-gimmick (d index title rgb)
+  (declare (ignore rgb))                                  ; the booth's colour is in its model now (models/budki)
   (let ((g (apply #'group *world* (road-pos d 3.2 -.35))))
     (node-3d-set-rotation g (v3 0 (- (road-frame d)) 0))
     (booth-body g index)
