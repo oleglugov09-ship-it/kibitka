@@ -20,6 +20,8 @@ VIEWS = [("outside-back-right", '(setf *view* :outside *orbit-yaw* .6 *orbit-pit
          ("inside-to-carpet", '(setf *pos* (v3 .9 0 0) *yaw* 1.5708 *pitch* .1)'),
          ("inside-up", '(setf *pos* (v3 0 0 0) *yaw* 0.0 *pitch* 1.2)'),
          ("inside-down", '(setf *pos* (v3 0 0 .5) *yaw* 0.0 *pitch* -1.1)'),
+         ("booth", '(setf *view* :outside *orbit-dist* 13.0 *orbit-yaw* -1.45 *orbit-pitch* .2)'),
+         ("booth-yard", '(setf *orbit-dist* 17.0 *orbit-yaw* -2.2 *orbit-pitch* .5)'),
          ("stops-right", """(progn (setf *view* :outside *orbit-dist* 22.0 *orbit-yaw* 1.2 *orbit-pitch* .45) (loop for k in '(1 3 4 5 8 10 14 17) for n from 0 do (let ((g (group *cart* (if (< n 4) 7.0 -7.0) 0.0 (- (* 6.5 (mod n 4)) 14.0)))) (funcall (if (fboundp 'stop-look) 'stop-look 'build-stop) g (* 7.0 k)))) 1)"""),
          ("stops-left", '(setf *orbit-yaw* -1.9 *orbit-pitch* .35)')]
 
