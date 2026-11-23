@@ -1,5 +1,6 @@
 #!/bin/bash
-# The models drawn in Blender, made ready for the game: every models/NAME.blend becomes project/models/NAME.glb,
+# The models drawn in Blender, made ready for the game: every models/GROUP/NAME.blend becomes project/models/NAME.glb
+# (the folders only sort the drawings for people: a model is known to the game by NAME alone, so names are unique),
 # which the game puts in place with (model parent "NAME" x y z) (lisp/models.lisp).
 #
 #   tools/make-models.sh          export what is missing or older than its .blend
@@ -13,7 +14,7 @@ cd "$(dirname "$0")/.."
 blender="${BLENDER:-$HOME/.local/bin/blender}"
 mkdir -p project/models
 n=0
-for blend in models/*.blend; do
+for blend in models/*.blend models/*/*.blend; do
   [ -f "$blend" ] || continue
   glb="project/models/$(basename "${blend%.blend}").glb"
   if [ "${1:-}" != "-B" ] && [ -f "$glb" ] && [ ! "$blend" -nt "$glb" ]; then continue; fi

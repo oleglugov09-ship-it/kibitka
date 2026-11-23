@@ -13,7 +13,7 @@ KIOSK_DRAW="$dir" KIOSK_NOLOG=1 XDG_DATA_HOME="$dir/data" godot --path project -
 for json in "$dir"/*.json; do
   [ -f "$json" ] || continue
   name=$(basename "${json%.json}")
-  if [ -f "models/$name.blend" ]; then echo "to-blender: models/$name.blend уже есть, не трогаю"; continue; fi
+  if ls models/"$name".blend models/*/"$name".blend > /dev/null 2>&1; then echo "to-blender: $name.blend уже есть, не трогаю"; continue; fi
   "${BLENDER:-$HOME/.local/bin/blender}" -b --python tools/draw-model.py -- "$json" "$PWD/models/$name.blend" ${SOLIDS:+solids} 2>&1 | grep "draw-model:\|Error" || true
 done
 rm -rf "$dir"
