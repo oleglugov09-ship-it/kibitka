@@ -730,12 +730,6 @@ it but walks there smoothly, hopping as it goes."
                                   (v3 0 (+ *cat-head-y* (* .012 (sin (* *time* 2.3))) (* hop .04 (abs (sin (- (* *time* 11.0) .9))))) 0))
             (node-3d-set-rotation (getf st :head) (v3 0 0 (* .05 (sin (* *time* 1.7)))))))))))
 
-(defun my-addresses ()
-  "Return this machine's addresses on the local network and VPN; they are told to fellow travellers."
-  (remove-if-not (lambda (a) (and (not (find #\: a))
-                                  (or (eql 0 (search "192.168." a)) (eql 0 (search "10." a)) (eql 0 (search "172." a)))))
-                 (coerce (object-call (gdext:singleton "IP") "get_local_addresses") 'list)))
-
 (defun roster ()
   "Return who is in the game, with the driver marked: for the Tab list."
   (flet ((names (list) (format nil "~{~a~^, ~}" list)))

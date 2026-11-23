@@ -8,7 +8,7 @@
 
 (defvar *trains* '() "The trains as (track head-path-coordinate car-nodes resting-until-time) lists.")
 (defparameter *train-speed* 16.0)
-(defparameter *car-gap* 15.0 "The spacing of train cars, in metres.")
+(defparameter *train-car-gap* 15.0 "The spacing of train cars, in metres.")
 
 (defun track-frame (track d &optional (up 0.0))
   "Return the point on the rails of TRACK at path coordinate D and the rotation along them.
@@ -74,13 +74,13 @@ Each is a node of its own; they run along the rails one after another. Return th
           (destructuring-bind (s cars rest) (rest tr)
             (cond ((> rest 0.0)                                            ; resting
                    (when (and (< (decf (fourth tr) delta) 0.0) inside) (setf (second tr) (- *dist* 280.0))))
-                  ((> (- s (* *car-gap* (length cars))) (- d1 40))          ; gone
+                  ((> (- s (* *train-car-gap* (length cars))) (- d1 40))          ; gone
                    (dolist (c cars) (object-set c "visible" nil))
                    (setf (fourth tr) 150.0))
                   (t
                    (incf (second tr) (* delta *train-speed*))
                    (loop for c in cars for i from 0
-                         do (let ((d (- (second tr) (* i *car-gap*))))
+                         do (let ((d (- (second tr) (* i *train-car-gap*))))
                               (if (and (< (+ d0 30) d (- d1 30)) (< (track-x track d) 330) (< (abs (- d *dist*)) 520))
                                   (multiple-value-bind (at rot) (track-frame track d .1)
                                     (node-3d-set-position c (v3 (first at) (second at) (third at)))

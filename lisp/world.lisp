@@ -44,7 +44,6 @@ Flowers, mushrooms, reeds and lanterns are smaller than a pixel far away and fli
 It is done often: far from the origin the engine runs out of precision, and surfaces lying a millimetre
 apart flicker.")
 (defvar *dist* 0.0 "The distance travelled, in metres.")
-(defvar *chunks* '() "The list of (MeshInstance3D . k).")
 (defvar *props* '() "The list of (node . d), in ascending order of d.")
 (defvar *bridges* '())
 (defvar *river-side* 0)
@@ -368,8 +367,6 @@ SIDE is ±1, the side of the road. The colours of foliage and flowers follow the
 It carries the traffic oncoming to those driving forward.")
 
 (defun lane () (if (> *dir* 0) 0.0 *lane-x*))
-(defun cart-x (x) "Convert X, sideways from the path axis, to the offset to the right of the wagon." (* (- x (lane)) *dir*))
-(defun cart-z (d) "Convert the path coordinate D to the offset behind the wagon." (* (- *dist* d) *dir*))
 (defun ahead-of (d) "Return the distance to path coordinate D along the wagon's heading (negative when behind)." (* (- d *dist*) *dir*))
 (defun side-x (off) "Convert OFF, to the right of the wagon, to the offset sideways from the path axis." (+ (lane) (* off *dir*)))
 (defun turning-p () (> (abs (- *yaw-now* (if (> *dir* 0) 0.0 pi))) .03))

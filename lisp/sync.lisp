@@ -1,5 +1,5 @@
 ;;;; One wavelength: everything that concerns the world and the wagon is the same for all players.
-;;;;  • WORLD. Several times a second the driver sends the guests a WORLD-STATE block: road events, papers,
+;;;;  • WORLD. Several times a second the driver sends the guests a block of the world (WORLD-FOR): road events, papers,
 ;;;;    booths, finds, gnomes, the route. A guest computes none of this itself: APPLY-WORLD.
 ;;;;  • ACTIONS. A guest asks the driver for any shared action (pick up a bottle, take a gnome, milk the goat,
 ;;;;    pay a fine): ASK-HOST. The driver runs the very same function 'on the guest's behalf' (RUN-AS: with
@@ -39,7 +39,7 @@
 
 (defun apply-events (ev)
   "Bring the guest's own events in line with EV, the events sent by the driver."
-  (when (and (listp ev) (= (length ev) 8))                    ; EV is the first part of WORLD-STATE
+  (when (and (listp ev) (= (length ev) 8))                    ; EV is the first part of the world block
     (destructuring-bind (cars trains plane flocks mosquito sleeping dir gnomes) ev
       (when (and (integerp gnomes) (<= 0 gnomes (1- (ash 1 18))) (/= gnomes *gnomes*))       ; the driver found a gnome
         (setf *gnomes* gnomes) (show-trophies))
@@ -149,11 +149,6 @@ The same thing still in the paws keeps the properties we know: a long job answer
         (list *bottles* *papers* (and *spyglass* t)
               (remove-if (lambda (id) (> (abs (- (first id) *dist*)) 200.0)) *picked*))      ; picked-up things: only the nearby ones
         (and *auto* (list (f1 (car *auto*)) (cdr *auto*) *way*))))
-
-(defun world-state ()
-  "Return everything shared that the driver knows as one block for the guests.
-It is the road events followed by the rarely changing part."
-  (cons (world-events) (world-slow)))
 
 (defvar *world-sent* (make-hash-table) "The table from a guest id to (rare world part . time sent): it is not resent until it changes.")
 

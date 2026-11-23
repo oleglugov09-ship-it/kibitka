@@ -146,15 +146,6 @@ not to the driver."
                     (setf *toasts* (last (append *toasts* (list text)) 4))))
                  (t (setf *toast* (cons text (read-time text)) *toast-shown* 0.0))))))
 
-(defun notebook-cards ()
-  "Return the notebook as cards for the screen: nine entries a page, the newest first."
-  (let* ((pages (loop for rest on *said-log* by (lambda (l) (nthcdr 9 l)) collect (subseq rest 0 (min 9 (length rest)))))
-         (n (length pages)))
-    (loop for page in pages for i from 1
-          collect (format nil "~a~%~%~{~a~^~%~}"
-                          (format nil (tr "БЛОКНОТ · страница ~d из ~d · пробел — дальше, Q — закрыть") i n)
-                          (mapcar (lambda (e) (format nil (tr "день ~d · ~a") (car e) (cdr e))) page)))))
-
 (defun press-notebook ()
   "Open the notebook: everything that was said, the newest first."
   (cond ((and (boundp '*show*) (symbol-value '*show*)) nil)
