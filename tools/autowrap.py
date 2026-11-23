@@ -80,16 +80,23 @@ def pure(s, node, env, parent):
         return all(ok(k) for k in nd[2])
     return ok(node)
 
+DEEP = False          # look for fixed runs inside the conditionals and loops of a form that is not fixed as a whole
+
 def runs(s, body, env, parent):
     out, cur = [], []
     for f in body:
         if f[2] is not None and pure(s, f, env, parent): cur.append(f)
         else:
             if cur: out.append((cur[0][0], cur[-1][1])); cur = []
+            if DEEP and f[2] is not None and head(s, f) in ("when", "unless", "dolist", "dotimes", "let", "let*", "progn", "destructuring-bind", "cond", "if", "loop"):
+                h = head(s, f); skip = {"progn": 1, "loop": 1, "cond": 1, "if": 2, "destructuring-bind": 3}.get(h, 2)
+                inner = f[2][skip:]
+                if h == "cond": inner = [k for clause in inner if clause[2] for k in clause[2][1:]]
+                out += runs(s, inner, env | binders(s, f), parent)
     if cur: out.append((cur[0][0], cur[-1][1]))
     return out
 
-path, specs = sys.argv[1], sys.argv[2:]
+path, specs = sys.argv[1], [a for a in sys.argv[2:] if a != '--dry']; DRY = '--dry' in sys.argv
 s = open(path, encoding="utf-8").read(); top = parse(s); edits = []
 for spec in specs:
     if spec.startswith("theme"):
@@ -107,6 +114,13 @@ for spec in specs:
                 env2 = env | binders(s, nd)
                 for k in nd[2]: walk(k, env2)
             walk(form, set())
+    elif spec == "zone":                     # every defzone: (g i c mid at) and the dice R
+        DEEP = True; IMPURE.append("r")
+        for form in top:
+            if head(s, form) != "defzone": continue
+            name = s[form[2][1][0]:form[2][1][1]]
+            for n, (a, b) in enumerate(runs(s, form[2][2:], {"i", "c", "mid", "at"}, "g")): edits.append((a, b, "g", '"%s-%d"' % (name, n + 1)))
+        DEEP = False
     elif spec == "booth":
         for form in top:
             if head(s, form) != "defbooth": continue
@@ -128,7 +142,8 @@ for spec in specs:
                     else: params |= binders(s, body[0]) - {parent}
                     body = body[0][2][3:] if head(s, body[0]) == "destructuring-bind" else body[0][2][2:] if head(s, body[0]) != "progn" else body[0][2][1:]
                 for a, b in runs(s, body, params, parent): edits.append((a, b, parent, '"%s"' % name))
+COUNT = sum(s[a:b].count('(shape ') for a, b, _, _ in edits)
 for a, b, parent, name in sorted(edits, reverse=True):
     s = s[:a] + "(drawn (%s %s) " % (parent, name) + s[a:b] + ")" + s[b:]
-open(path, "w", encoding="utf-8").write(s)
-print(path, len(edits), "runs wrapped:", sorted({e[3] for e in edits}))
+if not DRY: open(path, "w", encoding="utf-8").write(s)
+print(path, COUNT, "shapes in", len(edits), "runs wrapped:", sorted({e[3] for e in edits}))
