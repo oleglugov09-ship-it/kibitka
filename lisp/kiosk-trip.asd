@@ -9,7 +9,7 @@
     :serial t
     :components ((:file "packages") (:file "delo") (:file "tverd")
                  (:file "random")
-                 (:file "engine-classes")
+                 (:file "engine-classes") (:file "files")
                  (:file "shapes") (:file "models")
                  (:file "economy") (:file "kassa")
                  (:file "profile")

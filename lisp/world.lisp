@@ -18,21 +18,22 @@
 (defun halt () "Stop the truck at once." (setf *speed* 0.0))
 (defun slow-to (limit) "Do not let the truck go faster than LIMIT m/s right now." (setf *speed* (min *speed* limit)))
 (defparameter *smooth-ground* t "True for smooth land lighting: flat faces far away are smaller than a pixel and shimmer.")
-(defparameter *prop-step* 1.4 "The spacing of the roadside things, in metres.")
+(defparameter *prop-step* 2.4 "The spacing of the roadside things, in metres.")
 (defparameter *ahead* 170.0 "The distance ahead up to which we build.")
 (defparameter *behind* 60.0 "The distance behind up to which we keep things.")
 
 (defparameter *grass*
-  '(:pine "#2a4a2c" :meadow "#4a6a30" :autumn "#6a5a2a" :birch "#3e5a32" :rocky "#4a4a44"
-    :steppe "#7a7038" :marsh "#34442a"))
+  '(:pine "#2c3a30" :meadow "#4a5238" :autumn "#5a4e34" :birch "#444c38" :rocky "#484846"
+                :steppe "#5e583e" :marsh "#363c2e"))
+;; no fairy-tale mushrooms and pumpkins; fewer things by the road - poles and bus stops replace them
 (defparameter *veg-props*
-  '(:pine (:pine :pine :pine :lantern :mush :campfire :rock)
-    :meadow (:flowers :flowers :flowers :hay :fence :round :lantern)
-    :autumn (:autumn :autumn :autumn :mush :pumpkin :lantern :hay)
-    :birch (:birch :birch :birch :round :lantern :rock :mush)
-    :rocky (:rock :rock :cairn :cairn :pine)
-    :steppe (:bush :bush :hay :rock :cairn :fence :lantern)
-    :marsh (:reeds :reeds :snag :snag :bush :mush :lantern)))
+  '(:pine (:pine :pine :pine :rock :snag)
+        :meadow (:bush :hay :fence :round :flowers)
+        :autumn (:autumn :autumn :snag :hay :bush)
+        :birch (:birch :birch :birch :round :rock)
+        :rocky (:rock :rock :cairn :pine)
+        :steppe (:bush :bush :hay :rock :fence)
+        :marsh (:reeds :reeds :snag :snag :bush)))
 (defparameter *small-far* 70.0 "The distance in metres beyond which small things fade out.
 Flowers, mushrooms, reeds and lanterns are smaller than a pixel far away and flicker.")
 (defparameter *small-fade* 1 "The fade mode of small things: 1 to fade smoothly (VISIBILITY_RANGE_FADE_SELF), 0 to vanish at once.")

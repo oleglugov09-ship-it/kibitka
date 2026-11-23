@@ -10,8 +10,8 @@
 (defparameter *half-length* 2.85)
 (defparameter *wall-height* 2.3)
 (defparameter *kc*
-  '(:body "#7a2a24" :trim "#d8a840" :roof "#2a4a3e" :roof2 "#2e5244" :wood "#8a6440" :dark "#4a3020"
-    :floor "#a07a50" :cloth "#b84a34" :inside "#c89a6a" :carpet "#8a1a22" :carpet2 "#e0b050" :carpet3 "#2a3a7a")
+  '(:body "#2f4a3c" :trim "#b9a24a" :roof "#6a6e70" :roof2 "#5e6264" :wood "#8a6440" :dark "#4a3020"
+    :floor "#a07a50" :cloth "#8a5a44" :inside "#c4b894" :carpet "#8a1a22" :carpet2 "#e0b050" :carpet3 "#2a3a7a")
   "The wagon colours of what is still built in code (the lining behind the carpet, the plain carpet).
 The body, the door and the furniture are painted in their Blender files (models/kibitka).")
 (defvar *cam-course* 0.0 "The course the outside camera looks along; it catches up with the road course smoothly.")

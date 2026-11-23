@@ -18,7 +18,7 @@
 (defvar *story-stage* :intro
   "Where the story stands: :INTRO (cards not seen yet), :OWING, :FREE (paid, not left yet) or :DONE.")
 
-(defun save-debt () (unless (net-guest-p) (put-save :debt (list *debt* *story-stage* *debt-total*))))
+(defun save-debt () (put-save :debt (list *debt* *story-stage* *debt-total*)))
 (defun load-debt ()
   "Read the debt from the save. If the whole debt has been changed since, what was paid still counts."
   (let ((f (get-save :debt)))
@@ -245,7 +245,7 @@ The driver reads a card, everyone gets a line; the percent and his patience coun
              (log-event :wage :sum sum :money *money*)
              (say-all (format nil "Кассирша отсчитала зарплату: ~/kiosk-trip::rub/ на руки. Следующая — через ~d дн." sum *wage-days*))))))
 
-(defun save-wage () (unless (net-guest-p) (put-save :wage (list *wage-day*))))
+(defun save-wage () (put-save :wage (list *wage-day*)))
 (defstate :wage
   :clear (lambda () (setf *wage-day* nil))
   :load (lambda () (let ((f (get-save :wage))) (when (fits f '(t)) (setf *wage-day* (and (integerp (first f)) (first f))))))

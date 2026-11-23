@@ -9,12 +9,13 @@
 
 (defparameter *day-len* 1200.0)
 (defparameter *dusk* '(690.0 780.0) "The dusk: its start and end, in seconds of the day cycle.")
-(defparameter *fog-base* .0025 "The haze density in clear weather.")
+;; thin haze: beyond the detailed land there is now a far plane (vista.lisp)
+(defparameter *fog-base* .0018 "The haze density in clear weather.")
 (defparameter *time-scale* 1.0 "The factor by which the day cycle runs faster (live:time-scale).")
 (defparameter *sky-keys*
-  '((0 "#1c1a34" "#3a2a40") (45 "#5a7ab0" "#f0a070") (110 "#3a78d8" "#a8d0f0") (660 "#3a78d8" "#a8d0f0")
-    (720 "#4a5aa0" "#f08a50") (760 "#2a2a5a" "#a04a50") (810 "#0a1028" "#1a2040") (1140 "#080c20" "#141a34")
-    (1200 "#1c1a34" "#3a2a40"))
+  '((0 "#16161f" "#2a2630") (45 "#566078" "#b08a78") (110 "#6f7f93" "#b9c0c4") (660 "#6f7f93" "#b9c0c4")
+        (720 "#4a4f6a" "#b87a5a") (760 "#262638" "#6a4448") (810 "#0a0c16" "#161a26") (1140 "#07090f" "#10131c")
+        (1200 "#16161f" "#2a2630"))
   "The sky keys: a list of (second top-color horizon-color).")
 
 (defparameter *summer-sky-keys*

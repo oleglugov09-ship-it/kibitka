@@ -23,7 +23,7 @@ Numbers 0-11 are towns, 12-17 are special places.")
 (defun gnome-home (i) (if (< i 12) (town-name i) (nth (- i 12) *gnome-spots*)))
 (defun gnome-count () (logcount *gnomes*))
 
-(defun save-gnomes () (unless (net-guest-p) (put-save :gnomes *gnomes*)))
+(defun save-gnomes () (put-save :gnomes *gnomes*))
 (defun load-gnomes () (let ((f (get-save :gnomes))) (setf *gnomes* (if (and (integerp f) (<= 0 f (1- (ash 1 18)))) f 0))))
 (defstate :gnomes                                            ; a collection: a new game does not reset it
   :clear (lambda () (setf *gnomes* 0)) :load #'load-gnomes :save #'save-gnomes :show (lambda () (show-trophies)) :keep t)

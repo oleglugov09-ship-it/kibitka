@@ -29,7 +29,6 @@ Walking towards the rack in front of it, one goes up tread by tread; a step asid
 (defparameter *mouse-sens* .0025)
 (defparameter *bounds* '(-1.4 1.4 -2.55 2.68) "The bounds x0 x1 z0 z1 on the wagon floor, right up to the back wall with the door.")
 
-(defvar *seats* '() "The places where one can sit right now: (what x z look-direction eye-height); built by REFRESH-SEATS.")
 (defparameter *sit-reach* 1.3 "The distance to a seat within which one can sit down.")
 (defvar *seat* nil "The seat we are sitting on, or NIL.")
 (defvar *camera* nil)

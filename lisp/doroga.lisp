@@ -7,37 +7,11 @@
 
 ;;; Mood
 
-(setf *grass* '(:pine "#2c3a30" :meadow "#4a5238" :autumn "#5a4e34" :birch "#444c38" :rocky "#484846"
-                :steppe "#5e583e" :marsh "#363c2e"))
-(setf *sky-keys*
-      '((0 "#16161f" "#2a2630") (45 "#566078" "#b08a78") (110 "#6f7f93" "#b9c0c4") (660 "#6f7f93" "#b9c0c4")
-        (720 "#4a4f6a" "#b87a5a") (760 "#262638" "#6a4448") (810 "#0a0c16" "#161a26") (1140 "#07090f" "#10131c")
-        (1200 "#16161f" "#2a2630")))
-(setf *fog-base* .0018)        ; thin haze: beyond the detailed land there is now a far plane (vista.lisp)
-;; overcast and foggy more often than clear
-(setf *weathers* '((:clear 2 .25 0 0 .1) (:cloudy 5 .85 0 0 .25) (:rain 2 .95 1 0 .4) (:fog 3 .5 0 0 1) (:snow 2 .85 0 1 .45)))
-;; no fairy-tale mushrooms and pumpkins; fewer things by the road - poles and bus stops replace them
-(setf *veg-props*
-      '(:pine (:pine :pine :pine :rock :snag)
-        :meadow (:bush :hay :fence :round :flowers)
-        :autumn (:autumn :autumn :snag :hay :bush)
-        :birch (:birch :birch :birch :round :rock)
-        :rocky (:rock :rock :cairn :pine)
-        :steppe (:bush :bush :hay :rock :fence)
-        :marsh (:reeds :reeds :snag :snag :bush)))
-(setf *prop-step* 2.4)
 
 ;;; Style: pixel textures from the first frame and a shared 'film' over the picture -
 ;;; less saturation, few shades, a grainy transition between them. It is also what hides
 ;;; the 'default look' of the simple models.
 
-(setf *style* :pixel)
-(setf *tex-of* (append *tex-of*
-                       '(("#4a4038" :bark 1.0) ("#85857f" :panel 1.6) ("#6e6e6a" :panel 1.6) ("#5a5a58" :panel 2.0)   ; concrete of bus stops and pedestals
-                         ;; houses - panels with seams (tools/make-panel.py); the rock texture on a wall read as a crumpled wall
-                         ("#7b7d82" :panel 2.8) ("#84807a" :panel 2.8) ("#6f757c" :panel 2.8) ("#8a7d6e" :panel 2.8)
-                         ("#8e8a82" :panel 2.8) ("#8a8478" :panel 2.8) ("#7f8a8c" :rock 2.0)
-                         ("#3a4034" :fabric .5) ("#7a3a34" :fabric .5) ("#d8d2c0" :fabric .5))))
 
 (defparameter *grade-code* "
 shader_type canvas_item;
@@ -157,8 +131,6 @@ At a fork one can thus see where the other road goes. At most two new ribbons ar
 ;;; a yellow stripe under the windows, a gray iron roof with mushroom vents, ribs along the sides.
 ;;; In front (z-) are the cab and the hood.
 
-(setf *kc* '(:body "#2f4a3c" :trim "#b9a24a" :roof "#6a6e70" :roof2 "#5e6264" :wood "#8a6440" :dark "#4a3020"
-             :floor "#a07a50" :cloth "#8a5a44" :inside "#c4b894" :carpet "#8a1a22" :carpet2 "#e0b050" :carpet3 "#2a3a7a"))
 
 (defvar *wheels* '() "The wheel nodes, which turn by the distance traveled.")
 (defvar *wheel-spin* 0.0)

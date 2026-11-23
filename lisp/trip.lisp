@@ -8,7 +8,6 @@
   ()
   (:metaclass godot-class))
 
-(defvar *time* 0.0 "The seconds since the scene started.")
 
 (defparameter *world-seed* 1 "The world seed.
 It is one for everyone and for ever: terrain, road and towns do not change from launch to launch.")

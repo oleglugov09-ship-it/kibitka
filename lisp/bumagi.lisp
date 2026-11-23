@@ -62,7 +62,7 @@ Return true if the paper is new."
     (when line (let ((*actor* nil)) (say-all line)))
     t))
 
-(defun save-papers () (unless (net-guest-p) (put-save :papers (list *licenses* *fines* *quest*))))
+(defun save-papers () (put-save :papers (list *licenses* *fines* *quest*)))
 (defun load-papers ()
   (let ((f (get-save :papers)) (old t))                          ; OLD: the save knows nothing of the co-operative's papers
     (when (fits f '(list list t))

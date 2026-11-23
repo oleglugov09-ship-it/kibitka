@@ -16,8 +16,9 @@
 (defparameter *season-days* 2 "The number of day cycles a season lasts.")
 (defparameter *weather-minutes* '(4 12) "The range of minutes a weather state holds, as (MIN MAX).")
 (defparameter *weather-change* 30.0 "The number of seconds it takes the weather to blend into the next one.")
+;; overcast and foggy more often than clear
 (defparameter *weathers*
-  '((:clear 6 0 0 0 0) (:cloudy 3 .8 0 0 .15) (:rain 2 .95 1 0 .35) (:fog 1 .4 0 0 1) (:snow 2 .85 0 1 .4))
+  '((:clear 2 .25 0 0 .1) (:cloudy 5 .85 0 0 .25) (:rain 2 .95 1 0 .4) (:fog 3 .5 0 0 1) (:snow 2 .85 0 1 .45))
   "The weather table: entries of (kind weight clouds rain snow fog).")
 (defparameter *weather-names* '(:clear "ясно" :cloudy "облачно" :rain "дождь" :fog "туман" :snow "снег"))
 

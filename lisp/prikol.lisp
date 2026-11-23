@@ -22,7 +22,7 @@ in their paws.")
 (defvar *rush-told* nil)
 (defvar *rush-bell* 0.0)
 
-(defun save-prikol () (unless (net-guest-p) (put-save :prikol (list (and *stamp* t) (and *badge* t) *gimmick-spent* (and *lid* t)))))
+(defun save-prikol () (put-save :prikol (list (and *stamp* t) (and *badge* t) *gimmick-spent* (and *lid* t))))
 (defun load-prikol ()
   (let ((f (get-save :prikol)))
     (when (fits f '(t t &optional t t))
@@ -126,6 +126,7 @@ Return T if a train ride was pending (GO-TO-TOWN then does nothing itself)."
 
 (defvar *goat* nil "Manka the goat by her booth: the node, as built with the booth.")
 (defvar *goat-milk* nil "The milk in Manka's pail: a node that grows as the pail fills.")
+(defvar *lid* nil "True once the lid for the frying pan is bought (hardware store, Krasny Kut): under it things fry twice as fast.")
 (define-fields plate node x y z swing speed alive)
 (define-fields block node x y coal broken)
 (defvar *rock* '() "The rock face of the mine, as built with its booth: entries of (node x y coal broken).")

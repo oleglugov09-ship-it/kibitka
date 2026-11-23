@@ -8,10 +8,10 @@
 
 (in-package #:kiosk-trip)
 
-(defparameter *style* nil "The current texture style: NIL, :painted, :pixel or :pbr.")
+(defparameter *style* :pixel "The current texture style: NIL, :painted, :pixel or :pbr.")
 
 (defparameter *tex-of*
-  '(("#7a2a24" :planks_wall 1.3) ("#c89a6a" :planks_wall 1.3) ("#8a6440" :planks_wall .9) ("#4a3020" :planks_wall .9)
+  (append '(("#7a2a24" :planks_wall 1.3) ("#c89a6a" :planks_wall 1.3) ("#8a6440" :planks_wall .9) ("#4a3020" :planks_wall .9)
     ("#a07a50" :planks_floor 1.6) ("#2a4a3e" :planks_roof 1.4) ("#2e5244" :planks_roof 1.4)
     ("#8a1a22" :carpet 1.2) ("#2a3a6a" :carpet 1.0) ("#e0b050" :fabric .5) ("#b84a34" :fabric .6)
     ("#5a2a5a" :fabric .6) ("#c04050" :fabric .4) ("#4070c0" :fabric .4) ("#40a060" :fabric .4) ("#f0e8d8" :fabric .5)
@@ -19,6 +19,11 @@
     ("#4a4648" :rock 1.5) ("#6a6670" :rock 1.5) ("#46424e" :rock 3.0)
     ("#7a5a3a" :planks_floor 1.6) ("#6a4a2e" :planks_floor 1.6) ("#5a3e26" :planks_wall 1.2) ("#4a3420" :planks_wall 1.2)
     ("#d8b050" :dry 1.0))
+                       '(("#4a4038" :bark 1.0) ("#85857f" :panel 1.6) ("#6e6e6a" :panel 1.6) ("#5a5a58" :panel 2.0)   ; concrete of bus stops and pedestals
+                         ;; houses - panels with seams (tools/make-panel.py); the rock texture on a wall read as a crumpled wall
+                         ("#7b7d82" :panel 2.8) ("#84807a" :panel 2.8) ("#6f757c" :panel 2.8) ("#8a7d6e" :panel 2.8)
+                         ("#8e8a82" :panel 2.8) ("#8a8478" :panel 2.8) ("#7f8a8c" :rock 2.0)
+                         ("#3a4034" :fabric .5) ("#7a3a34" :fabric .5) ("#d8d2c0" :fabric .5)))
   "A table from a material color to (texture, meters per repeat).")
 
 (defparameter *water-rgb* "#2a5a80")

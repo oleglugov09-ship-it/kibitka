@@ -86,7 +86,7 @@ Pressing the same key again switches it off."
 ;;; ------------------------------------------------------------------ the wall: storage
 
 (defun save-wall ()
-  (unless (net-guest-p) (put-save :wall (list *pennants* *photos* *snapped* (and *swatter* t)))))
+  (put-save :wall (list *pennants* *photos* *snapped* (and *swatter* t))))
 
 (defun load-wall ()
   (let ((form (get-save :wall)))
@@ -291,7 +291,6 @@ Each time it is about something different."
 
 ;;; ------------------------------------------------------------------ pancakes
 
-(defvar *lid* nil "True once the lid for the frying pan is bought (hardware store, Krasny Kut): under it things fry twice as fast.")
 
 (defun stove-surface ()
   "Return where things are put to cook, as (x z width depth height): the top of the stove."
@@ -377,18 +376,6 @@ What stands on the hot stove turns into dishes (STOVE-JOBS); each job has its ow
                          "Мухомор на сковородке! Всё пришлось выбросить. Красный в белую точку — не брать"
                          (format nil "Готово: ~a. Там, где ищут сырьё, за блюдо дадут вдвое больше"
                                  (second (assoc dish *kinds*)))))))))))
-
-(defun good-price (kind price)
-  "Return how much a buyer pays for the good KIND when paying PRICE for the raw good.
-A dish costs more."
-  (let* ((recipe (dish-p kind))
-         (price (cond ((null recipe) price)
-                      ;; a dish of two goods: the second one is paid for as well, a little above what it costs raw
-                      ((fourth recipe) (+ (* *blin-factor* price) *blin-bonus* (round (* *second-share* (good-base (fourth recipe))))))
-                      (t (+ (* *blin-factor* price) *blin-bonus*)))))
-    (if (and (eq *season* :winter) (preserved-p kind)) (round (* *winter-bonus* price)) price)))  ; what was put by for the winter
-
-(defun good-p (kind) (or (and (dish-p kind) t) (and (assoc kind *goods*) t)))
 
 ;;; ------------------------------------------------------------------ mosquito and fly swatter
 

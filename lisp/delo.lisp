@@ -10,6 +10,7 @@
 ;;; (OBJECT-SET, shapes.lisp). So the rest of the code does not need to know about language.
 
 (defvar *dev-flags* '() "Switches for hunting a bug, from the page address: strings such as nostart or nopond.")
+(defvar *time* 0.0 "The seconds since the scene started; TRIP.LISP moves it every frame.")
 (defvar *dev* nil "Dev polygon flag: when true, all booths stand in a row at the start of the road (dev.lisp).")
 (defvar *lang* :ru "The game language: :ru or :en.")
 (defvar *en* (make-hash-table :test #'equal) "The table mapping a Russian string to its English string.")

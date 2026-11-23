@@ -26,7 +26,7 @@ Such places are a gas station, a bus stop, the observatory and the recycling dep
 
 (defun save-finds ()
   "Write the finds to the save. A guest does not: what it holds of them is the driver's."
-  (unless (net-guest-p) (put-save :finds (list *bottles* *papers* (and *spyglass* t) *picked*))))
+  (put-save :finds (list *bottles* *papers* (and *spyglass* t) *picked*)))
 
 (defun load-finds ()
   (let ((f (get-save :finds)))

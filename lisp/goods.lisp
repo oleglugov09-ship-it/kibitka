@@ -87,6 +87,18 @@ a resale of a shop good is speculation: a deed against us, and one more for the 
   "Return the tariff of a plan's crate that goes WAY metres: a transfer, on the scale of an enterprise's money."
   (* *transfer-scale* (way-pay way)))
 
+(defun good-price (kind price)
+  "Return how much a buyer pays for the good KIND when paying PRICE for the raw good.
+A dish costs more."
+  (let* ((recipe (dish-p kind))
+         (price (cond ((null recipe) price)
+                      ;; a dish of two goods: the second one is paid for as well, a little above what it costs raw
+                      ((fourth recipe) (+ (* *blin-factor* price) *blin-bonus* (round (* *second-share* (good-base (fourth recipe))))))
+                      (t (+ (* *blin-factor* price) *blin-bonus*)))))
+    (if (and (eq *season* :winter) (preserved-p kind)) (round (* *winter-bonus* price)) price)))  ; what was put by for the winter
+
+(defun good-p (kind) (or (and (dish-p kind) t) (and (assoc kind *goods*) t)))
+
 (defun delivery-pay ()
   "Return the pay from the recipient for a delivered parcel (more with the town council stamp)."
   (* *parcel-delivery* (if *stamp* *stamp-factor* 1)))

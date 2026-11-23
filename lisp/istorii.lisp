@@ -112,7 +112,7 @@ It is said once, when there is something to ask about; otherwise return NIL."
     (say-all (cdr *story-late*))
     (setf *story-late* nil)))
 
-(defun save-stories () (unless (net-guest-p) (put-save :stories (list *story-at* *story-transit* *story-after* *news*))))
+(defun save-stories () (put-save :stories (list *story-at* *story-transit* *story-after* *news*)))
 (defun load-stories ()
   (let ((f (get-save :stories)))
     (when (fits f '(list list list list))

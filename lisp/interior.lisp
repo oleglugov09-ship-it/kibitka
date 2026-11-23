@@ -145,6 +145,8 @@ One can sit on a mattress and on a floor-level crate with nothing standing on it
           when (eq kind :mattress) collect (list :bed x z -1.57 (+ y .14 .45))
           when (and (eq kind :crate) (zerop y) (clear-p x y z)) collect (list :crate x z -1.57 (+ .45 .48)))))
 
+(defvar *seats* '() "The places where one can sit right now: (what x z look-direction eye-height); built by REFRESH-SEATS.")
+
 ;;; The list of things changes in three ways only, and only here: a thing is stood in the wagon (STAND-ITEM), a
 ;;; thing is lifted out of it (LIFT-ITEM), or the whole arrangement is replaced (SET-ITEMS). After the first two
 ;;; the caller says so once it is done with its own business: THINGS-CHANGED.

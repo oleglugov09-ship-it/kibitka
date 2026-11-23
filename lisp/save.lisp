@@ -89,7 +89,8 @@ Read the file itself, its backup copy or, when neither exists, the old-style fil
   "Put FORM into the section KEY.
 It reaches the disk within the next second (STEP-SAVES)."
   (let ((file (save-file-of key)))
-    (when file
+    ;; a guest's world is the driver's: whatever asks, nothing of it is written into our own file
+    (when (and file (not (and (eq (first file) :world) (net-guest-p))))
       (ensure-save file)
       (unless (equal form (gethash key *saves*))
         (setf (gethash key *saves*) form)
