@@ -155,7 +155,7 @@ def bring(port, kind, tries=16):
         got = ev(port, f"""(progn (when {K}*client* ({K}client-leave))
             (setf {K}*visits* nil)
             (let ((*random-state* (make-random-state {seed + 1}))
-                  ({K}*items* (remove-if (lambda (it) (sixth (car it))) {K}*items*)))
+                  ({K}*items* (remove-if (lambda (it) ({K}spec-addr (car it))) {K}*items*)))
               ({K}ring-bell))
             (getf {K}*client* :kind))""")
         if got == kind:
@@ -183,15 +183,15 @@ def solo():
     check("получатель подошёл сам", lambda: ev(p, f"(list (getf {K}*client* :kind) (<= (getf {K}*client* :arrive) 0))"), "(:RECIPIENT T)", within=15)
     check("окно при клиенте не закрыть", ev(p, f"(progn ({K}toggle-window) {K}*window-open*)"), "T")
     # take a parcel by hand and put it on our own windowsill
-    ev(p, f"""(let ((it (find 0 {K}*items* :key (lambda (it) (sixth (car it))))))
+    ev(p, f"""(let ((it (find 0 {K}*items* :key (lambda (it) ({K}spec-addr (car it))))))
         (setf {K}*view* :inside {K}*pos* (godot:vector3 (second (car it)) 0 -1.3) {K}*yaw* 0.0
-              {K}*pitch* (float (atan (- (+ (third (car it)) 0.22) {K}*eye*) 1.2) 1.0))
+              {K}*pitch* (float (atan (- (+ ({K}spec-y (car it)) 0.22) {K}*eye*) 1.2) 1.0))
         1)""")
     aim = ev(p, f"(list {K}*pos* {K}*yaw* {K}*pitch*)")
     check("E посылку не берёт", ev(p, f"(progn ({K}use-thing) {K}*carry*)"), "NIL")
-    ev(p, f"""(let ((it (find 0 {K}*items* :key (lambda (it) (sixth (car it))))))      ; E мог усадить на табуретку — целимся заново
+    ev(p, f"""(let ((it (find 0 {K}*items* :key (lambda (it) ({K}spec-addr (car it))))))      ; E мог усадить на табуретку — целимся заново
         (setf {K}*seat* nil {K}*pos* (godot:vector3 (second (car it)) 0 -1.3) {K}*yaw* 0.0
-              {K}*pitch* (float (atan (- (+ (third (car it)) 0.22) {K}*eye*) 1.2) 1.0))
+              {K}*pitch* (float (atan (- (+ ({K}spec-y (car it)) 0.22) {K}*eye*) 1.2) 1.0))
         1)""")
     check("ЛКМ берёт посылку", ev(p, f"(progn ({K}hand-thing) {K}*carry*)"), "(:BOX . 0)")
     ev(p, f"(setf {K}*pos* (godot:vector3 0.5 0 0.0) {K}*yaw* -1.57 {K}*pitch* -0.32)")
@@ -296,7 +296,7 @@ def pair():
     ev(h, f"(setf {K}*window-open* t)")
     check("гость видит получателя у окна", lambda: ev(g, f"(getf {K}*client* :kind)"), ":RECIPIENT", within=18)
     check("получатель дошёл до окна", lambda: ev(h, f"(and {K}*client* (<= (getf {K}*client* :arrive) 0) t)"), "T", within=12)
-    ev(g, f"""(let ((it (find 0 {K}*items* :key (lambda (it) (sixth (car it))))))
+    ev(g, f"""(let ((it (find 0 {K}*items* :key (lambda (it) ({K}spec-addr (car it))))))
         (godot:node-queue-free (cdr it))
         (setf {K}*items* (remove it {K}*items*) {K}*carry* (cons :box 0) {K}*carry-from* (car it) {K}*took* (car it))
         ({K}show-carry)
@@ -332,7 +332,7 @@ def pair():
     same("куда едем — знают оба", f"(cdr {K}*auto*)")
     # the guest's look (clothes, flashlight) reaches the driver
     ev(g, f"(progn ({K}toggle-torch) 1)")
-    check("гость включил фонарик — водитель это видит", lambda: ev(h, f"(and (find-if (lambda (o) (>= (eighth o) 100)) {K}*net-others*) t)"), "T", within=6)
+    check("гость включил фонарик — водитель это видит", lambda: ev(h, f"(and (find-if (lambda (o) (>= ({K}other-look o) 100)) {K}*net-others*) t)"), "T", within=6)
     ev(g, f"(progn ({K}toggle-torch) 1)")
     # live editing for everyone: a value, a new function and an error
     ev(h, f"(progn ({K}everyone \"(setf *tank-km* 9.5) (defun probe-fn (x) (* x 3))\") 1)")
