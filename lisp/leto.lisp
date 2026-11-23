@@ -27,15 +27,18 @@ its last third the day moves on to the hour of the next."
       (when (< next here) (incf next *day-len*))
       (if (< f .68) (+ here (* 12.0 f)) (+ here 8.2 (* (- next here 8.2) (sstep .68 1.0 f)))))))
 
+(defvar *summer-air* (list :gloom 0.0 :hour 0.0 :weather (list :cloud 0.0 :rain 0.0 :snow 0.0 :fog 0.0) :juice 1.0)
+  "The air of the summer as SUMMER-AIR last described it: one plist, set anew every frame.")
+
 (defun summer-weather (s)
   "Return the weather at S metres along the way, as a plist of what STEP-CLIMATE is to aim at: mist in the morning,
-a storm in its hour, clear otherwise."
+a storm in its hour, clear otherwise. It is the weather plist of *SUMMER-AIR*, set anew."
   (multiple-value-bind (z f) (summer-zone s)
-    (let ((kind (nth (* 2 (mod z (/ (length *summer-hours*) 2))) *summer-hours*)))
-      (case kind
-        (:storm (let ((k (* (sstep 0.0 .12 f) (- 1.0 (sstep .8 .98 f))))) (list :cloud k :rain (* .9 k) :snow 0.0 :fog (* .1 k))))
-        (:morning (list :cloud 0.0 :rain 0.0 :snow 0.0 :fog (* .22 (- 1.0 (sstep .2 .8 f)))))
-        (t (list :cloud 0.0 :rain 0.0 :snow 0.0 :fog 0.0))))))
+    (let* ((kind (nth (* 2 (mod z (/ (length *summer-hours*) 2))) *summer-hours*)) (wx (getf *summer-air* :weather))
+           (storm (if (eq kind :storm) (* (sstep 0.0 .12 f) (- 1.0 (sstep .8 .98 f))) 0.0)))
+      (setf (getf wx :cloud) storm (getf wx :rain) (* .9 storm)
+            (getf wx :fog) (if (eq kind :morning) (* .22 (- 1.0 (sstep .2 .8 f))) (* .1 storm)))
+      wx)))
 
 ;;; What every cell of the summer has: the concrete road, its sandy shoulders, a pole of the power line.
 
@@ -218,7 +221,9 @@ the field as one sheet of the same yellow."
 (defun summer-air (s)
   "Return the air of the summer S metres in: it is under the sky, so the dark ends with the tunnel; the sky shows the
 hour of the place and the weather is its own; the picture is in full colour, not a faded film."
-  (list :gloom (- 1.0 (sstep 150.0 235.0 s)) :hour (summer-hour s) :weather (summer-weather s) :juice 1.0))
+  (summer-weather s)
+  (setf (getf *summer-air* :gloom) (- 1.0 (sstep 150.0 235.0 s)) (getf *summer-air* :hour) (summer-hour s))
+  *summer-air*)
 
 (add-world :summer :flag "summer" :kind 'summer-zone-kind :parts 'build-summer-parts :air 'summer-air
            :rules '()                                                    ; nothing of the ring goes on here, and the clock stands

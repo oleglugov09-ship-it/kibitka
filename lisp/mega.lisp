@@ -29,7 +29,8 @@ its lane, so the way is a little to its left.")
 ;;;   :PARTS (g turn entry) build what does not go by - under G in the wagon's axes, under TURN in the axes of the
 ;;;                        place, under ENTRY round the tunnel's mouth - and return a plist to keep in *MEGA-PARTS*;
 ;;;   :STEP (parts)        every frame, move and show those parts;
-;;;   :AIR (s)             what the air of the place is S metres in, as a plist for SET-AIR.
+;;;   :AIR (s)             what the air of the place is S metres in, as a plist for SET-AIR. It is asked every frame:
+;;;                        a world keeps one plist and sets its values, rather than making a new one each time.
 ;;; And two things that are not functions: :RULES, what goes on in the world as it does on the ring (place.lisp);
 ;;; :OFFMAP, the card shown there instead of the map, a format string that takes the kilometres driven.
 
@@ -311,9 +312,15 @@ group. The cells themselves are built by STEP-MEGA-CELLS as the wagon goes."
     (object-call *grade* "set_shader_parameter" "sat" (+ .74 (* .3 k)))
     (object-call *grade* "set_shader_parameter" "gain" (+ .94 (* .04 k)))))
 
+(defparameter *air-ease* 1.4 "The seconds in which the haze and the murk of a place come two thirds of the way to what a new zone asks for.")
+(defvar *air-at* 0.0 "The time the air was last set: the haze and the murk move by the clock, not by the frame.")
+
 (defun set-air (air)
-  "Make the air what the plist AIR describes; with NIL, the air of the ring."
-  (flet ((towards (now want) (+ now (* .012 (- want now)))))
+  "Make the air what the plist AIR describes; with NIL, the air of the ring. The plist is only read: a world may hand
+the same one every frame."
+  (let ((step (float (- 1.0 (exp (- (/ (max 0.0 (min 1.0 (- *time* *air-at*))) *air-ease*)))) 1.0)))   ; the same pace at 7 frames a second as at 60
+    (setf *air-at* *time*)
+    (flet ((towards (now want) (+ now (* step (- want now)))))
     (cond (air
            (let ((fog (getf air :fog)))
              (setf *gloom* (float (getf air :gloom 1.0) 1.0)
@@ -326,7 +333,7 @@ group. The cells themselves are built by STEP-MEGA-CELLS as the wagon goes."
                                       0.0)
                                   1.0)
                    *haze* 0.0 *fog-inside* nil *sky-hour* nil *wx-force* nil *sun-turn* 0.0)
-             (juice 0.0)))))
+             (juice 0.0))))))
 
 (defun step-mega ()
   "Show the place behind the door to those in it, and nothing of the ring; lay it out along the way driven; give it
@@ -338,7 +345,7 @@ its air."
     (cond ((and in (null *mega-node*)) (setf *mega-node* (build-mega)))
           ((and (not in) *mega-node*) (node-queue-free *mega-node*) (clrhash *mega-cells*) (clrhash *mega-lives*)
                 (setf *mega-node* nil *mega-parts* nil)))
-    (set-air (and in (or (world-call :air *mega-s*) (list :gloom 1.0))))
+    (set-air (and in (or (world-call :air *mega-s*) '(:gloom 1.0))))
     (when (and in *mega-parts*)
       (step-mega-cells)
       (node-3d-set-position (getf *mega-parts* :entry) (v3 0 (- (mega-height *mega-s*)) *mega-s*))

@@ -111,10 +111,13 @@ the order they are listed and after that shuffled, never the same twice in a row
     (object-set (getf parts :crane) "visible" (and (eq here :rail) (eq there :rail)))
     (object-set (getf parts :lift) "visible" (and (eq here :lift) (> *mega-s* 196.0)))))
 
+(defvar *mega-air* (list :gloom 1.0 :haze 0.0 :fog .0047) "The air of the megastructure as MEGA-AIR last described it: one plist, set anew every frame.")
+
 (defun mega-air (s)
   "Return the air of the megastructure S metres in: no day and no sky, the haze and the murk of the zone."
   (let ((kind (mega-kind (floor s *mega-cell*))))
-    (list :gloom 1.0 :haze (zone kind :haze 0.0) :fog (zone kind :fog .0047))))
+    (setf (getf *mega-air* :haze) (zone kind :haze 0.0) (getf *mega-air* :fog) (zone kind :fog .0047))
+    *mega-air*))
 
 (add-world :mega :flag "tunnel" :kind 'mega-zone-kind :drop 'mega-lift-drop :parts 'build-mega-parts :step 'step-mega-parts :air 'mega-air
            :rules '(:clock t)                                            ; nothing of the ring goes on here, but time passes
