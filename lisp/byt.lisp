@@ -433,10 +433,9 @@ Addressed parcels are not broken."
           ((not (member (first (car it)) '(:crate :box))) (say "На доски идут только ящики"))
           ((sixth (car it)) (say "Это чужая посылка. Её ждут"))
           (t (node-queue-free (cdr it))
-             (setf *items* (remove it *items*))
+             (lift-item it)
              (incf *planks* *crate-planks*)
-             (settle-items)
-             (refresh-seats) (save-interior)
+             (things-changed t)
              (say (format nil "Ящик разобран. Досок: ~d" *planks*))))))
 
 ;;; Frost on the windows

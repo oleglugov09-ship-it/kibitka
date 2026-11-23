@@ -464,7 +464,7 @@ For a guest the deal is made by the driver."
                          (award-pennant town) (note-quest :post)
                          (let ((answer (story-delivered (sixth (car it))))) (when answer (say-later answer))))   ; they reply to this very parcel
                        (fly (cdr it) (paws-point (fourth (car it))) :dur .4 :free t)   ; reaches out a paw and takes it
-                       (setf *items* (remove it *items*))
+                       (lift-item it)
                        (if (and (eq kind :recipient) (parcel-good (sixth (car it))))       ; the plan's crate: into the shop, pay to the account
                            (let ((had *talons*) (premium (deliver-cargo (sixth (car it)))))
                              (setf price (+ price premium))
@@ -485,7 +485,7 @@ For a guest the deal is made by the driver."
                                    (say-later (format nil "Горсовет выдал талоны: ~d. Теперь у нас ~d" (- *talons* had) *talons*)))))
                            (progn (add-money price)
                                   (setf done (format nil "Посылка вручена: +~/kiosk-trip::rub/" price))))
-                       (settle-items) (refresh-seats) (save-interior)
+                       (things-changed t)
                        (log-event (if (eq kind :buyer) :sold :delivered) :price price :town town :money *money* :dist (round *dist*))
                        (cond ((eq kind :buyer) (client-leave (format nil "Продали за ~/kiosk-trip::rub/" price)))
                              ((plusp (parcels-for town))

@@ -290,20 +290,19 @@ Return T if something was done."
                  (spot
                   (let ((spec (make-spec (car *carry*) (float (first spot) 1.0) (float (third spot) 1.0) (float (second spot) 1.0) 0
                                          (cdr *carry*) *carry-props*)))
-                    (let ((node (apply #'build-item *cart* spec)))
-                      (push (cons spec node) *items*)
+                    (let ((node (stand-item spec)))
                       (fly node (node-3d-get-position node) :from (hand-point)))      ; from hand to its place
                     (setf *last-put* (list spec *time* *carry-from*)))
                   (empty-paws) (show-carry)
-                  (refresh-seats) (save-interior))
+                  (things-changed))
                  (t (say "Посмотри, куда поставить: полка, подоконник, пол")))
            t))
         (t (let ((it (item-in-sight)))
              (when it
                (fly (cdr it) (hand-point) :dur .2 :free t)                           ; from its place into hand
-               (setf *items* (remove it *items*) *took* (car it))
+               (lift-item it) (setf *took* (car it))
                (set-carry (cons (first (car it)) (sixth (car it))) (spec-props (car it)) (car it))
-               (show-carry) (settle-items) (refresh-seats) (save-interior)
+               (show-carry) (things-changed t)
                t)))))
 
 (defun reconcile-carry (specs)
@@ -325,10 +324,9 @@ driver's, so it returns to the hands, or it would be lost."
 (defun stow-carry ()
   "Return what is in hand to where it was taken from (or to the window) before joining another game."
   (when *carry*
-    (let ((spec (carry-spec)))
-      (push (cons spec (apply #'build-item *cart* spec)) *items*))
+    (stand-item (carry-spec))
     (empty-paws)
-    (show-carry) (refresh-seats) (save-interior)))
+    (show-carry) (things-changed)))
 
 (defun carry-hint ()
   (cond (*carry* (if (and (put-spot) (not (spot-problem (put-spot))))

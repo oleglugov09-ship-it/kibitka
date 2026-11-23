@@ -145,6 +145,26 @@ One can sit on a mattress and on a floor-level crate with nothing standing on it
           when (eq kind :mattress) collect (list :bed x z -1.57 (+ y .14 .45))
           when (and (eq kind :crate) (zerop y) (clear-p x y z)) collect (list :crate x z -1.57 (+ .45 .48)))))
 
+;;; The list of things changes in three ways only, and only here: a thing is stood in the wagon (STAND-ITEM), a
+;;; thing is lifted out of it (LIFT-ITEM), or the whole arrangement is replaced (SET-ITEMS). After the first two
+;;; the caller says so once it is done with its own business: THINGS-CHANGED.
+
+(defun stand-item (spec)
+  "Stand the thing recorded as SPEC in the wagon and return its node."
+  (let ((node (apply #'build-item *cart* spec)))
+    (push (cons spec node) *items*)
+    node))
+
+(defun lift-item (it)
+  "Take IT, an entry of *ITEMS*, out of the wagon. Its node is the caller's: to free, or to fly into someone's paws."
+  (setf *items* (remove it *items*)))
+
+(defun things-changed (&optional gone)
+  "Things were stood in the wagon or, with GONE, lifted out of it: then whatever stood on them comes down. The
+seats are counted anew and the arrangement is saved."
+  (when gone (settle-items))
+  (refresh-seats) (save-interior))
+
 (defun refresh-seats ()
   (setf *seats* (append (fold-seats) (bed-seats)))
   ;; we sat on a crate and it was carted off or taken apart - stand up
@@ -214,8 +234,8 @@ Return NIL when looking past everything."
       (destructuring-bind (x z top item) a
         (declare (ignore item))
         (let ((spec (list kind (snap x) top (snap z) *spin*)))
-          (push (cons spec (apply #'build-item *cart* spec)) *items*)
-          (refresh-seats) (save-interior))))))
+          (stand-item spec)
+          (things-changed))))))
 
 (defun support-under (spec below)
   "Return the height at which the thing SPEC finds support.
@@ -258,9 +278,8 @@ Return true if anything moved."
       (when (and (member (first (car it)) '(:crate :box)) (not (sixth (car it))))   ; our own crate was removed - the planks come back
         (incf *planks* *crate-planks*))
       (node-queue-free (cdr it))
-      (setf *items* (remove it *items*))
-      (settle-items)
-      (refresh-seats) (save-interior))))
+      (lift-item it)
+      (things-changed t))))
 
 (defun toggle-build ()
   (unless *meta*
