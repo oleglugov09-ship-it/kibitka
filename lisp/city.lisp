@@ -96,15 +96,7 @@ YAW turns it: 0 faces z+, pi faces z-, -pi/2 faces the street."
          (mh (min (- high 3.0) (/ (- wide 2.0) .75) 14.0)))
     (incf *mosaic-count*)
     (when mat
-      (let ((mi (gdext:make-object "MeshInstance3D")) (mesh (gdext:make-object "QuadMesh")))
-        (object-set mesh "size" (vector2 (* mh .75) mh))
-        (object-set mi "mesh" mesh)
-        (object-set mi "material_override" mat)
-        (object-set mi "cast_shadow" 0)
-        (node-add-child g mi)
-        (node-3d-set-position mi (v3 x (max (+ 1.8 (/ mh 2)) (- (* high .62) 1.0)) z))
-        (node-3d-set-rotation mi (v3 0 yaw 0))
-        mi))))
+      (picture-quad g (* mh .75) mh mat x (max (+ 1.8 (/ mh 2)) (- (* high .62) 1.0)) z yaw))))
 
 ;;; Building blocks of houses
 

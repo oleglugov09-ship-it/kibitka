@@ -34,7 +34,7 @@ The body, the door and the furniture are painted in their Blender files (models/
 Its width follows the picture. Return the mesh instance, or NIL when the picture is missing."
   (let ((path "res://textures/murals/carpet.png"))
     (when (picture-here-p path)
-      (let ((img (gdext:make-object "Image")) (mi (gdext:make-object "MeshInstance3D")) (mesh (gdext:make-object "QuadMesh")))
+      (let ((img (gdext:make-object "Image")))
         (read-picture img path)
         (unless *carpet-mat*
           (let ((tx (gdext:make-object "ImageTexture")) (m (gdext:make-object "StandardMaterial3D")))
@@ -44,14 +44,8 @@ Its width follows the picture. Return the mesh instance, or NIL when the picture
             (object-set m "roughness" 1.0)
             (object-set m "metallic_specular" .05)
             (gdext:setf-reference *carpet-mat* m)))
-        (object-set mesh "size" (vector2 (/ (* height (object-call img "get_width")) (object-call img "get_height")) height))
-        (object-set mi "mesh" mesh)
-        (object-set mi "material_override" *carpet-mat*)
-        (object-set mi "cast_shadow" 0)
-        (node-add-child parent mi)
-        (node-3d-set-position mi (v3 x y z))
-        (node-3d-set-rotation mi (v3 0 (/ pi 2) 0))
-        mi))))
+        (picture-quad parent (/ (* height (object-call img "get_width")) (object-call img "get_height")) height *carpet-mat*
+                      x y z (/ pi 2))))))
 
 (defun make-cart (root)
   (when *cart* (node-queue-free *cart*))

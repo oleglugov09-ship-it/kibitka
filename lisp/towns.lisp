@@ -31,15 +31,7 @@ VARIANT is :a for a scene or :b for an ornament (drawn by tools/make-murals.py).
 FACING is ±1, the direction along x that it faces. Return the mesh instance, or NIL if there is no material."
   (let ((mat (mural-material town variant)))
     (when mat
-      (let ((mi (gdext:make-object "MeshInstance3D")) (mesh (gdext:make-object "QuadMesh")))
-        (object-set mesh "size" (vector2 (* height .75) height))
-        (object-set mi "mesh" mesh)
-        (object-set mi "material_override" mat)
-        (object-set mi "cast_shadow" 0)
-        (node-add-child parent mi)
-        (node-3d-set-position mi (v3 x y z))
-        (node-3d-set-rotation mi (v3 0 (* facing (/ pi 2)) 0))
-        mi))))
+      (picture-quad parent (* height .75) height mat x y z (* facing (/ pi 2))))))
 
 (defun mural (b face h len town variant)
   "Place a mural across the whole wall of the house B.

@@ -371,3 +371,15 @@ Return the light."
     (node-3d-set-position l (v3 x y z))
     l))
 
+(defun picture-quad (parent w h mat x y z yaw)
+  "Hang a flat picture, W wide and H high, with the material MAT under PARENT at (X Y Z), turned YAW about the
+vertical. It casts no shadow. Return its node. Mosaics, murals and the carpet are such pictures."
+  (let ((mi (gdext:make-object "MeshInstance3D")) (mesh (gdext:make-object "QuadMesh")))
+    (object-set mesh "size" (vector2 w h))
+    (object-set mi "mesh" mesh)
+    (object-set mi "material_override" mat)
+    (object-set mi "cast_shadow" 0)
+    (node-add-child parent mi)
+    (node-3d-set-position mi (v3 x y z))
+    (node-3d-set-rotation mi (v3 0 yaw 0))
+    mi))
