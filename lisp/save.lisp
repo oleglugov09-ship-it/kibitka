@@ -96,6 +96,13 @@ It reaches the disk within the next second (STEP-SAVES)."
         (setf (gethash key *saves*) form)
         (pushnew (first file) *saves-dirty*)))))
 
+(defun replace-saves (sections)
+  "Put SECTIONS, (key form ...) of the current version, in place of what the world file holds, and write it at once:
+a copy of the world is being restored."
+  (loop for (key form) on sections by #'cddr do (setf (gethash key *saves*) form))
+  (pushnew :world *saves-dirty*)
+  (flush-saves))
+
 (defun form-reads-back-p (form)
   "Return true if FORM, written the way a save is written, reads back as the same thing."
   (let* ((text (ignore-errors (with-standard-io-syntax (prin1-to-string form))))

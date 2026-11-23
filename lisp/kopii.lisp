@@ -72,10 +72,7 @@ With AUTO it goes to the slots of automatic copies, and the hand-made ones are l
     (cond ((not (and (fits f '(t real string t)) (fits save '(t integer list)))) (say "Копия не читается"))
           (*net-peers* (say "Сначала отпусти попутчиков: при них мир не подменить"))
           (t (make-copy)                                                  ; the world as it is now: so this can be undone
-             (let ((sections (upgrade-save (second save) (third save))))
-               (loop for (key form) on sections by #'cddr do (setf (gethash key *saves*) form))
-               (pushnew :world *saves-dirty*)
-               (flush-saves))
+             (replace-saves (upgrade-save (second save) (third save)))
              (own-world-again)
              (log-event :restore :slot slot)
              (say (format nil "Мир восстановлен из копии: ~a. Прежний мир тоже сохранён копией" (third f)))))))

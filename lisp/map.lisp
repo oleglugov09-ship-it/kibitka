@@ -118,7 +118,8 @@ This is a cheat. Return T if the wagon was moved."
           (cond ((net-guest-p) (say "Переносит водитель") nil)
                 (t (let* ((k (/ 112.0 (/ (ring-length) (* 2 pi))))
                           (d (nearest-road-d (+ (first *hub*) (/ (- mx 320) k)) (+ (second *hub*) (/ (- my 180) k)))))
-                     (setf *auto* nil *auto-then* nil *way* '() *dir* 1 *yaw-now* 0.0 *lane-now* 0.0)
+                     (setf *auto* nil *auto-then* nil *way* '())
+                     (reset-heading)
                      (halt)
                      (relocate d)
                      (log-event :cheat :what :teleport :dist (round d))
@@ -197,6 +198,8 @@ The result is (DISTANCE-TO-IT . PATH-COORDINATE), or NIL if there is none."
         (let ((gap (if (eq e (ring)) (ring-gap *dist* d *dir*) (* *dir* (- d *dist*)))))
           (when (and (> gap 30.0) (or (null best) (< gap (car best)))) (setf best (cons gap d))))))))
 
+(defun cancel-course () "Switch the autopilot off: the truck brakes and stops by itself." (setf *auto* nil))
+
 (defun set-course (target title)
   "Plan the autopilot's course to TARGET, announced under the name TITLE.
 Return the length and the turns, or NIL if there is no road. If driving backwards is shorter
@@ -247,7 +250,7 @@ but there is no room to turn around here, head for the nearest bus stop first an
                            (say-all (format nil "Автопилот: к ближайшей АЗС, ~,1f км" (/ (car best) 1000)))
                            (close-map) (return-from step-map))
                      (t (object-set box "button_pressed" nil) (say "По этой дороге заправок нет")))))
-            ((and (not (object-get box "button_pressed")) to-fuel) (setf *auto* nil))))
+            ((and (not (object-get box "button_pressed")) to-fuel) (cancel-course))))
     ;; checkbox: to the savings bank, where the loan is paid and the wage is given. A booth answers only with
     ;; the wagon standing next to it, and the market, where a town's button takes us, is too far from this one
     (let ((box (getf *map-parts* :bank)) (to-bank (and *auto* (equal (cdr *auto*) "сберкасса"))))
@@ -260,7 +263,7 @@ but there is no room to turn around here, head for the nearest bus stop first an
                             (say-all (format nil "Автопилот: к сберкассе, ~a, ~,1f км" (town-name 0) (/ (or total len) 1000))))
                           (close-map) (return-from step-map))
                      (t (object-set box "button_pressed" nil) (say "К сберкассе отсюда дороги нет")))))
-            ((and (not (object-get box "button_pressed")) to-bank) (setf *auto* nil))))
+            ((and (not (object-get box "button_pressed")) to-bank) (cancel-course))))
     (loop for b in (getf *map-parts* :towns) for tw in *towns*
           do (when (object-get b "button_pressed")
                (object-set b "button_pressed" nil)

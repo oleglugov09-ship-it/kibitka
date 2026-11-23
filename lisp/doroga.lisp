@@ -466,7 +466,8 @@ BACK is for those driving back."
   "Start the roadside from scratch for a new trip.
 The nodes are already gone together with the previous World."
   (setf *roadside* '() *stops* '() *towns* '() *town-upto* 0.0 *town-n* 0
-        *departed* nil *dir* 1 *yaw-now* 0.0 *lane-now* 0.0)
+        *departed* nil)
+  (reset-heading)
   (halt)
   (clrhash *pole-wires*) (clrhash *built-towns*)
   (stages

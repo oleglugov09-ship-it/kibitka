@@ -52,7 +52,7 @@ The truck drives only on autopilot (the map); the player can just stop it with S
   (when *torch-node* (object-set *torch-node* "visible" nil))   ; the camera is outside — the torch is not in the frame
   (unless (net-guest-p)                                        ; only the driver stops the truck
     (when (and *auto* (action-down :move-back))                ; STEP-AUTO brakes to a full stop
-      (setf *auto* nil)
+      (cancel-course)
       (say-all "Стоп. Дальше — по карте (M)")))
   (let ((cp (cos *orbit-pitch*)) (d *orbit-dist*))
     (node-3d-set-position *camera* (v3 (* d (sin *orbit-yaw*) cp) (+ 2.2 (* d (sin *orbit-pitch*))) (- (* d (cos *orbit-yaw*) cp) 1.5)))

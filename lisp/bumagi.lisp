@@ -235,7 +235,7 @@ and ask for a licence. Travelling light, we are never stopped."
            (when (and *auto* (not *dev*) (> *speed* 4.0) (not (town-at *dist*)) (not (bare-at *dist*)) (not *meta*)
                       (or (bulk-cargo) (>= *heat* *heat-limit*))           ; those loaded with coal or air cargo, and those the inspectors have counted
                       (< (decf *check-in* delta) 0))
-             (setf *check* (list :stopping *auto* *way*) *auto* nil)       ; autopilot is off: the wagon brakes by itself
+             (setf *check* (list :stopping *auto* *way*)) (cancel-course)       ; autopilot is off: the wagon brakes by itself
              (say-all "Впереди милиция: машут жезлом. Останавливаемся")))
           ((eq (first *check*) :stopping)
            (when (< *speed* .2)

@@ -301,7 +301,8 @@ The driver reads a card, everyone gets a line; the percent and his patience coun
     (declare (ignore text))
     (object-set root "visible" nil)
     (when music (object-call music "stop")))
-  (setf *ending* nil *auto* nil *story-stage* :done)
+  (setf *ending* nil *story-stage* :done)
+  (cancel-course)
   (save-debt)
   (say-all "Конец истории. Долгов больше нет, дорога ваша — можно ехать дальше"))
 

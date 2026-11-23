@@ -352,6 +352,9 @@ Return NIL if D is not on the way."
 (defvar *lane-now* 0.0 "The lane offset the wagon is currently in.
 0 means driving forward, *LANE-X* means backward; values in between occur during a turnaround.")
 
+(defun reset-heading () "Stand as at the start of a trip: nose forward, in the lane of that direction." (setf *dir* 1 *yaw-now* 0.0 *lane-now* 0.0))
+(defun head-back () "Stand nose backwards, in the lane of that direction: a game saved while driving back." (setf *dir* -1 *yaw-now* pi *lane-now* *lane-x*))
+
 ;;; The wagon and the map. The player lives in wagon coordinates (right, back), as is usual for anything
 ;;; that walks inside a vehicle. Everything that stands outside is converted into them by a real rotation
 ;;; and shift, not 'along the road': on a bend of the road an object stays where it is drawn.

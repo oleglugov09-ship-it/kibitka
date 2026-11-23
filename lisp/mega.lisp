@@ -377,7 +377,8 @@ its air."
       (when (eq *story-stage* :intro)                                                   ; no intro: straight to the road
         (setf *story-stage* :owing)
         (when *show* (setf *show* nil) (show-card)))
-      (setf *fuel* 1.0 *auto* nil *dir* 1)
+      (setf *fuel* 1.0 *dir* 1)
+      (cancel-course)
       (halt)
       (relocate (- (first *tunnel*) 100.0))
       (let ((next (or (find-if (lambda (tw) (> (town-stop-d tw) (second *tunnel*))) *towns*) (first *towns*))))
