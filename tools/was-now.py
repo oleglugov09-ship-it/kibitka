@@ -55,6 +55,8 @@ VIEWS = [("outside-back-right", '(setf *view* :outside *orbit-yaw* .6 *orbit-pit
          ("houses", """(progn (setf *view* :outside *orbit-dist* 70.0 *orbit-yaw* 1.2 *orbit-pitch* .25 *seed* (rs-for 5) *mosaic-town* 0) (let ((g (group *cart* -30.0 0.0 0.0))) (godot:node-3d-set-rotation g (v3 0 3.1416 0)) (panel-house g 5 12.0 62.0 0.0 -50.0) (panel-house g 9 12.0 66.0 0.0 30.0 :slogan "МИРУ МИР") (tower (group g -18.0 0.0 90.0))) 1)"""),
          ("houses-near", '(setf *orbit-dist* 34.0 *orbit-yaw* 1.45 *orbit-pitch* .12)'),
          ("houses-end", '(setf *orbit-dist* 90.0 *orbit-yaw* 2.3 *orbit-pitch* .3)'),
+         ("works", """(progn (setf *view* :outside *orbit-dist* 60.0 *orbit-yaw* 1.2 *orbit-pitch* .3 *seed* (rs-for 5)) (let ((g (group *cart* -22.0 0.0 0.0))) (godot:node-3d-set-rotation g (v3 0 3.1416 0)) (factory (group g 0.0 0.0 -30.0) 64.0) (garages (group g 0.0 0.0 30.0) 30.0)) 1)"""),
+         ("works-near", '(setf *orbit-dist* 30.0 *orbit-yaw* 1.5 *orbit-pitch* .15)'),
          ("meta-room", '(progn (setf *meta* t *view* :inside *seat* nil *pos* (v3 0 0 2.8) *yaw* 0.0 *pitch* 0.0) (apply-meta) 1)'),
          ("meta-room-back", '(setf *pos* (v3 0 0 -2.8) *yaw* 3.1416)'),
          ("meta-room-side", '(setf *pos* (v3 2.4 0 0) *yaw* 1.5708)')]

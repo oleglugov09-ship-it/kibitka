@@ -174,26 +174,25 @@ It is a log house with a gable roof, windows with carved frames, a fence and a s
     (when (zerop (random 3)) (chimney-smoke h 4.5 6.0 -1.5 :size .9))))                            ; the stove is lit
 
 (defun garages (g len)
-  "Add to G a row of garages of length LEN, with doors of different colours, rusty here and there."
-  (shape g :box (list 6.0 6.6 len) "#6e6c66" 9.0 1.3 0)
-  (shape g :box (list 6.4 .2 (+ len .3)) "#4c4e52" 9.0 2.75 0 :shadow nil)
-  (loop for z from (+ (- (/ len 2)) 2.2) below (/ len 2) by 4.2
-        do (shape g :box '(.12 2.1 3.3) (nth (random 5) '("#6a3a2e" "#3c4638" "#55708a" "#5a5a58" "#7a4a30")) 5.95 1.1 z :shadow nil)))
+  "Add to G a row of garages about LEN metres long, with doors of different colours, rusty here and there.
+One garage is drawn in Blender (models/doma/garage.blend); the row is as many of them as fit."
+  (let ((n (max 1 (round len 4.2))))
+    (dotimes (i n)
+      (model g "garage" 0.0 0.0 (* (- i (/ (1- n) 2)) 4.2)
+             :paint (list (nth (random 5) '("#6a3a2e" "#3c4638" "#55708a" "#5a5a58" "#7a4a30")))))))
 
 (defun factory (g len)
   "Add to G a factory of length LEN behind a concrete fence.
-It has a main building, a striped chimney and a gatehouse."
-  (loop for z from (+ (- (/ len 2)) 1.5) below (/ len 2) by 3.0                 ; fence of concrete slabs
-        do (shape g :box '(.2 2.5 2.9) "#8a8a84" 5.0 1.25 z)
-           (shape g :box '(.24 .5 .5) "#6e6e6a" 5.0 1.3 z :rot (list (/ pi 4) 0 0) :shadow nil))
-  (body g 26.0 10.0 (* len .7) "#6f757c" 14.0 0)
-  (shape g :box (list .14 2.2 (* len .6)) "#2e333b" 13.95 6.0 0 :shadow nil)
+It has a main building, a striped chimney and a gatehouse: a kit drawn in Blender (models/doma/factory-*.blend),
+the fence slab by slab and the hall bay by bay."
+  (loop for z from (+ (- (/ len 2)) 1.5) below (/ len 2) by 3.0 do (model g "factory-fence" 0.0 0.0 z))
+  (let ((bays (max 1 (round (* len .7) 11.2))))
+    (dotimes (i bays) (model g "factory-bay" 0.0 0.0 (* (- i (/ (1- bays) 2)) 11.2))))
   (let ((cz (* len .28)))
-    (shape g :cyl '(1.1 1.6 34 10) "#8a8580" 34 17 cz)
-    (dotimes (i 3) (shape g :cyl '(1.2 1.25 2.2 10) "#a3262c" 34 (+ 24 (* i 4)) cz :shadow nil))
+    (model g "factory-chimney" 34.0 0.0 cz)
     (chimney-smoke g 34 35.5 cz :size 4.5 :amount 14 :life 11.0))
-  (shape g :box '(4.0 3.0 5.0) "#84807a" 7.0 1.5 (- (/ len 2) 4))                ; gatehouse
-  (sign g "ЗАВОД" 6.9 3.6 (- (/ len 2) 4) :h 1.0 :rgb "#d8d4c4"))
+  (model g "factory-gate" 0.0 0.0 (- (/ len 2) 4))
+  (sign g "ЗАВОД" 4.9 3.6 (- (/ len 2) 4) :h 1.0 :rgb "#d8d4c4"))
 
 (defun shop (g name)
   "Add to G a single-storey shop with a glowing shop window and a sign reading NAME."
