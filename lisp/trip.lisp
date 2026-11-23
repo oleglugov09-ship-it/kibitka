@@ -104,6 +104,7 @@ That is the body, the truck under it, everything bolted on inside, the things an
   (make-pivots root)
   (make-sky root)
   (start-trip)
+  (read-mega-paints)
   (read-places)                                           ; where things stand in the wagon: from the Blender files (mesta.lisp)
   (make-kibitka *rig*)
   (make-camera *rig*)

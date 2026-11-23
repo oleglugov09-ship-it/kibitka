@@ -23,6 +23,16 @@
   (or (loop for (x top z w d) in (model-surfaces model prefix) collect (list x z w d (- top *floor*)))
       (progn (note-error (format nil "в модели ~a нет поверхностей surface_~a" model prefix) "places") nil)))
 
+;;; The paints of the megastructure are swatches in models/mega/mega-paints.blend: a cube for every paint, its material
+;;; named after the paint (wall, concrete, yellow ...). Repaint a swatch in Blender and the megastructure is repainted.
+
+(defun read-mega-paints ()
+  "Take the paints of the megastructure from the swatches of the model mega-paints; a paint with no swatch keeps its colour."
+  (let ((colours (model-colours "mega-paints")))
+    (setf *mega-paints*
+          (loop for (key rgb) on *mega-paints* by #'cddr
+                collect key collect (or (cdr (assoc (string-downcase (symbol-name key)) colours :test #'string=)) rgb)))))
+
 (defvar *rack-surfaces* nil "The overhead racks as (x z width depth height) entries, read from the furniture model.")
 (defvar *dryer-surface* nil "The dryer over the stove as (x z width depth height), read from the appliances model.")
 

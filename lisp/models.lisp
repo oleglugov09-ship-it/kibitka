@@ -92,6 +92,24 @@ Cubes named surface_NAME: the top face is a place to stand or put things, each a
   "Return the point NAME of MODEL (an empty named at_NAME in its Blender file) as (x y z), or NIL."
   (rest (assoc name (third (model-entry model)) :test #'string=)))
 
+(defun model-colours (model)
+  "Return the colours of the materials of MODEL as a list of (material-name . \"#rrggbb\")."
+  (let ((out '()))
+    (labels ((walk (node)
+               (when (object-call node "is_class" "MeshInstance3D")
+                 (let ((mesh (object-get node "mesh")))
+                   (when mesh
+                     (dotimes (i (object-call mesh "get_surface_count"))
+                       (let ((m (object-call mesh "surface_get_material" i)))
+                         (when m
+                           (let ((c (object-get m "albedo_color")))
+                             (push (cons (princ-to-string (object-get m "resource_name"))
+                                         (format nil "#~(~2,'0x~2,'0x~2,'0x~)" (round (* 255 (color-r c))) (round (* 255 (color-g c))) (round (* 255 (color-b c)))))
+                                   out))))))))
+               (dotimes (i (object-call node "get_child_count")) (walk (object-call node "get_child" i)))))
+      (let ((entry (model-entry model))) (when entry (walk (first entry)))))
+    out))
+
 (defun model-points (model prefix)
   "Return the points of MODEL whose names begin with PREFIX, each as (x y z)."
   (loop for (name . at) in (third (model-entry model)) when (eql 0 (search prefix name)) collect at))
