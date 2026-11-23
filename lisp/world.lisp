@@ -525,7 +525,13 @@ Turn turns the world and the sun to the course; Rig tilts the wagon with the cam
 (defun make-world (parent)
   "Create World under PARENT (Turn): the things at the start of the path.
 The land (Land) is a separate node; it outlives a rebuild of the world."
-  (when *world* (node-queue-free *world*))
+  (when *world*
+    ;; whatever still points at a node under the old World is forgotten here, next to where the nodes go. The
+    ;; stages of START-TRIP forget most of it earlier, but each stage runs even if the one before it failed, and
+    ;; a reference that outlived its node is an error in every frame from then on.
+    (reset-vista)
+    (forget-find-nodes) (forget-gnome-nodes)
+    (node-queue-free *world*))
   (unless *land* (setf *land* (group parent)))
   (setf *world* (group parent) *dist* 0.0 *props* '() *bridges* '()
         *origin* (list 0.0 0.0 0.0))

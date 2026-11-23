@@ -20,7 +20,7 @@
 (defvar *airmail-d* nil) (defvar *plane* nil) (defvar *client* nil) (defvar *stamp* nil) (defvar *items* (quote ())) (defvar *carry* nil) (defvar *gnome-nodes* (quote ())) (defvar *gnome-told* nil)
 (defvar *calendar-notes* '()) (defvar *omens* '()) (defvar *jars* 0)
 (defvar *lid* nil) (defvar *papers* 0) (defvar *dev* nil)
-(defun reset-vista ()) (defun clear-land ()) (defun clear-roads ())
+(defun reset-vista ()) (defun drop-mega ()) (defun forget-find-nodes ()) (defun forget-gnome-nodes ()) (defun clear-land ()) (defun clear-roads ())
 (defun net-guest-p () nil) (defun put-save (key form) (declare (ignore key)) form) (defun get-save (key) (declare (ignore key)) nil)
 (defun say-all (text) text) (defun log-event (&rest r) (declare (ignore r)))
 

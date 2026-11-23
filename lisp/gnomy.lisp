@@ -13,6 +13,7 @@ Numbers 0-11 are towns, 12-17 are special places.")
 
 (defvar *gnomes* 0 "The found gnomes, one bit per gnome.")
 (defvar *gnome-nodes* '() "The gnomes by the road that are currently built: entries (number node path-coordinate).")
+(defun forget-gnome-nodes () "Forget the nodes of the gnomes by the road: they are gone with the World they stood in." (setf *gnome-nodes* '()))
 (defvar *trophies* '() "The figures on the wagon's shelves, keyed by number.")
 (defvar *gnome-told* nil "The number of the gnome the players were already told is nearby.")
 

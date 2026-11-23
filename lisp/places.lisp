@@ -86,6 +86,7 @@ It is called before the land is built."
   (reset-segments)
   (build-map)                                               ; road curves on the map - from the town layout
   (reset-vista)
+  (drop-mega)                                               ; a new trip begins on the ring: what was built behind the door goes
   (setf *pads* '() *levels* '() *scenes* '() *tracks* '() *decks* '() *bare* '() *basins* '()
         *route* (loop for (i f0 f1 layer kind) in *route-plan* collect (list (gap-d i f0) (gap-d i f1) layer kind))
         *swamp* (list (gap-d *swamp-gap* .04) (gap-d *swamp-gap* .96))
@@ -94,7 +95,7 @@ It is called before the land is built."
                                (gap-d (first *chasm-at*) (+ (second *chasm-at*) .1))      ; on a bend of the road it came out crooked
                                (+ *chasm-half* 40.0))
         *tunnel* (let ((d (gap-d (first *tunnel-at*) (second *tunnel-at*)))) (list d (+ d (third *tunnel-at*))))
-        *mega* nil *mega-node* nil)
+        *mega* nil)
   (when (boundp '*mega-in*) (setf (symbol-value '*mega-in*) nil))
   (reset-segments)
   (flet ((pad (&rest keys) (push (apply #'make-pad keys) *pads*))
@@ -160,7 +161,7 @@ It is called before the land is built."
     (when *hub* (push (make-scene :d0 (- (edge-d1 (cdr (first *exits*))) 60) :d1 (+ (edge-d1 (cdr (first *exits*))) 60)
                                   :build #'build-hub :at (list (first *hub*) (second *hub*))) *scenes*))
     (plan-gimmicks)                                         ; booths with the towns' gimmicks
-    (setf *find-nodes* '() *gnome-nodes* '() *gnome-told* nil)                                 ; the old finds went away with the old world
+    (forget-find-nodes) (forget-gnome-nodes) (setf *gnome-told* nil)                                 ; the old finds went away with the old world
     (setf *stop-ds* (append (mapcar #'town-stop-d *towns*)
                             (loop for d = 150.0 then (stop-after d) while (< d 100500.0)
                                   unless (or (town-at d) (bare-at d) (< 25300.0 d *ring-top*)) collect d)))

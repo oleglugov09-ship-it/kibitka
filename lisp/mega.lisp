@@ -329,6 +329,13 @@ the same one every frame."
                    *haze* 0.0 *fog-inside* nil *sky-hour* nil *wx-force* nil *sun-turn* 0.0)
              (juice 0.0))))))
 
+(defun drop-mega ()
+  "Take the megastructure down, if it is built: its node, and everything that was counted inside it."
+  (when *mega-node*
+    (noting :drop-mega (node-queue-free *mega-node*))
+    (clrhash *mega-cells*) (clrhash *mega-lives*)
+    (setf *mega-node* nil *mega-parts* nil)))
+
 (defun step-mega ()
   "Show the place behind the door to those in it, and nothing of the ring; lay it out along the way driven; give it
 its air."
@@ -337,8 +344,7 @@ its air."
     (when *land* (object-set *land* "visible" (not in)))
     (when *world* (object-set *world* "visible" (not in)))
     (cond ((and in (null *mega-node*)) (setf *mega-node* (build-mega)))
-          ((and (not in) *mega-node*) (node-queue-free *mega-node*) (clrhash *mega-cells*) (clrhash *mega-lives*)
-                (setf *mega-node* nil *mega-parts* nil)))
+          ((and (not in) *mega-node*) (drop-mega)))
     (set-air (and in (or (world-call :air *mega-s*) '(:gloom 1.0))))
     (when (and in *mega-parts*)
       (step-mega-cells)
