@@ -45,8 +45,8 @@
   "Return true if the item record SPEC stands inside the fridge."
   (destructuring-bind (fx fz) *fridge-at*
     (let ((half (/ (first *fridge-size*) 2)))
-      (and (< (abs (- (second spec) fx)) half) (< (abs (- (fourth spec) fz)) half)
-           (< (third spec) (- (second *fridge-size*) .05))))))
+      (and (< (abs (- (spec-x spec) fx)) half) (< (abs (- (spec-z spec) fz)) half)
+           (< (spec-y spec) (- (second *fridge-size*) .05))))))
 
 (defun fridge-surfaces ()
   "Return the shelves of the fridge as (x z width depth height) entries.
@@ -95,7 +95,7 @@ A shelf has four places, two by two, like a section of the rack in small; things
 
 (defun on-dryer-p (spec)
   (destructuring-bind (cx cz w d top) (dryer-surface)
-    (and (< (abs (- (second spec) cx)) (/ w 2)) (< (abs (- (fourth spec) cz)) (/ d 2)) (< (abs (- (third spec) top)) .1))))
+    (and (< (abs (- (spec-x spec) cx)) (/ w 2)) (< (abs (- (spec-z spec) cz)) (/ d 2)) (< (abs (- (spec-y spec) top)) .1))))
 
 (defun toggle-fridge ()
   (setf *fridge-open* (not *fridge-open*))
@@ -117,12 +117,12 @@ Mushrooms on the dryer are dried instead."
       (cond ((or (null *spoil-day*) (< day *spoil-day*)) (setf *spoil-day* day))      ; the first look, or the clock was turned back
             ((> day *spoil-day*)
              (setf *spoil-day* day)
-             (let* ((dry (remove-if-not (lambda (spec) (and (dried-of (first spec)) (on-dryer-p spec))) (mapcar #'car *items*)))
-                    (bad (remove-if-not (lambda (spec) (and (trait (first spec) :spoils) (not (in-fridge-p spec))
-                                                            (not (and (on-dryer-p spec) (dried-of (first spec))))))      ; the dryer saves only what dries
+             (let* ((dry (remove-if-not (lambda (spec) (and (dried-of (spec-kind spec)) (on-dryer-p spec))) (mapcar #'car *items*)))
+                    (bad (remove-if-not (lambda (spec) (and (trait (spec-kind spec) :spoils) (not (in-fridge-p spec))
+                                                            (not (and (on-dryer-p spec) (dried-of (spec-kind spec))))))      ; the dryer saves only what dries
                                         (mapcar #'car *items*))))
                (when dry
-                 (set-items (mapcar (lambda (spec) (if (member spec dry :test #'equal) (list* (dried-of (first spec)) (rest spec)) spec)) (mapcar #'car *items*)))
+                 (set-items (mapcar (lambda (spec) (if (member spec dry :test #'equal) (list* (dried-of (spec-kind spec)) (rest spec)) spec)) (mapcar #'car *items*)))
                  (save-interior)
                  (say-all "На сушилке высохло: теперь не испортится"))
                (when (and bad (boundp '*trip-day0*) (= day (1+ (symbol-value '*trip-day0*))))   ; the first dawn of a trip forgives: a warning, nothing lost

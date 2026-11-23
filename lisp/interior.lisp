@@ -273,9 +273,9 @@ Return true if anything moved."
 
 (defun remove-item ()
   (let ((it (fourth (aim-point))))
-    (when (and it (sixth (car it))) (say "Чужую посылку не выбросить — её ждут") (return-from remove-item))
+    (when (and it (spec-addr (car it))) (say "Чужую посылку не выбросить — её ждут") (return-from remove-item))
     (when it
-      (when (and (member (first (car it)) '(:crate :box)) (not (sixth (car it))))   ; our own crate was removed - the planks come back
+      (when (and (member (spec-kind (car it)) '(:crate :box)) (not (spec-addr (car it))))   ; our own crate was removed - the planks come back
         (incf *planks* *crate-planks*))
       (node-queue-free (cdr it))
       (lift-item it)

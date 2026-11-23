@@ -145,14 +145,20 @@ That is the good sought or a dish made from it (blini will do for milk)."
   (let ((props (clean-props props)))
     (append (list kind x y z spin) (cond (props (list addr props)) (addr (list addr))))))
 
+(defun spec-kind (spec) "Return what kind of thing the item record SPEC is." (first spec))
+(defun spec-x (spec) "Return where the thing of the item record SPEC stands across the wagon." (second spec))
+(defun spec-y (spec) "Return the height of the bottom of the thing of the item record SPEC above the floor." (third spec))
+(defun spec-z (spec) "Return where the thing of the item record SPEC stands along the wagon." (fourth spec))
+(defun spec-spin (spec) "Return how the thing of the item record SPEC is turned: 0 to 3 quarter turns." (fifth spec))
+(defun spec-addr (spec) "Return the address of the parcel of the item record SPEC, or NIL: not a parcel." (sixth spec))
 (defun spec-props (spec) "Return the properties of the item record SPEC." (seventh spec))
 (defun spec-prop (spec key) "Return the property KEY of the item record SPEC." (getf (seventh spec) key))
 (defun spec-cut-p (spec) "Return true if the item record SPEC is a good that was cut." (spec-prop spec :cut))
 
 (defun old-cut-spec (spec)
   "Return SPEC as it is written now: saves made before things had properties marked a cut good by a half turn."
-  (if (and (= (length spec) 5) (eql (fifth spec) 2) (cut-look (first spec)))
-      (make-spec (first spec) (second spec) (third spec) (fourth spec) 0 nil '(:cut t))
+  (if (and (= (length spec) 5) (eql (spec-spin spec) 2) (cut-look (spec-kind spec)))
+      (make-spec (spec-kind spec) (spec-x spec) (spec-y spec) (spec-z spec) 0 nil '(:cut t))
       spec))
 
 (defun cuttable-p (kind) (and (assoc kind *goods*) (trait kind :cut) t))

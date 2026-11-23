@@ -313,10 +313,10 @@ Each time it is about something different."
   "Return the records of the items that stand on the stove and can be cooked.
 Without the frying pan on the stove (kettle.lisp) that is only milk. A toadstool counts: it ruins the lot."
   (destructuring-bind (cx cz w d top) (stove-surface)
-    (remove-if-not (lambda (spec) (and (or (stove-recipe-p (first spec)) (eq (first spec) :toadstool)) (null (sixth spec))
-                                       (or *pan-on* (eq (first spec) :milk))
-                                       (< (abs (- (second spec) cx)) (+ (/ w 2) .03)) (< (abs (- (fourth spec) cz)) (+ (/ d 2) .03))
-                                       (< (abs (- (third spec) top)) .08)))
+    (remove-if-not (lambda (spec) (and (or (stove-recipe-p (spec-kind spec)) (eq (spec-kind spec) :toadstool)) (null (spec-addr spec))
+                                       (or *pan-on* (eq (spec-kind spec) :milk))
+                                       (< (abs (- (spec-x spec) cx)) (+ (/ w 2) .03)) (< (abs (- (spec-z spec) cz)) (+ (/ d 2) .03))
+                                       (< (abs (- (spec-y spec) top)) .08)))
                    (mapcar #'car *items*))))
 
 (defun stove-jobs (&optional going)
@@ -345,8 +345,8 @@ one job, :RUINED, of everything on the stove."
 (defun cook-time (job)
   "Return the number of seconds the JOB takes: less under the lid, less again when everything was cut on the board."
   (* *cook-time* (if *lid* .5 1)
-     (if (and (some (lambda (spec) (cuttable-p (first spec))) (rest job))              ; whatever can be cut was cut
-              (every (lambda (spec) (or (spec-cut-p spec) (not (cuttable-p (first spec))))) (rest job)))
+     (if (and (some (lambda (spec) (cuttable-p (spec-kind spec))) (rest job))              ; whatever can be cut was cut
+              (every (lambda (spec) (or (spec-cut-p spec) (not (cuttable-p (spec-kind spec))))) (rest job)))
          *cut-factor* 1)))
 
 (defun step-cook (delta)

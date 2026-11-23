@@ -120,14 +120,14 @@ came from change together, and only here. SHOW-CARRY afterwards shows it."
 
 (defun portable-p (it)
   "Return true if IT is an item that is carried in hand: milk and parcels."
-  (or (good-p (first (car it))) (sixth (car it))))
+  (or (good-p (spec-kind (car it))) (spec-addr (car it))))
 
 (defun item-in-sight ()
   "Return the milk or parcel we are looking at, or NIL."
   (find-if (lambda (it) (and (portable-p it)
                              (or *fridge-open* (not (in-fridge-p (car it))))       ; not through the shut fridge door
-                             (multiple-value-bind (w h) (item-size (first (car it)) (fifth (car it)))
-                               (looking-at (second (car it)) (+ (third (car it)) (/ h 2)) (fourth (car it)) 2.3 (min .3 (+ .08 (* .25 w)))))))
+                             (multiple-value-bind (w h) (item-size (spec-kind (car it)) (spec-spin (car it)))
+                               (looking-at (spec-x (car it)) (+ (spec-y (car it)) (/ h 2)) (spec-z (car it)) 2.3 (min .3 (+ .08 (* .25 w)))))))
            *items*))
 
 (defun shelf-spot ()
@@ -135,8 +135,8 @@ came from change together, and only here. SHOW-CARRY afterwards shows it."
 A shelf is scanned lengthwise: the rack along x, the upper shelves and windowsills along z."
   (flet ((free-p (x z top)
            (and (looking-at x (+ top .15) z 2.4 .1)
-                (notany (lambda (it) (and (< (abs (- (second (car it)) x)) .3) (< (abs (- (third (car it)) top)) .2)
-                                          (< (abs (- (fourth (car it)) z)) .3)))
+                (notany (lambda (it) (and (< (abs (- (spec-x (car it)) x)) .3) (< (abs (- (spec-y (car it)) top)) .2)
+                                          (< (abs (- (spec-z (car it)) z)) .3)))
                         *items*))))
     (loop for (cx cz w d top) in (fixture-surfaces)
           do (if (> d w)
@@ -254,7 +254,7 @@ Return NIL for the floor or the top of an item."
                      *items*)
                "Тут уже что-то стоит — поставь рядом")
               ((and surface (< (third surface) .6) (< (fifth surface) 1.5)   ; a windowsill (the rack is counted by slots, the upper shelves are not counted)
-                    (>= (count-if (lambda (it) (equal (surface-at (second (car it)) (fourth (car it)) (third (car it))) surface)) *items*)
+                    (>= (count-if (lambda (it) (equal (surface-at (spec-x (car it)) (spec-z (car it)) (spec-y (car it))) surface)) *items*)
                         *sill-limit*))
                "На подоконнике больше нет места"))))))
 
@@ -301,7 +301,7 @@ Return T if something was done."
              (when it
                (fly (cdr it) (hand-point) :dur .2 :free t)                           ; from its place into hand
                (lift-item it) (setf *took* (car it))
-               (set-carry (cons (first (car it)) (sixth (car it))) (spec-props (car it)) (car it))
+               (set-carry (cons (spec-kind (car it)) (spec-addr (car it))) (spec-props (car it)) (car it))
                (show-carry) (things-changed t)
                t)))))
 
@@ -316,7 +316,7 @@ driver's, so it returns to the hands, or it would be lost."
         ((and (not *carry*) *last-put* (< (- *time* (second *last-put*)) 3.0)
               (not (member (first *last-put*) specs :test #'equal))
               (not (and (third *last-put*) (member (third *last-put*) specs :test #'equal))))   ; unless it has returned to its old place
-         (set-carry (cons (first (first *last-put*)) (sixth (first *last-put*))) (spec-props (first *last-put*)))
+         (set-carry (cons (spec-kind (first *last-put*)) (spec-addr (first *last-put*))) (spec-props (first *last-put*)))
          (setf *last-put* nil)
          (show-carry)
          (say "Поставить не вышло — вещь снова в руках"))))
@@ -333,7 +333,7 @@ driver's, so it returns to the hands, or it would be lost."
                      (format nil "ЛКМ — поставить ~a" (carry-name *carry*))
                      (format nil "В руках ~a · посмотри, куда поставить" (carry-name *carry*))))
         (t (let ((it (item-in-sight)))
-             (when it (format nil "ЛКМ — взять ~a" (carry-name (cons (first (car it)) (sixth (car it))))))))))
+             (when it (format nil "ЛКМ — взять ~a" (carry-name (cons (spec-kind (car it)) (spec-addr (car it))))))))))
 
 ;;; Music for coins
 
@@ -419,7 +419,7 @@ These are the bell in the slid-open window (E) and what the client put on the wi
 (defun window-busy-p ()
   "Return true if the window cannot be closed now: a client is at it or items stand on the windowsill."
   (or *client*
-      (find-if (lambda (it) (and (> (second (car it)) 1.15) (< (abs (- (third (car it)) .95)) .12))) *items*)))
+      (find-if (lambda (it) (and (> (spec-x (car it)) 1.15) (< (abs (- (spec-y (car it)) .95)) .12))) *items*)))
 
 (defun forget-far-places ()
   "Forget the places we have driven far away from.

@@ -66,7 +66,7 @@
   :words (lambda (price good town dest) (declare (ignore price good dest))
            (format nil "Получатель ждёт посылку в ~a — поставь её на подоконник" (town-name town)))
   :coming (lambda (town)
-            (let ((who (some (lambda (it) (let ((a (sixth (car it))))      ; a story parcel is awaited: its addressee comes
+            (let ((who (some (lambda (it) (let ((a (spec-addr (car it))))      ; a story parcel is awaited: its addressee comes
                                             (and a (eql (parcel-town a) town) (parcel-to a))))
                              *items*)))
               (if who (format nil "Идёт получатель: ~a" who) "Идёт получатель")))
@@ -94,7 +94,7 @@ It is (:market PATH TOWN-INDEX) at a market or (:stop STOP) at a bus stop with c
 
 (defun parcels-for (town)
   "Return how many parcels we have for town TOWN (on the shelves and in hand)."
-  (+ (count town *items* :key (lambda (it) (and (sixth (car it)) (parcel-town (sixth (car it))))))
+  (+ (count town *items* :key (lambda (it) (and (spec-addr (car it)) (parcel-town (spec-addr (car it))))))
      (if (and *carry* (cdr *carry*) (eql (parcel-town (cdr *carry*)) town)) 1 0)))
 
 (defun parcel-pay (town)
@@ -208,8 +208,8 @@ WHO is the key of a person we know by name (people.lisp): he comes as himself, n
   "Return where on the shared windowsill the client puts his item.
 It is near Z, but not on an item of ours and not on one of his own (TAKEN)."
   (flet ((busy (c) (or (member c taken :test (lambda (a b) (< (abs (- a b)) .3)))
-                       (some (lambda (it) (and (> (second (car it)) 1.5) (< (abs (- (third (car it)) .95)) .1)
-                                               (< (abs (- (fourth (car it)) c)) .3)))
+                       (some (lambda (it) (and (> (spec-x (car it)) 1.5) (< (abs (- (spec-y (car it)) .95)) .1)
+                                               (< (abs (- (spec-z (car it)) c)) .3)))
                              *items*))))
     (or (find-if-not #'busy (sort (loop for c from -1.0 to 1.0 by .25 collect c) #'< :key (lambda (c) (abs (- c z)))))
         z)))
@@ -361,7 +361,7 @@ coins with the left mouse button."
            *items*))
 
 (defun on-sill-p (it)
-  (and (< 1.15 (second (car it)) 2.3) (< (abs (- (third (car it)) .95)) .1)))
+  (and (< 1.15 (spec-x (car it)) 2.3) (< (abs (- (spec-y (car it)) .95)) .1)))
 
 (defun stall-deal (entry holding &optional props)
   "Make a deal at the windowsill over stall ENTRY (the driver keeps count).
@@ -379,7 +379,7 @@ Return four values: what he now has in hand, whether that changed, what to say, 
                       (client-leave)
                       (values nil t (format nil "Продали за ~/kiosk-trip::rub/" price))))
                    ((and (null holding) (getf *client* :ignore)                 ; what he wants already lies on the windowsill: hand it over on our word
-                         (some (lambda (spec) (wanted-p (first spec))) (getf *client* :ignore)))
+                         (some (lambda (spec) (wanted-p (spec-kind spec))) (getf *client* :ignore)))
                     (setf (getf *client* :ignore) nil)
                     (values nil nil "Отдаём с подоконника"))
                    (t (values holding nil (format nil "Он ищет ~a: возьми с полки (ЛКМ) и принеси к окну" (good-name (client-good)))))))
@@ -453,20 +453,20 @@ For a guest the deal is made by the driver."
              (let* ((town (getf *client* :town))
                     (it (and (> *window-k* .9) *client*
                              (sill-item (if (eq kind :buyer)
-                                            (lambda (spec) (wanted-p (first spec)))
-                                            (lambda (spec) (and (sixth spec) (eql (parcel-town (sixth spec)) town))))))))
+                                            (lambda (spec) (wanted-p (spec-kind spec)))
+                                            (lambda (spec) (and (spec-addr spec) (eql (parcel-town (spec-addr spec)) town))))))))
                (if it
                    (when (<= (decf (getf *client* :reach) delta) 0)       ; reaches out a paw for a second and takes it
-                     (let ((price (if (eq kind :buyer) (good-price (first (car it)) (getf *client* :price)) (delivery-pay)))   ; the recipient pays for the delivery
+                     (let ((price (if (eq kind :buyer) (good-price (spec-kind (car it)) (getf *client* :price)) (delivery-pay)))   ; the recipient pays for the delivery
                            (done nil))                                                       ; what to say about a parcel handed over
-                       (when (eq kind :buyer) (note-trade (first (car it)) :sold (spec-prop (car it) :shop)))
+                       (when (eq kind :buyer) (note-trade (spec-kind (car it)) :sold (spec-prop (car it) :shop)))
                        (when (eq kind :recipient)
                          (award-pennant town) (note-quest :post)
-                         (let ((answer (story-delivered (sixth (car it))))) (when answer (say-later answer))))   ; they reply to this very parcel
-                       (fly (cdr it) (paws-point (fourth (car it))) :dur .4 :free t)   ; reaches out a paw and takes it
+                         (let ((answer (story-delivered (spec-addr (car it))))) (when answer (say-later answer))))   ; they reply to this very parcel
+                       (fly (cdr it) (paws-point (spec-z (car it))) :dur .4 :free t)   ; reaches out a paw and takes it
                        (lift-item it)
-                       (if (and (eq kind :recipient) (parcel-good (sixth (car it))))       ; the plan's crate: into the shop, pay to the account
-                           (let ((had *talons*) (premium (deliver-cargo (sixth (car it)))))
+                       (if (and (eq kind :recipient) (parcel-good (spec-addr (car it))))       ; the plan's crate: into the shop, pay to the account
+                           (let ((had *talons*) (premium (deliver-cargo (spec-addr (car it)))))
                              (setf price (+ price premium))
                              ;; the fourth town on the wall and a crate handed over: from now on the state pays by transfer
                              (when (and (>= (logcount *pennants*) 4) (not (paper-p :account)))

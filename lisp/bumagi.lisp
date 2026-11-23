@@ -168,7 +168,7 @@ Each paper is its own card; a missing one is an empty slot with a dotted outline
 
 (defun cargo-count (kind)
   "Return how many goods of KIND are in the wagon right now: on the shelves and in hand."
-  (+ (count kind *items* :key (lambda (it) (first (car it)))) (if (and *carry* (eq (car *carry*) kind)) 1 0)))
+  (+ (count kind *items* :key (lambda (it) (spec-kind (car it)))) (if (and *carry* (eq (car *carry*) kind)) 1 0)))
 
 (defun bulk-cargo ()
   "Return what we carry in bulk, more than *CARGO-FREE* pieces: rows of *RESTRICTED*.

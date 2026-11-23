@@ -205,8 +205,8 @@ The driver reads a card, everyone gets a line; the percent and his patience coun
             ((> day *seize-day*)
              (setf *seize-day* day)
              (when (and (shark-met-p) (shark-overdue-p day))
-               (let ((best (first (sort (remove-if-not (lambda (spec) (and (good-p (first spec)) (null (sixth spec)))) (mapcar #'car *items*))
-                                        #'> :key (lambda (spec) (good-base (raw-of (first spec))))))))
+               (let ((best (first (sort (remove-if-not (lambda (spec) (and (good-p (spec-kind spec)) (null (spec-addr spec)))) (mapcar #'car *items*))
+                                        #'> :key (lambda (spec) (good-base (raw-of (spec-kind spec))))))))
                  (when best
                    (set-items (remove best (mapcar #'car *items*) :test #'equal :count 1))
                    (save-interior)

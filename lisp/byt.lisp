@@ -430,8 +430,8 @@ Return T if there was one."
 Addressed parcels are not broken."
   (let ((it (fourth (aim-point))))
     (cond ((null it) (say "Смотри на ящик"))
-          ((not (member (first (car it)) '(:crate :box))) (say "На доски идут только ящики"))
-          ((sixth (car it)) (say "Это чужая посылка. Её ждут"))
+          ((not (member (spec-kind (car it)) '(:crate :box))) (say "На доски идут только ящики"))
+          ((spec-addr (car it)) (say "Это чужая посылка. Её ждут"))
           (t (node-queue-free (cdr it))
              (lift-item it)
              (incf *planks* *crate-planks*)
@@ -508,7 +508,7 @@ stacks are furniture, they are not delivered). The first three towns are used in
   "Return the parcels still on board as ((town-number . count) ...), in ascending town number."
   (let ((acc '()))
     (dolist (it *items*)
-      (let ((addr (and (sixth (car it)) (parcel-town (sixth (car it))))))
+      (let ((addr (and (spec-addr (car it)) (parcel-town (spec-addr (car it))))))
         (when addr (incf (cdr (or (assoc addr acc) (first (push (cons addr 0) acc))))))))
     (sort acc #'< :key #'car)))
 
