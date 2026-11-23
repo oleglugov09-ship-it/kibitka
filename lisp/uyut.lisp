@@ -56,9 +56,7 @@ It shines towards -z (YAW turns it further). With CHIN it is held upright under 
 comes from below, short-range and wide, which makes a scary face in the dark."
   (let ((g (group parent x y z)) (l (gdext:make-object "SpotLight3D")))
     (node-3d-set-rotation g (v3 (if chin (/ pi 2) 0) yaw 0))
-    (shape g :cyl '(.02 .02 .15 8) "#2a2a30" 0 0 .04 :rot (list (/ pi 2) 0 0) :metal .4 :rough .5 :shadow nil)
-    (shape g :cyl '(.034 .022 .05 10) "#c8c8c4" 0 0 -.055 :rot (list (- (/ pi 2)) 0 0) :metal .7 :rough .3 :shadow nil)   ; the flared end points forward
-    (shape g :cyl '(.03 .03 .006 10) "#fff4c8" 0 0 -.082 :rot (list (/ pi 2) 0 0) :emit "#ffe9b0" :energy 4 :shadow nil)
+    (model g "torch")
     (object-set l "light_color" (color 1.0 .93 .78 1.0))
     (object-set l "light_energy" (if chin 2.2 5.0))
     (object-set l "spot_range" (if chin 2.2 32.0))
@@ -204,16 +202,12 @@ It is the nearest landmark or diner, otherwise the town or the road."
   (case *tool*
     (:camera
      (let ((g (group *camera* -.21 -.16 -.36)))
-       (shape g :box '(.15 .1 .06) "#2a2a2e" 0 0 0 :shadow nil)
-       (shape g :cyl '(.036 .036 .05 10) "#16161a" 0 0 -.05 :rot (list (/ pi 2) 0 0) :shadow nil)
-       (shape g :cyl '(.028 .028 .006 10) "#5a7a9a" 0 0 -.077 :rot (list (/ pi 2) 0 0) :metal .6 :rough .2 :shadow nil)
-       (shape g :box '(.04 .025 .03) "#8a8e92" .04 .06 0 :metal .6 :rough .4 :shadow nil)
+       (model g "tool-camera")
        (setf *tool-node* g)))
     (:spyglass
      (let ((g (group *camera* -.2 -.17 -.34)))
        (node-3d-set-rotation g (v3 .12 -.1 0))
-       (shape g :cyl '(.022 .034 .3 8) "#c9a13a" 0 0 0 :rot (list (- (/ pi 2)) 0 0) :metal .7 :rough .3 :shadow nil)
-       (shape g :cyl '(.038 .038 .04 8) "#2a2c30" 0 0 -.16 :rot (list (/ pi 2) 0 0) :shadow nil)
+       (model g "tool-spyglass")
        (setf *tool-node* g)))))
 
 (defun raise-tool (on)

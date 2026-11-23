@@ -90,21 +90,9 @@ the field as one sheet of the same yellow."
 
 (defun leto-camp (g i c lit)
   (let* ((x 9.0) (z -21.0) (white "#f4f1e6") (red "#d8362b"))
-    (dolist (dz '(-5.5 5.5))
-      (shape g :box '(1.3 6.2 1.3) white x 3.1 (+ z dz))
-      (shape g :box '(1.5 .5 1.5) red x 6.4 (+ z dz) :shadow nil))
-    (shape g :box '(.3 2.2 12.6) red x 7.3 z :shadow nil)
+    (model g "leto-camp")
     (sign g "ПИОНЕРСКИЙ ЛАГЕРЬ «ЛАСТОЧКА»" (- x .2) 7.3 z :h .9 :rgb "#fff6dc" :yaw (/ pi -2))
-    (shape g :ball '(.9 5 3) "#ffd21e" (- x .3) 9.3 z :scale '(.2 1 1) :emit "#ffd21e" :energy .6 :shadow nil)
-    (dolist (dz '(-14.0 14.0))                                           ; the fence, a blue paling on either side of the gates
-      (shape g :box '(.12 1.5 14.0) "#5fb0e8" x .85 (+ z dz) :shadow nil))
-    (dolist (dz '(-9.0 9.0))                                             ; two plaster pioneers
-      (shape g :box '(1.6 1.4 1.6) white (- x 3.2) .7 (+ z dz))
-      (shape g :box '(.7 1.7 .5) white (- x 3.2) 2.2 (+ z dz))
-      (shape g :ball '(.34 8 6) white (- x 3.2) 3.35 (+ z dz) :shadow nil))
-    (shape g :box '(60.0 .12 5.0) "#d9cfae" (+ x 32.0) .02 z :shadow nil)                                     ; the alley
-    (shape g :cyl '(.09 .09 13.0 6) "#d0d4d8" (+ x 14.0) 6.5 (+ z 9.0) :shadow nil)
-    (shape g :box '(.06 1.6 2.6) red (+ x 14.0) 12.0 (+ z 10.4) :shadow nil)                                  ; the flag
+                                      ; the flag
     (dotimes (k 5)
       (let ((lx (+ x 8.0 (* 10.0 k))) (lz (+ z (if (evenp k) -3.2 3.2))))
         (shape g :cyl '(.07 .07 3.6 5) "#3a4048" lx 1.8 lz :shadow nil)

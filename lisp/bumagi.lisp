@@ -164,9 +164,7 @@ Each paper is its own card; a missing one is an empty slot with a dotted outline
 (defun make-folder (c)
   (destructuring-bind (x y z) *folder-at*
     (let ((g (group c x (+ *floor* y) z)))
-      (shape g :box '(.03 .34 .26) "#6a3a2e" 0 0 0)
-      (shape g :box '(.034 .05 .2) "#e8e0d0" 0 .08 0 :shadow nil)
-      (shape g :box '(.036 .36 .02) "#3a2a1e" 0 0 -.12 :shadow nil)
+      (model g "folder")
       (setf *folder-corner* (shape g :box '(.03 .1 .12) "#f4f0e4" 0 .2 .04 :shadow nil :rot '(.25 0 0)))   ; a new paper sticks out
       (show-folder-corner))))
 

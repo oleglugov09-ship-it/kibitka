@@ -43,6 +43,9 @@ VIEWS = [("outside-back-right", '(setf *view* :outside *orbit-yaw* .6 *orbit-pit
          ("camp-high", '(setf *orbit-dist* 70.0 *orbit-yaw* 2.2 *orbit-pitch* .7)'),
          ("train", """(progn (setf *orbit-dist* 55.0 *orbit-yaw* -1.57 *orbit-pitch* .35) (loop for n in (make-train nil) for i from 0 do (object-call n "reparent" *cart*) (object-set n "visible" t) (godot:node-3d-set-position n (v3 -14.0 0.0 (- 60.0 (* 15.0 i))))) (add-tunnel-piece (+ *dist* 30.0) t nil) (add-tunnel-piece (+ *dist* 38.3) nil nil) (add-tunnel-piece (+ *dist* 46.6) nil t) 1)"""),
          ("train-ahead", '(setf *orbit-dist* 60.0 *orbit-yaw* -2.6 *orbit-pitch* .3)'),
+         ("themes", """(progn (setf *orbit-dist* 330.0 *orbit-yaw* -1.57 *orbit-pitch* .5) (let ((tw (or (town-at *dist*) (first *towns*)))) (dolist (th *themes*) (funcall (cdr th) (group *world*) tw))) 1)"""),
+         ("themes-low", '(setf *orbit-dist* 200.0 *orbit-yaw* -2.4 *orbit-pitch* .25)'),
+         ("themes-back", '(setf *orbit-dist* 260.0 *orbit-yaw* -.7 *orbit-pitch* .35)'),
          ("meta-room", '(progn (setf *meta* t *view* :inside *seat* nil *pos* (v3 0 0 2.8) *yaw* 0.0 *pitch* 0.0) (apply-meta) 1)'),
          ("meta-room-back", '(setf *pos* (v3 0 0 -2.8) *yaw* 3.1416)'),
          ("meta-room-side", '(setf *pos* (v3 2.4 0 0) *yaw* 1.5708)')]

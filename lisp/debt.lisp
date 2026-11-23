@@ -193,7 +193,7 @@ The driver reads a card, everyone gets a line; the percent and his patience coun
 
 (defbooth 15 :label #'shark-label :use #'shark-use :spot '(9.1 -2.75 1.1) :side (list #'cash-label #'cash-out)
   :shelf '("#5a2a5a" "#c9a13a" "#2c4a7a" "#e8e0d0")
-  :build (lambda (g) (shape g :box '(.1 2.0 .9) "#3a2a1e" 9.0 1.0 -2.75) (shape g :ball '(.05 6 4) "#d8a840" 8.93 1.0 -2.45 :metal .6)))
+  :build (lambda (g) (model g "booth-15-extra")))
 
 (defvar *seize-day* nil "The day up to which the man's people have been counted.")
 
@@ -254,7 +254,7 @@ The driver reads a card, everyone gets a line; the percent and his patience coun
 ;; the savings bank is a booth like the others (DEFBOOTH, prikol.lisp); the wage is paid at its side door
 (defbooth 14 :label #'bank-label :use #'bank-use :shelf '("#4a6a52" "#d8d0b8" "#c9a13a")
   :spot '(9.1 -2.75 1.1) :side (list #'wage-label #'take-wage)
-  :build (lambda (g) (shape g :box '(.1 2.0 .9) "#5a4a3a" 9.0 1.0 -2.75) (shape g :ball '(.05 6 4) "#d8a840" 8.93 1.0 -2.45 :metal .6)
+  :build (lambda (g) (model g "booth-14-extra")
            (sign g "ЗАРПЛАТА" 8.93 2.15 -2.75 :h .16 :rgb "#e8e0d0" :yaw (- (/ pi 2)))))
 
 ;;; ------------------------------------------------------------------ the ending

@@ -46,18 +46,15 @@ The ball counts as at least 10 screen pixels wide, so a far plate is still fair 
   (when *act-node* (node-queue-free *act-node*) (setf *act-node* nil))
   (case kind
     (:tir (let ((g (group *camera* .17 -.15 -.3)))
-            (shape g :box '(.04 .06 .5) "#5a3e26" 0 -.01 0 :shadow nil)
-            (shape g :cyl '(.012 .012 .55 8) "#2a2a30" 0 .03 -.45 :rot (list (/ pi 2) 0 0) :metal .6 :rough .4 :shadow nil)
-            (shape g :box '(.01 .03 .01) "#16161a" 0 .055 -.7 :shadow nil)
+            (model g "hold-tir")
             (setf *act-node* g)))
     (:fish (let ((g (group *camera* .24 -.22 -.3)))
              (node-3d-set-rotation g (v3 -1.0 0 -.12))
-             (shape g :cyl '(.006 .014 1.7 6) "#6a5038" 0 .8 0 :shadow nil)
+             (model g "hold-fish")
              (setf *act-node* g)))
     (:mine (let ((g (group *camera* .2 -.2 -.4)))                              ; a pickaxe
              (node-3d-set-rotation g (v3 -.5 0 -.2))
-             (shape g :cyl '(.014 .016 .6 6) "#6a5038" 0 .2 0 :shadow nil)
-             (shape g :box '(.3 .035 .035) "#3a3a40" 0 .5 0 :metal .6 :rough .4 :shadow nil)
+             (model g "hold-mine")
              (setf *act-node* g)))))
 
 (defun start-act (kind)

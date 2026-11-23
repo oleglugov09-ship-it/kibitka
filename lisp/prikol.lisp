@@ -129,9 +129,7 @@ Return T if a train ride was pending (GO-TO-TOWN then does nothing itself)."
 
 (defun build-range (g)
   "Build the shooting alley beside booth group G: a firing counter, a backboard and five plates."
-  (shape g :box '(1.8 1.0 .5) "#8a6440" 7.5 .5 -4.2)
-  (shape g :box '(6.6 3.0 .2) "#4a3a2c" 7.5 1.5 -13.4)
-  (dolist (y '(1.02 1.72)) (shape g :box '(6.6 .05 .12) "#2a2c30" 7.5 y -13.25 :shadow nil))
+  (model g "booth-range")
   (setf *tir-plates*
         (loop for i below 5
               collect (let ((x (+ 5.3 (* 1.1 i))) (y (if (evenp i) 1.35 2.05)))
@@ -144,7 +142,7 @@ Return T if a train ride was pending (GO-TO-TOWN then does nothing itself)."
 
 (defun build-rock (g)
   "Build the rock face beside booth group G: four rows of eight blocks against a dark backing."
-  (shape g :box '(4.9 2.7 .4) "#2e2a27" 7.5 1.25 7.3)
+  (model g "booth-rock")
   (setf *rock* (loop for i below 32
                      collect (list (shape g :box '(.5 .5 .5) "#5a554e" (+ 5.58 (* .55 (mod i 8))) (+ .3 (* .55 (floor i 8))) 6.85)
                                    (mod i 8) (floor i 8) nil nil))))
@@ -152,11 +150,7 @@ Return T if a train ride was pending (GO-TO-TOWN then does nothing itself)."
 (defun build-pond (g)
   "Build the fishing pond beside booth group G: the water, a short pier and reeds."
   (setf *pond* (shape g :cyl '(4.0 4.0 .05 24) "#3f7f9a" 9.0 .07 -9.5 :shadow nil :rough .15 :metal .3))
-  (shape g :cyl '(4.3 4.3 .04 24) "#6a6a52" 9.0 .04 -9.5 :shadow nil)
-  (shape g :box '(1.3 .1 2.6) "#8a6440" 9.0 .32 -5.6)
-  (dolist (x '(8.5 9.5)) (shape g :cyl '(.06 .06 .5 6) "#5a4636" x .15 -6.8))
-  (loop for (x z) in '((5.6 -8.2) (5.9 -10.9) (12.2 -8.0) (12.4 -11.2) (9.4 -13.2))
-        do (shape g :cyl '(.02 .03 1.1 5) "#5a7a3a" x .55 z :shadow nil)))
+  (model g "booth-pond"))
 
 ;;; ------------------------------------------------------------------ the booths themselves
 
@@ -167,7 +161,7 @@ Return T if a train ride was pending (GO-TO-TOWN then does nothing itself)."
   :spot '(12.2 5.6 1.2)
   :label "E — порыбачить с мостков"
   :use (lambda () (if *carry* (say "Руки заняты — удочку не взять") (begin-play :fish)))
-  :build (lambda (g) (unless (member "nopond" *dev-flags* :test #'string=) (build-pond g)) (beam-between g '(7.0 1.0 -2.6) '(5.0 3.4 -2.6) :thick .04 :rgb "#3a2a1e") (shape g :box '(.5 .5 .5) "#55708a" 7.2 .25 -2.4)))
+  :build (lambda (g) (unless (member "nopond" *dev-flags* :test #'string=) (build-pond g)) (model g "booth-0-extra")))
 
 ;; the shooting range
 (defbooth 1
@@ -175,7 +169,7 @@ Return T if a train ride was pending (GO-TO-TOWN then does nothing itself)."
   :spot '(10.7 4.2 1.3)
   :label (lambda () (format nil "E — тир: пять выстрелов за ~/kiosk-trip::rub/ Целиться самому" *range-price*))
   :use (lambda () (when (pay *range-price*) (begin-play :tir)))
-  :build (lambda (g) (unless (member "nopond" *dev-flags* :test #'string=) (build-range g)) (dolist (z '(2.6 3.4 4.2)) (shape g :cyl '(.3 .3 .04 12) "#e8e0d0" 12.8 1.6 z :rot (list 0 0 (/ pi 2))) (shape g :cyl '(.1 .1 .05 8) "#a3262c" 12.76 1.6 z :rot (list 0 0 (/ pi 2)) :shadow nil))))
+  :build (lambda (g) (unless (member "nopond" *dev-flags* :test #'string=) (build-range g)) (model g "booth-1-extra")))
 
 ;; the hardware shop: the lid for the frying pan
 (defbooth 2
@@ -196,7 +190,7 @@ Return T if a train ride was pending (GO-TO-TOWN then does nothing itself)."
              (t (decf *papers* *book-papers*) (save-finds)
                 (give-good :books (nth (random 4) '("Выдали стопку книг: «Два капитана» сверху" "Выдали книги: фантастика, зачитанная до дыр"
                                                     "Выдали книги: том энциклопедии и сказки" "Выдали книги: стихи и справочник грибника"))))))
-  :build (lambda (g) (dotimes (i 4) (shape g :box '(.5 .5 .7) (nth i '("#6a3a2e" "#2c4a7a" "#3c5a48" "#c9a13a")) 7.2 (+ .25 (* i .5)) 3.2 :rot (list 0 (* i .2) 0)))))
+  :build (lambda (g) (model g "booth-3-extra")))
 
 ;; Manka the goat
 (defbooth 4
@@ -208,9 +202,9 @@ Return T if a train ride was pending (GO-TO-TOWN then does nothing itself)."
   :build (lambda (g) (let ((s (group g 7.0 0 3.0)))                                        ; Manka the goat and her pail (activities.lisp)
            (node-3d-set-scale s (v3 .55 .55 .55)) (mark-cow s 0 0 1.2 "#e8e4d8")
            (setf *goat* s))
-         (shape g :cyl '(.2 .16 .3 10) "#8a8e92" 7.0 .15 2.2 :metal .5 :rough .4)
+         (model g "booth-4-extra")
          (setf *goat-milk* (shape g :cyl '(.17 .17 .02 10) "#f6f4ee" 7.0 .06 2.2 :shadow nil))
-         (shape g :box '(.1 .9 3.0) "#6a5038" 5.4 .45 3.0)))
+         ))
 
 ;; the lighthouse: prices in the two nearest towns
 (defbooth 5
@@ -224,9 +218,7 @@ Return T if a train ride was pending (GO-TO-TOWN then does nothing itself)."
          (say (format nil "С маяка видно далеко. ~{~a~^ · ~}"
                       (loop for (nil . i) in (subseq near 0 2) collect (market-note i))))))
   :build (lambda (g) (dotimes (k 6) (shape g :cyl '(.8 .9 1.0 12) (if (evenp k) "#e8e4d8" "#a3262c") 7.0 (+ .5 k) -3.2))   ; a small lighthouse
-         (shape g :cyl '(1.1 1.1 .12 12) "#2a2c30" 7.0 6.06 -3.2)
-         (shape g :cyl '(.5 .5 .8 10) "#ffe9a0" 7.0 6.5 -3.2 :emit "#ffd870" :energy 3.0 :shadow nil)
-         (shape g :cyl '(.05 .7 .5 10) "#a3262c" 7.0 7.15 -3.2)))
+         (model g "booth-5-extra")))
 
 ;; window no. 3: the stamp
 (defbooth 6
@@ -243,7 +235,7 @@ Return T if a train ride was pending (GO-TO-TOWN then does nothing itself)."
   :spot '(10.7 -5.6 1.2)
   :label "E — спуститься в шахту за углём"
   :use (lambda () (if *carry* (say "Руки заняты — уголь не унести") (begin-play :mine)))
-  :build (lambda (g) (build-rock g) (dolist (z '(-3.4 -4.6)) (shape g :box '(.3 5.0 .3) "#5a4636" 11.0 2.5 z)) (shape g :box '(.4 .4 1.8) "#5a4636" 11.0 5.0 -4.0) (shape g :box '(1.4 1.8 1.0) "#3a3a40" 11.0 .9 -4.0)))
+  :build (lambda (g) (build-rock g) (model g "booth-8-extra")))
 
 ;; mineral water
 (defbooth 9
@@ -251,7 +243,7 @@ Return T if a train ride was pending (GO-TO-TOWN then does nothing itself)."
   :spot '(10.4 2.6 1.0)
   :label (lambda () (format nil "E — стакан минеральной воды за ~/kiosk-trip::rub/: бодрит" *water-price*))
   :use (lambda () (when (pay *water-price*) (setf *boost-until* (+ *time* *water-time*)) (say "Нарзан! В нос шибает. Пять минут бегаешь быстрее")))
-  :build (lambda (g) (shape g :cyl '(.5 .6 1.0 10) "#e8e4d8" 7.2 .5 -2.6) (shape g :cyl '(.06 .06 .5 6) "#7ab0c8" 7.2 1.2 -2.6 :alpha .6)))
+  :build (lambda (g) (model g "booth-9-extra")))
 
 ;; the flatcar: the wagon goes by train
 (defbooth 10
@@ -260,7 +252,7 @@ Return T if a train ride was pending (GO-TO-TOWN then does nothing itself)."
   :use (lambda () (cond (*actor* (say "На платформу кибитку ставит водитель: маршрут — его дело"))
               (t (setf *rail-ticket* t) (open-map)
                  (say "Кибитка на платформе. Выбери город на карте — поезд довезёт; чем дальше, тем дороже"))))
-  :build (lambda (g) (shape g :box '(3.2 .9 12.0) "#4a4e52" 16.0 .45 0) (dolist (x '(15.2 16.8)) (shape g :box '(.1 .14 13.0) "#8a8e92" x .05 0 :metal .6))))
+  :build (lambda (g) (model g "booth-10-extra")))
 
 ;; the carpenter: planks
 (defbooth 11
@@ -269,7 +261,7 @@ Return T if a train ride was pending (GO-TO-TOWN then does nothing itself)."
   :label (lambda () (format nil "E — ~d досок за ~/kiosk-trip::rub/" (first *carpenter-deal*) (second *carpenter-deal*)))
   :use (lambda () (when (pay (second *carpenter-deal*)) (incf *planks* (first *carpenter-deal*))
           (say (format nil "Плотник отсыпал ~d досок. В печку: ~d" (first *carpenter-deal*) *planks*))))
-  :build (lambda (g) (dotimes (i 6) (shape g :box '(2.4 .06 .22) "#c8a060" 7.2 (+ .04 (* i .065)) (+ 2.4 (* .03 i)))) (shape g :box '(1.6 .8 .7) "#8a6440" 7.2 .4 -2.6)))
+  :build (lambda (g) (model g "booth-11-extra")))
 
 (defparameter *booth-window* '(1.1 2.3 1.0) "The window of a booth: its bottom, its top and half its width.")
 

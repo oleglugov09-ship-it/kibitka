@@ -58,12 +58,7 @@ Return the group node."
   (destructuring-bind (n name hat coat props) (assoc i *gnome-plan*)
     (declare (ignore n name))
     (let ((g (group parent)))
-      (shape g :cyl '(.045 .07 .1 10) coat 0 .05 0)
-      (dolist (sx '(-.03 .03)) (shape g :box '(.035 .02 .05) "#3a2a1e" sx .01 -.03))          ; shoes
-      (shape g :ball '(.045 10 8) "#e8c0a0" 0 .135 0)
-      (shape g :cyl '(.04 .006 .075 8) "#f0ece0" 0 .092 -.034 :rot '(-.25 0 0))                 ; beard
-      (shape g :ball '(.013 6 4) "#d88a8a" 0 .132 -.046)
-      (dolist (sx '(-.018 .018)) (shape g :box '(.008 .01 .004) "#1a1a1e" sx .148 -.042 :shadow nil))
+      (model g "gnome" 0.0 0.0 0.0 :paint (list coat))
       (unless (= i 17) (shape g :cyl '(.003 .05 .13 10) hat 0 .225 0))                          ; hat (the cook has his own)
       (dolist (p props)
         (destructuring-bind (kind dims rgb x y z &optional rot emit) p
