@@ -12,3 +12,4 @@ export/
 project/bin/libgdecl.wasm
 project/.slynk-port-*
 *.blend1
+build-quick/

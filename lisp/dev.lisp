@@ -142,6 +142,8 @@ Return T when the key was ours."
 ;;; the weather, get goods, start a booth game without walking up to it. It is in English, like the
 ;;; debug screen, and written past the translation (GODOT:OBJECT-SET).
 
+(defvar *walk-speed-0* *walk-speed* "The walking speed as the game sets it: the cheat multiplies it and puts it back.")
+(defvar *max-speed-0* *max-speed* "The truck's top speed as the game sets it: the cheat multiplies it and puts it back.")
 (defvar *cheats-open* nil "True while the cheat panel is shown.")
 (defvar *cheat-ui* nil "The cheat panel: a plist of :bg and :buttons, the latter (key . button) pairs.")
 (defvar *cheat-on* '() "The switches that are on: a list of keys among :paws :truck :fuel :noon.")
@@ -189,8 +191,8 @@ Return T when the key was ours."
     ((:paws :truck :fuel :noon)
      (setf *cheat-on* (if (cheat-p key) (remove key *cheat-on*) (cons key *cheat-on*)))
      (case key
-       (:paws (setf *walk-speed* (if (cheat-p :paws) 13.2 2.2)))
-       (:truck (setf *max-speed* (if (cheat-p :truck) 54.0 9.0)))))
+       (:paws (setf *walk-speed* (* *walk-speed-0* (if (cheat-p :paws) 6 1))))
+       (:truck (setf *max-speed* (* *max-speed-0* (if (cheat-p :truck) 6 1))))))
     (:money (cheat-money)) (:tank (cheat-fuel))
     (:planks (incf *planks* 10) (say (cl:format nil "Planks: ~d" *planks*)))
     (:debt (pay-debt *debt*) (say "The debt is paid off: the ticket is sold at the savings bank"))

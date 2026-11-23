@@ -88,6 +88,9 @@
         (/ (* *plan-cover* need) makers))
       0))
 
+(defparameter *short-at* .25 "A town is short of a good once this share of its reserve is missing.")
+(defun short-p (town good) "Return true if TOWN is short of GOOD: enough is missing for the town to notice." (>= (shortage town good) *short-at*))
+
 (defun stock (town good) (or (gethash (cons town good) *stocks*) 0.0))
 (defun set-stock (town good value) (setf (gethash (cons town good) *stocks*) (max 0.0 (min *stock-cap* (float value 1.0)))))
 
@@ -146,7 +149,7 @@
   (and (state-good-p good) (>= (stock town good) (max 3.0 (* (norm town good) *surplus-days*)))))
 
 (defun short-goods (town) "Return the goods TOWN is short of, the shortest first."
-  (sort (remove-if (lambda (g) (< (shortage town g) .25)) (plan-goods)) #'> :key (lambda (g) (shortage town g))))
+  (sort (remove-if-not (lambda (g) (short-p town g)) (plan-goods)) #'> :key (lambda (g) (shortage town g))))
 (defun surplus-goods (town) "Return the goods the shop in TOWN has a surplus of."
   (remove-if-not (lambda (g) (surplus-p town g)) (plan-goods)))
 
@@ -191,7 +194,7 @@ A mod that brings a clash is told to rename the newcomer."
   "Put the plan's crate ADDR into the shop of its town; return the premium earned, in units of money."
   (let ((town (mod addr 100)) (good (parcel-good addr)))
     (if good
-        (let ((short (>= (shortage town good) .25)))
+        (let ((short (short-p town good)))
           (set-stock town good (+ (stock town good) *crate-units*))
           (add-deeds town 2)                                             ; the town's power sees who closed the gap
           (when short (incf *talons* (crate-talons town)))               ; and its council hands out coupons
@@ -216,7 +219,7 @@ A mod that brings a clash is told to rename the newcomer."
           (loop for good in (sort (copy-list (plan-goods)) #'> :key (lambda (g) (shortage town g)))
                 when (plusp (norm town good))
                   collect (let ((have (round (stock town good))) (n (norm town good)))
-                            (cond ((>= (shortage town good) .25)
+                            (cond ((short-p town good)
                                    (format nil "~a — на складе ~d, норма ~d в день: НЕ ХВАТАЕТ, дают ~/kiosk-trip::rub/" (plan-name good) have n (agreed-price town good)))
                                   ((surplus-p town good)
                                    (format nil "~a — на складе ~d, норма ~d в день: ИЗЛИШЕК, по прейскуранту ~/kiosk-trip::rub/" (plan-name good) have n (list-price good)))

@@ -12,6 +12,7 @@
 (defparameter *fuel-chunk* 10 "The number of rubles of fuel poured per press of R.")
 (defparameter *start-money* 10)
 (defparameter *start-fuel* .6)
+(defparameter *start-planks* 6 "The planks in stock when a game starts.")
 (defparameter *mid-station-gap* 1200.0 "The stretch length above which one more gas station stands halfway.")
 
 ;;; Trade and parcels

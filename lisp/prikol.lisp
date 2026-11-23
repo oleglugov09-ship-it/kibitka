@@ -71,7 +71,9 @@ action-function) for a booth whose SPOT is a side door with business of its own.
 
 (defvar *gimmick-spent* '() "The record of free takings, each a pair (booth-number . day): when the free thing was last taken.")
 
-(defun today () "Return the number of the current game day." (floor *day-t* *day-len*))
+(defun today ()
+  "Return the number of the current game day; 0 where there is no sky (the unit checks run without the engine)."
+  (if (and (boundp '*day-t*) (boundp '*day-len*)) (floor (symbol-value '*day-t*) (symbol-value '*day-len*)) 0))
 
 (defun spent-p (i)
   "Return true, with a hint, if the free thing at booth I has already been taken today.

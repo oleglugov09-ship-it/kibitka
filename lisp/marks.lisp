@@ -150,7 +150,7 @@ The land under it has dropped some fifty metres, and a river runs along the bott
     (dolist (dp (list (- c (* h .62)) (+ c (* h .62))))
       (let ((p (road-group g dp)))
         (dolist (x '(4.6 -8.2)) (red-light p x 44.6 0 .45))
-        (flood p -1.8 6.0 0 :range 40.0 :energy 3.0)
+        (flood p *way-x* 6.0 0 :range 40.0 :energy 3.0)
         (model p "chasm-pylon")))
     g))
 
@@ -162,12 +162,12 @@ FIRST and LAST mark the portals."
     (node-3d-set-rotation g (v3 0 (- (road-frame d)) 0))
     (model g "tunnel-piece")
     (if (and *tunnel* (> (min (- d (first *tunnel*)) (- (second *tunnel*) d)) 70.0))   ; deep inside the lamps are dead
-        (shape g :box '(.5 .12 2.4) "#2a2620" -1.8 6.95 0 :shadow nil)
-        (shape g :box '(.5 .12 2.4) "#ffb060" -1.8 6.95 0 :emit "#ff9a40" :energy 3 :shadow nil))
+        (shape g :box '(.5 .12 2.4) "#2a2620" *way-x* 6.95 0 :shadow nil)
+        (shape g :box '(.5 .12 2.4) "#ffb060" *way-x* 6.95 0 :emit "#ff9a40" :energy 3 :shadow nil))
     (when (or first last)                                              ; portal: a concrete frame wider than the vault
       (let ((z (if first 4.4 -4.4)))
         (model g (if first "tunnel-portal-in" "tunnel-portal-out"))
-        (sign g "ТУННЕЛЬ" -1.8 9.4 (+ z (if first .78 -.78)) :h .6 :rgb "#f0ece0" :yaw (if first 0.0 pi))))))
+        (sign g "ТУННЕЛЬ" *way-x* 9.4 (+ z (if first .78 -.78)) :h .6 :rgb "#f0ece0" :yaw (if first 0.0 pi))))))
 
 ;;; ------------------------------------------------------------------ mist and fireflies on the marsh
 

@@ -64,7 +64,7 @@ The shop's books change; a sale of what the town is short of is a deed in our fa
 a resale of a shop good is speculation: a deed against us, and one more for the inspectors."
   (let* ((town (trade-town (and *client* (getf *client* :town)))) (raw (raw-of good)) (turn nil))
     (cond ((eq side :sold)
-           (let ((needed (>= (shortage town raw) .25)))
+           (let ((needed (short-p town raw)))
              (set-stock town raw (+ (stock town raw) 1))
              (cond ((and from-shop (fboundp 'grant-paper)                    ; the first resale is forgiven: the rule comes on paper
                          (funcall 'grant-paper :obhss

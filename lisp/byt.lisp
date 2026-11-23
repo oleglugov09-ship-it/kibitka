@@ -257,7 +257,7 @@ is always there; the lower one when it is folded down, otherwise there are the s
 ;;; The stove, planks, warmth
 
 (defparameter *stove-at* '(-1.18 2.35) "The x and z of the stove: in the corner to the right of the door.")
-(defvar *planks* 6 "The number of planks in stock.")
+(defvar *planks* *start-planks* "The number of planks in stock.")
 (defvar *fire* 0.0 "The number of seconds the fire will still burn.")
 (defvar *warm* .7 "The warmth in the wagon, 0..1.")
 (defvar *stove-glow* nil)

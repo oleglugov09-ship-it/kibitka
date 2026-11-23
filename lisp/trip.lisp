@@ -76,7 +76,7 @@ The order matters. START-TRIP lays the road out anew and with it puts the money 
   "Start from the depot: the starting things, money and tank."
   (cancel-course)
   (empty-paws)
-  (setf *onboard* 0 *planks* 6)
+  (setf *onboard* 0 *planks* *start-planks*)
   (reset-world)                                           ; every part of the state goes back to the start (delo.lisp)
   (show-carry)
   (start-trip)

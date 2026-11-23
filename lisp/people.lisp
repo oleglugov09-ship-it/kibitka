@@ -110,9 +110,6 @@ Return the cards to show: the title, then a line for everyone who left, or a lin
   (let ((lines (remove nil (mapcar (lambda (e) (person-epilogue (first e))) *people*))))
     (and lines (append (list (tr (getf *report-lines* :stays)) "") lines (list "" "")))))
 
-(defun person-day () "Return the game day, or 0 without the engine."
-  (if (and (boundp '*day-t*) (boundp '*day-len*)) (floor (symbol-value '*day-t*) (symbol-value '*day-len*)) 0))
-
 (defun person-cond-p (cond town)
   "Return true if the condition COND holds in TOWN now.
 The forms: (:always), (:short [good]), (:plenty [good]), (:rationed), (:season s), (:holiday [key]),
@@ -120,7 +117,7 @@ The forms: (:always), (:short [good]), (:plenty [good]), (:rationed), (:season s
   (destructuring-bind (what &optional arg) cond
     (ecase what
       (:always t)
-      (:short (if arg (>= (shortage town arg) .25) (and (short-goods town) t)))
+      (:short (if arg (short-p town arg) (and (short-goods town) t)))
       (:plenty (if arg (surplus-p town arg) (and (surplus-goods town) t)))
       (:rationed (and (rationed-goods town) t))
       (:season (eq *season* arg))
@@ -143,7 +140,7 @@ The forms: (:always), (:short [good]), (:plenty [good]), (:rationed), (:season s
 (defun person-line (key town)
   "Return what the person KEY says to us in TOWN now, as 'who: «words»', and remember the meeting.
 Return NIL if we have already spoken today or there is nothing left to say."
-  (let* ((p (rest (assoc key *people*))) (rec (person-record key)) (day (person-day)))
+  (let* ((p (rest (assoc key *people*))) (rec (person-record key)) (day (today)))
     (when (and p (/= (met-day rec) day))
       (setf (met-world-heard rec)                                                ; what is no longer true may be said again one day
             (remove-if-not (lambda (heard) (let ((w (find heard (getf p :world) :key #'second :test #'equal)))
@@ -187,7 +184,7 @@ Return NIL if we have already spoken today or there is nothing left to say."
 
 (defun acting-line (key)
   "Return the line of whoever stands in for the person KEY who has left, once a day."
-  (let* ((p (rest (assoc key *people*))) (rec (person-record (acting-key key))) (day (person-day)))
+  (let* ((p (rest (assoc key *people*))) (rec (person-record (acting-key key))) (day (today)))
     (when (and (getf p :acting) *acting-lines* (/= (met-day rec) day))
       (setf (met-day rec) day)
       (incf (met-meetings rec))
@@ -199,7 +196,7 @@ Return NIL if we have already spoken today or there is nothing left to say."
 The one tied to this very town goes before the ones met anywhere. Where the post is empty, the one acting
 speaks instead. A dismissed person may be met once more among the buyers or on the fishing stage."
   (let* ((posts (remove-if-not (lambda (e) (person-here-p (rest e) place town)) *people*))
-         (here (remove-if-not (lambda (e) (and (person-in-post-p (first e)) (/= (met-day (person-record (first e))) (person-day)))) posts)))
+         (here (remove-if-not (lambda (e) (and (person-in-post-p (first e)) (/= (met-day (person-record (first e))) (today)))) posts)))
     (setf *person-spoke* nil)
     (or (and (or (equal place '(:window :buyer)) (equal place '(:booth 0)))
              (some (lambda (f) (and (eq (second f) :fired)
