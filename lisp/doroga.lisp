@@ -465,6 +465,7 @@ The nodes are already gone together with the previous World."
   (clrhash *pole-wires*) (clrhash *built-towns*)
   (stages
     (reset-city)
+    (reset-tank) (put-money *start-money*)   ; a trip starts with the depot's tank and pocket; LOAD-GAME, after it, puts back what was saved
     (plan-towns 1e9)
     (plan-places)                 ; pads for everything that stands by plan - before the land
     (setf *drops* (loop for tw in *towns* collect (cons (town-stop-d tw) (town-index tw)))        ; markets - in the middle of every town
