@@ -34,23 +34,15 @@
 
 (defun kettle-model (parent x y z)
   "Build an enamel kettle under PARENT with its bottom at (X Y Z); return its group."
-  (let ((g (group parent x y z)) (enamel "#3f6f73"))
-    (shape g :cyl '(.085 .11 .14 12) enamel 0 .07 0 :rough .4)
-    (shape g :cyl '(.06 .085 .03 12) enamel 0 .155 0 :rough .4 :shadow nil)
-    (shape g :ball '(.02 6 4) "#2a2a2e" 0 .185 0 :shadow nil)
-    (shape g :box '(.12 .03 .03) enamel .13 .1 0 :rot '(0 0 .6) :shadow nil)                       ; the spout
-    (dolist (sx '(-.07 .07)) (shape g :box '(.015 .09 .015) "#2a2a2e" sx .2 0 :shadow nil))        ; the handle over the lid
-    (shape g :box '(.16 .015 .02) "#2a2a2e" 0 .245 0 :shadow nil)
+  (let ((g (group parent x y z)))
+    (model g "kettle")
     g))
 
 (defun pan-model (parent x y z &key hanging)
   "Build a cast-iron frying pan under PARENT at (X Y Z): lying on a stove, or HANGING flat against the back wall."
-  (let ((g (group parent x y z)) (iron "#1e1e22"))
-    (cond (hanging (shape g :cyl '(.16 .16 .03 14) iron 0 0 0 :rot (list (/ pi 2) 0 0) :metal .4 :rough .7)
-                   (shape g :box '(.035 .22 .02) iron 0 -.26 0 :metal .4 :rough .7))
-          (t (shape g :cyl '(.19 .17 .035 14) iron 0 .018 0 :metal .4 :rough .7)
-             (shape g :cyl '(.17 .17 .012 14) "#2c2c32" 0 .04 0 :metal .3 :rough .5 :shadow nil)        ; a centimetre proud of the pan under it
-             (shape g :box '(.24 .02 .035) iron .3 .03 0 :metal .4 :rough .7)))
+  (let ((g (group parent x y z)))
+    (cond (hanging (model g "pan-hanging"))
+          (t (model g "pan")))
     g))
 
 (defun show-kettle ()

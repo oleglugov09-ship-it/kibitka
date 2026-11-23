@@ -168,99 +168,11 @@ That is the good sought or a dish made from it (blini will do for milk)."
       (shape g :box '(.2 .012 .14) "#c8a060" 0 .006 0))
   (dotimes (i 6) (shape g :box '(.018 .07 .1) (cut-look kind) (- (* i .03) .075) .05 0 :rot (list 0 0 -.35) :shadow nil)))
 
+(defun good-model (kind) "Return the name of the model of the good KIND (models/good-KIND.blend)." (format nil "good-~(~a~)" kind))
+
 (defun build-good (g kind)
   "Build the good KIND as a thing in G: it stands on a shelf, is carried in paws, goes on the windowsill."
-  (ecase kind
-    (:driedapple (shape g :box '(.004 .16 .004) "#d8d2c0" 0 .08 0 :shadow nil)             ; apple rings on a string
-                 (dotimes (i 5) (shape g :cyl '(.035 .035 .012 8) "#d8b070" 0 (+ .025 (* i .03)) 0 :rot (list (* .3 (- (mod i 2) .5)) 0 0) :shadow nil)))
-    (:driedherb (dotimes (i 5) (shape g :box '(.008 .15 .008) "#7a7a4a" (* .012 (- i 2)) .075 0 :rot (list 0 0 (* .14 (- i 2))) :shadow nil))   ; a dry bunch
-                (shape g :box '(.05 .012 .02) "#d8d2c0" 0 .13 0 :shadow nil))
-    (:pickled (jar-model g 0 0 0 "#8a6a4a"))                                                ; jars closed at the crate (home.lisp)
-    (:jarcompote (jar-model g 0 0 0 "#d8a040"))
-    ;; a label stands a centimetre proud of its tin: closer than that the two surfaces flicker
-    (:cannedfish (shape g :cyl '(.056 .056 .05 12) "#b0b4b8" 0 .025 0 :metal .7 :rough .3)   ; a flat tin
-                 (shape g :cyl '(.066 .066 .025 12) "#2c4a7a" 0 .025 0 :shadow nil))
-    (:nut (shape g :cone '(.07 .1 6) "#d8d2c0" 0 .05 0 :rot (list pi 0 0))                 ; nuts in a paper cone
-          (dotimes (i 5) (shape g :ball '(.022 6 4) "#8a5a34" (* .03 (cos (* i 1.3))) .115 (* .03 (sin (* i 1.3))) :shadow nil)))
-    (:sandwich (shape g :cyl '(.1 .1 .012 12) "#e4e0d4" 0 .006 0)
-               (dolist (x '(-.045 .045))
-                 (shape g :box '(.07 .02 .1) "#c8843c" x .024 0) (shape g :box '(.06 .012 .09) "#d89a8a" x .04 0 :shadow nil)))
-    (:berrypie (shape g :cyl '(.1 .1 .012 12) "#e4e0d4" 0 .006 0)
-               (shape g :cyl '(.085 .09 .04 12) "#d8a040" 0 .032 0)
-               (shape g :cyl '(.065 .065 .012 10) "#a3202c" 0 .054 0 :shadow nil))
-    (:soup (shape g :cyl '(.09 .07 .08 12) "#d8d2c0" 0 .04 0)
-           (shape g :cyl '(.082 .082 .012 12) "#c8782c" 0 .08 0 :shadow nil)
-           (shape g :box '(.012 .012 .12) "#b0b4b8" .05 .1 .02 :rot '(.5 0 0) :metal .6 :shadow nil))
-    (:bakedapple (shape g :cyl '(.1 .1 .012 12) "#e4e0d4" 0 .006 0)
-                 (dolist (x '(-.04 .04)) (shape g :ball '(.04 7 5) "#c8843c" x .05 0) (shape g :ball '(.016 5 3) "#d89a20" x .09 0 :shadow nil)))
-    (:brittle (dotimes (i 3) (shape g :box '(.16 .02 .05) "#8a5a34" 0 (+ .012 (* i .022)) (* .01 (- i 1)) :rot (list 0 (* .2 (- i 1)) 0))))
-    ((:mushroom :toadstool)                                                             ; a handful in a paper cone
-     (shape g :cone '(.07 .1 6) "#d8d2c0" 0 .05 0 :rot (list pi 0 0))
-     (loop for (x z) in '((-.03 .0) (.03 .02) (.0 -.03))
-           do (shape g :cyl '(.012 .015 .06 6) "#e8e0d0" x .11 z :shadow nil)
-              (shape g :ball '(.035 7 4) (if (eq kind :toadstool) "#c02a22" "#8a5a34") x .145 z :scale '(1 .6 1) :shadow nil)
-              (when (eq kind :toadstool) (shape g :ball '(.008 4 3) "#f0ece0" (+ x .012) .162 z :shadow nil))))
-    (:apple (shape g :cyl '(.09 .07 .06 8) "#8a6440" 0 .03 0)                             ; a small basket of apples
-            (loop for i below 4 do (shape g :ball '(.035 7 5) (if (evenp i) "#c8382c" "#d8a030") (* .04 (cos (* i 1.6))) .08 (* .04 (sin (* i 1.6))) :shadow nil)))
-    (:herb (dotimes (i 5) (shape g :box '(.008 .16 .008) "#5a7a3a" (* .012 (- i 2)) .08 0 :rot (list 0 0 (* .12 (- i 2))) :shadow nil))   ; a bunch tied with string
-           (shape g :box '(.05 .012 .02) "#d8d2c0" 0 .05 0 :shadow nil)
-           (dotimes (i 3) (shape g :ball '(.014 5 3) "#9a6ab8" (* .02 (- i 1)) .165 0 :shadow nil)))
-    (:shroomfry (shape g :cyl '(.1 .1 .012 12) "#e4e0d4" 0 .006 0)                        ; a plate of fried mushrooms
-                (dotimes (i 6) (shape g :ball '(.022 5 4) "#7a4a2c" (* .05 (cos i)) .028 (* .05 (sin i)) :scale '(1 .5 1) :shadow nil)))
-    (:creamfry (shape g :cyl '(.09 .07 .08 12) "#d8d2c0" 0 .04 0)                         ; a bowl: mushrooms in sour cream
-               (shape g :cyl '(.082 .082 .012 12) "#f0e8d8" 0 .078 0 :shadow nil)
-               (dotimes (i 4) (shape g :ball '(.016 5 4) "#7a4a2c" (* .035 (cos (* i 1.6))) .088 (* .035 (sin (* i 1.6))) :shadow nil)))
-    (:charlotte (shape g :cyl '(.1 .1 .012 12) "#e4e0d4" 0 .006 0)                        ; an apple pie
-                (shape g :cyl '(.085 .09 .05 12) "#d8a040" 0 .037 0)
-                (dotimes (i 5) (shape g :box '(.03 .006 .012) "#f0d8a0" (* .04 (cos (* i 1.25))) .064 (* .04 (sin (* i 1.25))) :shadow nil)))
-    (:vobla (shape g :box '(.12 .004 .004) "#d8d2c0" 0 .17 0 :shadow nil)                 ; three dried roach on a string, tails down
-            (dotimes (i 3)
-              (let ((x (* .045 (- i 1))))
-                (shape g :ball '(.03 6 4) "#a08a5a" x .1 0 :scale '(.45 1.6 .18) :shadow nil)
-                (shape g :box '(.03 .025 .004) "#8a7448" x .035 0 :shadow nil))))
-    (:dried (shape g :box '(.004 .16 .004) "#d8d2c0" 0 .08 0 :shadow nil)                  ; dried mushrooms on a string
-            (dotimes (i 5) (shape g :ball '(.026 6 4) "#6a4a34" 0 (+ .025 (* i .03)) 0 :scale '(1 .45 1) :shadow nil)))
-    (:fried (shape g :cyl '(.1 .1 .012 12) "#e4e0d4" 0 .006 0)                          ; a plate with a browned fish on it
-            (shape g :ball '(.085 8 5) "#b8782c" 0 .04 0 :scale '(.6 .4 1.3))
-            (shape g :cone '(.05 .08 4) "#9a6424" 0 .04 .14 :rot (list (/ pi 2) 0 0) :scale '(.3 1 1)))
-    (:jam (shape g :cyl '(.05 .05 .13 10) "#a3262c" 0 .065 0 :rough .2)                 ; a jar with a lid
-          (shape g :cyl '(.054 .054 .025 10) "#d8a840" 0 .142 0 :metal .6 :rough .4)
-          (shape g :box '(.07 .05 .004) "#f0ece0" 0 .07 -.05 :shadow nil))
-    (:toast (shape g :cyl '(.1 .1 .012 12) "#e4e0d4" 0 .006 0)
-            (dotimes (i 3) (shape g :box '(.09 .018 .07) "#c8843c" (* .02 (- i 1)) (+ .022 (* i .02)) (* .015 (- i 1)) :rot (list 0 (* i .4) 0))))
-    (:stew (shape g :cyl '(.09 .07 .08 12) "#d8d2c0" 0 .04 0)                           ; a bowl with stew in it
-           (shape g :cyl '(.082 .082 .012 12) "#7a4a2c" 0 .078 0 :shadow nil)
-           (dotimes (i 3) (shape g :ball '(.016 5 4) "#9a5a34" (* .03 (cos (* i 2.1))) .09 (* .03 (sin (* i 2.1))) :shadow nil)))
-    (:fish (shape g :ball '(.1 8 5) "#8aa0b0" 0 .06 0 :scale '(.6 .5 1.4) :metal .4 :rough .4)
-           (shape g :cone '(.06 .1 4) "#6a8090" 0 .06 .17 :rot (list (/ pi 2) 0 0) :scale '(.3 1 1)))
-    (:bread (shape g :box '(.2 .08 .1) "#b87434" 0 .04 0)                              ; a brick loaf: flat sides, it stacks
-            (shape g :box '(.19 .025 .09) "#c8843c" 0 .09 0 :shadow nil)
-            (dolist (x '(-.05 0 .05)) (shape g :box '(.012 .006 .07) "#e8c080" x .104 0 :rot '(0 .4 0) :shadow nil)))
-    (:coal (shape g :cyl '(.085 .065 .13 10) "#6a6e72" 0 .065 0 :metal .5 :rough .5)       ; a bucket of coal
-           (shape g :cyl '(.088 .088 .012 10) "#4c5052" 0 .13 0 :metal .5 :rough .5 :shadow nil)
-           (dolist (x '(-.085 .085)) (shape g :box '(.008 .09 .008) "#34363a" x .17 0 :shadow nil))
-           (shape g :box '(.18 .008 .008) "#34363a" 0 .215 0 :shadow nil)
-           (loop for (x y z s) in '((0 .15 0 .045) (-.04 .14 .03 .035) (.04 .14 -.02 .04) (.02 .145 .04 .03) (-.03 .145 -.04 .032))
-                 do (shape g :rock (list s) "#1a1a1e" x y z)))
-    (:tools (shape g :box '(.24 .1 .12) "#a3262c" 0 .05 0) (shape g :box '(.14 .02 .02) "#2a2c30" 0 .13 0)
-            (dolist (x '(-.06 .06)) (shape g :box '(.02 .04 .02) "#2a2c30" x .11 0)))
-    (:books (shape g :box '(.16 .037 .22) "#6a3a2e" 0 .019 0)                           ; two books tied with string: they stack
-            (shape g :box '(.155 .037 .215) "#2c4a7a" .003 .057 0 :rot '(0 .05 0))
-            (shape g :box '(.15 .03 .21) "#e8e0d0" .004 .019 .003 :shadow nil)
-            (shape g :box '(.012 .082 .225) "#d8d2c0" 0 .041 0 :shadow nil))
-    (:cans (shape g :cyl '(.048 .048 .098 12) "#b0aa98" 0 .049 0 :metal .7 :rough .3)      ; one can, a plain cylinder: it stacks
-           (shape g :cyl '(.058 .058 .06 12) "#a3262c" 0 .052 0 :shadow nil)                 ; the label, a centimetre proud
-           (shape g :cyl '(.052 .052 .012 12) "#8a8e92" 0 .104 0 :metal .7 :rough .3 :shadow nil))   ; the lid is the top: nothing lies in its plane
-    (:water (shape g :cyl '(.04 .045 .2 8) "#7ab0c8" 0 .1 0 :alpha .7 :rough .2) (shape g :cyl '(.02 .035 .07 6) "#7ab0c8" 0 .235 0 :alpha .7)
-            (shape g :cyl '(.056 .056 .06 8) "#e8e0d0" 0 .1 0 :shadow nil))
-    (:honey (shape g :cyl '(.07 .06 .13 10) "#d89a20" 0 .065 0 :rough .3) (shape g :cyl '(.075 .075 .03 10) "#e8e0d0" 0 .145 0)
-            (shape g :box '(.08 .05 .005) "#f0ece0" 0 .07 .068 :shadow nil))
-    (:berry (shape g :cyl '(.085 .06 .07 10) "#b08a50" 0 .035 0)                         ; a wicker basket heaped with cranberries
-            (shape g :cyl '(.09 .09 .012 10) "#8a6a3a" 0 .07 0 :shadow nil)
-            (dolist (x '(-.085 .085)) (shape g :box '(.01 .1 .012) "#8a6a3a" x .12 0 :shadow nil))
-            (shape g :box '(.18 .01 .012) "#8a6a3a" 0 .17 0 :shadow nil)
-            (dotimes (i 14) (shape g :ball '(.016 5 3) (if (zerop (mod i 4)) "#c8303c" "#a3202c")
-                                   (* (if (< i 9) .055 .025) (cos (* i 1.9))) (if (< i 9) .082 .095) (* (if (< i 9) .055 .025) (sin (* i 1.9))) :shadow nil)))))
+  (model g (good-model kind)))
 
 (defparameter *modelled* '(:fish :bread :coal :tools :books :cans :water :honey :berry :fried :jam :toast :stew
                            :mushroom :toadstool :apple :herb :shroomfry :creamfry :charlotte :dried

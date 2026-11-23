@@ -63,48 +63,30 @@ Return the node."
                (stamp g town 0 -.012 0 .24 :pitch (/ pi 2)))
              (shape g :box (list (* w .45) .12 .012) "#2a221c" 0 (* h .55) (/ d 2) :shadow nil))))
       (:mattress
-       (shape g :box '(.8 .14 1.7) "#d8d2c0" 0 .07 0)
-       (loop for i below 5 do (shape g :box '(.035 .143 1.702) "#5a6a8a" (- (* i .17) .34) .07 0 :shadow nil)))
-      (:pillow (shape g :ball '(.2 8 5) "#f0e8d8" 0 .08 0 :scale '(1.25 .42 .85)))
+       (model g "item-mattress"))
+      (:pillow (model g "item-pillow"))
       (:blanket
-       (shape g :box '(.86 .05 1.15) "#7a3a34" 0 .025 0)
-       (dolist (sx '(-1 1)) (shape g :box '(.03 .3 1.15) "#7a3a34" (* sx .43) -.12 0))
-       (shape g :box '(.87 .052 .1) "#d8a840" 0 .025 .38 :shadow nil))
+       (model g "item-blanket"))
       (:rug
-       (shape g :box '(.9 .02 1.4) "#8a1a22" 0 .01 0 :shadow nil)
-       (shape g :box '(.72 .024 1.22) "#e0b050" 0 .012 0 :shadow nil)
-       (shape g :box '(.58 .028 1.08) "#8a1a22" 0 .014 0 :shadow nil))
+       (model g "item-rug"))
       (:lamp
-       (shape g :cyl '(.07 .09 .08 8) "#6a5a30" 0 .04 0 :metal .6 :rough .4)
-       (shape g :cyl '(.05 .065 .16 8) "#ffe0a0" 0 .17 0 :emit "#ffb050" :energy 2.5 :shadow nil)
-       (shape g :cyl '(.03 .05 .07 8) "#6a5a30" 0 .29 0 :metal .6 :rough .4)
+       (model g "item-lamp")
        (light g "#ffb070" 1.0 3.0 0 .25 0))
       (:samovar
-       (shape g :cyl '(.11 .1 .08 12) "#d8a040" 0 .04 0 :metal .85 :rough .3)
-       (shape g :cyl '(.15 .11 .16 12) "#d8a040" 0 .16 0 :metal .85 :rough .3)
-       (shape g :cyl '(.14 .16 .16 12) "#d8a040" 0 .32 0 :metal .85 :rough .3)
-       (shape g :cyl '(.06 .13 .1 12) "#d8a040" 0 .45 0 :metal .85 :rough .3)
-       (shape g :box '(.14 .025 .025) "#d8a040" .2 .22 0 :metal .85 :rough .3 :rot (list 0 0 -.3)))
+       (model g "item-samovar"))
       (:milk
-       (shape g :box '(.12 .17 .12) "#f0ede4" 0 .085 0)
-       (shape g :box '(.128 .06 .128) "#3a6aa8" 0 .06 0 :shadow nil)       ; the label sticks out 4 mm: any closer and it flickers
-       (shape g :box '(.12 .06 .02) "#f0ede4" 0 .19 0 :shadow nil)
-       (shape g :box '(.03 .04 .03) "#d8d2c0" .03 .2 0 :shadow nil))
+       (model g "item-milk"))
       (:good
        (cond ((and (getf props :cut) (cut-look kind)) (build-cut g kind))
              ((member kind *modelled*) (build-good g kind))
              (t (build-packet g kind)))                              ; a mod's good without a model of its own
        (when (getf props :shop) (shape g :box '(.045 .03 .004) "#f0ede4" .05 .03 .075 :shadow nil)))   ; a shop's price tag    ; cut on the board: slices   ; the towns' goods - goods.lisp
       (:blin
-       (shape g :cyl '(.1 .1 .012 12) "#e4e0d4" 0 .006 0)
-       (dotimes (i 5) (shape g :cyl (list (- .08 (* i .003)) .08 .014 10) (if (evenp i) "#d8a040" "#c88a30") (* .004 (- i 2)) (+ .02 (* i .014)) 0 :shadow nil))
-       (shape g :box '(.03 .012 .03) "#f0e8b0" 0 .092 0 :shadow nil))
+       (model g "item-blin"))
       (:sack
-       (shape g :ball '(.26 8 5) "#a08a5a" 0 .16 0 :scale '(1.05 .62 .78))
-       (shape g :box '(.1 .1 .1) "#8a744a" .24 .26 0 :rot '(0 0 .5)))
+       (model g "item-sack"))
       (:barrel
-       (shape g :cyl '(.26 .26 .72 12) "#6a5038" 0 .36 0)
-       (dolist (y '(.12 .36 .6)) (shape g :cyl '(.275 .275 .04 12) "#34363a" 0 y 0 :metal .5 :rough .5 :shadow nil))))
+       (model g "item-barrel")))
     g))
 
 ;;; Storage
