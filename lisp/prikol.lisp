@@ -330,9 +330,14 @@ booth to booth, and a gas station next door does not switch them off."
   (when (< *speed* .4)
     (loop for (d i) in *gimmicks*
           when (< (abs (- d *dist*)) 80.0)
-            append (let ((i i) (d d) (spot (booth i :spot)))
+            append (let* ((i i) (d d) (file (format nil "booth-~d" i))
+                          ;; where the window and the landmark answer to E: the points at_window and at_spot of the booth's
+                          ;; model, in the booth's own axes (it stands 3.2 m off the road axis, .35 m below the road)
+                          (window (let ((p (model-point file "window"))) (if p (list (+ 3.2 (first p)) (third p) (- (second p) .35)) '(11.9 0.0 1.3))))
+                          (spot (and (booth i :spot)
+                                     (let ((p (model-point file "spot"))) (if p (list (+ 3.2 (first p)) (third p) (- (second p) .35)) (booth i :spot))))))
                      (flet ((press (x at up) (road-usable x at up (lambda () (gimmick-label i)) (lambda () (gimmick-use i)) 4.5 1.2)))
-                       (cons (press 11.9 d 1.3)
+                       (cons (press (first window) (+ d (second window)) (third window))
                              (when spot
                                (list (if (booth i :side)                            ; a side door with business of its own
                                          (road-usable (first spot) (+ d (second spot)) (third spot)

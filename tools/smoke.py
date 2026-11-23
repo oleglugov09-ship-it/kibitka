@@ -434,7 +434,7 @@ def back():
     print("Обратная дорога")
     p = P0
     start(p, KIOSK_SOLO="1", KIOSK_NOLAND="1", KIOSK_NAME="Проба")
-    num = lambda v: float(v.split()[0].replace("d", "e")) if v not in ("NIL", "nil") else None
+    num = lambda v: float(v.split()[0].replace("d", "e").replace("l", "e")) if v not in ("NIL", "nil") else None   # Lisp prints 1.5d0, 1.5l0
     ev(p, f"(progn ({K}relocate ({K}town-stop-d (first {K}*towns*))) (setf {K}*speed* 0.0) t)")
     time.sleep(1.5)
     ev(p, f"(progn ({K}go-to-town (car (last {K}*towns*))) t)")

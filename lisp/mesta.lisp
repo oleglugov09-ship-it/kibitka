@@ -7,6 +7,8 @@
 ;;;; Heights in the variables are above the wagon floor, as before.
 ;;;; What is hung by code on a node of its own (the table, the bunks, the guitar, the camera, the door) is still placed
 ;;;; by its number in code: its model is drawn around its own origin.
+;;;; Outside the wagon the same holds for the booths: at_window and at_spot in models/budki/booth-N.blend are where a booth
+;;;; answers to E (prikol.lisp, PRIKOL-USABLES).
 
 (in-package #:kiosk-trip)
 
