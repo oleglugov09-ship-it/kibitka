@@ -135,11 +135,8 @@ The land under it has dropped some fifty metres, and a river runs along the bott
     (loop for d from (- c span) to (+ c span) by 6.0
           do (let* ((u (/ (- d c) span)) (arch (- (* rise u u)))                    ; the arch touches the deck midway
                     (seg (road-group g d)))
-               (shape seg :box '(10.8 .5 6.3) "#5a5a58" -1.8 -.3 0)
-               (dolist (x '(3.7 -7.3))
-                 (shape seg :box '(.5 1.4 6.3) "#8a3a2c" x -.85 0)
-                 (shape seg :box '(.1 1.15 .1) "#8a8e92" x .55 0 :shadow nil)
-                 (shape seg :box '(.08 .08 6.3) "#8a8e92" x 1.1 0 :shadow nil)
+               (model seg "chasm-deck")
+               (dolist (x '(3.7 -7.3))                                   ; the struts down to the arch: each as long as the arch is deep there
                  (when (< arch -1.0) (shape seg :box (list .4 (- arch) .4) "#8a3a2c" x (/ arch 2) 0)))
                (let ((here (loop for x in '(3.7 -7.3)
                                  collect (road-pos d x (+ arch -1.2)))))
@@ -152,15 +149,9 @@ The land under it has dropped some fifty metres, and a river runs along the bott
     ;; two tall pylons and stays from their tops to the deck: the bridge is seen from afar, and from it you see down
     (dolist (dp (list (- c (* h .62)) (+ c (* h .62))))
       (let ((p (road-group g dp)))
-        (dolist (x '(4.6 -8.2))
-          (shape p :box '(1.4 46.0 1.8) "#8a3a2c" x 21.0 0)
-          (red-light p x 44.6 0 .45))
-        (dolist (y '(30.0 42.0)) (shape p :box '(12.8 1.6 1.2) "#8a3a2c" -1.8 y 0))
+        (dolist (x '(4.6 -8.2)) (red-light p x 44.6 0 .45))
         (flood p -1.8 6.0 0 :range 40.0 :energy 3.0)
-        (dolist (x '(4.6 -8.2))
-          (loop for k from 1 to 6
-                do (dolist (sz '(-1 1))
-                     (beam-between p (list x 43.0 0) (list (if (> x 0) 3.7 -7.3) .4 (* sz k 7.5)) :thick .09 :rgb "#d8d4c4"))))))
+        (model p "chasm-pylon")))
     g))
 
 (defun add-tunnel-piece (d first last)
@@ -169,17 +160,13 @@ It is walls and a ceiling over both lanes, with a lamp under the ceiling.
 FIRST and LAST mark the portals."
   (let ((g (keep (apply #'group *world* (road-pos d)) d)))
     (node-3d-set-rotation g (v3 0 (- (road-frame d)) 0))
-    (shape g :box '(.8 7.0 8.3) "#3c3c40" -7.9 3.5 0)
-    (shape g :box '(.8 7.0 8.3) "#3c3c40" 4.3 3.5 0)
-    (shape g :box '(13.0 .8 8.3) "#34343a" -1.8 7.4 0)
+    (model g "tunnel-piece")
     (if (and *tunnel* (> (min (- d (first *tunnel*)) (- (second *tunnel*) d)) 70.0))   ; deep inside the lamps are dead
         (shape g :box '(.5 .12 2.4) "#2a2620" -1.8 6.95 0 :shadow nil)
         (shape g :box '(.5 .12 2.4) "#ffb060" -1.8 6.95 0 :emit "#ff9a40" :energy 3 :shadow nil))
     (when (or first last)                                              ; portal: a concrete frame wider than the vault
       (let ((z (if first 4.4 -4.4)))
-        (dolist (x '(-13.0 9.4)) (shape g :box '(9.0 12.0 1.6) "#9a9890" x 6.0 z))   ; the frame hides the cut in the hill
-        (shape g :box '(31.4 4.6 1.6) "#9a9890" -1.8 10.0 z)
-        (shape g :box '(8.0 .9 .2) "#2c4a7a" -1.8 9.4 (+ z (if first .65 -.65)) :shadow nil)
+        (model g (if first "tunnel-portal-in" "tunnel-portal-out"))
         (sign g "ТУННЕЛЬ" -1.8 9.4 (+ z (if first .78 -.78)) :h .6 :rgb "#f0ece0" :yaw (if first 0.0 pi))))))
 
 ;;; ------------------------------------------------------------------ mist and fireflies on the marsh

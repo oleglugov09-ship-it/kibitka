@@ -39,6 +39,10 @@ VIEWS = [("outside-back-right", '(setf *view* :outside *orbit-yaw* .6 *orbit-pit
          ("misc", """(progn (setf *orbit-dist* 13.0 *orbit-yaw* -1.57 *orbit-pitch* .35) (loop for k in '(:mushroom :toadstool :berry :apple :nut :herb) for i from 0 do (build-plant (group *cart* 4.5 0.0 (- (* 2.2 i) 5.0)) k)) (mark-cow (group *cart* 8.0 0.0 0.0) 0 0 1.0 "#8a5a3a") (mark-cow (group *cart* 8.0 0.0 4.0) 0 0 2.5 "#e8e4d8") (kvas (group *cart*) 8.0 -5.0) (leto-fire (group *cart* 24.0 0.0 27.0)) 1)"""),
          ("misc-far", '(setf *orbit-dist* 24.0 *orbit-yaw* -1.2 *orbit-pitch* .45)'),
          ("misc-inside", '(setf *view* :inside *seat* nil *pos* (v3 0 0 1.8) *yaw* 0.0 *pitch* -.2)'),
+         ("camp", """(progn (setf *orbit-dist* 45.0 *orbit-yaw* 1.2 *orbit-pitch* .5) (let ((g (group *cart* 40.0 0.0 0.0))) (mark-camp g)) (build-airmail (+ *dist* 45.0)) 1)"""),
+         ("camp-high", '(setf *orbit-dist* 70.0 *orbit-yaw* 2.2 *orbit-pitch* .7)'),
+         ("train", """(progn (setf *orbit-dist* 55.0 *orbit-yaw* -1.57 *orbit-pitch* .35) (loop for n in (make-train nil) for i from 0 do (object-call n "reparent" *cart*) (object-set n "visible" t) (godot:node-3d-set-position n (v3 -14.0 0.0 (- 60.0 (* 15.0 i))))) (add-tunnel-piece (+ *dist* 30.0) t nil) (add-tunnel-piece (+ *dist* 38.3) nil nil) (add-tunnel-piece (+ *dist* 46.6) nil t) 1)"""),
+         ("train-ahead", '(setf *orbit-dist* 60.0 *orbit-yaw* -2.6 *orbit-pitch* .3)'),
          ("meta-room", '(progn (setf *meta* t *view* :inside *seat* nil *pos* (v3 0 0 2.8) *yaw* 0.0 *pitch* 0.0) (apply-meta) 1)'),
          ("meta-room-back", '(setf *pos* (v3 0 0 -2.8) *yaw* 3.1416)'),
          ("meta-room-side", '(setf *pos* (v3 2.4 0 0) *yaw* 1.5708)')]

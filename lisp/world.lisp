@@ -498,12 +498,7 @@ window check comes first, and the key and the building itself are evaluated only
   (let ((g (apply #'group *world* (road-pos d))))
     (multiple-value-bind (course slope) (road-frame d)
       (node-3d-set-rotation g (v3 slope (- course) 0)))
-    (loop for i below 22 do (shape g :box '(9.6 .1 .42) (if (oddp i) "#7a5a3a" "#6a4a2e") -1.8 .02 (+ -5 (* i .46))))   ; for two lanes
-    (dolist (sx '(-6.6 3.0))
-      (shape g :box '(.12 .1 10.4) "#5a3e26" sx .75 0)
-      (loop for i below 6 do (shape g :box '(.14 1.6 .14) "#4a3420" sx 0 (+ -5 (* i 2))))
-      (shape g :box '(.22 .3 .22) "#ffd080" sx 1.0 -5.2 :emit "#ffa040" :energy 1.5)
-      (loop for i below 4 do (shape g :box '(.25 2.5 .25) "#3a2a1a" (* sx .8) -1.2 (+ -4 (* i 2.6)))))
+    (model g "wood-bridge")
     (push (cons g d) *bridges*)))
 
 (defun step-bridges ()

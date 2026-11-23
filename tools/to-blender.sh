@@ -9,7 +9,7 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 dir=$(mktemp -d)
-KIOSK_DRAW="$dir" KIOSK_NOLOG=1 XDG_DATA_HOME="$dir/data" godot --path project --headless --audio-driver Dummy --quit-after 200 2>&1 | grep "DRAWN\|Ошибка" || true
+KIOSK_DRAW="$dir" KIOSK_NOLOG=1 XDG_DATA_HOME="$dir/data" godot --path project --headless --audio-driver Dummy --quit-after 200 2>&1 | grep "DRAWN\|Ошибка\|DRAW FAILED" || true
 for json in "$dir"/*.json; do
   [ -f "$json" ] || continue
   name=$(basename "${json%.json}")

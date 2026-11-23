@@ -280,13 +280,7 @@ group. The cells themselves are built by STEP-MEGA-CELLS as the wagon goes."
 ;;; backing out. Its vault goes on over us for a while on the other side and is left behind.
 
 (defun build-tunnel-threshold (entry)
-  (shape entry :box '(.8 7.0 330.0) "#3c3c40" -7.9 3.5 -35.0 :shadow nil)
-  (shape entry :box '(.8 7.0 330.0) "#3c3c40" 4.3 3.5 -35.0 :shadow nil)
-  (shape entry :box '(13.0 .8 330.0) "#34343a" *way-x* 7.4 -35.0 :shadow nil)
-  (shape entry :box '(11.4 .12 330.0) "#2c2c2f" *way-x* .0 -35.0 :shadow nil)                              ; its roadway
-  (loop for z from 126.0 downto -196.0 by 8.0 do (shape entry :box '(.5 .12 2.4) "#2a2620" *way-x* 6.95 z :shadow nil))
-  (dolist (x '(-13.0 9.4)) (shape entry :box '(9.0 12.0 1.6) "#9a9890" x 6.0 -200.4 :shadow nil))
-  (shape entry :box '(31.4 4.6 1.6) "#9a9890" *way-x* 10.0 -200.4 :shadow nil))
+  (model entry "tunnel-threshold"))
 
 (add-door :tunnel
           :in (lambda () (and *tunnel* *mega* (> *dir* 0) (< (+ (first *tunnel*) 90.0) *dist* (- (second *tunnel*) 40.0))))

@@ -430,34 +430,16 @@ for the international session's children are handed to us.")
   "Build the pioneer camp in group G: x+ points away from the road, the gates face the road."
   (let ((open (camp-open-p)) (gate (- *camp-gate-x* 26.0)) (blue "#5f8f9a") (white "#e4e0d4"))
     ;; the fence and the gates
-    (dolist (seg '((-21.0 -3.4) (3.4 21.0)))
-      (let ((mid (/ (+ (first seg) (second seg)) 2)) (len (- (second seg) (first seg))))
-        (shape g :box (list .08 .16 len) blue gate 1.25 mid) (shape g :box (list .08 .16 len) blue gate .5 mid)
-        (loop for z from (first seg) to (second seg) by 1.1 do (shape g :box '(.07 1.35 .14) blue gate .7 z :shadow nil))))
-    (dolist (z '(-3.2 3.2)) (shape g :box '(.7 4.4 .7) white gate 2.2 z) (shape g :ball '(.3 8 6) "#c22a22" gate 4.7 z))
-    (shape g :box '(.3 .7 7.0) "#c22a22" gate 4.0 0)
+    (model g "camp")
     (sign g "ПИОНЕРЛАГЕРЬ «КОСТЁР»" (- gate .17) 4.0 0 :h .4 :rgb "#f0ece0")
     (cond (open (dolist (z '(-1.6 1.6)) (shape g :box '(3.0 1.5 .06) blue (+ gate 1.5) .85 (* 2 z) :shadow nil)))   ; the leaves stand open
           (t (shape g :box '(.08 1.5 6.2) blue gate .85 0)
              (shape g :box '(.1 .14 6.3) "#c22a22" (- gate .06) 1.0 0 :shadow nil)                                   ; the bar
              (shape g :box '(.1 .16 .12) "#2a2c30" (- gate .08) 1.0 0 :shadow nil)))                                 ; and the lock
     ;; the watchman's hut and the daily routine
-    (shape g :box '(1.8 2.2 1.8) "#8a6440" (+ gate 1.4) 1.1 5.4) (shape g :box '(2.2 .16 2.2) "#4c4e52" (+ gate 1.4) 2.3 5.4 :rot '(0 0 -.1))
-    (shape g :box '(.06 .7 .6) "#ffd890" (+ gate .48) 1.4 5.4 :emit "#ffd890" :energy .8 :shadow nil)
-    (dolist (z '(-6.9 -5.1)) (shape g :box '(.08 1.9 .08) "#55554f" (+ gate 1.2) .95 z))
-    (shape g :box '(.06 1.0 1.9) white (+ gate 1.2) 1.5 -6.0)
     (sign g "РАСПОРЯДОК ДНЯ" (+ gate 1.15) 1.85 -6.0 :h .12 :rgb "#7a2a24")
-    (dotimes (i 5) (shape g :box '(.02 .04 1.4) "#55554f" (+ gate 1.16) (- 1.65 (* i .13)) -6.0 :shadow nil))
     ;; the plaster bugler
-    (let ((b (group g (+ gate 3.2) 0 8.6)))
-      (shape b :box '(1.0 1.0 1.0) white 0 .5 0) (shape b :cyl '(.22 .26 1.2 8) white 0 1.6 0)
-      (shape b :ball '(.2 8 6) white 0 2.35 0)
-      (shape b :cyl '(.03 .07 .6 6) "#c9a13a" -.3 2.45 0 :rot (list 0 0 (- (/ pi 2) .5)) :metal .6)
-      (shape b :box '(.4 .08 .08) white -.18 2.2 0 :rot '(0 0 .5)))
     ;; the parade ground: the mast, and in summer the flag and the detachments
-    (shape g :box '(9.0 .06 13.0) "#8a8880" -7.0 .03 0 :shadow nil)
-    (shape g :box '(.12 9.0 .12) "#c8c8c4" -9.0 4.5 0)
-    (shape g :box '(.8 .3 .8) white -9.0 .15 0)
     (when open
       (shape g :box '(.04 .8 1.3) "#c22a22" -9.0 8.5 -.7 :shadow nil)
       (dotimes (row 2)
@@ -471,13 +453,9 @@ for the international session's children are handed to us.")
         (moving (light fire "#ff9040" 2.4 14.0 0 1.0 0) :night)))
     (unless open (life-cat g (+ gate 1.5) 4.2 3 :yaw (/ pi 2)))                                                      ; the watchman by his hut
     ;; the dormitories, the canteen, a loudspeaker
-    (dolist (z '(-12.0 12.0))
-      (shape g :box '(8.0 3.0 9.0) blue 6.0 1.5 z) (shape g :box '(8.6 .2 9.6) "#4c4e52" 6.0 3.2 z :rot '(0 0 -.06))
-      (shape g :box '(.06 1.0 6.6) (if open "#ffd890" "#3a4048") 1.97 1.7 z :emit (and open "#ffd890") :energy .5 :shadow nil)
-      (shape g :box '(2.0 .1 9.0) "#8a6440" 1.0 .4 z))
-    (shape g :box '(7.0 3.4 8.0) white -3.0 1.7 -15.5) (shape g :box '(7.6 .2 8.6) "#4c4e52" -3.0 3.6 -15.5 :rot '(0 0 -.05))
+    (dolist (z '(-12.0 12.0))                                             ; the windows of the huts: lit while the camp is open
+      (shape g :box '(.06 1.0 6.6) (if open "#ffd890" "#3a4048") 1.97 1.7 z :emit (and open "#ffd890") :energy .5 :shadow nil))
     (sign g "СТОЛОВАЯ" -6.55 2.7 -15.5 :h .4 :rgb "#7a2a24")
-    (shape g :box '(.12 6.0 .12) "#5a3e26" -4.0 3.0 7.0) (shape g :cone '(.3 .6 8) "#8a8e92" -4.0 5.8 6.7 :rot (list (- (/ pi 2)) 0 0) :metal .4)
     g))
 
 (defun step-seasonal-scenes ()
