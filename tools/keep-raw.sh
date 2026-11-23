@@ -5,7 +5,7 @@
 set -euo pipefail
 cd "$(dirname "$0")/../project"
 n=0
-for f in textures/*/*.png sounds/*.wav discs/*.wav discs/*.mp3; do
+for f in textures/*/*.png textures/*/*.webp sounds/*.wav discs/*.wav discs/*.mp3; do
   [ -f "$f" ] || continue
   printf '[remap]\n\nimporter="keep"\n' > "$f.import"
   n=$((n+1))

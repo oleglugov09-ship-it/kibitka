@@ -23,9 +23,14 @@
 (defvar *note-timer* 0.0)
 
 (defun load-discs ()
-  (let ((files (sort (remove-if-not (lambda (f) (or (path-type-p f ".wav") (path-type-p f ".mp3")))
-                                    (coerce (dir-access-get-files-at "res://discs") 'list))
-                     #'string<)))
+  (let* ((all (coerce (dir-access-get-files-at "res://discs") 'list))
+         ;; a .wav that has an .mp3 of the same name is the same disc, kept smaller (tools/pack-assets.py): one of them plays
+         (files (sort (remove-if-not (lambda (f)
+                                       (or (path-type-p f ".mp3")
+                                           (and (path-type-p f ".wav")
+                                                (not (member (concatenate 'string (subseq f 0 (- (length f) 4)) ".mp3") all :test #'string=)))))
+                                     all)
+                      #'string<)))
     (setf *discs*
           (loop for file in files
                 for i from 0

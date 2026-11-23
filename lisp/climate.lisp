@@ -144,9 +144,9 @@ Start with a random season and clear weather."
   ;; The clouds are a ready-made image (tools/make-sky.py): the noise is computed on a sphere, so overhead the
   ;; sky does not pinch into a star the way flat noise stretched over the sky dome does. No image: flat noise.
   (let ((path "res://textures/sky/clouds.png"))
-    (if (file-here-p path)
+    (if (picture-here-p path)
         (let ((img (gdext:make-object "Image")) (tex (gdext:make-object "ImageTexture")))
-          (object-call img "load_png_from_buffer" (file-bytes path))
+          (read-picture img path)
           (object-call tex "set_image" img)
           (gdext:setf-reference *cloud-tex* tex)
           (object-set *sky-mat* "sky_cover" tex))

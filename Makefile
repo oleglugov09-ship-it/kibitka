@@ -25,6 +25,7 @@ live:
 web:
 	tools/names.py
 	web/build.sh
+	tools/pack-assets.py
 	tools/keep-raw.sh
 	$(GODOT) --headless --path project --import
 	mkdir -p export/web

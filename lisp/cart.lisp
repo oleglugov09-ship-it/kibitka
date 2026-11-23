@@ -52,9 +52,9 @@ ALONG is :z for a side wall and :x for an end wall."
   "Hang the pictured carpet of height HEIGHT under PARENT, centred at (X Y Z) and facing x+.
 Its width follows the picture. Return the mesh instance, or NIL when the picture is missing."
   (let ((path "res://textures/murals/carpet.png"))
-    (when (file-here-p path)
+    (when (picture-here-p path)
       (let ((img (gdext:make-object "Image")) (mi (gdext:make-object "MeshInstance3D")) (mesh (gdext:make-object "QuadMesh")))
-        (object-call img "load_png_from_buffer" (file-bytes path))
+        (read-picture img path)
         (unless *carpet-mat*
           (let ((tx (gdext:make-object "ImageTexture")) (m (gdext:make-object "StandardMaterial3D")))
             (object-call tx "set_image" img)

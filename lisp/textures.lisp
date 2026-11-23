@@ -43,9 +43,9 @@ Return NIL if there is no such file."
       (if found tx
           (let ((path (texture-path style name)))
             (setf (gethash key *textures*) nil)
-            (when (file-here-p path)
+            (when (picture-here-p path)
               (let ((img (gdext:make-object "Image")) (tx (gdext:make-object "ImageTexture")))
-                (object-call img "load_png_from_buffer" (file-bytes path))
+                (read-picture img path)
                 (object-call img "generate_mipmaps")
                 (object-call tx "set_image" img)
                 (gdext:setf-reference (gethash key *textures*) tx)

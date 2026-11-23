@@ -71,9 +71,9 @@ void fragment() {
     (or (gethash n *mosaic-mats*)
         (let ((path "res://textures/murals/atlas.png"))
           (unless *mosaic-atlas*
-            (when (file-here-p path)
+            (when (picture-here-p path)
               (let ((img (gdext:make-object "Image")) (tx (gdext:make-object "ImageTexture")) (sh (gdext:make-object "Shader")))
-                (object-call img "load_png_from_buffer" (file-bytes path))
+                (read-picture img path)
                 (object-call tx "set_image" img)
                 (object-set sh "code" *mosaic-code*)
                 (gdext:setf-reference *mosaic-atlas* tx)
