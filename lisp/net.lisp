@@ -286,71 +286,87 @@ Type 1 is a connect, 2 a disconnect, 3 an incoming packet."
   (let ((specs (mapcar #'car *items*)))
     (unless (equal specs *net-specs*) (setf *net-specs* specs) (incf *net-ver*))))
 
+;;; What a guest sends, one kind of message at a time. Each takes the guest's record P and returns it: a field set
+;;; for the first time makes the record a new list, so whoever calls keeps what is returned.
+
+(defun host-hello (p msg)
+  "Guest P states its build of the game: we play only with our own, and send any other away."
+  (cond ((equal (second msg) *net-version*)
+         (setf (getf p :ok) t (getf p :name) (clean-name (and (stringp (third msg)) (third msg)) "Попутчик")))
+        (t (peer-send p (list :no *net-version*))
+           (if (getf p :peer)
+               (object-call (getf p :peer) "peer_disconnect_later" 0)
+               (object-call *net-ws* "send_text" (format nil "~d|!" (getf p :rid))))   ; the room server will free the seat
+           (say "Кто-то стучался с другой версией игры")))
+  p)
+
+(defun host-placed (p fields)
+  "Guest P says where it is and how it looks: FIELDS is (name x z yaw inside wait version [eye look])."
+  (destructuring-bind (name x z yaw inside wait ver &optional (eye *eye*) (look 0)) fields
+    (declare (ignore ver))
+    (when (and (stringp name) (small-p x) (small-p z) (small-p yaw) (or (null wait) (far-p wait)) (small-p eye 3))
+      (setf (getf p :eye) eye (getf p :look) (if (look-ok-p look) look 0))
+      (let ((new (not (getf p :placed))) (was (getf p :wait)))
+        (setf (getf p :name) (clean-name name "Попутчик")
+              (getf p :x) x (getf p :z) z (getf p :yaw) yaw (getf p :inside) inside
+              (getf p :wait) wait (getf p :placed) t)
+        (when (and new (plusp *net-ver*)) (setf (getf p :ver) 0))
+        (when new (log-event :peer-joined :name (getf p :name) :wait (and wait t) :dist (round *dist*) :relay (and (getf p :rid) t)))
+        (cond ((and new wait) (say (format nil "~a ждёт на остановке впереди" (getf p :name))))
+              (new (say (format nil (if *departed* "~a снова в кибитке" "~a на складе, в кибитке") (getf p :name))))
+              ((and was (not wait)) (say (format nil "~a сел в кибитку" (getf p :name)))))
+        (unless (eql was wait)
+          (when (getf p :node) (node-queue-free (getf p :node)))
+          (setf (getf p :node) nil (getf p :told) nil)))))
+  p)
+
+(defun host-edited (p fields)
+  "Guest P has moved things about: FIELDS is (base-version specs switches planks-delta took fed)."
+  (destructuring-bind (base specs fold planks-delta took fed) fields
+    (when (and (specs-ok-p specs) (integerp planks-delta) (<= -12 planks-delta 12)
+               (integerp fed) (<= 0 fed 5) (or (null took) (spec-ok-p took)))
+      ;; the guest sent the things as a whole list. We take it only if, since the guest saw
+      ;; our arrangement, nobody else has changed it; otherwise it would overwrite someone else's work (say,
+      ;; parcels just handed over), so we send the fresh one and let the guest edit again
+      (note-items)
+      (let ((ours (mapcar #'car *items*)) (fresh (or (eql base *net-ver*) (eql (getf p :mine) *net-ver*)))
+            (accepted t))
+        (cond ((and took (not (member took ours :test #'equal)))
+               (setf accepted nil)
+               ;; the guest 'took' a thing we no longer have: another player or a customer carried it off earlier;
+               ;; otherwise two players would end up holding it
+               (peer-send p (list :x :drop))
+               (setf (getf p :ver) -1))
+              ((equal specs ours))
+              (fresh (set-items specs) (save-interior)
+                     (note-items)
+                     (setf (getf p :mine) *net-ver*))
+              (t (setf accepted nil)
+                 (peer-send p (list :x))                 ; 'edit not accepted': the guest rechecks its hands against ours
+                 (setf (getf p :ver) -1)))
+        ;; a rejected edit touches nothing: the guest will get our state and edit again
+        (when accepted
+          (set-switches fold :guarded t)
+          ;; planks arrive as a difference, not a count: a stale count from the guest would overwrite the ones
+          ;; the driver has just bought; how many of them went into the stove is counted separately
+          (setf *planks* (max 0 (min 99 (+ *planks* planks-delta)))
+                *fire* (min 300.0 (+ *fire* (* fed *plank-burn*))))))))
+  p)
+
 (defun host-take (p msg)
-  ;; first the guest states its build version; we do not play with a different version
-  (when (eq (first msg) :hello)
-    (cond ((equal (second msg) *net-version*)
-           (setf (getf p :ok) t (getf p :name) (clean-name (and (stringp (third msg)) (third msg)) "Попутчик")))
-          (t (peer-send p (list :no *net-version*))
-             (if (getf p :peer)
-                 (object-call (getf p :peer) "peer_disconnect_later" 0)
-                 (object-call *net-ws* "send_text" (format nil "~d|!" (getf p :rid))))   ; the room server will free the seat
-             (say "Кто-то стучался с другой версией игры")))
-    (return-from host-take p))
-  (unless (getf p :ok) (return-from host-take p))
-  (case (first msg)
-    (:p (destructuring-bind (name x z yaw inside wait ver &optional (eye *eye*) (look 0)) (rest msg)
-          (declare (ignore ver))
-          (when (and (stringp name) (small-p x) (small-p z) (small-p yaw) (or (null wait) (far-p wait)) (small-p eye 3))
-            (setf (getf p :eye) eye (getf p :look) (if (look-ok-p look) look 0))
-            (let ((new (not (getf p :placed))) (was (getf p :wait)))
-              (setf (getf p :name) (clean-name name "Попутчик")
-                    (getf p :x) x (getf p :z) z (getf p :yaw) yaw (getf p :inside) inside
-                    (getf p :wait) wait (getf p :placed) t)
-              (when (and new (plusp *net-ver*)) (setf (getf p :ver) 0))
-              (when new (log-event :peer-joined :name (getf p :name) :wait (and wait t) :dist (round *dist*) :relay (and (getf p :rid) t)))
-              (cond ((and new wait) (say (format nil "~a ждёт на остановке впереди" (getf p :name))))
-                    (new (say (format nil (if *departed* "~a снова в кибитке" "~a на складе, в кибитке") (getf p :name))))
-                    ((and was (not wait)) (say (format nil "~a сел в кибитку" (getf p :name)))))
-              (unless (eql was wait)
-                (when (getf p :node) (node-queue-free (getf p :node)))
-                (setf (getf p :node) nil (getf p :told) nil))))))
-    (:a (case (second msg)                                   ; the guest's action at the window
-          (:do (host-do p (cddr msg)))                        ; a shared action on behalf of the guest, see sync.lisp
-          (:ran (host-ran p (third msg)))                     ; the reply to a live edit
-          (:bell (ring-bell))
-          (:take (destructuring-bind (z kind addr props) (cddr msg)
-                   (when (and (realp z) (carry-ok-p kind addr props))               ; for coins the address is the wanted good
-                     (host-deal p z kind addr props))))))
-    (:e (destructuring-bind (base specs fold planks-delta took fed) (rest msg)
-          (when (and (specs-ok-p specs) (integerp planks-delta) (<= -12 planks-delta 12)
-                     (integerp fed) (<= 0 fed 5) (or (null took) (spec-ok-p took)))
-            ;; the guest sent the things as a whole list. We take it only if, since the guest saw
-            ;; our arrangement, nobody else has changed it; otherwise it would overwrite someone else's work (say,
-            ;; parcels just handed over), so we send the fresh one and let the guest edit again
-            (note-items)
-            (let ((ours (mapcar #'car *items*)) (fresh (or (eql base *net-ver*) (eql (getf p :mine) *net-ver*)))
-                  (accepted t))
-              (cond ((and took (not (member took ours :test #'equal)))
-                     (setf accepted nil)
-                     ;; the guest 'took' a thing we no longer have: another player or a customer carried it off earlier;
-                     ;; otherwise two players would end up holding it
-                     (peer-send p (list :x :drop))
-                     (setf (getf p :ver) -1))
-                    ((equal specs ours))
-                    (fresh (set-items specs) (save-interior)
-                           (note-items)
-                           (setf (getf p :mine) *net-ver*))
-                    (t (setf accepted nil)
-                       (peer-send p (list :x))                 ; 'edit not accepted': the guest rechecks its hands against ours
-                       (setf (getf p :ver) -1)))
-              ;; a rejected edit touches nothing: the guest will get our state and edit again
-              (when accepted
-                (set-switches fold :guarded t)
-                ;; planks arrive as a difference, not a count: a stale count from the guest would overwrite the ones
-                ;; the driver has just bought; how many of them went into the stove is counted separately
-                (setf *planks* (max 0 (min 99 (+ *planks* planks-delta)))
-                      *fire* (min 300.0 (+ *fire* (* fed *plank-burn*))))))))))
+  "Handle the message MSG from guest P and return P's record."
+  (cond ((eq (first msg) :hello) (setf p (host-hello p msg)))   ; first of all the guest states its build
+        ((getf p :ok)
+         (case (first msg)
+           (:p (setf p (host-placed p (rest msg))))
+           (:a (case (second msg)                                   ; the guest's action at the window
+                 (:do (host-do p (cddr msg)))                        ; a shared action on behalf of the guest, see sync.lisp
+                 (:ran (host-ran p (third msg)))                     ; the reply to a live edit
+                 (:bell (ring-bell))
+                 (:take (destructuring-bind (z kind addr props) (cddr msg)
+                          (when (and (realp z) (carry-ok-p kind addr props))               ; for coins the address is the wanted good
+                            (host-deal p z kind addr props))))))
+           (:e (setf p (host-edited p (rest msg)))))))
   p)
 
 (defun host-waiting (p)
