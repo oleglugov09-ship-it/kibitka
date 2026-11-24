@@ -168,29 +168,43 @@ apart - x, z, heading and height. Numbers are 32-bit integers: millimetres, and 
 (defun ribbon-mesh (e a b)
   "Return the mesh of the ribbon of road E from path coordinate A to B: the strips across and, in a town, a curb and
 sidewalks, in rows of four metres. Its points are counted from the road point at A, where the game puts it; it lies
-at road height, the land under it is slightly lower; over the chasm it runs alone as the bridge deck."
+at road height, the land under it is slightly lower; over the chasm it runs alone as the bridge deck. The mesh has
+two surfaces: the roadway, and its soft edges - a strip on either side that fades into the roadside, or the road
+looks cut out of card."
   (declare (ignore e))
   (let* ((n (max 1 (ceiling (- b a) 4.0))) (step (/ (- b a) n)) (base (road-pos a))
-         (st (gdext:make-object "SurfaceTool")) (uv (vector2 0 0))
+         (st (gdext:make-object "SurfaceTool")) (soft (gdext:make-object "SurfaceTool")) (uv (vector2 0 0))
          (points (make-hash-table :test 'equal)) (tints (make-hash-table :test 'equal)))
     (flet ((pt (s j) (or (gethash (cons s j) points)
                          (setf (gethash (cons s j) points)
                                (destructuring-bind (x y z) (road-pos (+ a (* j step)) s *road-lift*)
                                  (v3 (- x (first base)) (- y (second base)) (- z (third base)))))))
-           (tint (rgb) (or (gethash rgb tints) (setf (gethash rgb tints) (hex rgb)))))
-      (object-call st "begin" 3)
+           (tint (rgb &optional (alpha 1.0))
+             (or (gethash (cons rgb alpha) tints) (setf (gethash (cons rgb alpha) tints) (hex rgb alpha)))))
+      (object-call st "begin" 3) (object-call soft "begin" 3)
       (dotimes (j n)
-        (when (town-at (+ a (* (+ j .5) step)))                                 ; in a town - curb and sidewalks
-          (loop for (s0 s1 rgb) in '((-9.4 -6.6 "#67655f") (-6.6 -6.3 "#9a988f") (2.7 3.0 "#9a988f") (3.0 5.8 "#67655f"))
-                do (let ((c (tint rgb)))
+        (let ((town (town-at (+ a (* (+ j .5) step)))))
+          (when town                                                            ; in a town - curb and sidewalks
+            (loop for (s0 s1 rgb) in '((-9.4 -6.6 "#67655f") (-6.6 -6.3 "#9a988f") (2.7 3.0 "#9a988f") (3.0 5.8 "#67655f"))
+                  do (let ((c (tint rgb)))
+                       (object-call st "add_triangle_fan" (vector (pt s0 (1+ j)) (pt s1 (1+ j)) (pt s1 j) (pt s0 j))
+                                    (vector uv uv uv uv) (vector c c c c)))))
+          (loop for (s0 s1 rgb) in *road-strips*
+                do (let ((c (tint (if (eq rgb :line) (if (evenp (round (+ a (* j step)) 4.0)) "#b9b6ac" "#55524f") rgb))))
                      (object-call st "add_triangle_fan" (vector (pt s0 (1+ j)) (pt s1 (1+ j)) (pt s1 j) (pt s0 j))
-                                  (vector uv uv uv uv) (vector c c c c)))))
-        (loop for (s0 s1 rgb) in *road-strips*
-              do (let ((c (tint (if (eq rgb :line) (if (evenp (round (+ a (* j step)) 4.0)) "#b9b6ac" "#55524f") rgb))))
-                   (object-call st "add_triangle_fan" (vector (pt s0 (1+ j)) (pt s1 (1+ j)) (pt s1 j) (pt s0 j))
-                                (vector uv uv uv uv) (vector c c c c)))))
-      (object-call st "generate_normals")
-      (object-call st "commit"))))
+                                  (vector uv uv uv uv) (vector c c c c))))
+          ;; the soft edges: from clear outside to the colour of the outermost strip
+          (loop for (s0 s1 rgb) in (if town
+                                       '((-10.9 -9.4 "#67655f") (7.3 5.8 "#67655f"))
+                                       '((-7.8 -6.3 "#3a393b") (4.2 2.7 "#3a393b")))
+                do (let ((c0 (tint rgb 0.0)) (c1 (tint rgb 1.0)) (lo (min s0 s1)) (hi (max s0 s1)))
+                     (let ((clo (if (< s0 s1) c0 c1)) (chi (if (< s0 s1) c1 c0)))
+                       (object-call soft "add_triangle_fan" (vector (pt lo (1+ j)) (pt hi (1+ j)) (pt hi j) (pt lo j))
+                                    (vector uv uv uv uv) (vector clo chi chi clo)))))))
+      (object-call st "generate_normals") (object-call soft "generate_normals")
+      (let ((mesh (object-call st "commit")))
+        (object-call soft "commit" mesh)
+        mesh))))
 
 (defun bake-ribbons ()
   "Bake the ribbons of all the roads into *RIBBONS-DIR*: a mesh for every *ROAD-PIECE* metres (doroga.lisp)."

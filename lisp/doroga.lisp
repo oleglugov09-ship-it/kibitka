@@ -120,14 +120,21 @@ void fragment() {
   ROUGHNESS = 1.0;
   SPECULAR = 0.15;
 }")
-(defvar *ribbon-mat* nil "The ShaderMaterial of all the ribbons, with the parameter snow.")
+(defvar *ribbon-mat* nil "The ShaderMaterial of the roadway of all the ribbons, with the parameter snow.")
+(defvar *ribbon-edge-mat* nil "The ShaderMaterial of the soft edges of all the ribbons: the same, and clear where the mesh says so.")
 
-(defun ribbon-material ()
-  (or *ribbon-mat*
+(defun ribbon-material (&optional edge)
+  (or (if edge *ribbon-edge-mat* *ribbon-mat*)
       (let ((sh (gdext:make-object "Shader")) (mat (gdext:make-object "ShaderMaterial")))
-        (object-set sh "code" *ribbon-code*)
+        (object-set sh "code" (if edge
+                                  (let ((at (search "ROUGHNESS" *ribbon-code*)))
+                                    (concatenate 'string (subseq *ribbon-code* 0 at) "ALPHA = COLOR.a;
+  " (subseq *ribbon-code* at)))
+                                  *ribbon-code*))
         (object-set mat "shader" sh)
-        (gdext:setf-reference *ribbon-mat* mat))))
+        (if edge (gdext:setf-reference *ribbon-edge-mat* mat) (gdext:setf-reference *ribbon-mat* mat)))))
+
+(defvar *ribbons-missing* nil "True once a ribbon was asked for and was not among the game's files: told once.")
 
 (defun load-ribbon (start)
   "Put the baked ribbon that starts at path coordinate START on the map and return its node; NIL (and an error in the
@@ -135,10 +142,18 @@ log) when it is not baked."
   (let* ((path (ribbon-path start))
          (mesh (and (object-call (gdext:singleton "ResourceLoader") "exists" path)
                     (present (object-call (gdext:singleton "ResourceLoader") "load" path)))))
-    (cond ((null mesh) (note-error (format nil "лента дороги ~a не запечена (tools/bake-map.sh --roads)" path) "roads") nil)
+    (cond ((null mesh)
+           ;; said aloud, once: a road that is not there is seen at once, and why it is not there is not
+           (unless *ribbons-missing*
+             (setf *ribbons-missing* t)
+             (note-error (format nil "лента дороги ~a не запечена (tools/bake-map.sh --roads)" path) "roads")
+             (when (fboundp 'say) (funcall 'say "Полотна дороги нет в файлах игры. Обнови страницу без кеша: Ctrl+Shift+R")))
+           nil)
           (t (let ((mi (gdext:make-object "MeshInstance3D")) (base (road-pos start)))
                (object-set mi "mesh" mesh)
-               (object-set mi "material_override" (ribbon-material))
+               (object-call mi "set_surface_override_material" 0 (ribbon-material))
+               (when (> (object-call mesh "get_surface_count") 1)
+                 (object-call mi "set_surface_override_material" 1 (ribbon-material t)))
                (object-set mi "cast_shadow" 0)
                (node-add-child *land* mi)
                (node-3d-set-position mi (v3 (first base) (second base) (third base)))
@@ -148,7 +163,9 @@ log) when it is not baked."
   "Keep the ribbons of all roads nearby on the map, not only of the one we drive on.
 At a fork one can thus see where the other road goes. At most one ribbon is loaded per frame; which ribbons
 are wanted is worked out once per 30 m driven."
-  (object-call (ribbon-material) "set_shader_parameter" "snow" (if (eq *season* :winter) .6 0.0))
+  (let ((snow (if (eq *season* :winter) .6 0.0)))
+    (object-call (ribbon-material) "set_shader_parameter" "snow" snow)
+    (object-call (ribbon-material t) "set_shader_parameter" "snow" snow))
   (multiple-value-bind (x z) (road-point *dist*)
     (when (or (null *roads-at*) (> (max (abs (- x (first *roads-at*))) (abs (- z (second *roads-at*)))) 30.0))
       (let ((want (make-hash-table)) (r (ceiling *road-range* *grid-cell*)))

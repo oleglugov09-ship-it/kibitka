@@ -325,7 +325,11 @@ Return the length of the lot."
     (flet ((at (len) (setf g (lot (+ d (/ len 2)) side))))
      (prog1
       (ecase zone
-        (:village (izba (at 17.0) 6.0 0) 17.0)
+        ;; not a wall of houses shoulder to shoulder: one lot in three is a yard left empty, and the houses stand
+        ;; at different depths from the road (the author, 24.11: "абсурдно стоят здания просто рядом")
+        (:village (if (zerop (random 3))
+                      (+ 14.0 (random 12.0))
+                      (progn (izba (at 17.0) (+ 6.0 (random 9.0)) 0) (+ 17.0 (random 10.0)))))
         (:garages
          (if (< side 0)
              (progn (factory (at 64.0) 64.0) 64.0)
