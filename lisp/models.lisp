@@ -78,9 +78,12 @@ Cubes named surface_NAME: the top face is a place to stand or put things, each a
                    (godot:node-queue-free child)))))
     (list solids points surfaces)))
 
-(defun model-entry (name)
-  "Return (scene solids points surfaces) of the model NAME, read once; NIL (and an error in the log) when the file is missing or broken."
-  (or (gethash name *models*)
+(defun model-entry (name &optional paint)
+  "Return (scene solids points surfaces) of the model NAME, read once; NIL (and an error in the log) when the file is missing or broken.
+With PAINT the file is read once more for this livery, and its meshes wear the paints themselves (PAINT-MODEL with BAKE):
+such a model can be drawn many at a go (WELD), which one painted node by node cannot - and a copy of a mesh will not do,
+the browser build draws a copied mesh wrong."
+  (or (gethash (if paint (cons name paint) name) *models*)
       (let* ((path (format nil "res://models/~a.glb" name))
              (root (and (file-here-p path)
                         (let ((doc (gdext:make-object "GLTFDocument")) (state (gdext:make-object "GLTFState")))
@@ -89,7 +92,8 @@ Cubes named surface_NAME: the top face is a place to stand or put things, each a
         (cond ((null root) (note-error (format nil "модель ~a не прочитана" path) "model") nil)
               (t (let ((places (take-places root)))
                    (settle-model root t)
-                   (setf (gethash name *models*) (cons root places))))))))
+                   (when paint (paint-model root paint t))
+                   (setf (gethash (if paint (cons name paint) name) *models*) (cons root places))))))))
 
 (defun model-point (model name)
   "Return the point NAME of MODEL (an empty named at_NAME in its Blender file) as (x y z), or NIL."
@@ -126,34 +130,43 @@ Cubes named surface_NAME: the top face is a place to stand or put things, each a
   (mapcar #'rest (sort (remove-if-not (lambda (s) (eql 0 (search prefix (first s)))) (copy-list (fourth (model-entry model))))
                        #'string< :key #'first)))
 
-(defun paint-model (node paint)
-  "Give the meshes under NODE whose material is named paint0, paint1, ... in Blender the colours of the list PAINT."
+(defun paint-model (node paint &optional bake)
+  "Give the meshes under NODE whose material is named paint0, paint1, ... in Blender the colours of the list PAINT:
+on the node, or with BAKE on the mesh itself (then the mesh must be this livery's own, see MODEL-ENTRY)."
   (when (object-call node "is_class" "MeshInstance3D")
     (dotimes (surface (let ((mesh (object-get node "mesh"))) (if mesh (object-call mesh "get_surface_count") 0)))
      (let* ((m (object-call (object-get node "mesh") "surface_get_material" surface))
            (name (if m (princ-to-string (object-get m "resource_name")) "")))
       (when (and (> (length name) 5) (eql 0 (search "paint" name)) (digit-char-p (char name 5)))
         (let* ((rgb (nth (digit-char-p (char name 5)) paint)) (ws (words name)) (glow (member "emit" ws :test #'string=)))
+          (when (eq rgb :tint) (setf rgb "#ffffff"))                 ; white that takes the colour of the instance (MODEL with TINT)
           (when rgb                                                 ; "paint1 emit own 0.5": it glows with its own colour
-            (object-call node "set_surface_override_material" surface
+            (funcall (lambda (m) (if bake
+                                     (object-call (object-get node "mesh") "surface_set_material" surface m)
+                                     (object-call node "set_surface_override_material" surface m)))
                          (if glow
                              (material rgb :emit rgb :energy (let ((v (ignore-errors (let ((*read-eval* nil)) (read-from-string (third glow))))))
                                                                (if (realp v) (float v 1.0) 1.0)))
                              (material rgb :rough (/ (round (* 100 (object-get m "roughness"))) 100.0)
-                                           :metal (/ (round (* 100 (object-get m "metallic"))) 100.0))))))))))
+                                           :metal (/ (round (* 100 (object-get m "metallic"))) 100.0)
+                                           :vertex (eq (nth (digit-char-p (char name 5)) paint) :tint))))))))))
   (dotimes (i (object-call node "get_child_count"))
-    (paint-model (object-call node "get_child" i) paint)))
+    (paint-model (object-call node "get_child" i) paint bake)))
 
-(defun model (parent name &optional (x 0.0) (y 0.0) (z 0.0) &key rot scale (shadow t) paint)
+(defun model (parent name &optional (x 0.0) (y 0.0) (z 0.0) &key rot scale (shadow t) paint own tint)
   "Put the model NAME (project/models/NAME.glb) under PARENT at the point (X Y Z) and return its root Node3D.
 ROT is (x y z) in radians and SCALE is (x y z), as for SHAPE. PAINT is a list of colours for the materials named
 paint0, paint1, ... in Blender: one model, many liveries. Where the world is being built (WITH-SOLIDS), the model's
 obstacles go to the solids grid like shapes do; a model that has any is put unturned and unscaled, its parent turns.
+With OWN the livery gets its own reading of the file (MODEL-ENTRY): for what stands many in a row and is welded.
+TINT is the colour of this very one where PAINT says :tint - seen only once the group is welded: many in one go, each
+in its colour.
 A missing or broken file is logged as an error, and NIL is returned."
-  (let* ((entry (model-entry name)) (root (and entry (object-call (car entry) "duplicate"))))
+  (let* ((entry (model-entry name (and own paint))) (root (and entry (object-call (car entry) "duplicate"))))
     (when root
       (unless shadow (settle-model root nil))
-      (when paint (paint-model root paint))
+      (when (and paint (not own)) (paint-model root paint))
+      (when tint (object-call root "set_meta" "tint" tint))
       (node-add-child parent root)
       (godot:node-3d-set-position root (v3 x y z))
       (when rot (godot:node-3d-set-rotation root (v3 (first rot) (second rot) (third rot))))
@@ -162,6 +175,79 @@ A missing or broken file is logged as an error, and NIL is returned."
         (loop for (sx sy sz yaw w h d) in (second entry)
               do (push (list parent :box (list w h d) (+ x sx) (+ y sy) (+ z sz) (list 0.0 yaw 0.0) nil) (cdr *tracking*))))
       root)))
+
+;;; A thing built of many pieces is drawn piece by piece: a nine-storey block of twelve sections was 150 draws, though
+;;; the sections are the same three meshes. WELD draws the like pieces under a group in one go: a MultiMesh for every
+;;; mesh that stands there more than once in the same paint. (Melting the pieces into one new mesh was tried first:
+;;; in the browser a mesh rebuilt by SurfaceTool is lit wrong - pale walls, no windows - while the meshes as they
+;;; were read are drawn right. So the meshes are left as they are.)
+
+(defvar *weld* t "Whether WELD does anything: NIL to see the pieces as they were built.")
+
+(defun present (object)
+  "Return OBJECT, or NIL when it is nothing. In the browser build an empty property or answer of the engine comes not as
+NIL but as an object with a null pointer, which is true to AND and OR and brings the game down when called."
+  (and object
+       (not (and (gd-extension-types::godot-object-p object)
+                 (let ((p (gd-extension-types::godot-object-pointer object))) (or (null p) (ffi:null-pointer-p p)))))
+       object))
+
+(defun weld (g)
+  "Draw the like still meshes under the group G in one go each, and return how many nodes went away. Taken are the
+MeshInstance3D nodes without children that are seen, under G itself or under plain groups that are only moved aside
+(not turned, not scaled); a mesh that stands there once, and everything else, stays as it is. Call it only on what
+is never moved, hidden or looked up afterwards: the nodes are gone."
+  (let ((lots '()) (gone 0))                              ; each lot: (mesh over overrides shadow range . places)
+    (labels ((plain-p (node)
+               (let ((r (object-get node "rotation")) (k (object-get node "scale")))
+                 (and (< (+ (abs (vector3-x r)) (abs (vector3-y r)) (abs (vector3-z r))) 1e-5)
+                      (< (+ (abs (- (vector3-x k) 1)) (abs (- (vector3-y k) 1)) (abs (- (vector3-z k) 1))) 1e-5))))
+             (walk (node ox oy oz tint)
+               (loop for c across (node-get-children node)
+                     do (let ((class (princ-to-string (object-call c "get_class"))))
+                          (cond ((and (string= class "MeshInstance3D") (zerop (object-call c "get_child_count"))
+                                      (object-get c "visible") (present (object-get c "mesh")))
+                                 (let* ((mesh (object-get c "mesh")) (tr (object-get c "transform")) (o (transform3d-origin tr))
+                                        (at (transform3d (transform3d-basis tr)
+                                                         (vector3 (+ ox (vector3-x o)) (+ oy (vector3-y o)) (+ oz (vector3-z o)))))
+                                        (over (present (object-get c "material_override")))
+                                        ;; the same object is EQ; asking a material its number, or a shape its surface's
+                                        ;; material, brings the browser build down ("null function")
+                                        (overrides (unless (object-call mesh "is_class" "PrimitiveMesh")
+                                                     (loop for i below (object-call mesh "get_surface_count")
+                                                           collect (present (object-call c "get_surface_override_material" i)))))
+                                        (shadow (object-get c "cast_shadow")) (range (object-get c "visibility_range_end"))
+                                        (lot (find-if (lambda (l)
+                                                        (and (eq (first l) mesh) (eq (second l) over) (eql (fourth l) shadow)
+                                                             (eql (fifth l) range) (= (length (third l)) (length overrides))
+                                                             (every #'eq (third l) overrides)))
+                                                      lots)))
+                                   (unless lot (setf lot (list mesh over overrides shadow range)) (push lot lots))
+                                   (push (list c at tint) (cdr (last lot 1)))))
+                                ((and (string= class "Node3D") (object-get c "visible") (plain-p c))
+                                 (let ((p (object-get c "position")))
+                                   (walk c (+ ox (vector3-x p)) (+ oy (vector3-y p)) (+ oz (vector3-z p))
+                                         (if (object-call c "has_meta" "tint") (princ-to-string (object-call c "get_meta" "tint")) tint)))))))))
+      (when *weld* (walk g 0.0 0.0 0.0 nil))
+      (dolist (lot lots gone)
+        (destructuring-bind (mesh over overrides shadow range &rest places) lot
+          (when (and (or (rest places) (third (first places)))            ; one that is tinted is drawn this way too: it has no colour otherwise
+                     (notany #'identity overrides))                      ; painted node by node: stays (MODEL with OWN is the way)
+            (let ((mm (gdext:make-object "MultiMesh")) (mmi (gdext:make-object "MultiMeshInstance3D")))
+              (object-set mm "transform_format" 1)                        ; TRANSFORM_3D
+              (when (some #'third places) (object-set mm "use_colors" t))
+              (object-set mm "mesh" mesh)
+              (object-set mm "instance_count" (length places))
+              (loop for (nil at tint) in places for n from 0
+                    do (object-call mm "set_instance_transform" n at)
+                       (when (some #'third places) (object-call mm "set_instance_color" n (hex (or tint "#ffffff")))))
+              (object-set mmi "multimesh" mm)
+              (when over (object-set mmi "material_override" over))
+              (object-set mmi "cast_shadow" shadow)
+              (when (plusp range) (object-set mmi "visibility_range_end" (+ range 60.0)))   ; judged from the middle of the group
+              (node-add-child g mmi)
+              (loop for (c) in places
+                    do (object-call (object-call c "get_parent") "remove_child" c) (godot:node-queue-free c) (incf gone)))))))))
 
 ;;; Moving a piece from code to Blender. Wrap the shapes of the piece - only those that never move, hide or get
 ;;; clicked on their own - in (drawn (parent "NAME") ...) and run tools/to-blender.sh: the game runs once with

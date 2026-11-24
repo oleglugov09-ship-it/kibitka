@@ -129,7 +129,10 @@ A section is drawn in Blender (models/doma/house-section-FLOORS.blend); RGB pain
 turns in three colours. Up to LIT windows are lit: at the points at_lit_... of the model. Return the length built."
   (let ((file (format nil "house-section-~d" floors)))
     (dotimes (i n)
-      (model g file x 0.0 (+ z (* (- i (/ (1- n) 2)) *section*)) :paint (list rgb (nth (mod i 3) '("#9a9488" "#7f8a8c" "#a8a08c")))))
+      (let ((balcony (nth (mod i 3) '("#9a9488" "#7f8a8c" "#a8a08c"))) (sz (+ z (* (- i (/ (1- n) 2)) *section*))))
+        (if *weld*                                                          ; all the sections in one go, each with its balconies' colour
+            (model g file x 0.0 sz :paint (list rgb :tint) :own t :tint balcony)
+            (model g file x 0.0 sz :paint (list rgb balcony)))))
     (let ((points (model-points file "lit_")))
       (when points
         (loop repeat (random (1+ lit))
@@ -159,6 +162,7 @@ Between them are courtyards."
            (block (group g 33.0 0 (+ z 6.0))))                                  ; turned: the sections run away from the street
       (node-3d-set-rotation block (v3 0 (/ pi 2) 0))
       (house-sections block floors 3 0.0 0.0 rgb)
+      (weld block)                                                              ; turned, so melted on its own
       (end-mosaic g 8.9 z (- (/ pi 2)) 12.0 h)
       (when (< i (1- n))                                                        ; courtyard: swings and a sandbox
         (shape g :box '(.1 2.2 .1) "#3f6f73" 24 1.1 (+ z 15)) (shape g :box '(.1 2.2 .1) "#3f6f73" 24 1.1 (+ z 19))
@@ -317,8 +321,9 @@ Its x+ points away from the road."
 (defun build-lot (tw d side)
   "Build up the lot of town TW that starts at path coordinate D on side SIDE, according to the town zone.
 Return the length of the lot."
-  (let ((zone (zone-at tw d)))
-    (flet ((at (len) (lot (+ d (/ len 2)) side)))
+  (let ((zone (zone-at tw d)) (g nil))
+    (flet ((at (len) (setf g (lot (+ d (/ len 2)) side))))
+     (prog1
       (ecase zone
         (:village (izba (at 17.0) 6.0 0) 17.0)
         (:garages
@@ -347,7 +352,8 @@ Return the length of the lot."
            (t (let ((g (at 76.0)))
                 (panel-house g 9 12.0 66.0 16.0 0 :slogan (when (zerop (random 3)) (nth (random (length *slogans*)) *slogans*)))
                 (when (zerop (random 2)) (parked-car g 1.6 (- (random 40.0) 20)))
-                76.0))))))))
+                76.0)))))
+      (when g (weld g))))))                                              ; a lot stands still: one draw for a paint
 
 (defun shop-front (g)
   "Add to G a shop on the ground floor of an apartment block."
