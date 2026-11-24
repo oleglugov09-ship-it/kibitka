@@ -92,10 +92,11 @@ Return the node."
 
 (defun save-interior ()
   ;; a guest's things are the driver's: PUT-SAVE leaves our own file alone then
-  ;; what is in the paws right now is saved as standing where it was taken from (or by the window): quit the game - nothing lost
+  ;; what is in the paws right now, ours and the guests', is saved as standing where it was taken from (or by the
+  ;; window): quit the game - nothing lost
   (ignore-errors
    (put-save :interior
-              (append (mapcar #'car *items*) (when *carry* (list (carry-spec)))))))
+              (append (mapcar #'car *items*) (when *carry* (list (carry-spec))) (peer-carry-specs)))))
 
 (defun spec-ok-p (it)
   "Return true if the thing IT is recorded correctly: (kind x height z spin [town-number [properties]])."

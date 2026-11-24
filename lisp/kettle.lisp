@@ -112,8 +112,8 @@
   "Put the good from the paws into the kettle."
   (let ((entry (brew-of (car *carry*))))
     (setf *kettle-brew* (second entry))
-    (empty-paws)
-    (show-carry) (save-interior)
+    (paws-spent nil)
+    (save-interior)
     (say (format nil "В чайник: будет ~a. Теперь на огонь" (third entry)))))
 
 (defun use-table-kettle ()

@@ -338,7 +338,7 @@ booth to booth, and a gas station next door does not switch them off."
     (let ((job *wait*))
       (setf *wait* nil)
       (if (job-actor job)                                                ; the guest was busy: the catch is theirs
-          (run-as (job-actor job) (job-carry job) (job-done job))
+          (run-as (job-actor job) (job-done job))
           (funcall (job-done job)))))
   ;; the whistle in Krasny Kut: at the market customers come up by themselves, without the bell
   (unless (net-guest-p)

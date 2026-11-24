@@ -312,12 +312,12 @@ The stove is shared."
 
 (defparameter *stove-hold* 4 "How many planks the stove holds: as many as are drawn in it (SHOW-FIRE).")
 
-(defun feed-stove ()
+(defshared feed-stove :feed ()
+  "Put a plank into the stove, or the coal from the paws. The planks and the fire are the driver's count."
   (cond ((and *carry* (eq (car *carry*) :coal)) (burn-coal))
         ((<= *planks* 0) (say "Досок нет. X по ящику — разобрать на доски"))
         ((> *fire* (* (1- *stove-hold*) *plank-burn*)) (say "В печке уже четыре доски — больше не влезет"))   ; as many as are seen in it
-        (t (decf *planks*) (setf *fire* (min 300.0 (+ *fire* *plank-burn*)) *cold-told* nil)
-           (when (net-guest-p) (incf *net-fed*))            ; tell the driver that a plank went into the stove
+        (t (add-planks -1) (setf *fire* (min 300.0 (+ *fire* *plank-burn*)) *cold-told* nil)
            (say (format nil "Подбросил доску. Осталось ~d" *planks*)))))
 
 ;;; Things you press E (or LMB) on while looking at them: the stove, the table, the light switch, the shutter

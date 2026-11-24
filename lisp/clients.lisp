@@ -437,16 +437,17 @@ Return four values: what he now has in hand, whether that changed, what to say, 
   "Handle a left click on stall ENTRY, something the client put on the windowsill.
 For a guest the deal is made by the driver."
   (cond ((net-guest-p)
-         (guest-send (list :a :take (offer-z entry) (car *carry*) (cdr *carry*) *carry-props*)))
+         (guest-send (list :a :take (offer-z entry))))
         (t (multiple-value-bind (carry changed words props) (stall-deal entry *carry* *carry-props*)
              (when changed (set-carry carry props) (show-carry))
              (say words)))))
 
-(defun host-deal (p z kind addr props)
-  "Handle, on the driver, guest P clicking the windowsill item at position Z while holding (KIND . ADDR) with PROPS."
+(defun host-deal (p z)
+  "Handle, on the driver, guest P clicking the windowsill item at position Z with whatever is in its paws."
   (let ((entry (and *client* (find z (getf *client* :stall) :key #'second :test (lambda (a b) (< (abs (- a b)) .05))))))
     (when entry
-      (multiple-value-bind (carry changed words new-props) (stall-deal entry (and kind (cons kind addr)) props)
+      (multiple-value-bind (carry changed words new-props) (stall-deal entry (getf p :carry) (getf p :props))
+        (when changed (setf (getf p :carry) carry (getf p :from) nil (getf p :props) (and carry new-props)))
         (peer-send p (list :g (and changed t) (car carry) (cdr carry) words new-props))))))
 
 (defun guest-dealt (changed kind addr words props)

@@ -3,7 +3,8 @@
 ;;;;    booths, finds, gnomes, the route. A guest computes none of this itself: APPLY-WORLD.
 ;;;;  • ACTIONS. A guest asks the driver for any shared action (pick up a bottle, take a gnome, milk the goat,
 ;;;;    pay a fine): ASK-HOST. The driver runs the very same function 'on the guest's behalf' (RUN-AS: with
-;;;;    the guest's paws and with the reply going to the guest), so actions have no separate 'guest' code.
+;;;;    the guest's paws, which the driver keeps, and with the reply going to the guest), so actions have no
+;;;;    separate 'guest' code.
 ;;;;    An action is declared with DEFSHARED (delo.lisp); nothing else needs to be registered. The things in
 ;;;;    the wagon are moved the same way (TAKE-THING, PUT-THING and the build mode): the arrangement is the
 ;;;;    driver's, a guest's own is a mirror of it.
@@ -106,37 +107,45 @@ The driver calls it; if a guest was performing the action, the guest's name is p
 
 (defun ask-host (key &rest args)
   "Ask the driver, as a guest, to perform the shared action KEY with ARGS.
-The request carries what we hold in our paws: the action may take it or hand something over. Return T.
-One request at a time: the answer says what is in our paws, so a second request sent before it would be
-answered about paws that the first has already changed. A request left without an answer stops counting in
-two seconds."
+What we hold in our paws the driver knows: the action may take it or hand something over, and the answer says
+what the paws hold now. Return T. One request at a time, so that the answers come in the order of the clicks; a
+request left without an answer stops counting in two seconds."
   (cond (*remote-wait* (say "Погоди, ещё не закончил"))
         ((and *asked* (< (- *time* (first *asked*)) 2.0)))
         (t (setf *asked* (list* *time* key args))
-           (guest-send (list :a :do key args (car *carry*) (cdr *carry*) *carry-props*))))
+           (guest-send (list :a :do key args))))
   t)
 
 (defun carry-ok-p (kind addr &optional props)
   (and (or (null kind) (good-p kind) (member kind '(:box :crate))) (or (null addr) (integerp addr) (keywordp addr))
        (props-ok-p props)))
 
-(defun run-as (p carry thunk &optional props)
-  "Run THUNK as the driver on behalf of guest P, with the guest's paws holding CARRY with PROPS.
-Reply to the guest with what is now in its paws and what was said to it."
+(defun run-as (p thunk)
+  "Run THUNK as the driver on behalf of guest P, with the guest's paws in place of ours: the driver keeps what
+each guest carries (:CARRY, :PROPS and :FROM in the guest's record). Reply to the guest with what is now in its
+paws and what was said to it."
   (when (member p *net-peers*)
-    (let ((*actor* p) (*carry* (and (car carry) carry)) (*carry-from* nil) (*carry-props* props) (*said* '()) (*pending* nil))   ; the guest's paws, not ours
+    (let ((*actor* p) (*carry* (getf p :carry)) (*carry-from* (getf p :from)) (*carry-props* (getf p :props)) (*said* '()) (*pending* nil))
       (funcall thunk)
+      (setf (getf p :carry) *carry* (getf p :from) *carry-from* (getf p :props) (and *carry* *carry-props*))
       (peer-send p (list :r (car *carry*) (cdr *carry*) (mapcar #'clean-text (reverse *said*)) *pending* (and *carry* *carry-props*))))))
 
+(defun peer-carry-specs ()
+  "Return the records of what the guests carry, each as it would stand in the wagon: they are saved with the
+arrangement, so that a thing in a guest's paws is not lost when the game is closed. The guest whose action is
+running now is left out: its paws are the current ones."
+  (loop for p in *net-peers*
+        when (and (getf p :carry) (not (eq p *actor*)))
+          collect (let ((*carry* (getf p :carry)) (*carry-from* (getf p :from)) (*carry-props* (getf p :props))) (carry-spec))))
+
 (defun host-do (p request)
-  "Handle, as the driver, the REQUEST of guest P for an action: (key args kind-in-paws address properties)."
-  (when (and (listp request) (= (length request) 5))
-    (destructuring-bind (key args kind addr props) request
+  "Handle, as the driver, the REQUEST of guest P for an action: (key args)."
+  (when (and (listp request) (= (length request) 2))
+    (destructuring-bind (key args) request
       (let ((op (assoc key *shared-ops*)))
         (when (and op (listp args) (<= (length args) 3)
-                   (every (lambda (a) (or (integerp a) (keywordp a) (spec-ok-p a))) args)   ; a number, a name or the record of a thing
-                   (carry-ok-p kind addr props))
-          (run-as p (cons kind addr) (lambda () (apply (cdr op) args)) props))))))
+                   (every (lambda (a) (or (integerp a) (keywordp a) (spec-ok-p a))) args))   ; a number, a name or the record of a thing
+          (run-as p (lambda () (apply (cdr op) args))))))))
 
 (defun guest-done (reply)
   "Handle, as a guest, the REPLY to our finished action: (kind address said still-waiting properties).

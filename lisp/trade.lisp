@@ -303,6 +303,14 @@ Return NIL for the floor or the top of an item."
              (empty-paws) (show-carry)
              (things-changed)))))
 
+(defshared paws-spent :spent (kind)
+  "What was in the paws went into something in the wagon (the kettle, a jar): with KIND NIL the paws are empty,
+otherwise they hold KIND, the jar made of what was in them. The driver keeps what everyone carries, so a guest
+says it through here."
+  (cond ((null kind) (empty-paws))
+        ((and *carry* (null (cdr *carry*)) (eq kind (jar-of (car *carry*)))) (set-carry (cons kind nil))))
+  (show-carry))
+
 (defun mirror-thing (key spec held holds)
   "Show at once, on a guest, what the driver did with the thing SPEC at our asking: KEY is :LIFT or :PUT, HELD is
 true if our paws held something before the driver answered, HOLDS if they do now. A request the driver refused

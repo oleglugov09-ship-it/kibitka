@@ -298,6 +298,7 @@ def pair():
     check("гость взял молоко — у водителя его стало три", lambda: ev(h, milk), lambda v: v.startswith("3"), within=8)
     check("…и оно у гостя в руках", lambda: ev(g, f"{K}*carry*"), "(:MILK)", within=4)
     check("…а у гостя на полке его тоже три", lambda: ev(g, milk), lambda v: v.startswith("3"), within=4)
+    check("…и водитель знает, что у гостя в лапах", ev(h, f"(getf (first {K}*net-peers*) :carry)"), "(:MILK)")
     # the guest asks for a thing the driver no longer has: the driver took it a moment earlier
     spec = ev(g, first_milk)
     ev(g, f"(progn ({K}put-thing ({K}make-spec :milk 0.0 0.0 0.0 0 nil {K}*carry-props*)) 1)")
@@ -322,6 +323,11 @@ def pair():
     ev(g, f"(progn ({K}break-thing (list :box 0.0 0.0 0.5 0)) 1)")
     check("гость разобрал его на доски — у обоих как было",
           lambda: (ev(h, things), ev(g, things)), lambda v: v[0] == v[1] == f"({n} {planks})", within=6)
+    ev(h, f"(progn (setf {K}*fire* 0.0) 1)")
+    ev(g, f"(progn ({K}feed-stove) 1)")
+    check("гость подбросил доску — доской меньше у обоих, печка горит у водителя",
+          lambda: (ev(h, things), ev(g, things), ev(h, f"(> {K}*fire* 1)")), lambda v: v[0] == v[1] == f"({n} {planks - 1})" and v[2] == "T", within=6)
+    planks -= 1
     ev(g, f"(progn ({K}build-thing (list :milk 0.3 0.0 0.5 0)) 1)")
     time.sleep(1.0)
     ev(g, f"(progn ({K}build-thing (list :pillow 0.0 0.0 0.5 0)) 1)")
@@ -380,9 +386,13 @@ def pair():
           lambda: ev(h, f"(and {K}*answers* (search \"ошибка\" (cdr (first {K}*answers*))) t)"), "T", within=6)
     # the guest goes back to its own game: the world state is its own again, not the driver's
     check("в гостях у гостя — хозяйские гномик и задание", ev(g, f"(list (and ({K}gnome-found-p 3) t) (car {K}*quest*))"), "(T :POST)")
+    ev(g, f"(progn ({K}take-thing {first_milk}) 1)")
+    check("гость снова взял молоко", lambda: (ev(g, f"{K}*carry*"), ev(h, milk)), lambda v: v[0] == "(:MILK)" and v[1].startswith("2"), within=6)
     ev(g, f"(progn ({K}net-stop) 1)")
     check("вышел из комнаты — гномики, задание, штрафы и бутылки снова свои",
           lambda: ev(g, f"(list (and ({K}gnome-found-p 3) t) {K}*quest* {K}*fines* {K}*bottles* {K}*net-role*)"), "(NIL NIL NIL 0 NIL)", within=6)
+    check("гость ушёл с молоком в лапах — оно осталось в кибитке водителя", lambda: ev(h, milk), lambda v: v.startswith("3"), within=8)
+    check("…а у гостя дома лапы пусты", ev(g, f"{K}*carry*"), "NIL")
     check("ошибок в журналах нет", log_errors(h) + log_errors(g), 0)
     stop_all()
 

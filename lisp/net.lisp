@@ -64,7 +64,8 @@ Someone who returns after a dropped link is inside again, not at a bus stop.")
 server), :id the number in the game, :ok true when the version matched, :name :x :z :yaw :inside who
 and where, :placed true once they sent where they stand, :wait the path coordinate of the bus stop
 where they wait, :ver which arrangement of things they know, :node the figure at the bus stop, :told true
-once the driver has been warned.")
+once the driver has been warned, :carry :props :from what is in their paws (as *CARRY*, *CARRY-PROPS* and
+*CARRY-FROM* are for our own): the driver keeps it, a guest only shows what the driver says.")
 (defvar *net-peer* nil "The guest's link to the host.")
 (defvar *net-id* 0 "Our number at the host.")
 (defvar *net-next-id* 0)
@@ -79,14 +80,12 @@ once the driver has been warned.")
 (defvar *net-lost* nil)
 (defvar *net-joined* nil "True for a guest once the first state has been received and the world is built.")
 (defvar *net-wait* nil "The guest's path coordinate of the bus stop where we wait for the wagon, or NIL when we are in it.")
-(defvar *net-sig* nil "The guest's record of the switches and the planks as the host knows them.")
-(defvar *net-hold* 0.0 "The time until which a guest ignores the driver's switches and planks (we have just changed them ourselves).")
+(defvar *net-sig* nil "The guest's record of the switches as the host knows them.")
+(defvar *net-hold* 0.0 "The time until which a guest ignores the driver's switches (we have just flipped one ourselves).")
 (defvar *net-mirror-hold* 0.0 "The time until which a guest's things may differ from the driver's arrangement as last sent:
 the driver has just moved a thing for us, we have shown it, and the new arrangement is on its way.")
 (defvar *wait-stood* 0.0 "The number of seconds the wagon has stood away from our bus stop, for a guest waiting there.")
-(defvar *net-fed* 0 "The number of planks a guest has fed into the stove since the last send.")
 (defvar *rejoining* nil "Bound to T while a guest is returning by itself to the same room after a dropped link.")
-(defvar *net-planks-delta* 0 "The guest's change in the number of planks since the last send (feeding the stove counts as minus).")
 (defvar *net-resend* 0 "The guest's marker that there is an edit to send to the host.")
 (defvar *departed* nil "True once the host has left the depot.")
 
@@ -320,15 +319,10 @@ Type 1 is a connect, 2 a disconnect, 3 an incoming packet."
   p)
 
 (defun host-edited (p fields)
-  "Guest P has flipped a switch or fed the stove: FIELDS is (switches planks-delta fed). The things are not
-here: a guest asks for each of them (TAKE-THING and the rest, trade.lisp)."
-  (destructuring-bind (fold planks-delta fed) fields
-    (when (and (integerp planks-delta) (<= -12 planks-delta 12) (integerp fed) (<= 0 fed 5))
-      (set-switches fold :guarded t)
-      ;; planks arrive as a difference, not a count: a stale count from the guest would overwrite the ones
-      ;; the driver has just bought; how many of them went into the stove is counted separately
-      (setf *planks* (max 0 (min 99 (+ *planks* planks-delta)))
-            *fire* (min 300.0 (+ *fire* (* fed *plank-burn*))))))
+  "Guest P has flipped a switch: FIELDS is (switches). Things, planks and the stove are not here: a guest asks
+for each of those (TAKE-THING, FEED-STOVE and the rest)."
+  (destructuring-bind (fold) fields
+    (set-switches fold :guarded t))
   p)
 
 (defun host-take (p msg)
@@ -341,9 +335,8 @@ here: a guest asks for each of them (TAKE-THING and the rest, trade.lisp)."
                  (:do (host-do p (cddr msg)))                        ; a shared action on behalf of the guest, see sync.lisp
                  (:ran (host-ran p (third msg)))                     ; the reply to a live edit
                  (:bell (ring-bell))
-                 (:take (destructuring-bind (z kind addr props) (cddr msg)
-                          (when (and (realp z) (carry-ok-p kind addr props))               ; for coins the address is the wanted good
-                            (host-deal p z kind addr props))))))
+                 (:take (destructuring-bind (z) (cddr msg)
+                          (when (realp z) (host-deal p z))))))
            (:e (setf p (host-edited p (rest msg)))))))
   p)
 
@@ -359,6 +352,10 @@ here: a guest asks for each of them (TAKE-THING and the rest, trade.lisp)."
 
 (defun drop-peer (p)
   (remhash (getf p :id) *world-sent*)
+  (when (getf p :carry)                                    ; what the guest carried stays in the wagon: where it was taken from, or by the window
+    (let ((*carry* (getf p :carry)) (*carry-from* (getf p :from)) (*carry-props* (getf p :props))) (stand-item (carry-spec)))
+    (setf (getf p :carry) nil)
+    (things-changed))
   (when (getf p :node) (node-queue-free (getf p :node)))
   (when (getf p :name)
     (log-event :peer-left :name (getf p :name) :dist (round *dist*))
@@ -371,7 +368,7 @@ here: a guest asks for each of them (TAKE-THING and the rest, trade.lisp)."
 All fields are present at once: later we edit them in place."
   (first (push (list :peer (and peer (gdext:add-reference peer)) :key (and peer (peer-key peer)) :rid rid
                      :id (incf *net-next-id*) :ok nil :name nil :x 0.0 :z 0.0 :yaw 0.0 :eye 1.55 :inside nil :wait nil
-                     :ver 0 :placed nil :node nil :told nil :look 0)
+                     :ver 0 :placed nil :node nil :told nil :look 0 :carry nil :props nil :from nil)
                *net-peers*)))
 
 (defun host-room ()
@@ -492,7 +489,7 @@ stand on the windowsill, the same as by hand."
       (setf *window-open* (and window t)
             *door-open* (and door t) *ladder-down* (and ladder t)))))
 
-(defun guest-sig () (list (switches) *planks*))
+(defun guest-sig () (switches))
 
 (defun guest-first (h)
   "Handle the first state H from the host: build the same world and decide where to appear."
@@ -568,10 +565,10 @@ stand on the windowsill, the same as by hand."
           (put-money money)
           (unless (eq season *season*) (set-season season))
           (unless (eq weather *weather*) (set-weather weather))
+          (setf *planks* planks)
+          (when (> (abs (- fire *fire*)) 3) (setf *fire* fire))       ; between messages the fire burns down by itself
           (when (> *time* *net-hold*)
             (set-switches fold)
-            (setf *planks* planks)
-            (when (> (abs (- fire *fire*)) 3) (setf *fire* fire))
             (setf *net-sig* (guest-sig)))))
     (:i (destructuring-bind (ver specs) (rest msg)                  ; the driver's arrangement of things: ours mirrors it
           (when (and (integerp ver) (specs-ok-p specs))
@@ -587,18 +584,17 @@ stand on the windowsill, the same as by hand."
   "Knock on the same room again after the guest's link dropped."
   (when (and *net-retry* (> *time* *net-retry*) *net-room*)
     (let ((room *net-room*) (name *net-name*) (tries (1+ *net-retries*)))
-      (let ((*rejoining* t)) (net-join room name))   ; resets the counters, so we restore them; hands and things stay
+      (let ((*rejoining* t)) (net-join room name))   ; resets the counters, so we restore them
       (setf *net-retries* tries *net-retry* nil))))
 
 (defun note-own-edit ()
-  "Remember that we, a guest, changed something (switches, planks) and send it to the driver.
+  "Remember that we, a guest, flipped a switch or changed a common thing, and send it to the driver.
 Called BEFORE incoming messages are handled: otherwise a state arriving in the same frame would
 record our edit as 'what the driver has'."
   (when *net-joined*
     (let ((sig (guest-sig)))
       (when (and *net-sig* (not (equal sig *net-sig*)))
-        (setf *net-planks-delta* (+ *net-planks-delta* (- (second sig) (second *net-sig*)))
-              *net-sig* sig *net-hold* (+ *time* .8) *net-resend* 1)))))
+        (setf *net-sig* sig *net-hold* (+ *time* .8) *net-resend* 1)))))
 
 (defun guest-follow ()
   "Keep our copy of the wagon where the driver's is: waiting at a bus stop, we stand and watch for it; riding, we
@@ -632,14 +628,14 @@ drive at its speed and close the gap; and the things in the wagon are brought in
       (guest-send (list :p *net-name* x z yaw inside (and (realp *net-wait*) *net-wait*) *net-ver* eye (my-look))))
     (when (> *net-resend* 0)
       (decf *net-resend*)
-      (guest-send (list :e (switches) *net-planks-delta* *net-fed*))
-      (setf *net-planks-delta* 0 *net-fed* 0))))
+      (guest-send (list :e (switches))))))
 
 (defun step-guest (tick)
   (guest-rejoin)
   (note-own-edit)
   (when (and *net-joined* (not *net-lost*)) (setf *net-retries* 0))
   (flet ((linked () (setf *net-seen* *time*)
+                   (empty-paws) (show-carry)                 ; what a guest carries the driver keeps, and to the driver we are new
                    (guest-send (list :hello *net-version* *net-name*))
                    (say "Подключились. Ждём водителя"))
          (lost (why) (unless *net-lost* (setf *net-lost* t) (log-event :net-lost :why why :joined *net-joined*) (say why))))
@@ -766,6 +762,10 @@ trouble and waiting at a bus stop."
 (defun net-stop ()
   "Close the network game and restore everything it moved: the view, the wagon, the counters."
   (reset-commons)
+  (when (and (eq *net-role* :host) *cart* (some (lambda (p) (getf p :carry)) *net-peers*))   ; what the guests carried stays in the wagon
+    (dolist (spec (peer-carry-specs)) (stand-item spec))
+    (dolist (p *net-peers*) (setf (getf p :carry) nil))
+    (things-changed))
   (dolist (p *net-peers*)
     (when (getf p :node) (node-queue-free (getf p :node)))
     (when (getf p :peer)                                  ; a guest through the room server has no direct connection
@@ -781,7 +781,7 @@ trouble and waiting at a bus stop."
   (when *client* (client-off *client*))                   ; the customer at the window belonged to that game
   (setf *client* nil *client-seen* nil)
   ;; we were a guest and are leaving for good: hands empty, and things, money, tank and place on the road are ours again.
-  ;; (When returning to the same room after a dropped link we touch nothing: the thing in hand is still ours.)
+  ;; (When returning to the same room after a dropped link we touch nothing here: the paws are emptied once the link is up.)
   (when (and (eq *net-role* :guest) *cart* (not *rejoining*))
     (setf *net-role* nil)                                 ; first: what follows must not take us for a guest
     (own-world-again))                                    ; papers, finds, booths, gnomes, the wall are ours again, not the host's
