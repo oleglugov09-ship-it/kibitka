@@ -171,6 +171,9 @@ def solo():
     p = P0
     check("12 городов", ev(p, f"(length {K}*towns*)"), lambda v: v.startswith("12"))
     check("три посылки в три города", ev(p, f"({K}parcels-left)"), "((0 . 1) (1 . 1) (2 . 1))")
+    check("по кибитке и по крыльцу можно ходить, полки на своей высоте (места читаются из Blender)",
+          ev(p, f"(list (and ({K}walkable-p 0.2 2.0) t) (and ({K}walkable-p 0.2 -2.0) t) (< 5 (- (fourth {K}*bounds*) (third {K}*bounds*)) 5.5)"
+                f" (< 0.7 (- (fourth {K}*porch*) (third {K}*porch*)) 0.8) (mapcar (lambda (v) (round (* 100 v))) {K}*shelf-tops*))"), "(T T T T (55 110 165))")
     check("четыре молока", ev(p, f"(count :milk {K}*items* :key (lambda (it) (first (car it))))"), lambda v: v.startswith("4"))
     check("бензина ровно до первого рынка",
           ev(p, f"(< 0 (- (* {K}*fuel* {K}*tank-km* 1000) ({K}town-stop-d (first {K}*towns*))) 10)"), "T")

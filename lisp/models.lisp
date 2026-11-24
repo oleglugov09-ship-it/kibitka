@@ -68,6 +68,9 @@ Cubes named surface_NAME: the top face is a place to stand or put things, each a
                    (let ((at (object-get child "position")) (rot (object-get child "rotation")) (size (object-get child "scale")))
                      (let ((x (vector3-x at)) (y (vector3-y at)) (z (vector3-z at))
                            (w (abs (vector3-x size))) (h (abs (vector3-y size))) (d (abs (vector3-z size))))
+                       ;; Blender's up is its z: the export keeps the cube's own sizes and stands it up by a quarter turn
+                       ;; about x, so the height and the depth come swapped
+                       (when (> (abs (sin (vector3-x rot))) .7) (rotatef h d))
                        (cond ((starts "solid") (push (list x y z (vector3-y rot) w h d) solids))
                              ((starts "at_") (push (list (subseq name 3) x y z) points))
                              (t (push (list (subseq name 8) x (+ y (/ h 2)) z w d) surfaces)))))
