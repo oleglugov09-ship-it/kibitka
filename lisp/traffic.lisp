@@ -114,8 +114,8 @@ the flashers blink and so are made here."
     (values g blink)))
 
 (defun army-near-p ()
-  "Return true if the garrison town is within two and a half kilometres along the road."
-  (some (lambda (tw) (and (eq (town-theme tw) :military) (< (abs (- (town-stop-d tw) *dist*)) 2500.0))) *towns*))
+  "Return true if the garrison town is within 1.2 km along the road."
+  (some (lambda (tw) (and (eq (town-theme tw) :military) (< (abs (- (town-stop-d tw) *dist*)) 1200.0))) *towns*))
 
 (defun add-car (d v dir &optional kind)
   (incf *car-n*)
@@ -149,7 +149,8 @@ to its own lane."
            (passing (v gap &optional kind) (add-car (- *dist* (* *dir* (+ 120.0 gap))) v *dir* kind)))
       (when (> *time* *next-car*)                                      ; an oncoming car, sometimes one on business
         (let ((r (vr *car-n* 11)) (v (+ 12.0 (* 5 (vr *car-n* 7)))))
-          (cond ((and (> r .72) (army-near-p))                         ; by the garrison town: a column of three
+          (cond ((and (> r .93) (army-near-p))                         ; by the garrison town: a column of three, now and then -
+                                                                       ; at one in four they never left the street (the author, 24.11)
                  (dotimes (i 3) (oncoming 12.0 (* i 20.0) :army)))
                 (t (oncoming v 0 (cond ((< r .1) :milk) ((< r .2) :bread) ((< r .26) :lavka))))))
         (setf *next-car* (+ *time* (if (town-at *dist*) 9 16) (* 34 (vr *car-n* 3)))))

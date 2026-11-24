@@ -361,42 +361,65 @@ Return the length of the lot."
   (shape g :box '(.2 .8 12.0) "#3f6f73" 11.85 2.9 0 :shadow nil)
   (sign g (nth (random (length *shop-names*)) *shop-names*) 11.7 2.9 0 :h .7))
 
-(defvar *built-towns* (make-hash-table) "The map from a town index to the town's nodes.
-A town is built as a whole and removed as a whole.")
+(defvar *built-towns* (make-hash-table) "The map from a town index to the town's nodes, once the whole town stands.
+A town is removed as a whole.")
+(defvar *town-jobs* (make-hash-table) "The towns being built, a map from a town index to (side d mosaics . nodes): a town
+goes up a lot a frame - built in one frame, it froze the game for a quarter of a second and more.")
 
-(defun build-town (tw)
-  "Build up the town TW on both sides of the road, from its start to its end, and return its nodes.
-Gas stations are on the right, as planned: a house that would overlap a gas station is not built.
-In towns with a character of their own a gap is left on the right (CITY-GAP)."
-  (setf (town-plaza tw) nil)
-  (with-solids
-   (let ((*keep-into* (list nil)) (*mosaic-town* (town-index tw)) (*mosaic-count* 0))
-    (dotimes (i 2)
-      (let ((side (if (zerop i) -1 1)) (d (+ (town-start tw) 4.0)))
-        (loop while (< (+ d 20) (town-end tw))
-              do (let* ((*seed* (rs-for (+ (* 2 d) i)))
-                        (station (and (> side 0) (let ((s (next-station (- d 18)))) (and s (< s (+ (town-end tw) 40)) s))))
-                        (gap (and (> side 0) (city-gap tw d))))
-                   (setf d (cond ((and station (<= (- station 17.5) d)) (+ station 23))         ; the gas station lot is 34 m
-                                 (gap gap)                                                      ; shows what makes the town special
-                                 ((and station (< (- station 17 d) 110)) (- station 17))        ; the longest lot is 104 m
-                                 (t (+ d (build-lot tw d side) 6 (random 8.0)))))))))
-    (or (cdr *keep-into*) (list nil)))))
+(defun build-town-step (tw job)
+  "Build the next lot of the town TW, on from where JOB stopped, and return true when the whole town stands.
+Lots go on both sides of the road, from the town's start to its end. Gas stations are on the right, as planned: a house
+that would overlap a gas station is not built. In towns with a character of their own a gap is left on the right (CITY-GAP)."
+  (destructuring-bind (i d mosaics &rest nodes) job
+    (declare (ignore nodes))
+    (loop while (and (< i 2) (>= (+ d 20) (town-end tw)))                ; this side is done: the other one, from the start
+          do (setf i (1+ i) d (+ (town-start tw) 4.0)))
+    (when (< i 2)
+      (with-solids
+        (let* ((*keep-into* (list nil)) (*mosaic-town* (town-index tw)) (*mosaic-count* mosaics)
+               (side (if (zerop i) -1 1))
+               (*seed* (rs-for (+ (* 2 d) i)))
+               (station (and (> side 0) (let ((s (next-station (- d 18)))) (and s (< s (+ (town-end tw) 40)) s))))
+               (gap (and (> side 0) (city-gap tw d))))
+          (setf d (cond ((and station (<= (- station 17.5) d)) (+ station 23))         ; the gas station lot is 34 m
+                        (gap gap)                                                      ; shows what makes the town special
+                        ((and station (< (- station 17 d) 110)) (- station 17))        ; the longest lot is 104 m
+                        (t (+ d (build-lot tw d side) 6 (random 8.0)))))
+          (setf (third job) *mosaic-count*
+                (cdddr job) (append (cdr *keep-into*) (cdddr job))))))
+    (setf (first job) i (second job) d)
+    (>= i 2)))
+
+(defun town-built-p (tw)
+  "Return true once every lot of the town TW stands."
+  (and (gethash (town-index tw) *built-towns*) t))
 
 (defun step-city ()
   "Build and remove gas stations and towns as the wagon moves.
-Gas stations are built from the list as soon as they come into view; towns are built as a whole
-when they are *CITY-AHEAD* away and removed as a whole."
+Gas stations are built from the list as soon as they come into view; a town starts going up when it is *CITY-AHEAD*
+away - a lot a frame, one town at a time, and all at once when we are already in it (a jump, a saved game) - and is
+removed as a whole."
   (dolist (s *stations*)
     (listed ((list :station s) s *city-ahead*) (gas-station (lot s 1) s)))
-  (dolist (tw *towns*)
-    (let* ((i (town-index tw)) (built (gethash i *built-towns*))
-           (near (span-in-window-p (town-start tw) (town-end tw) *city-ahead*)))
-      (cond ((and near (null built)) (setf (gethash i *built-towns*) (build-town tw)))
-            ((and built (not near) (out-of-window-p (/ (+ (town-start tw) (town-end tw)) 2)
-                                                    (+ *city-ahead* (/ (- (town-end tw) (town-start tw)) 2) 30)))
-             (dolist (n built) (when n (node-queue-free n)))
-             (remhash i *built-towns*))))))
+  (let ((busy nil))
+    (dolist (tw *towns*)
+      (let* ((i (town-index tw)) (built (gethash i *built-towns*)) (job (gethash i *town-jobs*))
+             (near (span-in-window-p (town-start tw) (town-end tw) *city-ahead*)))
+        (cond ((and near (null built) (not busy))
+               (unless job
+                 (setf (town-plaza tw) nil
+                       job (setf (gethash i *town-jobs*) (list 0 (+ (town-start tw) 4.0) 0))))
+               (setf busy t)
+               (when (loop with here = (< (- (town-start tw) 150) *dist* (+ (town-end tw) 150))   ; standing in it: no waiting
+                           for done = (build-town-step tw job)
+                           until (or done (not here))
+                           finally (return done))
+                 (setf (gethash i *built-towns*) (or (cdddr job) (list nil)))
+                 (remhash i *town-jobs*)))
+              ((and (or built job) (not near) (out-of-window-p (/ (+ (town-start tw) (town-end tw)) 2)
+                                                               (+ *city-ahead* (/ (- (town-end tw) (town-start tw)) 2) 30)))
+               (dolist (n (or built (cdddr job))) (when n (node-queue-free n)))
+               (remhash i *built-towns*) (remhash i *town-jobs*)))))))
 
 ;;; Gas stations and the tank
 
@@ -477,6 +500,7 @@ Once we stop there the ladder lowers by itself: only at such places can one get 
       (setf *walk-here* (and place t)))))
 
 (defun reset-city ()
+  (clrhash *town-jobs*)
   (setf *stations* '() *at-station* nil
         *fuel* *start-fuel* *money* *start-money* *fuel-told* nil))
 

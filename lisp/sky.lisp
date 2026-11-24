@@ -96,7 +96,10 @@ sourceless light in which far things show as dark shapes (marks.lisp sets it by 
   (object-set *moon-light* "light_color" (hex "#a8b4d8"))
   (object-set *moon-light* "sky_mode" 1)          ; light only, no disc in the sky
   (node-add-child (or *turn* root) *moon-light*)
-  (setf *moon* (shape (or *turn* root) :ball '(6 16 10) "#f0ecdc" 0 0 0 :emit "#e8e4d0" :energy 1.6 :shadow nil :unshaded t)))
+  ;; the moon hangs beyond the mountains, not over the road: 1.8 km away, just inside the star sphere (stars.lisp), so hills, houses and
+  ;; the tunnel mouth hide it as they would; the haze does not touch it, or it would drown at that distance
+  (setf *moon* (shape (or *turn* root) :ball '(40 20 12) "#f0ecdc" 0 0 0 :emit "#e8e4d0" :energy 1.6 :shadow nil :unshaded t))
+  (object-set (object-get *moon* "material_override") "disable_fog" t))
 
 (defun step-sky (delta)
   (when (place-rule :clock) (incf *day-t* (* delta *time-scale*)))      ; where the clock stands, the calendar does not turn
@@ -131,7 +134,7 @@ sourceless light in which far things show as dark shapes (marks.lisp sets it by 
     (object-set *moon-light* "light_energy" (if sun-up 0.0 (* (- 1.0 *gloom*) .35 (- 1 (* .7 (wx :cloud))))))
     (object-set *moon* "visible" (and (not sun-up) (< (wx :cloud) .6) (< *gloom* .3)))
     (destructuring-bind (x y z) *rig-at*                   ; the moon circles the wagon wherever it has driven
-      (node-3d-set-position *moon* (v3 (+ x (* -140 (cos moon-a))) (+ y (- (* 80 (sin moon-a)) 4)) (- z 50))))
+      (node-3d-set-position *moon* (v3 (+ x (* -1700 (cos moon-a))) (+ y (- (* 970 (sin moon-a)) 50)) (- z 600))))
     ;; lights off (L): almost no ambient light, so you can see where the street light breaks in
     (object-set *env* "ambient_light_energy" (if *lights-on*
                                                     (+ (* (- 1.0 *gloom*) (+ .35 (* .65 day))) (* *gloom* (+ .02 (* .2 *haze*))))
