@@ -3,9 +3,12 @@
 ;;;; Now what stands still is built once, when the map is baked (BAKE-THING in bake.lisp, tools/bake-map.sh --things),
 ;;;; and saved as a scene of the engine in project/terrain/things; the game only loads it: LOAD-THING.
 ;;;;
-;;;; A saved thing carries its nodes and meshes, and three notes on its root:
-;;;;   "mats"   - which of the game's materials (MATERIAL in shapes.lisp) go where: the materials themselves are
-;;;;              not saved, or every thing would carry its own copy of every texture;
+;;;; A saved thing carries its nodes, meshes and the places of its batches. The game's materials (MATERIAL in
+;;;; shapes.lisp) it does not carry: they are saved once, each a file in project/terrain/mats, and a thing only points
+;;;; at them - the engine puts them on as it loads the thing, with no work on our side. LOAD-MATERIALS reads those
+;;;; files at the start, so that the game and the things share one material of a kind, and the style's textures and
+;;;; the seasons reach both. Three notes on the root say the rest:
+;;;;   "mats"   - where the few materials that are not the game's own go (a mosaic, a town's mural);
 ;;;;   "solids" - what of it cannot be walked through (tverd.lisp);
 ;;;;   "moves"  - what of it turns, swings and travels (STEP-MOVES in places.lisp).
 
@@ -23,6 +26,22 @@
     (if found
         known
         (setf (gethash key *things-here*) (and (object-call (gdext:singleton "ResourceLoader") "exists" (thing-path key)) t)))))
+
+(defparameter *mats-dir* "res://terrain/mats" "Where the game's materials lie, saved when the things were baked.")
+
+(defun mat-path (n) (format nil "~a/m~d.res" *mats-dir* n))
+
+(defun load-materials ()
+  "Read the materials saved with the things into *MATERIALS*, so that MATERIAL returns the very ones the things wear.
+Call it before anything is built. Return how many were read."
+  (let ((index (format nil "~a/index.txt" *mats-dir*)) (n 0))
+    (when (file-access-file-exists index)
+      (loop for (key . number) in (let ((*read-eval* nil)) (read-from-string (file-access-get-file-as-string index)))
+            do (let ((m (present (object-call (gdext:singleton "ResourceLoader") "load" (mat-path number)))))
+                 (when (and m (null (gethash key *materials*)))
+                   (gdext:setf-reference (gethash key *materials*) m)
+                   (incf n)))))
+    n))
 
 (defun material-of-key (key)
   "Return the game's material for KEY, the list MATERIAL files it under."
@@ -47,8 +66,6 @@ its root node and what of it moves (for STEP-MOVES); NIL when it is not baked."
         (node-add-child parent root)
         (loop for (path over surfaces overrides) in (read-note root "mats")
               do (let ((node (object-call root "get_node" path)))
-                   (when (object-call node "has_meta" "buffer")            ; the places of a batch: see BAKE-WELD
-                     (object-set (object-get node "multimesh") "buffer" (object-call node "get_meta" "buffer")))
                    (when over (object-set node "material_override" (material-of-key over)))
                    (when surfaces
                      (let ((mesh (if (object-call node "is_class" "MultiMeshInstance3D")

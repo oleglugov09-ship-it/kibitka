@@ -101,6 +101,7 @@ That is the body, the truck under it, everything bolted on inside, the things an
   (adopt-goods)                                           ; a mod's goods without a model get a place among the things
   (make-action-names)
   (add-layout-twins)
+  (unless *baking* (load-materials))                      ; the materials the baked things wear: before anything is built (things.lisp)
   (make-pivots root)
   (make-sky root)
   (make-land root)                                        ; the land: the baked map, drawn by Terrain3D (zemlya.lisp). The world stands on it

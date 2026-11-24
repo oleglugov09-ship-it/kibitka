@@ -273,7 +273,6 @@ its colour to its place in the batch. Return the number of nodes melted."
                                                 (and c (list (color-r c) (color-g c) (color-b c) 1.0))))
                                (setf (aref buffer (incf k)) (float v 1.0)))))
                   (object-set mm "buffer" buffer)
-                  (object-call mmi "set_meta" "buffer" buffer)                  ; and beside it, for LOAD-THING to hand over again
                   (object-set mmi "multimesh" mm)
                   (when over (object-set mmi "material_override" over))
                   (object-set mmi "cast_shadow" shadow)
@@ -282,22 +281,59 @@ its colour to its place in the batch. Return the number of nodes melted."
                         do (object-call (object-call c "get_parent") "remove_child" c) (godot:node-queue-free c) (incf gone))))))))
       gone)))
 
-(defvar *material-keys* nil "While things are baked: a table from a material of the game to the key MATERIAL files it under.")
-(defvar *mesh-notes* nil "While things are baked: a table from a mesh to the keys of the materials its surfaces wore, taken off it once.")
+(defvar *material-keys* nil "While things are baked: a table from a material that is not the game's own (a mosaic, a mural) to its key.")
+(defvar *material-files* nil "While things are baked: a table from a material of the game to the number of its file (MAT-PATH).")
+(defvar *mesh-notes* nil "While things are baked: a table from a mesh to the keys of the special materials its surfaces wore, taken off it once.")
 
-(defun material-key (m)
+(defun file-material (m)
+  "Give the material M of the game a file of its own, if it has none yet, so that the things saved point at it
+instead of carrying a copy. Return true if M is the game's own (made by MATERIAL)."
+  (unless *material-files*
+    (setf *material-files* (make-hash-table :test 'eq)))
+  (or (gethash m *material-files*)
+      (let ((key (block found (maphash (lambda (key mat) (when (eq mat m) (return-from found key))) *materials*) nil)))
+        (when key
+          (let ((n (hash-table-count *material-files*)))
+            (object-call m "take_over_path" (mat-path n))
+            (setf (gethash m *material-files*) (cons n key)))))))
+
+(defun save-materials ()
+  "Write the materials the baked things point at into *MATS-DIR*, and the index LOAD-MATERIALS reads: bare, without
+the textures of a style - the game puts those on."
+  (let ((saver (gdext:singleton "ResourceSaver")) (index '()))
+    (setf *style* nil)
+    (apply-style)
+    (when *material-files*
+      (maphash (lambda (m cell)
+                 (destructuring-bind (n . key) cell
+                   (object-call saver "save" m (mat-path n) 32)
+                   (push (cons key n) index)))
+               *material-files*))
+    (let ((path (object-call (gdext:singleton "ProjectSettings") "globalize_path" (format nil "~a/index.txt" *mats-dir*))))
+      (with-open-file (out path :direction :output :if-exists :supersede)
+        (with-standard-io-syntax (prin1 index out))))
+    (format t "~&BAKE materials: ~d~%" (length index))))
+
+(defun special-material-key (m)
+  "Return the key of the material M when it is a mosaic or a mural (they carry a picture and are not saved), else NIL."
   (flet ((gather ()
-           (maphash (lambda (key mat) (setf (gethash mat *material-keys*) key)) *materials*)
            (maphash (lambda (n mat) (setf (gethash mat *material-keys*) (list :mosaic n))) *mosaic-mats*)
            (maphash (lambda (key mat) (setf (gethash mat *material-keys*) (cons :mural key))) *mural-mats*)))
-    (unless *material-keys* (setf *material-keys* (make-hash-table :test 'eq)) (gather))
+    (unless *material-keys* (setf *material-keys* (make-hash-table :test 'eq)))
     (and m (or (gethash m *material-keys*)
-               (progn (gather) (gethash m *material-keys*))))))         ; a material made since the table was: look once more
+               (progn (gather) (gethash m *material-keys*))))))
+
+(defun material-key (m)
+  "Sort out the material M of a thing being baked: the game's own gets a file (FILE-MATERIAL) and stays on - return
+NIL; a mosaic or a mural is to be taken off and noted - return its key."
+  (when m
+    (or (special-material-key m)
+        (progn (file-material m) nil))))
 
 (defun strip-materials (root)
-  "Take the game's materials off everything under ROOT and return the note of what went where, each entry as
-(path override surfaces overrides) with the keys of the materials. The nodes get plain names first, so that the
-paths hold in the saved scene."
+  "Go over everything under ROOT: the game's own materials get files of their own, the special ones (mosaics, murals)
+are taken off and noted. Return the note, each entry as (path override surfaces overrides) with the keys. The nodes
+get plain names first, so that the paths hold in the saved scene."
   (let ((notes '()) (n 0))
     (unless *mesh-notes* (setf *mesh-notes* (make-hash-table :test 'eq)))
     (labels ((walk (node path)
@@ -312,23 +348,24 @@ paths hold in the saved scene."
                               (let* ((over (material-key (present (object-get c "material_override"))))
                                      (primitive (object-call mesh "is_class" "PrimitiveMesh"))
                                      (count (object-call mesh "get_surface_count"))
-                                     (surfaces (unless primitive
-                                                 (multiple-value-bind (known found) (gethash mesh *mesh-notes*)
-                                                   (if found
-                                                       known
-                                                       (setf (gethash mesh *mesh-notes*)
-                                                             (let ((keys (loop for i below count
-                                                                               collect (material-key (present (object-call mesh "surface_get_material" i))))))
-                                                               (loop for k in keys for i from 0
-                                                                     do (when k (object-set mesh (format nil "surface_~d/material" i) nil)))   ; a method will not take NIL for a material
-                                                               keys))))))
+                                     (surfaces (if primitive
+                                                   (progn (material-key (present (object-get mesh "material"))) nil)
+                                                   (multiple-value-bind (known found) (gethash mesh *mesh-notes*)
+                                                     (if found
+                                                         known
+                                                         (setf (gethash mesh *mesh-notes*)
+                                                               (let ((keys (loop for i below count
+                                                                                 collect (material-key (present (object-call mesh "surface_get_material" i))))))
+                                                                 (loop for k in keys for i from 0
+                                                                       do (when k (object-set mesh (format nil "surface_~d/material" i) nil)))   ; a method will not take NIL for a material
+                                                                 keys))))))
                                      (overrides (unless (or mmi primitive)
                                                   (loop for i below count
                                                         collect (let ((k (material-key (present (object-call c "get_surface_override_material" i)))))
                                                                   (when k (object-set c (format nil "surface_material_override/~d" i) nil))
                                                                   k)))))
                                 (when over (object-set c "material_override" nil))
-                                (when (or mmi over (some #'identity surfaces) (some #'identity overrides))
+                                (when (or over (some #'identity surfaces) (some #'identity overrides))
                                   (push (list here over (and (some #'identity surfaces) surfaces) (and (some #'identity overrides) overrides))
                                         notes)))))
                           (walk c here)))))
@@ -396,6 +433,7 @@ thing KEY (things.lisp). Return the size of the file in nodes, or NIL when BUILD
           (when count
             (incf n) (incf nodes count) (incf melted gone)
             (format t "~&BAKE thing ~a: ~d nodes (~d melted into batches), ~d moving~%" key count gone moves)))))
+    (save-materials)
     (format t "~&BAKE things: ~d scenes, ~d nodes, ~d melted, ~d s~%" n nodes melted
             (round (- (get-internal-real-time) t0) internal-time-units-per-second))))
 
