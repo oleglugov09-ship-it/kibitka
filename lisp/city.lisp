@@ -132,9 +132,9 @@ turns in three colours. Up to LIT windows are lit: at the points at_lit_... of t
   (let ((file (format nil "house-section-~d" floors)))
     (dotimes (i n)
       (let ((balcony (nth (mod i 3) '("#9a9488" "#7f8a8c" "#a8a08c"))) (sz (+ z (* (- i (/ (1- n) 2)) *section*))))
-        (if *weld*                                                          ; all the sections in one go, each with its balconies' colour
-            (model g file x 0.0 sz :paint (list rgb :tint) :own t :tint balcony)
-            (model g file x 0.0 sz :paint (list rgb balcony)))))
+        ;; all the sections of a town in one go, each with its balconies' colour: seen once the houses are baked
+        ;; (BAKE-WELD) - a section by itself has white balconies
+        (model g file x 0.0 sz :paint (list rgb :tint) :own t :tint balcony)))
     (let ((points (model-points file "lit_")))
       (when points
         (loop repeat (random (1+ lit))
@@ -381,8 +381,6 @@ Return the length of the lot."
 
 (defvar *built-towns* (make-hash-table) "The map from a town index to the town's nodes, once the whole town stands.
 A town is removed as a whole.")
-(defvar *town-jobs* (make-hash-table) "The towns being built, a map from a town index to (side d mosaics . nodes): a town
-goes up a lot a frame - built in one frame, it froze the game for a quarter of a second and more.")
 
 (defun build-town-step (tw job)
   "Build the next lot of the town TW, on from where JOB stopped, and return true when the whole town stands.
@@ -408,36 +406,44 @@ that would overlap a gas station is not built. In towns with a character of thei
     (setf (first job) i (second job) d)
     (>= i 2)))
 
+(defun town-key (tw) "Return the name the houses of the town TW are baked under." (format nil "town-~d" (town-index tw)))
+
+(defun town-builder (tw)
+  "Return a function that builds up the whole town TW - every lot on both sides of the road - under one root node and
+returns it. It is called when the map is baked (BAKE-TOWNS in bake.lisp); the game loads the result (STEP-CITY)."
+  (lambda ()
+    (setf (town-plaza tw) nil)
+    (let ((job (list 0 (+ (town-start tw) 4.0) 0)))
+      (loop until (build-town-step tw job))
+      (let ((nodes (remove nil (cdddr job))))
+        (when nodes
+          (let ((root (group *world*)))
+            (dolist (n nodes) (object-call n "reparent" root t))
+            root))))))
+
 (defun town-built-p (tw)
-  "Return true once every lot of the town TW stands."
+  "Return true once the town TW stands."
   (and (gethash (town-index tw) *built-towns*) t))
 
 (defun step-city ()
-  "Build and remove gas stations and towns as the wagon moves.
-Gas stations are built from the list as soon as they come into view; a town starts going up when it is *CITY-AHEAD*
-away - a lot a frame, one town at a time, and all at once when we are already in it (a jump, a saved game) - and is
-removed as a whole."
+  "Put up and remove gas stations and towns as the wagon moves.
+Gas stations are built from the list as soon as they come into view; a town is loaded as a whole, baked with the map
+(things.lisp), when it is *CITY-AHEAD* away - one town a frame - and removed as a whole."
   (dolist (s *stations*)
     (listed ((list :station s) s *city-ahead*) (gas-station (lot s 1) s)))
   (let ((busy nil))
     (dolist (tw *towns*)
-      (let* ((i (town-index tw)) (built (gethash i *built-towns*)) (job (gethash i *town-jobs*))
+      (let* ((i (town-index tw)) (built (gethash i *built-towns*))
              (near (span-in-window-p (town-start tw) (town-end tw) *city-ahead*)))
         (cond ((and near (null built) (not busy))
-               (unless job
-                 (setf (town-plaza tw) nil
-                       job (setf (gethash i *town-jobs*) (list 0 (+ (town-start tw) 4.0) 0))))
                (setf busy t)
-               (when (loop with here = (< (- (town-start tw) 150) *dist* (+ (town-end tw) 150))   ; standing in it: no waiting
-                           for done = (build-town-step tw job)
-                           until (or done (not here))
-                           finally (return done))
-                 (setf (gethash i *built-towns*) (or (cdddr job) (list nil)))
-                 (remhash i *town-jobs*)))
-              ((and (or built job) (not near) (out-of-window-p (/ (+ (town-start tw) (town-end tw)) 2)
-                                                               (+ *city-ahead* (/ (- (town-end tw) (town-start tw)) 2) 30)))
-               (dolist (n (or built (cdddr job))) (when n (node-queue-free n)))
-               (remhash i *built-towns*) (remhash i *town-jobs*)))))))
+               (let ((node (load-thing (town-key tw))))
+                 (unless node (note-error (format nil "город ~a не запечён (tools/bake-map.sh --things)" (town-key tw)) "city"))
+                 (setf (gethash i *built-towns*) (list node))))
+              ((and built (not near) (out-of-window-p (/ (+ (town-start tw) (town-end tw)) 2)
+                                                      (+ *city-ahead* (/ (- (town-end tw) (town-start tw)) 2) 30)))
+               (dolist (n built) (when n (node-queue-free n)))
+               (remhash i *built-towns*)))))))
 
 ;;; Gas stations and the tank
 
@@ -518,7 +524,6 @@ Once we stop there the ladder lowers by itself: only at such places can one get 
       (setf *walk-here* (and place t)))))
 
 (defun reset-city ()
-  (clrhash *town-jobs*)
   (setf *stations* '() *at-station* nil
         *fuel* *start-fuel* *money* *start-money* *fuel-told* nil))
 

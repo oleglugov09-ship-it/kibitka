@@ -26,22 +26,25 @@
 
 (defun material-of-key (key)
   "Return the game's material for KEY, the list MATERIAL files it under."
-  (destructuring-bind (rgb emit energy rough metal vertex alpha unshaded double) key
-    (material rgb :emit emit :energy energy :rough rough :metal metal :vertex vertex :alpha alpha :unshaded unshaded :double double)))
+  (case (first key)
+    (:mosaic (funcall 'mosaic-material (second key)))                    ; a cell of the mosaic atlas (city.lisp)
+    (:mural (funcall 'mural-material (second key) (third key)))          ; a town's mural (towns.lisp)
+    (t (destructuring-bind (rgb emit energy rough metal vertex alpha unshaded double) key
+         (material rgb :emit emit :energy energy :rough rough :metal metal :vertex vertex :alpha alpha :unshaded unshaded :double double)))))
 
 (defun read-note (node name)
   "Return what the note NAME on NODE says, as Lisp data, or NIL when there is none."
   (when (object-call node "has_meta" name)
     (let ((*read-eval* nil)) (values (read-from-string (princ-to-string (object-call node "get_meta" name)))))))
 
-(defun load-thing (key)
-  "Put the baked thing KEY on the map, under World, and return its root node and what of it moves (for STEP-MOVES);
-NIL when it is not baked."
+(defun load-thing (key &optional (parent *world*))
+  "Put the baked thing KEY on the map, under PARENT - World, or Land for what lives and dies with the roads - and return
+its root node and what of it moves (for STEP-MOVES); NIL when it is not baked."
   (when (thing-baked-p key)
     (let* ((scene (present (object-call (gdext:singleton "ResourceLoader") "load" (thing-path key))))
            (root (and scene (present (object-call scene "instantiate")))))
       (when root
-        (node-add-child *world* root)
+        (node-add-child parent root)
         (loop for (path over surfaces overrides) in (read-note root "mats")
               do (let ((node (object-call root "get_node" path)))
                    (when (object-call node "has_meta" "buffer")            ; the places of a batch: see BAKE-WELD

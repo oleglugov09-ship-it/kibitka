@@ -225,9 +225,10 @@ looks cut out of card."
   "Draw the like meshes under ROOT in one go each: a MultiMesh for every mesh that stands there more than once in the
 same paint, wherever under ROOT and however turned - their places are taken as they stand on the map. Only what is
 seen from any distance is taken (a trifle that is hidden far away is judged from its own place, and must keep it),
-and nothing that is among KEPT - the nodes that move - or under one of them. Return the number of nodes melted."
+and nothing that is among KEPT - the nodes that move - or under one of them. A model put with a TINT (MODEL) gives
+its colour to its place in the batch. Return the number of nodes melted."
   (let ((lots '()) (gone 0))
-    (labels ((walk (node)
+    (labels ((walk (node tint)
                (loop for c across (node-get-children node)
                      do (cond ((member c kept :test #'eq))
                               ((and (string= (princ-to-string (object-call c "get_class")) "MeshInstance3D")
@@ -242,51 +243,56 @@ and nothing that is among KEPT - the nodes that move - or under one of them. Ret
                                                                      (= (length (third l)) (length overrides)) (every #'eq (third l) overrides)))
                                                     lots)))
                                  (unless lot (setf lot (list mesh over overrides shadow)) (push lot lots))
-                                 (push (cons c (object-get c "global_transform")) (cdr (last lot 1)))))
-                              (t (walk c))))))
-      (walk root)
+                                 (push (list c (object-get c "global_transform") tint) (cdr (last lot 1)))))
+                              (t (walk c (if (object-call c "has_meta" "tint") (princ-to-string (object-call c "get_meta" "tint")) tint)))))))
+      (walk root nil)
       ;; the MultiMeshes hang on a holder that stands as World does, so the places are the places on the map
       (let ((holder (gdext:make-object "Node3D")))
         (node-add-child root holder)
         (object-set holder "global_transform" (object-get *world* "global_transform"))
         (dolist (lot lots)
           (destructuring-bind (mesh over overrides shadow &rest places) lot
-            (when (and (rest places) (notany #'identity overrides))
-              (let ((mm (gdext:make-object "MultiMesh")) (mmi (gdext:make-object "MultiMeshInstance3D")))
-                (object-set mm "transform_format" 1)
-                (object-set mm "mesh" mesh)
-                (object-set mm "instance_count" (length places))
-                ;; the places go in as numbers, twelve for each: baking runs without a video card, and a place set
-                ;; one by one is kept only there - the saved MultiMesh came out empty
-                (let ((buffer (make-array (* 12 (length places)) :element-type 'single-float)) (k -1))
-                  (loop for (nil . at) in places
+            (let ((tinted (some #'third places)))
+              (when (and (or (rest places) tinted) (notany #'identity overrides))   ; a tinted one has no colour unless it is in a batch
+                (let* ((mm (gdext:make-object "MultiMesh")) (mmi (gdext:make-object "MultiMeshInstance3D"))
+                       (width (if tinted 16 12))
+                       (buffer (make-array (* width (length places)) :element-type 'single-float)) (k -1))
+                  (object-set mm "transform_format" 1)
+                  (when tinted (object-set mm "use_colors" t))
+                  (object-set mm "mesh" mesh)
+                  (object-set mm "instance_count" (length places))
+                  ;; the places go in as numbers, twelve for each (and four more for a colour): baking runs without a
+                  ;; video card, and a place set one by one is kept only there - the saved MultiMesh came out empty
+                  (loop for (nil at tint) in places
                         do (let* ((b (godot:transform3d-basis at)) (o (godot:transform3d-origin at))
-                                  (bx (godot:basis-x b)) (by (godot:basis-y b)) (bz (godot:basis-z b)))
-                             (dolist (v (list (vector3-x bx) (vector3-x by) (vector3-x bz) (vector3-x o)
-                                              (vector3-y bx) (vector3-y by) (vector3-y bz) (vector3-y o)
-                                              (vector3-z bx) (vector3-z by) (vector3-z bz) (vector3-z o)))
+                                  (bx (godot:basis-x b)) (by (godot:basis-y b)) (bz (godot:basis-z b))
+                                  (c (and tinted (hex (or tint "#ffffff")))))
+                             (dolist (v (append (list (vector3-x bx) (vector3-x by) (vector3-x bz) (vector3-x o)
+                                                      (vector3-y bx) (vector3-y by) (vector3-y bz) (vector3-y o)
+                                                      (vector3-z bx) (vector3-z by) (vector3-z bz) (vector3-z o))
+                                                (and c (list (color-r c) (color-g c) (color-b c) 1.0))))
                                (setf (aref buffer (incf k)) (float v 1.0)))))
                   (object-set mm "buffer" buffer)
-                  (object-call mmi "set_meta" "buffer" buffer))                 ; and beside it, for LOAD-THING to hand over again
-                (object-set mmi "multimesh" mm)
-                (when over (object-set mmi "material_override" over))
-                (object-set mmi "cast_shadow" shadow)
-                (node-add-child holder mmi)
-                (loop for (c) in places
-                      do (object-call (object-call c "get_parent") "remove_child" c) (godot:node-queue-free c) (incf gone)))))))
+                  (object-call mmi "set_meta" "buffer" buffer)                  ; and beside it, for LOAD-THING to hand over again
+                  (object-set mmi "multimesh" mm)
+                  (when over (object-set mmi "material_override" over))
+                  (object-set mmi "cast_shadow" shadow)
+                  (node-add-child holder mmi)
+                  (loop for (c) in places
+                        do (object-call (object-call c "get_parent") "remove_child" c) (godot:node-queue-free c) (incf gone))))))))
       gone)))
 
 (defvar *material-keys* nil "While things are baked: a table from a material of the game to the key MATERIAL files it under.")
 (defvar *mesh-notes* nil "While things are baked: a table from a mesh to the keys of the materials its surfaces wore, taken off it once.")
 
 (defun material-key (m)
-  (unless *material-keys*
-    (setf *material-keys* (make-hash-table :test 'eq))
-    (maphash (lambda (key mat) (setf (gethash mat *material-keys*) key)) *materials*))
-  (and m (or (gethash m *material-keys*)
-             ;; a material made since the table was: look once more
-             (progn (maphash (lambda (key mat) (setf (gethash mat *material-keys*) key)) *materials*)
-                    (gethash m *material-keys*)))))
+  (flet ((gather ()
+           (maphash (lambda (key mat) (setf (gethash mat *material-keys*) key)) *materials*)
+           (maphash (lambda (n mat) (setf (gethash mat *material-keys*) (list :mosaic n))) *mosaic-mats*)
+           (maphash (lambda (key mat) (setf (gethash mat *material-keys*) (cons :mural key))) *mural-mats*)))
+    (unless *material-keys* (setf *material-keys* (make-hash-table :test 'eq)) (gather))
+    (and m (or (gethash m *material-keys*)
+               (progn (gather) (gethash m *material-keys*))))))         ; a material made since the table was: look once more
 
 (defun strip-materials (root)
   "Take the game's materials off everything under ROOT and return the note of what went where, each entry as
@@ -335,11 +341,14 @@ thing KEY (things.lisp). Return the size of the file in nodes, or NIL when BUILD
   (unless (and (< (abs (vector3-x (object-get *world* "position"))) 1e-3) (< (abs (vector3-z (object-get *world* "position"))) 1e-3))
     (error "Things are baked with the origin of the scene at the origin of the map"))
   (let* ((*solid-log* (list nil)) (*moves* '())
-         (root (let ((*weld* nil)) (with-solids (funcall builder)))))    ; BAKE-WELD does all the melting, with places that get saved
+         (root (let ((*weld* nil)) (with-solids (funcall builder)))))    ; BAKE-WELD does all the melting, with places that get saved; WELD is for what is built in play
     (when root
       (let* ((moves *moves*) (melted (bake-weld root (mapcar #'first moves)))
              (mats (strip-materials root)) (count 0)
              (scene (gdext:make-object "PackedScene")))
+        ;; a plain name for the root too: saved under the name the engine gave it ("@Node3D@1716"), a thing put on the
+        ;; map and taken off again left the engine with "Children name does not match parent name" - and now and then down
+        (object-set root "name" (substitute #\_ #\- key))
         (labels ((own (node) (loop for c across (node-get-children node) do (incf count) (object-set c "owner" root) (own c))))
           (own root))
         (with-standard-io-syntax
@@ -356,10 +365,29 @@ thing KEY (things.lisp). Return the size of the file in nodes, or NIL when BUILD
         (godot:node-queue-free root)
         (values count melted (length moves))))))
 
+(defun bake-roadside ()
+  "Bake the roadside of every road, a thing for every stretch a ribbon covers (ROADSIDE-BUILDER in doroga.lisp)."
+  (let ((n 0) (nodes 0) (melted 0))
+    (clrhash *pole-wires*)
+    (dolist (e *edges*)
+      (loop for a from (edge-d0 e) below (- (edge-d1 e) .5) by *road-piece*
+            do (multiple-value-bind (count gone)
+                   (bake-thing (side-key a) (roadside-builder e a (min (edge-d1 e) (+ a *road-piece*))))
+                 (when count (incf n) (incf nodes count) (incf melted gone)))))
+    (format t "~&BAKE roadside: ~d stretches, ~d nodes, ~d melted into batches~%" n nodes melted)))
+
+(defun bake-towns ()
+  "Bake the houses of every town, a thing for a town (TOWN-BUILDER in city.lisp)."
+  (dolist (tw *towns*)
+    (multiple-value-bind (count gone) (bake-thing (town-key tw) (town-builder tw))
+      (format t "~&BAKE ~a: ~d nodes (~d melted into batches)~%" (town-key tw) count gone))))
+
 (defun bake-things ()
-  "Bake everything that stands still on the map into *THINGS-DIR*: for now the scenes by the road (places.lisp)."
+  "Bake everything that stands still on the map into *THINGS-DIR*: the roadside and the scenes by the road (places.lisp)."
   (let ((seen (make-hash-table :test 'equal)) (t0 (get-internal-real-time)) (n 0) (nodes 0) (melted 0))
     (set-season :summer)
+    (bake-roadside)
+    (bake-towns)
     (dolist (s *scenes*)
       (let ((key (scene-key s)))
         (when (gethash key seen) (error "Two scenes would be baked as ~a" key))
