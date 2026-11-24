@@ -574,8 +574,8 @@ the map."
     (node-add-child layer l)
     (object-set l "offset_left" 6.0) (object-set l "offset_top" 4.0)
     (object-call l "add_theme_font_size_override" "font_size" 10)
-    (object-call l "add_theme_constant_override" "outline_size" 3)
-    (object-call l "add_theme_color_override" "font_outline_color" (color 0 0 0 .8))
+    (object-call l "add_theme_constant_override" "outline_size" 2)          ; thin and solid: a wide half-clear rim at 10 points
+    (object-call l "add_theme_color_override" "font_outline_color" (color 0 0 0 1.0))   ; smeared the letters (the author, 24.11)
     (node-add-child layer d)
     (object-set d "position" (vector2 0 0))
     ;; the tank: a scale from 0 to 1, a red zone, a needle
@@ -616,7 +616,7 @@ the map."
           (remove nil (list (debt-hud)                                      ; the loan, the account, the coupons: on the papers in the folder
                             (let ((net (net-hud))) (and (plusp (length net)) net))
                             (cond ((not (place-rule :destination)) (mega-name))  ; no destination behind a door: only where we are
-                                  (*auto* (format nil "Автопилот → ~a · ~,1f км" (cdr *auto*) (/ (max 0 (way-to (car *auto*))) 1000))))))))
+                                  (*auto* (format nil "Автопилот: ~a · ~,1f км" (cdr *auto*) (/ (max 0 (way-to (car *auto*))) 1000))))))))
 
 ;;; Every frame
 

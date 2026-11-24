@@ -89,6 +89,7 @@ sourceless light in which far things show as dark shapes (marks.lisp sets it by 
   ;; costs three times as many draw calls
   (object-set *sun* "directional_shadow_mode" 0)
   (object-set *sun* "directional_shadow_max_distance" 70.0)
+  (object-set *sun* "shadow_blur" 1.6)                                  ; with the soft edges of project.godot: the edge of a shadow does not crawl
   (object-set *sun* "shadow_bias" .1)           ; lower and shadow ripple flickers on far slopes;
   (object-set *sun* "shadow_normal_bias" 1.0)   ; the wagon's gaps are closed by geometry, no light leaks
   (node-add-child (or *turn* root) *sun*)                ; lights go under Turn: on bends the shadows and sun shift

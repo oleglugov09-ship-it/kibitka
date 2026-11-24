@@ -226,17 +226,29 @@ That is, on our own road near the wagon or on a piece of a neighbouring one."
 
 (defun out-of-window-p (d &optional (reach 0.0)) (not (in-window-p d (+ reach 6.0))))
 
+(defparameter *cover-budget* 4 "How many grid nodes COVER builds in one call. When a side road came into the window at a fork,
+everything along it - hundreds of metres of poles, trees and trifles - was built in one frame: a freeze of up to a
+second in the browser. Now the roadside grows a few things a frame, from the wagon outwards.")
+
 (defun cover (key step fn &optional (reach 0.0))
-  "Call FN (path-coordinate number) for every grid node with spacing STEP in the window and not yet built.
-What is built is tracked per road: *SPANS* keeps under KEY a list of (road-start first-node . last-node)."
-  (let ((book (gethash key *spans*)) (fresh '()))
+  "Call FN (path-coordinate number) for the grid nodes with spacing STEP in the window that are not yet built, at most
+*COVER-BUDGET* of them in one call: the rest wait for the next frames. What is built is tracked per road: *SPANS*
+keeps under KEY a list of (road-start first-node . last-node)."
+  (let ((book (gethash key *spans*)) (fresh '()) (left *cover-budget*))
     (flet ((span (edge lo hi)
-             (let* ((i0 (ceiling lo step)) (i1 (floor hi step)) (old (cdr (assoc edge book))))
-               (if (or (null old) (> i0 (1+ (cdr old))) (< i1 (1- (car old))))
-                   (loop for i from i0 to i1 do (with-solids (funcall fn (* i step) i)))          ; the window moved — everything anew
-                   (progn (loop for i from (1+ (cdr old)) to i1 do (with-solids (funcall fn (* i step) i)))
-                          (loop for i from i0 below (car old) do (with-solids (funcall fn (* i step) i)))))
-               (push (cons edge (cons i0 i1)) fresh))))
+             (let* ((i0 (ceiling lo step)) (i1 (floor hi step)) (old (cdr (assoc edge book))) a b)
+               (when (<= i0 i1)
+                 (if (or (null old) (> i0 (1+ (cdr old))) (< i1 (1- (car old))))
+                     ;; the window moved - anew, from the node nearest to the wagon: an empty range just before it
+                     (let ((near (max i0 (min i1 (round *dist* step)))))
+                       (setf a near b (1- near)))
+                     (setf a (max i0 (car old)) b (min i1 (cdr old))))
+                 (loop while (and (plusp left) (or (< b i1) (> a i0)))
+                       do (when (and (plusp left) (< b i1))
+                            (incf b) (decf left) (with-solids (funcall fn (* b step) b)))
+                          (when (and (plusp left) (> a i0))
+                            (decf a) (decf left) (with-solids (funcall fn (* a step) a))))
+                 (push (cons edge (cons a b)) fresh)))))
       (span (edge-d0 (edge-of *dist*)) (win-lo reach) (win-hi reach))
       (loop for (edge lo hi) in *side-roads* do (span edge (- lo reach) (+ hi reach))))
     (setf (gethash key *spans*) fresh)))

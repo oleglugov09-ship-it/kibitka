@@ -131,31 +131,36 @@ under it is slightly lower (STRIP-HEIGHT); over the chasm the ribbon runs alone 
       (node-3d-set-position mi (v3 (first base) (second base) (third base)))
       mi))))
 
+(defvar *roads-want* '() "The numbers of the ribbons wanted around *ROADS-AT*, the nearest first.")
+
 (defun step-roads ()
   "Keep the ribbons of all roads nearby on the map, not only of the one we drive on.
-At a fork one can thus see where the other road goes. At most one new ribbon is built per frame."
+At a fork one can thus see where the other road goes. At most one new ribbon is built per frame; which ribbons
+are wanted is worked out once per 30 m driven, not every frame (at a fork that alone took a quarter of a second)."
   (multiple-value-bind (x z) (road-point *dist*)
     (when (and *roads-at* (not (eq (fourth *roads-at*) *season*))) (clear-roads))   ; in winter the road is under snow - repaint
-    (when (or (null *roads-at*) (> (max (abs (- x (first *roads-at*))) (abs (- z (second *roads-at*)))) 30.0)
-              (plusp (third *roads-at*)))
-      (let ((want '()) (r (ceiling *road-range* *grid-cell*)) (made 0))
+    (when (or (null *roads-at*) (> (max (abs (- x (first *roads-at*))) (abs (- z (second *roads-at*)))) 30.0))
+      (let ((want (make-hash-table)) (r (ceiling *road-range* *grid-cell*)))
         (loop for ix from (- (floor x *grid-cell*) r) to (+ (floor x *grid-cell*) r)
               do (loop for iz from (- (floor z *grid-cell*) r) to (+ (floor z *grid-cell*) r)
                        do (dolist (s (gethash (+ (* 100003 ix) iz) *road-grid*))
-                            (pushnew (floor (+ (edge-d0 (car s)) (* (cdr s) *map-step*)) *road-piece*) want))))
-        (maphash (lambda (k node) (unless (member k want) (node-queue-free node) (remhash k *road-pieces*))) *road-pieces*)
-        (dolist (k (sort want #'< :key (lambda (k) (multiple-value-bind (px pz) (road-point (* (+ k .5) *road-piece*))   ; the nearest first:
-                                                   (+ (abs (- px x)) (abs (- pz z)))))))                         ; the road under the wheels, then the others
-          (unless (gethash k *road-pieces*)
-            (if (< made 1)
-                (progn (setf (gethash k *road-pieces*) (build-road-piece k)) (incf made))
-                (incf made))))
-        (setf *roads-at* (list x z (max 0 (- made 1)) *season*))))))        ; some are left unbuilt - we will come again
+                            (setf (gethash (floor (+ (edge-d0 (car s)) (* (cdr s) *map-step*)) *road-piece*) want) t))))
+        (maphash (lambda (k node) (unless (gethash k want) (node-queue-free node) (remhash k *road-pieces*))) *road-pieces*)
+        (setf *roads-want*                                                    ; the nearest first: the road under the wheels, then the others
+              (mapcar #'cdr (sort (loop for k being the hash-keys of want
+                                        unless (gethash k *road-pieces*)
+                                          collect (multiple-value-bind (px pz) (road-point (* (+ k .5) *road-piece*))
+                                                    (cons (+ (abs (- px x)) (abs (- pz z))) k)))
+                                  #'< :key #'car))
+              *roads-at* (list x z 0 *season*))))
+    (when *roads-want*
+      (let ((k (pop *roads-want*)))
+        (unless (gethash k *road-pieces*) (setf (gethash k *road-pieces*) (build-road-piece k)))))))
 
 (defun clear-roads ()
   (maphash (lambda (k node) (declare (ignore k)) (node-queue-free node)) *road-pieces*)
   (clrhash *road-pieces*)
-  (setf *roads-at* nil))
+  (setf *roads-at* nil *roads-want* '()))
 
 ;;; The truck: a house on wheels. The body is a small passenger rail car: rail-car green,
 ;;; a yellow stripe under the windows, a gray iron roof with mushroom vents, ribs along the sides.
@@ -281,7 +286,12 @@ Wires are strung to the neighboring poles.")
         (setf (gethash (round d) *pole-wires*) tops)                    ; wires go to those neighbors that already stand
         (dolist (n (list (- d *pole-step*) (+ d *pole-step*)))
           (let ((other (gethash (round n) *pole-wires*)))
-            (when other (loop for a in other for b in tops do (wire a b (/ (+ d n) 2))))))))))
+            ;; the neighbour by number may stand on another road, kilometres away (the roads are numbered on end):
+            ;; a wire to it was a black beam across the whole sky
+            (when (and other (< (+ (abs (- (first (first other)) (first (first tops))))
+                                   (abs (- (third (first other)) (third (first tops)))))
+                                (* 3 *pole-step*)))
+              (loop for a in other for b in tops do (wire a b (/ (+ d n) 2))))))))))
 
 ;;; The residents are cats: a big head with ears, a bell-shaped body in a coat, a scarf, a tail. No legs: they
 ;;; stand, and walk by hopping (STEP-AVATARS in net.lisp). Our own, made of boxes and balls - ready-made
