@@ -12,7 +12,7 @@
 (defparameter *car-gap* '(9.0 26.0) "The shortest and the longest pause between oncoming headlights at night, in seconds.")
 (defparameter *car-sweep* 1.3 "The number of seconds the headlights of one car take to sweep through the wagon.")
 
-(defvar *mood* nil "The nodes of the mood, a plist: :smoke :glow :lamp :car :roof.")
+(defvar *mood* nil "The nodes of the mood, a plist: :smoke :glow :lamp :car.")
 (defvar *car-timer* 12.0 "The seconds until the next oncoming car.")
 (defvar *car-t* nil "The seconds since the headlights of the passing car came in, or NIL.")
 (defvar *rain-mat* nil "The material of the rain on the panes.")
@@ -92,8 +92,7 @@ void fragment() {
 (defstate :curtains :clear (lambda () (setf *curtains-shut* nil)))
 
 (defun make-mood (c)
-  "Build for the wagon C the smoke over the pipe, the glow of the window, the lights that pass and the rain on the roof."
-  (let ((old (getf *mood* :roof))) (when old (node-queue-free old)))            ; the sound hangs under the root, not under the old wagon
+  "Build for the wagon C the smoke over the pipe, the glow of the window, the lights that pass."
   (make-curtains c)
   (destructuring-bind (sx sz) *stove-at*
     (let* ((f *floor*)
@@ -110,10 +109,8 @@ void fragment() {
       (setf *mood* (list :smoke (chimney-smoke c (- sx .2) (+ f 4.4) (+ sz .17) :size .55 :amount 10 :life 3.5)
                          :glow glow
                          :lamp (light c "#ffb060" 0.0 4.5 (+ *half-width* .5) (+ f 2.3) 0)
-                         :car (light c "#dfe8ff" 0.0 5.0 (- -.4 *half-width*) (+ f 1.6) 0)
-                         :roof (player *root* (wav-stream (sound-path "rain") :loop t) :db -80.0 :bus "Кибитка"))
-            *car-t* nil)
-      (object-set (getf *mood* :roof) "pitch_scale" .62))))                    ; lower and duller than the rain outside: it is the roof
+                         :car (light c "#dfe8ff" 0.0 5.0 (- -.4 *half-width*) (+ f 1.6) 0))
+            *car-t* nil))))
 
 (defun step-mood (delta)
   "Show by DELTA seconds what the fire, the night, the road and the weather do to the wagon."
@@ -121,7 +118,7 @@ void fragment() {
     (unless (= want *curtain-k*)
       (setf *curtain-k* (if (< (abs (- want *curtain-k*)) (* 3.0 delta)) want (+ *curtain-k* (* 3.0 delta (signum (- want *curtain-k*))))))
       (apply-curtains)))
-  (destructuring-bind (&key smoke glow lamp car roof) *mood*
+  (destructuring-bind (&key smoke glow lamp car) *mood*
     (when smoke
       (let* ((dark (- 1.0 (min 1.0 (* 3.0 (daylight (sky-now))))))                ; 0 by day, 1 in the dark
              (night (* dark (- 1.0 (* .9 *curtain-k*))))                        ; what of the street's light gets in: drawn curtains keep it out
@@ -140,8 +137,7 @@ void fragment() {
                           (object-set car "light_energy" (* 3.2 night (sin (* pi k))))))))
               ((and moving (> night .5) (not *meta*) (<= (decf *car-timer* delta) 0))
                (setf *car-timer* (+ (first *car-gap*) (random (- (second *car-gap*) (first *car-gap*)))) *car-t* 0.0)))
-        ;; rain: on the panes and on the roof
+        ;; rain on the panes
         (when (and *rain-mat* (> (abs (- rain *rain-now*)) .01))
           (setf *rain-now* rain)
-          (object-call *rain-mat* "set_shader_parameter" "rain" rain))
-        (object-set roof "volume_db" (if (or (< rain .02) *meta*) -80.0 (+ (if (outside-p) -22 -13) (* 20 (log rain 10)))))))))
+          (object-call *rain-mat* "set_shader_parameter" "rain" rain))))))

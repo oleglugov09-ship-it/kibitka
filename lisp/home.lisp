@@ -249,7 +249,6 @@ that could be lost. A jar opened and left waits for the same good."
   (cond ((canning-p)
          (incf (cdr *can*))
          (setf *can-dip* .2)
-         (when (audio :steps) (object-call (audio :steps) "play"))
          (when (>= (cdr *can*) *can-turns*)
            (let ((dish (jar-of (car *can*))))
              (setf *can* nil)

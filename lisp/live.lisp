@@ -81,11 +81,11 @@ Without the autopilot the truck brakes at once; to drive, call (kiosk-trip::go-t
   (setf *style* what) (apply-style)
   what)
 
-(live-fn discs () "Re-read the discs in project/discs/ and return them with what is playing."
+(live-fn discs () "Put the discs back in the rack and return them with what is playing."
   (load-discs) (show-discs) (list :discs (mapcar #'first *discs*) :playing (and *playing* (disc-name *playing*))))
 
 (live-fn disc (&optional which)
-  "Play the disc WHICH: a number or a file name without extension; NIL takes the disc out."
+  "Play the disc WHICH: a number or a name; NIL takes the disc out."
   (let ((i (if (stringp which) (position which *discs* :key #'first :test #'string-equal) which)))
     (setf *crate* (remove i *crate*))
     (when (and *playing* (not (eql *playing* i))) (setf *crate* (append *crate* (list *playing*))))

@@ -461,16 +461,7 @@ BACK is for those driving back."
     (let ((g (keep (turned (group *world* x y z) d) d)))
       (model g "bus"))))
 
-;;; A street you remember: in the middle of such a town a bus stands and music quietly starts
-;;; to play. The file is project/discs/street.mp3 or street.wav; if it is missing - the first disc.
-
-(defvar *street-player* nil)
-(defvar *street-vol* 0.0 "The volume of the street music, 0..1.")
 (defvar *street-told* nil "The start of the town that has already been announced.")
-
-(defun street-file ()
-  (or (find-if #'file-here-p '("res://discs/street.mp3" "res://discs/street.wav"))
-      (second (first *discs*))))
 
 (defun on-memory-street-p ()
   (let ((tw (town-at *dist*)))
@@ -478,17 +469,6 @@ BACK is for those driving back."
          (let ((len (- (town-end tw) (town-start tw))))
            (< (+ (town-start tw) (* .3 len)) *dist* (+ (town-start tw) (* .8 len)))))))
 
-(defun step-street (delta)
-  (let ((on (and (on-memory-street-p) (not *meta*))))
-    (when (and on (null *street-player*))
-      (let ((file (street-file)))
-        (when file
-          (setf *street-player* (player *root* (audio-stream file :loop t) :db -40.0 :bus "Музыка" :play nil)))))
-    (setf *street-vol* (max 0.0 (min 1.0 (+ *street-vol* (* delta (if on .3 -.2))))))
-    (when *street-player*
-      (cond ((and (> *street-vol* 0) (not (object-get *street-player* "playing"))) (object-call *street-player* "play"))
-            ((and (<= *street-vol* 0) (object-get *street-player* "playing")) (object-call *street-player* "stop")))
-      (object-set *street-player* "volume_db" (- (* 34.0 *street-vol*) 40.0)))))
 
 (defun reset-roadside ()
   "Start the roadside from scratch for a new trip.
@@ -550,6 +530,5 @@ When we come back they are built again."
       (listed ((list :stele-back i) out) (add-stele out (town-title tw) t))
       (listed ((list :km-back i) (- in 13)) (add-km-sign (- in 13) t))
       (listed ((list :market i) mid) (add-market mid) (when (town-memory tw) (add-bus (- mid 15))))))
-  (step-street delta)
   (step-stops)
   (sweep-roadside))

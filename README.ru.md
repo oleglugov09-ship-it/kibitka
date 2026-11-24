@@ -87,7 +87,7 @@ REPL на ходу.
   прыжки по местам, погода, время года, выдать товар, сбросить «раз в сутки». Для водителя и одиночной игры.
 - Тир и рыбалка играются в самом мире (`lisp/activities.lisp`): ружьё и тарелочки на стрелковой дорожке у будки,
   удочка и пруд с мостками. Шахта и коза пока на плоском экране (`lisp/igry.lisp`).
-- Птицы выключены (`*birds-on*` в `lisp/sound.lisp`).
+- Птицы выключены (`*birds-on*` в `lisp/files.lisp`).
 
 ## Где что лежит
 
@@ -146,7 +146,7 @@ REPL на ходу.
 | `lisp/random.lisp` | Свой генератор случайных чисел: мир одинаковый на десктопе и в браузере |
 | `lisp/main-thread.lisp`, `lisp/slynk-server.lisp` | Возврат в главный поток; Slynk в отладочном запуске |
 | `lisp/dev.lisp` | Экран отладки и читы (`F3`, `F4`) |
-| `lisp/sky.lisp`, `climate.lisp`, `sound.lisp`, `jukebox.lisp`, `meta.lisp`, `textures.lisp` | Небо, сезоны и погода, звук, проигрыватель, мета-рум, текстуры — от студийного прототипа |
+| `lisp/sky.lisp`, `climate.lisp`, `files.lisp`, `jukebox.lisp`, `meta.lisp`, `textures.lisp` | Небо, сезоны и погода, чтение файлов, проигрыватель, мета-рум, текстуры — от студийного прототипа |
 | `lisp/live.lisp` | Команды для REPL (только в сборке `make live`) |
 | `relay/` | Сервер комнат на Cloudflare: пересылка сообщений, список лобби, журнал |
 | `web/`, `deploy/`, `fly.toml` | Сборка под браузер и выкладка на Fly |
@@ -202,12 +202,10 @@ REPL на ходу.
 
 ```bash
 export PATH=$HOME/src/wecl-spike/ecl/ecl-host/bin:$PATH
-tools/make-sounds.py       # звуки и диски-заглушки → project/sounds, project/discs
 tools/make-textures.py     # текстуры → project/textures
 tools/make-panel.py        # панельная стена для домов → project/textures
 tools/make-murals.py       # мозаичные панно городов → project/textures/murals
 tools/make-sky.py          # планеты и туманности для большого телескопа → project/textures/scope
-tools/make-tunes.py        # гитара, радио, сирена, комар → project/sounds
 make live                  # библиотека со Slynk и пакетом LIVE
 godot --path project       # Slynk на 127.0.0.1:4009
 tools/smoke.py             # проверка: одна копия, водитель с гостем, объезд всей дороги (solo pair tour)
@@ -224,7 +222,7 @@ make web                                   # кросс-компиляция п�
 fly deploy --remote-only --ha=false        # сайт на Fly; после выкладки открыть его и прочитать консоль
 ```
 
-Файлы игры (текстуры, звуки, диски) читаются байтами через движок; `tools/keep-raw.sh` ставит им
+Файлы игры (текстуры) читаются байтами через движок; `tools/keep-raw.sh` ставит им
 импорт «keep», чтобы в пакет они попали как есть. В скрытой вкладке кадры идут по таймеру из воркера
 (`head_include` в `project/export_presets.cfg`), запасной путь — навёрстывание `catch-up`.
 

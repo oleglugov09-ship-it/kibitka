@@ -110,9 +110,7 @@ the flashers blink and so are made here."
       (case key
         (:fire (flasher -.7 3.0 -2.9 "#3060ff") (flasher .7 3.0 -2.9 "#3060ff"))
         (:ambulance (flasher 0 2.8 -1.6 "#3060ff"))
-        (:police (flasher -.35 1.6 .2 "#ff3020") (flasher .35 1.6 .2 "#3060ff")))
-      (when blink
-        (player g (wav-stream (sound-path "siren") :loop t) :positional t :db 4.0 :bus "Улица")))
+        (:police (flasher -.35 1.6 .2 "#ff3020") (flasher .35 1.6 .2 "#3060ff"))))
     (values g blink)))
 
 (defun army-near-p ()

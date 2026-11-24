@@ -114,7 +114,8 @@ That is the body, the truck under it, everything bolted on inside, the things an
     (load-water *land*))
   (load-place)
   (load-game)
-  (make-sound root)
+  (load-discs)
+  (make-hint root)
   (make-climate *rig*)
   (make-meta *rig*)
   (make-grade root)
@@ -128,7 +129,6 @@ That is the body, the truck under it, everything bolted on inside, the things an
   (make-docs root)
   (load-world)                                            ; every part of the state comes from the save (delo.lisp)
   (make-map root)
-  (make-bell-sound root)
   ;; a probe of live editing: can this build run code sent to it (in the browser, through the interpreter).
   ;; A line in the log at every launch; it shows whether (live:everyone ...) will work for the player
   (format t "~&Проба живой правки: ~a~%" (run-text "(progn (defun eval-probe (x) (* x 3)) (eval-probe 14))"))
@@ -201,7 +201,7 @@ That is the body, the truck under it, everything bolted on inside, the things an
     (timed :cart (step-cart delta *time*))
     (timed :walk (step-walk delta))
     (timed :style (step-style delta))
-    (timed :sound (step-sound delta))
+    (timed :hint (step-hint delta) (step-notes delta))
     (timed :door (step-door delta))
     (timed :climate (step-climate delta))
     (timed :roadside (step-roadside delta))

@@ -34,7 +34,6 @@ PLACE is the rounded path coordinate of the stay.")
 (defvar *met* '() "The places where the recipient has already come up by himself (the second time, only by the bell).")
 (defvar *busked* '() "The coins tossed per place: (PLACE . COINS-ALREADY-TOSSED).")
 (defvar *busk-timer* 0.0)
-(defvar *bell-sound* nil)
 (defvar *onboard* 0 "The step of the intro hints; a large number means everything has been shown.")
 
 ;;; Flights: an item does not pop up in place, it flies over: from hand to shelf, from the windowsill to the client
@@ -398,18 +397,6 @@ These are the bell in the slid-open window (E) and what the client put on the wi
                                    (format nil "ЛКМ — купить ~a за ~/kiosk-trip::rub/ · у тебя ~/kiosk-trip::rub/" (good-name (third entry)) (getf *client* :price) *money*)))))
                              (lambda () (take-from-stall entry))
                              :hand)))))))
-
-(defun make-bell-sound (root)
-  "Build the bell sound under ROOT: a decaying chord of two sines, no file needed."
-  (let* ((rate 22050) (n (round (* rate .7))) (data (make-array (* 2 n) :element-type '(unsigned-byte 8)))
-         (s (gdext:make-object "AudioStreamWAV")))
-    (dotimes (i n)
-      (let* ((tt (/ i rate 1.0))
-             (v (round (* 9000 (exp (* -6.0 tt)) (+ (sin (* 2 pi 1568 tt)) (* .5 (sin (* 2 pi 3136 tt)))))))
-             (u (if (< v 0) (+ v 65536) v)))
-        (setf (aref data (* 2 i)) (logand u 255) (aref data (1+ (* 2 i))) (ash u -8))))
-    (object-set s "format" 1) (object-set s "mix_rate" rate) (object-set s "data" data)
-    (setf *bell-sound* (player root s :db -8.0 :bus "Кибитка" :play nil))))
 
 (defun window-busy-p ()
   "Return true if the window cannot be closed now: a client is at it or items stand on the windowsill."
