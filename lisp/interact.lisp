@@ -12,6 +12,21 @@
 (defun look-dir ()
   (v3 (* (- (sin *yaw*)) (cos *pitch*)) (sin *pitch*) (* (- (cos *yaw*)) (cos *pitch*))))
 
+(defun gaze-on-door-p ()
+  "Return true if the crosshair is on the door leaf itself, wherever it stands - shut across the doorway or swung
+open onto the porch: the leaf is a board 1.1 m wide and 2 m high on its hinge. Aiming at the middle of the doorway
+alone made an open door one could look straight at and not close (the author, 24.11)."
+  (let* ((dir (look-dir)) (a (* 1.55 *door-k*))
+         (ux (cos a)) (uz (sin a))                                     ; along the leaf, from the hinge
+         (hx (- -.55 (vector3-x *pos*))) (hz (- (+ *half-length* .1) (vector3-z *pos*)))
+         (dx (vector3-x dir)) (dz (vector3-z dir))
+         (det (- (* ux dz) (* dx uz))))
+    (when (> (abs det) 1e-4)
+      (let* ((along (/ (- (* ux hz) (* hx uz)) det))                   ; metres along the gaze to the leaf's plane
+             (across (/ (- (* dx hz) (* dz hx)) det))                  ; metres from the hinge along the leaf
+             (y (+ *eye-now* (* along (vector3-y dir)))))
+        (and (< 0.0 along *reach*) (< -.05 across 1.15) (< (- *floor* .05) y (+ *floor* 2.1)))))))
+
 (defun target ()
   "Return what the player is looking at: :jukebox, :crate, :door or NIL."
   (let* ((eye (v3 (vector3-x *pos*) *eye-now* (vector3-z *pos*)))
@@ -26,7 +41,7 @@
                ;; the door counts only when the gaze is really on it: its half-width as seen from here, not a wide cone
                (when (and (< len *reach*) (< a best-a) (or (not (eq what :door)) (< a (+ .06 (atan .45 (max len .3))))))
                  (setf best what best-a a))))
-    best))
+    (or best (and (not *meta*) (gaze-on-door-p) :door))))
 
 (defun interact ()
   "Handle a left click while the mouse is captured."
