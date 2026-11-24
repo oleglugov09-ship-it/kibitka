@@ -217,6 +217,160 @@ looks cut out of card."
     (format t "~&BAKE ribbons: ~d of ~d m on ~d roads, ~d s~%" count (round *road-piece*) (length *edges*)
             (round (- (get-internal-real-time) t0) internal-time-units-per-second))))
 
+
+;;; Things: what stands still on the map, built once here and saved as a scene (things.lisp tells how the game
+;;; loads it).
+
+(defun bake-weld (root kept)
+  "Draw the like meshes under ROOT in one go each: a MultiMesh for every mesh that stands there more than once in the
+same paint, wherever under ROOT and however turned - their places are taken as they stand on the map. Only what is
+seen from any distance is taken (a trifle that is hidden far away is judged from its own place, and must keep it),
+and nothing that is among KEPT - the nodes that move - or under one of them. Return the number of nodes melted."
+  (let ((lots '()) (gone 0))
+    (labels ((walk (node)
+               (loop for c across (node-get-children node)
+                     do (cond ((member c kept :test #'eq))
+                              ((and (string= (princ-to-string (object-call c "get_class")) "MeshInstance3D")
+                                    (zerop (object-call c "get_child_count")) (object-call c "is_visible_in_tree")
+                                    (present (object-get c "mesh")) (zerop (object-get c "visibility_range_end")))
+                               (let* ((mesh (object-get c "mesh")) (over (present (object-get c "material_override")))
+                                      (overrides (unless (object-call mesh "is_class" "PrimitiveMesh")
+                                                   (loop for i below (object-call mesh "get_surface_count")
+                                                         collect (present (object-call c "get_surface_override_material" i)))))
+                                      (shadow (object-get c "cast_shadow"))
+                                      (lot (find-if (lambda (l) (and (eq (first l) mesh) (eq (second l) over) (eql (fourth l) shadow)
+                                                                     (= (length (third l)) (length overrides)) (every #'eq (third l) overrides)))
+                                                    lots)))
+                                 (unless lot (setf lot (list mesh over overrides shadow)) (push lot lots))
+                                 (push (cons c (object-get c "global_transform")) (cdr (last lot 1)))))
+                              (t (walk c))))))
+      (walk root)
+      ;; the MultiMeshes hang on a holder that stands as World does, so the places are the places on the map
+      (let ((holder (gdext:make-object "Node3D")))
+        (node-add-child root holder)
+        (object-set holder "global_transform" (object-get *world* "global_transform"))
+        (dolist (lot lots)
+          (destructuring-bind (mesh over overrides shadow &rest places) lot
+            (when (and (rest places) (notany #'identity overrides))
+              (let ((mm (gdext:make-object "MultiMesh")) (mmi (gdext:make-object "MultiMeshInstance3D")))
+                (object-set mm "transform_format" 1)
+                (object-set mm "mesh" mesh)
+                (object-set mm "instance_count" (length places))
+                ;; the places go in as numbers, twelve for each: baking runs without a video card, and a place set
+                ;; one by one is kept only there - the saved MultiMesh came out empty
+                (let ((buffer (make-array (* 12 (length places)) :element-type 'single-float)) (k -1))
+                  (loop for (nil . at) in places
+                        do (let* ((b (godot:transform3d-basis at)) (o (godot:transform3d-origin at))
+                                  (bx (godot:basis-x b)) (by (godot:basis-y b)) (bz (godot:basis-z b)))
+                             (dolist (v (list (vector3-x bx) (vector3-x by) (vector3-x bz) (vector3-x o)
+                                              (vector3-y bx) (vector3-y by) (vector3-y bz) (vector3-y o)
+                                              (vector3-z bx) (vector3-z by) (vector3-z bz) (vector3-z o)))
+                               (setf (aref buffer (incf k)) (float v 1.0)))))
+                  (object-set mm "buffer" buffer)
+                  (object-call mmi "set_meta" "buffer" buffer))                 ; and beside it, for LOAD-THING to hand over again
+                (object-set mmi "multimesh" mm)
+                (when over (object-set mmi "material_override" over))
+                (object-set mmi "cast_shadow" shadow)
+                (node-add-child holder mmi)
+                (loop for (c) in places
+                      do (object-call (object-call c "get_parent") "remove_child" c) (godot:node-queue-free c) (incf gone)))))))
+      gone)))
+
+(defvar *material-keys* nil "While things are baked: a table from a material of the game to the key MATERIAL files it under.")
+(defvar *mesh-notes* nil "While things are baked: a table from a mesh to the keys of the materials its surfaces wore, taken off it once.")
+
+(defun material-key (m)
+  (unless *material-keys*
+    (setf *material-keys* (make-hash-table :test 'eq))
+    (maphash (lambda (key mat) (setf (gethash mat *material-keys*) key)) *materials*))
+  (and m (or (gethash m *material-keys*)
+             ;; a material made since the table was: look once more
+             (progn (maphash (lambda (key mat) (setf (gethash mat *material-keys*) key)) *materials*)
+                    (gethash m *material-keys*)))))
+
+(defun strip-materials (root)
+  "Take the game's materials off everything under ROOT and return the note of what went where, each entry as
+(path override surfaces overrides) with the keys of the materials. The nodes get plain names first, so that the
+paths hold in the saved scene."
+  (let ((notes '()) (n 0))
+    (unless *mesh-notes* (setf *mesh-notes* (make-hash-table :test 'eq)))
+    (labels ((walk (node path)
+               (loop for c across (node-get-children node)
+                     do (let* ((name (format nil "n~d" (incf n))) (here (if path (format nil "~a/~a" path name) name)))
+                          (object-set c "name" name)
+                          (object-call c "set_meta" "path" here)
+                          (let* ((mmi (object-call c "is_class" "MultiMeshInstance3D"))
+                                 (mesh (cond (mmi (present (object-get (object-get c "multimesh") "mesh")))
+                                             ((object-call c "is_class" "MeshInstance3D") (present (object-get c "mesh"))))))
+                            (when mesh
+                              (let* ((over (material-key (present (object-get c "material_override"))))
+                                     (primitive (object-call mesh "is_class" "PrimitiveMesh"))
+                                     (count (object-call mesh "get_surface_count"))
+                                     (surfaces (unless primitive
+                                                 (multiple-value-bind (known found) (gethash mesh *mesh-notes*)
+                                                   (if found
+                                                       known
+                                                       (setf (gethash mesh *mesh-notes*)
+                                                             (let ((keys (loop for i below count
+                                                                               collect (material-key (present (object-call mesh "surface_get_material" i))))))
+                                                               (loop for k in keys for i from 0
+                                                                     do (when k (object-set mesh (format nil "surface_~d/material" i) nil)))   ; a method will not take NIL for a material
+                                                               keys))))))
+                                     (overrides (unless (or mmi primitive)
+                                                  (loop for i below count
+                                                        collect (let ((k (material-key (present (object-call c "get_surface_override_material" i)))))
+                                                                  (when k (object-set c (format nil "surface_material_override/~d" i) nil))
+                                                                  k)))))
+                                (when over (object-set c "material_override" nil))
+                                (when (or mmi over (some #'identity surfaces) (some #'identity overrides))
+                                  (push (list here over (and (some #'identity surfaces) surfaces) (and (some #'identity overrides) overrides))
+                                        notes)))))
+                          (walk c here)))))
+      (walk root nil))
+    (nreverse notes)))
+
+(defun bake-thing (key builder)
+  "Build a thing with BUILDER - a function that puts it under World and returns its root node - and save it as the
+thing KEY (things.lisp). Return the size of the file in nodes, or NIL when BUILDER built nothing."
+  (unless (and (< (abs (vector3-x (object-get *world* "position"))) 1e-3) (< (abs (vector3-z (object-get *world* "position"))) 1e-3))
+    (error "Things are baked with the origin of the scene at the origin of the map"))
+  (let* ((*solid-log* (list nil)) (*moves* '())
+         (root (let ((*weld* nil)) (with-solids (funcall builder)))))    ; BAKE-WELD does all the melting, with places that get saved
+    (when root
+      (let* ((moves *moves*) (melted (bake-weld root (mapcar #'first moves)))
+             (mats (strip-materials root)) (count 0)
+             (scene (gdext:make-object "PackedScene")))
+        (labels ((own (node) (loop for c across (node-get-children node) do (incf count) (object-set c "owner" root) (own c))))
+          (own root))
+        (with-standard-io-syntax
+          (object-call root "set_meta" "mats" (prin1-to-string mats))
+          (object-call root "set_meta" "solids" (prin1-to-string (cdr *solid-log*)))
+          (object-call root "set_meta" "moves"
+                       (prin1-to-string (loop for (node . what) in moves
+                                              collect (cons (princ-to-string (object-call node "get_meta" "path")) what)))))
+        (unless (and (eql 0 (object-call scene "pack" root))
+                     (eql 0 (object-call (gdext:singleton "ResourceSaver") "save" scene (thing-path key) 32)))
+          (error "The thing ~a could not be saved" key))
+        (drop-solids root)
+        (object-call (object-call root "get_parent") "remove_child" root)
+        (godot:node-queue-free root)
+        (values count melted (length moves))))))
+
+(defun bake-things ()
+  "Bake everything that stands still on the map into *THINGS-DIR*: for now the scenes by the road (places.lisp)."
+  (let ((seen (make-hash-table :test 'equal)) (t0 (get-internal-real-time)) (n 0) (nodes 0) (melted 0))
+    (set-season :summer)
+    (dolist (s *scenes*)
+      (let ((key (scene-key s)))
+        (when (gethash key seen) (error "Two scenes would be baked as ~a" key))
+        (setf (gethash key seen) t)
+        (multiple-value-bind (count gone moves) (bake-thing key (scene-build s))
+          (when count
+            (incf n) (incf nodes count) (incf melted gone)
+            (format t "~&BAKE thing ~a: ~d nodes (~d melted into batches), ~d moving~%" key count gone moves)))))
+    (format t "~&BAKE things: ~d scenes, ~d nodes, ~d melted, ~d s~%" n nodes melted
+            (round (- (get-internal-real-time) t0) internal-time-units-per-second))))
+
 (defun bake-regions ()
   "Return the regions to bake, each as (rx rz): those within *BAKE-REACH* of a road, or the ones KIOSK_BAKE_ONLY names."
   (let ((only (ext:getenv "KIOSK_BAKE_ONLY")) (side (region-side)) (seen (make-hash-table)) (out '()))

@@ -7,6 +7,8 @@
 #
 #   tools/bake-map.sh --roads               only the ribbons of the roads (project/terrain/roads), from the baked map
 #
+#   tools/bake-map.sh --things              only the things that stand still (project/terrain/things), from the baked map
+#
 #   tools/bake-map.sh --editor              only the shader and what the Godot editor needs (terrain.tscn, assets.res,
 #                                           material.res); the baked map stays as it is
 #
@@ -14,6 +16,12 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 mkdir -p project/terrain/data project/terrain/water project/terrain/roads
+if [ "${1:-}" = "--things" ]; then        # only what stands still on the map (lisp/things.lisp), from the map as it is baked
+  mkdir -p project/terrain/things && rm -f project/terrain/things/*.scn
+  KIOSK_BAKE_THINGS=1 KIOSK_NOLOG=1 KIOSK_SOLO=1 XDG_DATA_HOME="$(mktemp -d)" \
+    timeout 3600 godot --path project --headless --audio-driver Dummy 2>&1 | grep "BAKE\|Ошибка\|ERROR: \(In\|The\|Two\)\|rror" | grep -v "leaked\|still in use\|PagedAllocator\|user://mods" || true
+  exit 0
+fi
 if [ "${1:-}" = "--roads" ]; then         # only the ribbons of the roads, from the map as it is baked: a minute
   mkdir -p project/terrain/roads && rm -f project/terrain/roads/*.res
   KIOSK_BAKE_ROADS=1 KIOSK_NOLOG=1 KIOSK_SOLO=1 XDG_DATA_HOME="$(mktemp -d)" \

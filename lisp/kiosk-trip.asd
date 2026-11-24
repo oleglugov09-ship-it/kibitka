@@ -15,7 +15,7 @@
                  (:file "profile")
                  (:file "textures")
                  (:file "land") (:file "karta") (:file "razmetka")
-                 (:file "world") (:file "zemlya")
+                 (:file "world") (:file "zemlya") (:file "things")
                  (:file "cart")
                  (:file "place") (:file "sky")
                  (:file "en") (:file "walk")

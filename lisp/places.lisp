@@ -66,6 +66,10 @@ Return NIL unless such a gap starts or runs on the right at D."
   at)                          ; (x z) on the map, if the scene is not tied to a single road (the Crossroads)
 
 (defvar *scenes* '() "All the scenes of the world, as SCENE structures.")
+
+(defun scene-key (s)
+  "Return the name the scene S is baked under: where on the road it stands."
+  (format nil "scene-~d-~d" (round (scene-d0 s)) (round (scene-d1 s))))
 (defvar *tracks* '() "The railways, each as (from to).")
 (defvar *moves* '() "The things that spin and swing, each as (node kind . numbers), collected while a scene is built.")
 
@@ -307,8 +311,11 @@ TILT is the tilt up from the horizon; SPIN is the speed in radians per second of
                     (< (sqrt (+ (expt (- x (first at)) 2) (expt (- z (second at)) 2)))
                        (+ *far-range* (/ (- (scene-d1 s) (scene-d0 s)) 2)))))))
       (cond ((and near (null (scene-node s)))
-             (let ((*moves* '()))
-               (setf (scene-node s) (with-solids (funcall (scene-build s))) (scene-moves s) *moves*))
+             (multiple-value-bind (node moves) (load-thing (scene-key s))        ; baked with the map (things.lisp)
+               (if node
+                   (setf (scene-node s) node (scene-moves s) moves)
+                   (let ((*moves* '()))                                         ; not baked: built here, as it used to be
+                     (setf (scene-node s) (with-solids (funcall (scene-build s))) (scene-moves s) *moves*))))
              (return))                                                  ; one scene per frame
             ((and (not near) (scene-node s))
              (node-queue-free (scene-node s))
