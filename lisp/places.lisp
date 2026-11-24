@@ -97,9 +97,11 @@ It is called before the land is built."
         *mega* nil *mega-node* nil)
   (when (boundp '*mega-in*) (setf (symbol-value '*mega-in*) nil))
   (reset-segments)
-  (flet ((pad (&rest keys) (push (apply #'make-pad keys) *pads*))
+  ;; Pads and level stretches shape the land and the road: they matter while the map is baked (bake.lisp). In the
+  ;; game the map is read from files, and nothing here is computed.
+  (flet ((pad (&rest keys) (when *baking* (push (apply #'make-pad keys) *pads*)))
          (level (d0 d1 &optional (ramp 90.0))                 ; the road along a pad is level, at the height of its middle
-           (push (list d0 d1 (raw-road-y (/ (+ d0 d1) 2)) ramp) *levels*)))
+           (when *baking* (push (list d0 d1 (raw-road-y (/ (+ d0 d1) 2)) ramp) *levels*))))
     ;; towns: the street is level, on both sides a terrace for buildings and the second rows of houses
     (dolist (tw *towns*)
       (let ((d0 (- (town-start tw) 30)) (d1 (+ (town-end tw) 30)))
@@ -108,7 +110,7 @@ It is called before the land is built."
                (pad :d0 d0 :d1 d1 :ramp 60.0 :x0 4.0 :x1 128.0 :m0 4.0 :m1 14.0 :y -.37)
                (pad :d0 d0 :d1 d1 :ramp 80.0 :x0 150.0 :x1 1100.0 :m0 8.0 :m1 200.0 :y -5.0)
                (let ((c (road-pos (/ (+ d0 d1) 2) 900.0)))     ; and farther out, where the land is already shared by the map, sea too
-                 (push (list (first c) (third c) 1300.0 (- (road-y (/ (+ d0 d1) 2)) 6.0)) *basins*)))
+                 (when *baking* (push (list (first c) (third c) 1300.0 (- (road-y (/ (+ d0 d1) 2)) 6.0)) *basins*))))
               ((eq (town-theme tw) :river)                   ; river town: beyond the embankment - a river along the whole town
                (pad :d0 d0 :d1 d1 :ramp 60.0 :x0 4.0 :x1 58.0 :m0 4.0 :m1 8.0 :y -.37)
                (pad :d0 d0 :d1 d1 :ramp 70.0 :x0 74.0 :x1 150.0 :m0 8.0 :m1 40.0 :y -3.4))

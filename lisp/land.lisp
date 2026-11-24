@@ -197,6 +197,7 @@ street; at a gas station, a diner or a landmark it runs along the pad.")
   "Return the road height at path coordinate D from the big field, without levelling in towns.
 The value is the mean over 120 m of path: in the mountains the field itself is too rugged, and
 a road laid on it would have grades near 60 %, which is not how roads are built."
+  (formulas-only)
   (let ((rise (relief-sum *rise* d)))
     (* *road-follow* (/ (loop for o in '(-60.0 -30.0 0.0 30.0 60.0)
                               sum (big-height-in (road-x (+ d o)) (%make-row :d (+ d o) :seed *trip-seed* :rise rise)))
@@ -245,7 +246,12 @@ nothing but on the last *SEAM-RUN* metres before the seam, out in the fields bey
           (* *seam-jump* (sstep (- d1 *seam-run*) d1 d)))
         0.0)))
 
+(defun formulas-only ()
+  "Signal an error unless the map is being baked: the game reads the baked map and never asks the formulas of the land."
+  (unless *baking* (error "A formula of the land was asked outside the baking of the map")))
+
 (defun row-at (d)
+  (formulas-only)
   (let ((r *row*))
     (if (and r (eql (row-d r) d) (eql (row-seed r) *trip-seed*))
         r

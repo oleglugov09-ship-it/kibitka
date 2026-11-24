@@ -192,6 +192,7 @@ The second value is the nearest road as (PATH-COORDINATE SIDEWAYS DISTANCE ROAD)
 Several roads or sections may be nearby: their strips are blended by proximity, and the one
 right underfoot (closer than about 12 m) outweighs all the others, so that a neighbouring
 road's land never creeps onto the roadway."
+  (formulas-only)
   (let ((near (roads-near x z)) (wild (wild-height x z)))
     (if (null near)
         (values (float wild 1.0) nil)
@@ -427,9 +428,9 @@ path coordinate jumps)."
 Gas stations before the Crossroads are planned too. Called from PLAN-PLACES."
   (setf *spoke-stations* '())
   (when *exits*
-    (let ((hub-y (raw-road-y (- (edge-d1 (cdr (first *exits*))) 60))))
-      (flet ((flat (d0 d1 y ramp) (push (list d0 d1 y ramp) *levels*))
-             (apron (d0 d1) (push (make-pad :d0 d0 :d1 d1 :ramp 30.0 :x0 -70.0 :x1 70.0 :m0 60.0 :m1 60.0 :y -.14) *pads*)))
+    (let ((hub-y (and *baking* (raw-road-y (- (edge-d1 (cdr (first *exits*))) 60)))))      ; the land is shaped only while the map is baked
+      (flet ((flat (d0 d1 y ramp) (when *baking* (push (list d0 d1 y ramp) *levels*)))
+             (apron (d0 d1) (when *baking* (push (make-pad :d0 d0 :d1 d1 :ramp 30.0 :x0 -70.0 :x1 70.0 :m0 60.0 :m1 60.0 :y -.14) *pads*))))
         (loop for (da . e) in *exits*
               do (let ((da da) (d0 (edge-d0 e)))                                 ; exit: at ring road height while the roads are close
                    (flat d0 (+ d0 320) (lambda (d) (road-y (+ da (- d d0)))) 200.0))
@@ -437,7 +438,7 @@ Gas stations before the Crossroads are planned too. Called from PLAN-PLACES."
                  (apron (- (edge-d1 e) 60) (edge-d1 e))
                  (let ((s (- (edge-d1 e) 150.0)))                                ; gas station before the Crossroads
                    (push s *spoke-stations*)
-                   (push (make-pad :d0 (- s 20) :d1 (+ s 20) :ramp 14.0 :x0 4.0 :x1 27.0 :m0 4.0 :m1 14.0 :y -.37) *pads*)))
+                   (when *baking* (push (make-pad :d0 (- s 20) :d1 (+ s 20) :ramp 14.0 :x0 4.0 :x1 27.0 :m0 4.0 :m1 14.0 :y -.37) *pads*))))
         (dolist (o *outs*)
           (flat (edge-d0 o) (+ (edge-d0 o) 160) hub-y 240.0)
           (apron (edge-d0 o) (+ (edge-d0 o) 60))
