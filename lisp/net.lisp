@@ -290,7 +290,8 @@ Type 1 is a connect, 2 a disconnect, 3 an incoming packet."
 (defun host-hello (p msg)
   "Guest P states its build of the game: we play only with our own, and send any other away."
   (cond ((equal (second msg) *net-version*)
-         (setf (getf p :ok) t (getf p :name) (clean-name (and (stringp (third msg)) (third msg)) "Попутчик")))
+         (setf (getf p :ok) t (getf p :name) (clean-name (and (stringp (third msg)) (third msg)) "Попутчик"))
+         (aktors-for p))                                    ; the aktors as they are now; after that, each change as it happens
         (t (peer-send p (list :no *net-version*))
            (if (getf p :peer)
                (object-call (getf p :peer) "peer_disconnect_later" 0)
@@ -352,6 +353,7 @@ for each of those (TAKE-THING, FEED-STOVE and the rest)."
 
 (defun drop-peer (p)
   (remhash (getf p :id) *world-sent*)
+  (tell :kettle :dropped (getf p :id))                     ; the kettle too, if it was in that paw
   (when (getf p :carry)                                    ; what the guest carried stays in the wagon: where it was taken from, or by the window
     (let ((*carry* (getf p :carry)) (*carry-from* (getf p :from)) (*carry-props* (getf p :props))) (stand-item (carry-spec)))
     (setf (getf p :carry) nil)
@@ -570,6 +572,7 @@ stand on the windowsill, the same as by hand."
           (when (> *time* *net-hold*)
             (set-switches fold)
             (setf *net-sig* (guest-sig)))))
+    (:o (aktor-accept (rest msg)))                                  ; an aktor has changed at the driver's (aktor.lisp)
     (:i (destructuring-bind (ver specs) (rest msg)                  ; the driver's arrangement of things: ours mirrors it
           (when (and (integerp ver) (specs-ok-p specs))
             (setf *net-ver* ver *net-specs* specs *net-mirror-hold* 0.0)
@@ -767,6 +770,7 @@ trouble and waiting at a bus stop."
     (dolist (p *net-peers*) (setf (getf p :carry) nil))
     (things-changed))
   (dolist (p *net-peers*)
+    (when (eq *net-role* :host) (tell :kettle :dropped (getf p :id)))
     (when (getf p :node) (node-queue-free (getf p :node)))
     (when (getf p :peer)                                  ; a guest through the room server has no direct connection
       (object-call (getf p :peer) "peer_disconnect_now" 0)

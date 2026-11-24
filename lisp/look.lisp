@@ -17,7 +17,7 @@
 
 (defun my-hold ()
   "Return the number of what we hold in our paws, for the look: 0 for nothing (see LOOK-HOLD)."
-  (cond ((eq *kettle-at* :paw) 99)
+  (cond ((eq (kettle-at) :paw) 99)
         (*carry* (1+ (or (position (car *carry*) *kinds* :key #'first) -1)))
         (t 0)))
 

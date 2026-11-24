@@ -335,6 +335,27 @@ def pair():
     ev(g, f"(progn ({K}unbuild-thing (list :pillow 0.0 0.0 0.5 0)) 1)")
     check("подушку поставил и убрал, а товар стройкой не появляется",
           lambda: (ev(h, things), ev(g, things)), lambda v: v[0] == v[1] == f"({n} {planks})", within=6)
+    # the kettle is an aktor: one state, the driver's; a guest tells it what to do and sees what it has become
+    kettle = f"({K}peek :kettle)"
+    ev(g, f"(progn ({K}tell :kettle :take) 1)")
+    check("гость взял чайник — у водителя он «в чужой лапе», у гостя «в своей»",
+          lambda: (ev(h, f"(list ({K}kettle-at) ({K}kettle :holder))"), ev(g, f"({K}kettle-at)")), ("(:AWAY 1)", ":PAW"), within=6)
+    ev(h, f"(progn ({K}tell :kettle :take) ({K}tell :kettle :fill) 1)")
+    time.sleep(1.0)
+    check("водитель не может ни взять, ни наполнить чайник, который у гостя", ev(h, kettle), "(:AT :PAW :HOLDER 1 :WATER NIL :TEA 0 :BREW NIL)")
+    ev(g, f"(progn ({K}tell :kettle :fill) 1)")
+    check("гость набрал воды — вода у обоих", lambda: (ev(h, kettle), ev(g, kettle)), lambda v: v[0] == v[1] == "(:AT :PAW :HOLDER 1 :WATER T :TEA 0 :BREW NIL)", within=6)
+    ev(g, f"(progn ({K}tell :kettle :put :stove) 1)")
+    check("гость поставил чайник на печку", lambda: (ev(h, kettle), ev(g, kettle)), lambda v: v[0] == v[1] == "(:AT :STOVE :HOLDER NIL :WATER T :TEA 0 :BREW NIL)", within=6)
+    ev(h, f"(progn (setf {K}*fire* 200.0 {K}*kettle-heat* (- {K}*boil-time* 0.5)) 1)")
+    check("у водителя закипело — чай у обоих", lambda: (ev(h, kettle), ev(g, kettle)), lambda v: v[0] == v[1] == "(:AT :STOVE :HOLDER NIL :WATER NIL :TEA 4 :BREW NIL)", within=8)
+    ev(g, f"(progn ({K}tell :kettle :boiled) 1)")
+    ev(g, f"(progn (sleep 0) 1)"); time.sleep(2.2)
+    ev(g, f"(progn ({K}tell :kettle :pour) 1)")
+    check("гость налил стакан — чая три, а «закипело» от гостя не считается", lambda: (ev(h, kettle), ev(g, kettle)), lambda v: v[0] == v[1] == "(:AT :STOVE :HOLDER NIL :WATER NIL :TEA 3 :BREW NIL)", within=6)
+    ev(h, f"(progn ({K}poke :kettle :tea 1) 1)")
+    check("водитель поправил чайник из REPL — гость видит сразу", lambda: ev(g, f"({K}kettle :tea)"), lambda v: v.startswith("1"), within=4)
+    ev(h, f"(progn (setf {K}*fire* 0.0) 1)")
     # the customer is shared
     arrive_first_market(h)
     ev(h, f"(setf {K}*window-open* t)")
@@ -388,11 +409,15 @@ def pair():
     check("в гостях у гостя — хозяйские гномик и задание", ev(g, f"(list (and ({K}gnome-found-p 3) t) (car {K}*quest*))"), "(T :POST)")
     ev(g, f"(progn ({K}take-thing {first_milk}) 1)")
     check("гость снова взял молоко", lambda: (ev(g, f"{K}*carry*"), ev(h, milk)), lambda v: v[0] == "(:MILK)" and v[1].startswith("2"), within=6)
+    ev(g, f"(progn ({K}tell :kettle :take) 1)")
+    check("…и чайник", lambda: ev(h, f"({K}kettle :holder)"), lambda v: v.startswith("1"), within=6)
     ev(g, f"(progn ({K}net-stop) 1)")
     check("вышел из комнаты — гномики, задание, штрафы и бутылки снова свои",
           lambda: ev(g, f"(list (and ({K}gnome-found-p 3) t) {K}*quest* {K}*fines* {K}*bottles* {K}*net-role*)"), "(NIL NIL NIL 0 NIL)", within=6)
     check("гость ушёл с молоком в лапах — оно осталось в кибитке водителя", lambda: ev(h, milk), lambda v: v.startswith("3"), within=8)
     check("…а у гостя дома лапы пусты", ev(g, f"{K}*carry*"), "NIL")
+    check("…и чайник вернулся на стол", lambda: ev(h, f"(list ({K}kettle :at) ({K}kettle :holder))"), "(:TABLE NIL)", within=6)
+    check("…а у гостя дома чайник свой, на своём месте", lambda: ev(g, f"({K}kettle-at)"), lambda v: v in (":TABLE", ":STOVE"), within=6)
     check("ошибок в журналах нет", log_errors(h) + log_errors(g), 0)
     stop_all()
 

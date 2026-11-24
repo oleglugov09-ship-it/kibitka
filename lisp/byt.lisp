@@ -125,7 +125,7 @@ As many are placed as there are players.")
 (defun pour-tea ()
   (let ((cup (find-if-not (lambda (c) (object-get c "visible")) (subseq *cup-nodes* 0 (max 1 *stools-shown*)))))
     (cond (cup (object-set cup "visible" t)
-               (setf *poured* (cons (cons cup *kettle-brew*) (remove cup *poured* :key #'car)))   ; the glass keeps what was in the kettle then
+               (setf *poured* (cons (cons cup (kettle :brew)) (remove cup *poured* :key #'car)))   ; the glass keeps what was in the kettle then
                (say "Налил стакан чая") t)
           (t (say "Стаканы полные — пейте") nil))))
 

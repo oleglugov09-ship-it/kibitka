@@ -7,7 +7,7 @@
     :description "Kibitka on Godot, conducted by Common Lisp"
     :depends-on ("gdecl")
     :serial t
-    :components ((:file "packages") (:file "delo") (:file "tverd")
+    :components ((:file "packages") (:file "delo") (:file "aktor") (:file "tverd")
                  (:file "random")
                  (:file "engine-classes") (:file "files")
                  (:file "shapes") (:file "models")
