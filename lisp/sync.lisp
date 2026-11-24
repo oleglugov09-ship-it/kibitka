@@ -4,7 +4,9 @@
 ;;;;  • ACTIONS. A guest asks the driver for any shared action (pick up a bottle, take a gnome, milk the goat,
 ;;;;    pay a fine): ASK-HOST. The driver runs the very same function 'on the guest's behalf' (RUN-AS: with
 ;;;;    the guest's paws and with the reply going to the guest), so actions have no separate 'guest' code.
-;;;;    An action is declared with DEFSHARED (interact.lisp); nothing else needs to be registered.
+;;;;    An action is declared with DEFSHARED (delo.lisp); nothing else needs to be registered. The things in
+;;;;    the wagon are moved the same way (TAKE-THING, PUT-THING and the build mode): the arrangement is the
+;;;;    driver's, a guest's own is a mirror of it.
 ;;;;  • WORDS. SAY-ALL is a message to everyone in the wagon. A plain SAY inside an action done for a guest
 ;;;;    goes to that guest.
 ;;;;  • RECONCILIATION. WORLD-DIGEST must match between the driver and a guest; tools/smoke.py pair checks it.
@@ -100,12 +102,18 @@ The driver calls it; if a guest was performing the action, the guest's name is p
 (defvar *remote-wait* nil "True on a guest while the driver is still busy with our action (fishing, the mine): the paws are left alone.")
 (defvar *pending* nil "True when the action done for a guest is not finished: we wait (START-WAIT) and the reply will come again.")
 
+(defvar *asked* nil "On a guest, the request the driver has not answered yet: (time key . args).")
+
 (defun ask-host (key &rest args)
   "Ask the driver, as a guest, to perform the shared action KEY with ARGS.
-The request carries what we hold in our paws: the action may take it or hand something over. Return T."
-  (if *remote-wait*
-      (say "Погоди, ещё не закончил")
-      (guest-send (list :a :do key args (car *carry*) (cdr *carry*) *carry-props*)))
+The request carries what we hold in our paws: the action may take it or hand something over. Return T.
+One request at a time: the answer says what is in our paws, so a second request sent before it would be
+answered about paws that the first has already changed. A request left without an answer stops counting in
+two seconds."
+  (cond (*remote-wait* (say "Погоди, ещё не закончил"))
+        ((and *asked* (< (- *time* (first *asked*)) 2.0)))
+        (t (setf *asked* (list* *time* key args))
+           (guest-send (list :a :do key args (car *carry*) (cdr *carry*) *carry-props*))))
   t)
 
 (defun carry-ok-p (kind addr &optional props)
@@ -125,7 +133,8 @@ Reply to the guest with what is now in its paws and what was said to it."
   (when (and (listp request) (= (length request) 5))
     (destructuring-bind (key args kind addr props) request
       (let ((op (assoc key *shared-ops*)))
-        (when (and op (listp args) (<= (length args) 3) (every (lambda (a) (or (integerp a) (keywordp a))) args)
+        (when (and op (listp args) (<= (length args) 3)
+                   (every (lambda (a) (or (integerp a) (keywordp a) (spec-ok-p a))) args)   ; a number, a name or the record of a thing
                    (carry-ok-p kind addr props))
           (run-as p (cons kind addr) (lambda () (apply (cdr op) args)) props))))))
 
@@ -135,8 +144,16 @@ The same thing still in the paws keeps the properties we know: a long job answer
   (when (and (listp reply) (= (length reply) 5))
     (destructuring-bind (kind addr said pending props) reply
       (when (and (carry-ok-p kind addr props) (listp said) (every #'stringp said))
-        (set-carry (and kind (cons kind addr))
-                   (if (and *carry* (eq kind (car *carry*)) (eql addr (cdr *carry*)) (null props)) *carry-props* props))
+        (destructuring-bind (&optional key spec &rest more) (rest (shiftf *asked* nil))
+          (declare (ignore more))
+          (let ((thing (and (member key '(:lift :put)) spec))        ; we asked to take a thing or to put one down
+                (held (and *carry* t)))
+            (set-carry (and kind (cons kind addr))
+                       (if (and *carry* (eq kind (car *carry*)) (eql addr (cdr *carry*)) (null props)) *carry-props* props)
+                       (and thing (eq key :lift) spec))
+            ;; our things run a moment ahead of the driver's arrangement as last sent: the new one is on its way
+            (when (and thing (mirror-thing key spec held (and kind t)))
+              (setf *net-mirror-hold* (+ *time* 1.0)))))
         (setf *remote-wait* (and pending t))
         (show-carry)
         (dolist (text said) (say text))))))

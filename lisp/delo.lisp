@@ -174,7 +174,8 @@ NIL means we are acting for ourselves.")
   "Define the shared action NAME.
 The driver runs BODY; a guest asks the driver (ASK-HOST, sync.lisp), who runs the same BODY on the guest's
 behalf: with the guest's paws and with the reply going to the guest. KEY is the action's name in the
-message: a keyword of at most 23 characters. Over the network ARGS can only be integers and keywords."
+message: a keyword of at most 23 characters. Over the network ARGS can only be integers, keywords and records
+of things (SPEC-OK-P)."
   (multiple-value-bind (doc body) (if (stringp (first body)) (values (list (first body)) (rest body)) (values nil body))
     `(progn (defun ,name ,args ,@doc (if (net-guest-p) (ask-host ,key ,@args) (progn ,@body)))
             (setf *shared-ops* (cons (cons ,key ',name) (remove ,key *shared-ops* :key #'car)))

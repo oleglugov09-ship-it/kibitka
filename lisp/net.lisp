@@ -63,14 +63,14 @@ Someone who returns after a dropped link is inside again, not at a bus stop.")
 :peer is the ENet connection or NIL, :key its number, :rid the seat in the room (a guest through the
 server), :id the number in the game, :ok true when the version matched, :name :x :z :yaw :inside who
 and where, :placed true once they sent where they stand, :wait the path coordinate of the bus stop
-where they wait, :ver which arrangement of things they know, :mine the arrangement number after
-their last edit, :node the figure at the bus stop, :told true once the driver has been warned.")
+where they wait, :ver which arrangement of things they know, :node the figure at the bus stop, :told true
+once the driver has been warned.")
 (defvar *net-peer* nil "The guest's link to the host.")
 (defvar *net-id* 0 "Our number at the host.")
 (defvar *net-next-id* 0)
 (defvar *net-clock* 0.0)
 (defvar *net-ver* 0 "The number of the arrangement of things.")
-(defvar *net-specs* nil "The host's arrangement that *NET-VER* corresponds to.")
+(defvar *net-specs* nil "The driver's arrangement of things that *NET-VER* corresponds to; on a guest, as the driver last sent it.")
 (defvar *net-others* '() "The other players in the game, each a list (id name x z yaw inside eye look): see the fields below.")
 (define-fields other id name x z yaw inside eye look)   ; ID 0 is the driver; INSIDE: in the wagon; EYE: eye height; LOOK: see LOOK.LISP
 (defvar *net-avatars* '() "The cats of the other players, each (id :group node :cat cat :head head :x :z :yaw :y :hop).")
@@ -79,15 +79,14 @@ their last edit, :node the figure at the bus stop, :told true once the driver ha
 (defvar *net-lost* nil)
 (defvar *net-joined* nil "True for a guest once the first state has been received and the world is built.")
 (defvar *net-wait* nil "The guest's path coordinate of the bus stop where we wait for the wagon, or NIL when we are in it.")
-(defvar *net-sig* nil "The guest's record of the arrangement, the table and the planks as the host knows them.")
-(defvar *net-hold* 0.0 "The time until which a guest ignores someone else's arrangement (we have just edited it ourselves).")
+(defvar *net-sig* nil "The guest's record of the switches and the planks as the host knows them.")
+(defvar *net-hold* 0.0 "The time until which a guest ignores the driver's switches and planks (we have just changed them ourselves).")
+(defvar *net-mirror-hold* 0.0 "The time until which a guest's things may differ from the driver's arrangement as last sent:
+the driver has just moved a thing for us, we have shown it, and the new arrangement is on its way.")
 (defvar *wait-stood* 0.0 "The number of seconds the wagon has stood away from our bus stop, for a guest waiting there.")
-(defvar *took* nil "The guest's record of the thing just picked up; it goes to the driver together with the edit.")
 (defvar *net-fed* 0 "The number of planks a guest has fed into the stove since the last send.")
 (defvar *rejoining* nil "Bound to T while a guest is returning by itself to the same room after a dropped link.")
 (defvar *net-planks-delta* 0 "The guest's change in the number of planks since the last send (feeding the stove counts as minus).")
-(defvar *edit-rejected* nil "True for a guest when the driver said it did not accept our edit of the things.")
-(defvar *net-pending* nil "The guest's (number arrangement) from the host that is not applied yet.")
 (defvar *net-resend* 0 "The guest's marker that there is an edit to send to the host.")
 (defvar *departed* nil "True once the host has left the depot.")
 
@@ -321,36 +320,15 @@ Type 1 is a connect, 2 a disconnect, 3 an incoming packet."
   p)
 
 (defun host-edited (p fields)
-  "Guest P has moved things about: FIELDS is (base-version specs switches planks-delta took fed)."
-  (destructuring-bind (base specs fold planks-delta took fed) fields
-    (when (and (specs-ok-p specs) (integerp planks-delta) (<= -12 planks-delta 12)
-               (integerp fed) (<= 0 fed 5) (or (null took) (spec-ok-p took)))
-      ;; the guest sent the things as a whole list. We take it only if, since the guest saw
-      ;; our arrangement, nobody else has changed it; otherwise it would overwrite someone else's work (say,
-      ;; parcels just handed over), so we send the fresh one and let the guest edit again
-      (note-items)
-      (let ((ours (mapcar #'car *items*)) (fresh (or (eql base *net-ver*) (eql (getf p :mine) *net-ver*)))
-            (accepted t))
-        (cond ((and took (not (member took ours :test #'equal)))
-               (setf accepted nil)
-               ;; the guest 'took' a thing we no longer have: another player or a customer carried it off earlier;
-               ;; otherwise two players would end up holding it
-               (peer-send p (list :x :drop))
-               (setf (getf p :ver) -1))
-              ((equal specs ours))
-              (fresh (set-items specs) (save-interior)
-                     (note-items)
-                     (setf (getf p :mine) *net-ver*))
-              (t (setf accepted nil)
-                 (peer-send p (list :x))                 ; 'edit not accepted': the guest rechecks its hands against ours
-                 (setf (getf p :ver) -1)))
-        ;; a rejected edit touches nothing: the guest will get our state and edit again
-        (when accepted
-          (set-switches fold :guarded t)
-          ;; planks arrive as a difference, not a count: a stale count from the guest would overwrite the ones
-          ;; the driver has just bought; how many of them went into the stove is counted separately
-          (setf *planks* (max 0 (min 99 (+ *planks* planks-delta)))
-                *fire* (min 300.0 (+ *fire* (* fed *plank-burn*))))))))
+  "Guest P has flipped a switch or fed the stove: FIELDS is (switches planks-delta fed). The things are not
+here: a guest asks for each of them (TAKE-THING and the rest, trade.lisp)."
+  (destructuring-bind (fold planks-delta fed) fields
+    (when (and (integerp planks-delta) (<= -12 planks-delta 12) (integerp fed) (<= 0 fed 5))
+      (set-switches fold :guarded t)
+      ;; planks arrive as a difference, not a count: a stale count from the guest would overwrite the ones
+      ;; the driver has just bought; how many of them went into the stove is counted separately
+      (setf *planks* (max 0 (min 99 (+ *planks* planks-delta)))
+            *fire* (min 300.0 (+ *fire* (* fed *plank-burn*))))))
   p)
 
 (defun host-take (p msg)
@@ -393,7 +371,7 @@ Type 1 is a connect, 2 a disconnect, 3 an incoming packet."
 All fields are present at once: later we edit them in place."
   (first (push (list :peer (and peer (gdext:add-reference peer)) :key (and peer (peer-key peer)) :rid rid
                      :id (incf *net-next-id*) :ok nil :name nil :x 0.0 :z 0.0 :yaw 0.0 :eye 1.55 :inside nil :wait nil
-                     :ver 0 :mine nil :placed nil :node nil :told nil :look 0)
+                     :ver 0 :placed nil :node nil :told nil :look 0)
                *net-peers*)))
 
 (defun host-room ()
@@ -514,7 +492,7 @@ stand on the windowsill, the same as by hand."
       (setf *window-open* (and window t)
             *door-open* (and door t) *ladder-down* (and ladder t)))))
 
-(defun guest-sig () (list (mapcar #'car *items*) (switches) *planks*))
+(defun guest-sig () (list (switches) *planks*))
 
 (defun guest-first (h)
   "Handle the first state H from the host: build the same world and decide where to appear."
@@ -564,9 +542,6 @@ stand on the windowsill, the same as by hand."
     (:no (setf *net-refused* (if (stringp (second msg)) (second msg) "другая") *net-lost* t)
          (say "У водителя другая версия игры. Нужна одинаковая сборка"))
     (:g (destructuring-bind (changed kind addr words props) (rest msg) (guest-dealt changed kind addr words props)))
-    (:x (if (eq (second msg) :drop)
-            (progn (empty-paws) (show-carry) (say "Эту вещь уже забрали"))
-            (setf *edit-rejected* t)))
     (:r (guest-done (rest msg)))                              ; the driver did our action
     (:play (start-play (second msg)))                         ; the driver let us into the booth game (igry.lisp)
     (:c (guest-run (second msg)))                             ; a live edit from the driver: run it and reply
@@ -598,15 +573,15 @@ stand on the windowsill, the same as by hand."
             (setf *planks* planks)
             (when (> (abs (- fire *fire*)) 3) (setf *fire* fire))
             (setf *net-sig* (guest-sig)))))
-    (:i (destructuring-bind (ver specs) (rest msg)
-          (when (specs-ok-p specs) (setf *net-pending* (list ver specs)))))))      ; STEP-GUEST applies it once we stop editing
+    (:i (destructuring-bind (ver specs) (rest msg)                  ; the driver's arrangement of things: ours mirrors it
+          (when (and (integerp ver) (specs-ok-p specs))
+            (setf *net-ver* ver *net-specs* specs *net-mirror-hold* 0.0)
+            (guest-mirror))))))
 
-(defun guest-apply-items ()
-  (when (and *net-pending* (> *time* *net-hold*))
-    (destructuring-bind (ver specs) *net-pending*
-      (unless (equal specs (mapcar #'car *items*)) (set-items specs))
-      (when *edit-rejected* (setf *edit-rejected* nil) (reconcile-carry specs))
-      (setf *net-ver* ver *net-pending* nil *net-sig* (guest-sig)))))
+(defun guest-mirror ()
+  "Bring a guest's things in line with the driver's arrangement as last sent, if they are not."
+  (when (and (plusp *net-ver*) (> *time* *net-mirror-hold*) (not (equal *net-specs* (mapcar #'car *items*))))
+    (set-items *net-specs*)))
 
 (defun guest-rejoin ()
   "Knock on the same room again after the guest's link dropped."
@@ -616,13 +591,13 @@ stand on the windowsill, the same as by hand."
       (setf *net-retries* tries *net-retry* nil))))
 
 (defun note-own-edit ()
-  "Remember that we, a guest, changed something (things, switches, planks) and send it to the driver.
+  "Remember that we, a guest, changed something (switches, planks) and send it to the driver.
 Called BEFORE incoming messages are handled: otherwise a state arriving in the same frame would
 record our edit as 'what the driver has'."
   (when *net-joined*
     (let ((sig (guest-sig)))
       (when (and *net-sig* (not (equal sig *net-sig*)))
-        (setf *net-planks-delta* (+ *net-planks-delta* (- (third sig) (third *net-sig*)))
+        (setf *net-planks-delta* (+ *net-planks-delta* (- (second sig) (second *net-sig*)))
               *net-sig* sig *net-hold* (+ *time* .8) *net-resend* 1)))))
 
 (defun guest-follow ()
@@ -648,7 +623,7 @@ drive at its speed and close the gap; and the things in the wagon are brought in
                  (cond ((< diff -60) (relocate (getf h :dist)))          ; the driver 'turned around' to a town behind
                        ((> diff 60) (jump-dist (getf h :dist)))
                        (t (incf *dist* (* .08 diff)))))))
-      (guest-apply-items))))
+      (guest-mirror))))
 
 (defun guest-report ()
   "Tell the driver where we are and how we look, and, while an edit of ours is not yet taken, what we moved."
@@ -657,8 +632,8 @@ drive at its speed and close the gap; and the things in the wagon are brought in
       (guest-send (list :p *net-name* x z yaw inside (and (realp *net-wait*) *net-wait*) *net-ver* eye (my-look))))
     (when (> *net-resend* 0)
       (decf *net-resend*)
-      (guest-send (list :e *net-ver* (mapcar #'car *items*) (switches) *net-planks-delta* *took* *net-fed*))
-      (setf *net-planks-delta* 0 *took* nil *net-fed* 0))))
+      (guest-send (list :e (switches) *net-planks-delta* *net-fed*))
+      (setf *net-planks-delta* 0 *net-fed* 0))))
 
 (defun step-guest (tick)
   (guest-rejoin)
@@ -814,7 +789,7 @@ trouble and waiting at a bus stop."
     (setf *view* :inside *seat* nil *pos* (v3 0 0 1.2))
     (when *cart* (node-3d-set-position *cart* (v3 0 0 0)) (node-3d-set-rotation *cart* (v3 0 0 0))))
   (setf *net-server* nil *net-conn* nil *net-peer* nil *net-peers* '() *net-avatars* '() *net-others* '() *net-role* nil
-        *net-wait* nil *net-sig* nil *net-lost* nil *net-refused* nil *net-pending* nil *net-resend* 0
+        *net-wait* nil *net-sig* nil *net-lost* nil *net-refused* nil *net-resend* 0
         *net-joined* nil *net-host* nil *net-retry* nil *net-retries* 0))
 
 (defun step-net (delta)

@@ -23,10 +23,7 @@
 
 (defvar *carry* nil "What we carry in hand: (KIND . TOWN-INDEX-OR-NIL), or NIL.")
 (defvar *carry-node* nil)
-(defvar *carry-from* nil "The spec of the item picked up from its place (not from a client).
-A guest uses it to reconcile with the driver.")
-(defvar *last-put* nil "The last put-down: (SPEC TIME TAKEN-FROM).
-It says what was just put down and when, and where it stood before that.")
+(defvar *carry-from* nil "The spec of the item picked up from its place (not from a client): where it goes back if it is not put down.")
 (defvar *visits* '() "The visits left per place: (PLACE . CLIENTS-STILL-TO-COME).
 PLACE is the rounded path coordinate of the stay.")
 (defvar *met* '() "The places where the recipient has already come up by himself (the second time, only by the bell).")
@@ -279,45 +276,61 @@ Return NIL for the floor or the top of an item."
                             (append raw (list :full))))))))
           (t raw))))
 
+;;; The things in the wagon are the driver's. Whoever takes one or puts one down, the driver does it: for a guest
+;;; these are shared actions like any other (DEFSHARED), and the guest's own arrangement only mirrors the driver's.
+;;; So one thing cannot end up in two pairs of paws, and a thing put down cannot be lost on the way.
+
+(defshared take-thing :lift (spec)
+  "Take the thing recorded as SPEC from its place into the paws."
+  (let ((it (find spec *items* :key #'car :test #'equal)))
+    (cond (*carry* (say "Руки заняты"))
+          ((or (null it) (not (portable-p it))) (say "Эту вещь уже забрали"))
+          (t (cond (*actor* (stop-flying (list (cdr it))) (node-queue-free (cdr it)))
+                   (t (fly (cdr it) (hand-point) :dur .2 :free t)))                  ; from its place into hand
+             (lift-item it)
+             (set-carry (cons (spec-kind spec) (spec-addr spec)) (spec-props spec) spec)
+             (show-carry) (things-changed t)))))
+
+(defshared put-thing :put (spec)
+  "Stand what is in the paws in the wagon as SPEC: the very thing that is carried, at a place that is free."
+  (let ((problem (if (and *carry* (equal spec (make-spec (car *carry*) (spec-x spec) (spec-y spec) (spec-z spec) 0
+                                                         (cdr *carry*) *carry-props*)))
+                     (spot-problem (list (spec-x spec) (spec-z spec) (spec-y spec)))
+                     "В руках уже не то")))
+    (cond (problem (say problem))
+          (t (let ((node (stand-item spec)))
+               (unless *actor* (fly node (node-3d-get-position node) :from (hand-point))))   ; from hand to its place
+             (empty-paws) (show-carry)
+             (things-changed)))))
+
+(defun mirror-thing (key spec held holds)
+  "Show at once, on a guest, what the driver did with the thing SPEC at our asking: KEY is :LIFT or :PUT, HELD is
+true if our paws held something before the driver answered, HOLDS if they do now. A request the driver refused
+changes nothing in the paws, and nothing is shown. The driver's arrangement arrives a moment later and is the same.
+Return true if something was shown."
+  (let ((it (find spec *items* :key #'car :test #'equal)))
+    (cond ((and (eq key :lift) (not held) holds it)
+           (fly (cdr it) (hand-point) :dur .2 :free t)
+           (lift-item it) (things-changed t)
+           t)
+          ((and (eq key :put) held (not holds) (not it))
+           (let ((node (stand-item spec)))
+             (fly node (node-3d-get-position node) :from (hand-point)))
+           (things-changed)
+           t))))
+
 (defun carry-use ()
   "Take milk or a parcel, or put down what we carry (left mouse button).
 Return T if something was done."
   (cond (*carry*
          (let* ((spot (put-spot)) (problem (and spot (spot-problem spot))))
            (cond (problem (say problem))
-                 (spot
-                  (let ((spec (make-spec (car *carry*) (float (first spot) 1.0) (float (third spot) 1.0) (float (second spot) 1.0) 0
-                                         (cdr *carry*) *carry-props*)))
-                    (let ((node (stand-item spec)))
-                      (fly node (node-3d-get-position node) :from (hand-point)))      ; from hand to its place
-                    (setf *last-put* (list spec *time* *carry-from*)))
-                  (empty-paws) (show-carry)
-                  (things-changed))
+                 (spot (put-thing (make-spec (car *carry*) (float (first spot) 1.0) (float (third spot) 1.0) (float (second spot) 1.0) 0
+                                             (cdr *carry*) *carry-props*)))
                  (t (say "Посмотри, куда поставить: полка, подоконник, пол")))
            t))
         (t (let ((it (item-in-sight)))
-             (when it
-               (fly (cdr it) (hand-point) :dur .2 :free t)                           ; from its place into hand
-               (lift-item it) (setf *took* (car it))
-               (set-carry (cons (spec-kind (car it)) (spec-addr (car it))) (spec-props (car it)) (car it))
-               (show-carry) (things-changed t)
-               t)))))
-
-(defun reconcile-carry (specs)
-  "Reconcile what a guest holds after the driver sent a layout SPECS that differs from the guest's own.
-That means the guest's edit was rejected (someone got there first). An item just taken still stands at
-the driver's, so the hands go empty, or there would be a copy; an item just put down is missing at the
-driver's, so it returns to the hands, or it would be lost."
-  (cond ((and *carry* *carry-from* (member *carry-from* specs :test #'equal))
-         (empty-paws) (show-carry)
-         (say "Эту вещь взял кто-то другой"))
-        ((and (not *carry*) *last-put* (< (- *time* (second *last-put*)) 3.0)
-              (not (member (first *last-put*) specs :test #'equal))
-              (not (and (third *last-put*) (member (third *last-put*) specs :test #'equal))))   ; unless it has returned to its old place
-         (set-carry (cons (spec-kind (first *last-put*)) (spec-addr (first *last-put*))) (spec-props (first *last-put*)))
-         (setf *last-put* nil)
-         (show-carry)
-         (say "Поставить не вышло — вещь снова в руках"))))
+             (when it (take-thing (car it)) t)))))
 
 (defun stow-carry ()
   "Return what is in hand to where it was taken from (or to the window) before joining another game."

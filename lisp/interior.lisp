@@ -223,21 +223,24 @@ Return NIL when looking past everything."
 
 (defun snap (v) (* .05 (round v .05)))
 
+(defshared build-thing :build (spec)
+  "Stand a new furnishing recorded as SPEC in the wagon (build mode). A crate is nailed together from the same
+three planks it breaks down into - otherwise planks would be endless."
+  (let ((crate (member (spec-kind spec) '(:crate :box))))
+    (cond ((or (spec-addr spec) (spec-props spec) (not (find (spec-kind spec) *kinds* :key #'first :end (min 10 (length *kinds*))))))
+          ((>= (length *items*) *max-items*) (say "Больше не влезет"))
+          ((and crate (< *planks* *crate-planks*))
+           (say (format nil "На ящик нужно досок: ~d, а есть ~d" *crate-planks* *planks*)))
+          (t (when crate (add-planks (- *crate-planks*)))
+             (stand-item spec)
+             (things-changed)))))
+
 (defun place-item ()
   (let ((a (aim-point)) (kind (first (nth *pick* *kinds*))))
-    (when (>= (length *items*) *max-items*) (say "Больше не влезет") (return-from place-item))
-    ;; a crate is nailed together from the same three planks it breaks down into - otherwise planks would be endless
-    (when (and a (member kind '(:crate :box)))
-      (when (< *planks* *crate-planks*)
-        (say (format nil "На ящик нужно досок: ~d, а есть ~d" *crate-planks* *planks*))
-        (return-from place-item))
-      (add-planks (- *crate-planks*)))
     (when a
       (destructuring-bind (x z top item) a
         (declare (ignore item))
-        (let ((spec (list kind (snap x) top (snap z) *spin*)))
-          (stand-item spec)
-          (things-changed))))))
+        (build-thing (list kind (snap x) top (snap z) *spin*))))))
 
 (defun support-under (spec below)
   "Return the height at which the thing SPEC finds support.
@@ -273,15 +276,20 @@ Return true if anything moved."
     (when moved (set-items (reverse done)))
     moved))
 
+(defshared unbuild-thing :unbuild (spec)
+  "Take the thing recorded as SPEC out of the wagon for good (build mode); our own crate gives its planks back."
+  (let ((it (find spec *items* :key #'car :test #'equal)))
+    (cond ((null it))
+          ((spec-addr spec) (say "Чужую посылку не выбросить — её ждут"))
+          (t (when (member (spec-kind spec) '(:crate :box)) (add-planks *crate-planks*))
+             (stop-flying (list (cdr it)))
+             (node-queue-free (cdr it))
+             (lift-item it)
+             (things-changed t)))))
+
 (defun remove-item ()
   (let ((it (fourth (aim-point))))
-    (when (and it (spec-addr (car it))) (say "Чужую посылку не выбросить — её ждут") (return-from remove-item))
-    (when it
-      (when (and (member (spec-kind (car it)) '(:crate :box)) (not (spec-addr (car it))))   ; our own crate was removed - the planks come back
-        (add-planks *crate-planks*))
-      (node-queue-free (cdr it))
-      (lift-item it)
-      (things-changed t))))
+    (when it (unbuild-thing (car it)))))
 
 (defun toggle-build ()
   (unless *meta*

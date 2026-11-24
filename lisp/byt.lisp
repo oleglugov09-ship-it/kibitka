@@ -426,18 +426,23 @@ Return T if there was one."
   (let ((u (usable-here hand)))
     (when u (funcall (usable-action u)) t)))
 
-(defun break-crate ()
-  "Handle X: break the crate the player is looking at into three planks.
-Addressed parcels are not broken."
-  (let ((it (fourth (aim-point))))
-    (cond ((null it) (say "Смотри на ящик"))
-          ((not (member (spec-kind (car it)) '(:crate :box))) (say "На доски идут только ящики"))
-          ((spec-addr (car it)) (say "Это чужая посылка. Её ждут"))
-          (t (node-queue-free (cdr it))
+(defshared break-thing :break (spec)
+  "Break the crate recorded as SPEC into three planks. Addressed parcels are not broken."
+  (let ((it (find spec *items* :key #'car :test #'equal)))
+    (cond ((null it))
+          ((not (member (spec-kind spec) '(:crate :box))) (say "На доски идут только ящики"))
+          ((spec-addr spec) (say "Это чужая посылка. Её ждут"))
+          (t (stop-flying (list (cdr it)))
+             (node-queue-free (cdr it))
              (lift-item it)
              (add-planks *crate-planks*)
              (things-changed t)
              (say (format nil "Ящик разобран. Досок: ~d" *planks*))))))
+
+(defun break-crate ()
+  "Handle X: break the crate the player is looking at."
+  (let ((it (fourth (aim-point))))
+    (if it (break-thing (car it)) (say "Смотри на ящик"))))
 
 ;;; Frost on the windows
 

@@ -293,29 +293,50 @@ def pair():
     check("пять щелчков света у гостя дошли до водителя", ev(h, f"{K}*lights-on*"), ev(g, f"{K}*lights-on*"))
     check("…и свет выключен", ev(h, f"{K}*lights-on*"), "NIL")
     milk = f"(count :milk {K}*items* :key (lambda (it) (first (car it))))"
-    take = f"""(let ((it (find :milk {K}*items* :key (lambda (it) (first (car it))))))
-        (godot:node-queue-free (cdr it))
-        (setf {K}*items* (remove it {K}*items*) {K}*carry* (cons :milk nil) {K}*carry-from* (car it) {K}*took* (car it)) 1)"""
-    ev(g, take)
+    first_milk = f"(car (find :milk {K}*items* :key (lambda (it) (first (car it)))))"
+    ev(g, f"(progn ({K}take-thing {first_milk}) 1)")
     check("гость взял молоко — у водителя его стало три", lambda: ev(h, milk), lambda v: v.startswith("3"), within=8)
-    check("…и оно у гостя в руках", ev(g, f"{K}*carry*"), "(:MILK)")
-    # both take the very same box
-    ev(h, f"""(let ((it (find :milk {K}*items* :key (lambda (it) (first (car it))))))
-        (godot:node-queue-free (cdr it)) (setf {K}*items* (remove it {K}*items*)) 1)""")
-    ev(g, f"(progn (setf {K}*carry* nil) ({K}show-carry) 1)")
-    ev(g, take)
-    check("одну коробку взяли оба — у гостя руки пусты", lambda: ev(g, f"{K}*carry*"), "NIL", within=10)
-    check("…и молока у обоих поровну", ev(h, milk), ev(g, milk))
+    check("…и оно у гостя в руках", lambda: ev(g, f"{K}*carry*"), "(:MILK)", within=4)
+    check("…а у гостя на полке его тоже три", lambda: ev(g, milk), lambda v: v.startswith("3"), within=4)
+    # the guest asks for a thing the driver no longer has: the driver took it a moment earlier
+    spec = ev(g, first_milk)
+    ev(g, f"(progn ({K}put-thing ({K}make-spec :milk 0.0 0.0 0.0 0 nil {K}*carry-props*)) 1)")
+    check("гость поставил молоко на пол — руки пусты", lambda: ev(g, f"{K}*carry*"), "NIL", within=4)
+    ev(h, f"""(let ((it (find '{spec} {K}*items* :key (function car) :test (function equal))))
+        (godot:node-queue-free (cdr it)) ({K}lift-item it) 1)""")
+    ev(g, f"(progn ({K}take-thing '{spec}) 1)")
+    time.sleep(2.0)
+    check("вещь, которую водитель уже унёс, гостю не досталась", ev(g, f"{K}*carry*"), "NIL")
+    check("…и молока у обоих поровну", lambda: (ev(h, milk), ev(g, milk)), lambda v: v[0] == v[1], within=4)
+    # a made-up thing cannot be put into the driver's wagon
+    ev(g, f"(progn ({K}put-thing ({K}make-spec :milk 0.3 0.0 0.3 0)) 1)")
+    time.sleep(1.5)
+    check("выдуманную вещь гость в кибитку не поставит", lambda: (ev(h, milk), ev(g, milk)), lambda v: v[0] == v[1] and v[0].startswith("3"), within=4)
+    # build mode and breaking a crate are the driver's to do as well: the planks are counted once, by the driver
+    things = f"(list (length {K}*items*) {K}*planks*)"
+    n, planks = [int(x) for x in ev(h, things).strip("()").split()]
+    ev(h, f"(progn (setf {K}*planks* 5) 1)"); planks = 5
+    ev(g, f"(progn ({K}build-thing (list :box 0.0 0.0 0.5 0)) 1)")
+    check("гость сколотил ящик — он стоит у обоих, досок стало меньше",
+          lambda: (ev(h, things), ev(g, things)), lambda v: v[0] == v[1] == f"({n + 1} {planks - 3})", within=6)
+    ev(g, f"(progn ({K}break-thing (list :box 0.0 0.0 0.5 0)) 1)")
+    check("гость разобрал его на доски — у обоих как было",
+          lambda: (ev(h, things), ev(g, things)), lambda v: v[0] == v[1] == f"({n} {planks})", within=6)
+    ev(g, f"(progn ({K}build-thing (list :milk 0.3 0.0 0.5 0)) 1)")
+    time.sleep(1.0)
+    ev(g, f"(progn ({K}build-thing (list :pillow 0.0 0.0 0.5 0)) 1)")
+    check("гость положил подушку — она у обоих", lambda: (ev(h, things), ev(g, things)), lambda v: v[0] == v[1] == f"({n + 1} {planks})", within=6)
+    ev(g, f"(progn ({K}unbuild-thing (list :pillow 0.0 0.0 0.5 0)) 1)")
+    check("подушку поставил и убрал, а товар стройкой не появляется",
+          lambda: (ev(h, things), ev(g, things)), lambda v: v[0] == v[1] == f"({n} {planks})", within=6)
     # the customer is shared
     arrive_first_market(h)
     ev(h, f"(setf {K}*window-open* t)")
     check("гость видит получателя у окна", lambda: ev(g, f"(getf {K}*client* :kind)"), ":RECIPIENT", within=18)
     check("получатель дошёл до окна", lambda: ev(h, f"(and {K}*client* (<= (getf {K}*client* :arrive) 0) t)"), "T", within=12)
-    ev(g, f"""(let ((it (find 0 {K}*items* :key (lambda (it) ({K}spec-addr (car it))))))
-        (godot:node-queue-free (cdr it))
-        (setf {K}*items* (remove it {K}*items*) {K}*carry* (cons :box 0) {K}*carry-from* (car it) {K}*took* (car it))
-        ({K}show-carry)
-        (setf {K}*view* :inside {K}*pos* (godot:vector3 0.5 0 0.0) {K}*yaw* -1.57 {K}*pitch* -0.32)
+    ev(g, f"(progn ({K}take-thing (car (find 0 {K}*items* :key (lambda (it) ({K}spec-addr (car it)))))) 1)")
+    check("гость взял посылку с полки", lambda: ev(g, f"{K}*carry*"), "(:BOX . 0)", within=4)
+    ev(g, f"""(progn (setf {K}*view* :inside {K}*pos* (godot:vector3 0.5 0 0.0) {K}*yaw* -1.57 {K}*pitch* -0.32)
         ({K}carry-use) 1)""")
     check("гость вручил посылку: у обоих её нет, руки пусты",
           lambda: (ev(h, f"({K}parcels-left)"), ev(g, f"(list ({K}parcels-left) {K}*carry*)")),
