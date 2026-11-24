@@ -98,6 +98,10 @@ terrain is drawn a hundred kilometres below: out of everybody's sight."
     (setf *terrain-shown* (and on t))
     (terrain-shift)))
 
+(defun make-land (root)
+  "Put the land of the base world under ROOT - unless this run is the baking of the map, which makes its own."
+  (unless *baking* (make-terrain root)))
+
 (defun terrain-param (name value)
   (when *terrain* (object-call (object-get *terrain* "material") "set_shader_param" name value)))
 

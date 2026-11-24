@@ -103,7 +103,7 @@ That is the body, the truck under it, everything bolted on inside, the things an
   (add-layout-twins)
   (make-pivots root)
   (make-sky root)
-  (unless *baking* (make-terrain root))                   ; the land: the baked map, drawn by Terrain3D (zemlya.lisp). The world stands on it
+  (make-land root)                                        ; the land: the baked map, drawn by Terrain3D (zemlya.lisp). The world stands on it
   (start-trip)
   (read-mega-paints)
   (read-places)                                           ; where things stand in the wagon: from the Blender files (mesta.lisp)
