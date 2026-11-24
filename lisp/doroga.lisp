@@ -104,9 +104,14 @@ under it is slightly lower (STRIP-HEIGHT); over the chasm the ribbon runs alone 
   (let* ((d0 (* k *road-piece*)) (n 10) (step (/ *road-piece* n)) (base (road-pos d0))
          (snow (if (eq *season* :winter) .6 0.0)) (st (gdext:make-object "SurfaceTool")) (uv (vector2 0 0))
          (mi (gdext:make-object "MeshInstance3D")))
-    (flet ((pt (s j) (destructuring-bind (x y z) (road-pos (+ d0 (* j step)) s *road-lift*)
-                       (v3 (- x (first base)) (- y (second base)) (- z (third base)))))
-           (tint (rgb) (mix-color (hex rgb) (hex "#c9ced6") snow)))
+    ;; a corner is shared by the strips beside it and by the next row, and a colour by every row: each is worked out
+    ;; once - in the browser a ribbon took 60-130 ms, a jolt every 40 m of the way
+    (let ((points (make-hash-table :test 'equal)) (tints (make-hash-table :test 'equal)))
+     (flet ((pt (s j) (or (gethash (cons s j) points)
+                         (setf (gethash (cons s j) points)
+                               (destructuring-bind (x y z) (road-pos (+ d0 (* j step)) s *road-lift*)
+                                 (v3 (- x (first base)) (- y (second base)) (- z (third base)))))))
+           (tint (rgb) (or (gethash rgb tints) (setf (gethash rgb tints) (mix-color (hex rgb) (hex "#c9ced6") snow)))))
       (object-call st "begin" 3)
       (dotimes (j n)
         (when (town-at (+ d0 (* (+ j .5) step)))                               ; in a town - curb and sidewalks
@@ -124,11 +129,11 @@ under it is slightly lower (STRIP-HEIGHT); over the chasm the ribbon runs alone 
       (object-set mi "cast_shadow" 0)
       (node-add-child *land* mi)
       (node-3d-set-position mi (v3 (first base) (second base) (third base)))
-      mi)))
+      mi))))
 
 (defun step-roads ()
   "Keep the ribbons of all roads nearby on the map, not only of the one we drive on.
-At a fork one can thus see where the other road goes. At most two new ribbons are built per frame."
+At a fork one can thus see where the other road goes. At most one new ribbon is built per frame."
   (multiple-value-bind (x z) (road-point *dist*)
     (when (and *roads-at* (not (eq (fourth *roads-at*) *season*))) (clear-roads))   ; in winter the road is under snow - repaint
     (when (or (null *roads-at*) (> (max (abs (- x (first *roads-at*))) (abs (- z (second *roads-at*)))) 30.0)
@@ -142,10 +147,10 @@ At a fork one can thus see where the other road goes. At most two new ribbons ar
         (dolist (k (sort want #'< :key (lambda (k) (multiple-value-bind (px pz) (road-point (* (+ k .5) *road-piece*))   ; the nearest first:
                                                    (+ (abs (- px x)) (abs (- pz z)))))))                         ; the road under the wheels, then the others
           (unless (gethash k *road-pieces*)
-            (if (< made 2)
+            (if (< made 1)
                 (progn (setf (gethash k *road-pieces*) (build-road-piece k)) (incf made))
                 (incf made))))
-        (setf *roads-at* (list x z (max 0 (- made 2)) *season*))))))        ; some are left unbuilt - we will come again
+        (setf *roads-at* (list x z (max 0 (- made 1)) *season*))))))        ; some are left unbuilt - we will come again
 
 (defun clear-roads ()
   (maphash (lambda (k node) (declare (ignore k)) (node-queue-free node)) *road-pieces*)
@@ -511,17 +516,19 @@ When we come back they are built again."
   (maphash (lambda (d tops) (declare (ignore tops)) (when (out-of-window-p d) (remhash d *pole-wires*))) *pole-wires*))
 
 (defun step-roadside (delta)
-  (step-team delta)
-  (step-style-new)
+  (timed :rs-team (step-team delta))
+  (timed :rs-style (step-style-new))
+  (timed :rs-listed
   (cover :poles *pole-step* (lambda (d i) (declare (ignore i)) (add-pole d)))
   (dolist (d *stop-ds*)
     (listed ((list :stop d) d) (let ((*seed* (rs-for (+ d 1)))) (add-stop d))))
   (listed (:depot 16.0 440.0) (let ((*seed* (rs-for 16))) (depot (lot 16.0 1))))        ; the depot we set out from
   (listed (:km0 60.0) (add-km-sign 60.0))
-  (dolist (z *zebra-ds*) (listed ((list :zebra z) z) (add-zebra z)))
-  (step-city)
-  (unless (net-guest-p) (step-fuel delta))
-  (step-station)
+  (dolist (z *zebra-ds*) (listed ((list :zebra z) z) (add-zebra z))))
+  (timed :rs-city (step-city))
+  (timed :rs-fuel (unless (net-guest-p) (step-fuel delta))
+  (step-station))
+  (timed :rs-rest
   (cover :lamps 26.0 (lambda (d i) (declare (ignore i)) (when (town-at d) (add-lamp d))))
   (dolist (tw *towns*)                                                    ; stele at the entrance, sign at the exit, market in the middle
     (let ((i (town-index tw)) (in (- (town-start tw) 12)) (out (+ (town-end tw) 12)) (mid (town-stop-d tw)))
@@ -531,4 +538,4 @@ When we come back they are built again."
       (listed ((list :km-back i) (- in 13)) (add-km-sign (- in 13) t))
       (listed ((list :market i) mid) (add-market mid) (when (town-memory tw) (add-bus (- mid 15))))))
   (step-stops)
-  (sweep-roadside))
+  (sweep-roadside)))
