@@ -439,10 +439,11 @@ On the highway there is an identical one opposite, across the road, for those dr
 Sometimes cats wait at it (STOP-SPOT says where)."
   (dolist (side (if (town-at d) '(1) '(1 -1)))                 ; in a town there are houses on the left - no paired bus stop there
     (destructuring-bind (x y z) (side-point (if (> side 0) *stop-x* (- *lane-x* *stop-x*)) d 0.0)
-      (let ((g (keep (group *world* x y z) d)))
+      (unless (on-road-p x z 2.5)                                                ; at a fork - not on the other road: the wagon drove through it
+       (let ((g (keep (group *world* x y z) d)))
         (node-3d-set-rotation g (v3 0 (- (if (> side 0) 0 pi) (road-frame d)) 0))
         (stop-look g d)                                                        ; eighteen looks - stops.lisp
-        (model g "stop-base"))))
+        (model g "stop-base")))))
   (let ((people (loop for i below (nth (random 6) '(0 1 1 1 2 2))
                       collect (apply #'add-person (stop-spot d i)))))
     (push (list d people nil) *stops*)))

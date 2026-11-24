@@ -12,15 +12,19 @@ Steps, in order:  go            load the page            wait:SECONDS
                   shot:FILE.png a screenshot             js:EXPRESSION  evaluate in the page and print
                   lisp:FORMS    evaluate in the game (only with ?dev in the address) and print the answer
                   ready[:SEC]   wait until the game answers such a question, SEC seconds at most (300): the page is loaded
+                  until:SEC:FORMS  ask the game FORMS every 5 s until the answer is not NIL, SEC seconds at most
                   rec:SECONDS:DIR  record frames into DIR/0000.png ... (for a GIF: tools/make-gif.py)
 The lobby: "set out alone" is at 350,174, "open a route" at 350,201; the intro cards turn on a click at 480,200.
 The game takes about 40 s to start under the software renderer. ?dev and ?torture go into the address.
 Chrome: ~/.local/bin/google-chrome (set CHROME to change); the snap Chromium will not do.
+The picture is drawn in software unless WEB_EYES_GPU names an ANGLE backend (gl, gl-egl, vulkan): then the real video
+card draws it, still without a window - the only way the frame rate means anything.
 """
 import json, subprocess, sys, time, urllib.request, tempfile, os, base64, websocket
 url = sys.argv[1]; prof = sys.argv[2]; script = sys.argv[3:]
 chrome = subprocess.Popen([os.environ.get("CHROME","/home/lil/.local/bin/google-chrome"), "--headless=new", "--no-sandbox", "--no-first-run", f"--user-data-dir={prof}",
-    "--enable-unsafe-swiftshader", "--use-gl=angle", "--use-angle=swiftshader", "--ignore-gpu-blocklist", "--autoplay-policy=no-user-gesture-required", "--mute-audio",
+    *(["--use-gl=angle", "--use-angle=" + os.environ["WEB_EYES_GPU"], "--enable-gpu"] if os.environ.get("WEB_EYES_GPU")      # the real video card: for frame rates
+      else ["--enable-unsafe-swiftshader", "--use-gl=angle", "--use-angle=swiftshader"]), "--ignore-gpu-blocklist", "--autoplay-policy=no-user-gesture-required", "--mute-audio",
     "--remote-debugging-port=9333", "--remote-allow-origins=*", "--window-size=960,540", "about:blank"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 try:
     for _ in range(40):
@@ -84,8 +88,19 @@ try:
                 pump(.25)
                 r = call("Runtime.evaluate", expression="(window.__lispOut && window.__lispOut.length) ? window.__lispOut.shift() : null", returnByValue=True)
                 v = r.get("result", {}).get("value")
-                if v is not None: print("LISP =>", v[:600], flush=True); break
+                if v is not None: print("LISP =>", v[:int(os.environ.get("WEB_EYES_MAX", 600))], flush=True); break
             else: print("LISP => нет ответа", flush=True)
+        elif op == "until":                # until:SECONDS:FORMS - ask the game every 5 s until the answer is not NIL, SECONDS at most
+            limit, form = arg.split(":", 1); t0 = time.time(); ok = False
+            while time.time() - t0 < float(limit) and not ok:
+                pump(5.0)
+                send("Runtime.evaluate", expression=f"(window.__lisp = window.__lisp || []).push({json.dumps(form)})")
+                for _ in range(40):
+                    pump(.25)
+                    r = call("Runtime.evaluate", expression="(window.__lispOut && window.__lispOut.length) ? window.__lispOut.shift() : null", returnByValue=True)
+                    v = r.get("result", {}).get("value")
+                    if v is not None: ok = "NIL" not in v.upper().split("=>")[-1]; break
+            print("ДОЖДАЛИСЬ за" if ok else "НЕ ДОЖДАЛИСЬ за", round(time.time() - t0), "с", flush=True)
         elif op == "rec":                  # rec:SECONDS:DIR - frames as fast as the browser gives them, into DIR/0000.png ...
             secs, _, d = arg.partition(":"); os.makedirs(d, exist_ok=True); end = time.time() + float(secs); n = 0
             while time.time() < end:
