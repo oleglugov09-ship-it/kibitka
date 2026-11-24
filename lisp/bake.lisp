@@ -165,6 +165,44 @@ apart - x, z, heading and height. Numbers are 32-bit integers: millimetres, and 
       (format t "~&BAKE roads: ~d roads, ~d bytes, seam of the ring ~,2f m~%" (length *edges*) (length out)
               (- (formula-road-y (edge-d1 (ring))) (formula-road-y (edge-d0 (ring))))))))
 
+(defun ribbon-mesh (e a b)
+  "Return the mesh of the ribbon of road E from path coordinate A to B: the strips across and, in a town, a curb and
+sidewalks, in rows of four metres. Its points are counted from the road point at A, where the game puts it; it lies
+at road height, the land under it is slightly lower; over the chasm it runs alone as the bridge deck."
+  (declare (ignore e))
+  (let* ((n (max 1 (ceiling (- b a) 4.0))) (step (/ (- b a) n)) (base (road-pos a))
+         (st (gdext:make-object "SurfaceTool")) (uv (vector2 0 0))
+         (points (make-hash-table :test 'equal)) (tints (make-hash-table :test 'equal)))
+    (flet ((pt (s j) (or (gethash (cons s j) points)
+                         (setf (gethash (cons s j) points)
+                               (destructuring-bind (x y z) (road-pos (+ a (* j step)) s *road-lift*)
+                                 (v3 (- x (first base)) (- y (second base)) (- z (third base)))))))
+           (tint (rgb) (or (gethash rgb tints) (setf (gethash rgb tints) (hex rgb)))))
+      (object-call st "begin" 3)
+      (dotimes (j n)
+        (when (town-at (+ a (* (+ j .5) step)))                                 ; in a town - curb and sidewalks
+          (loop for (s0 s1 rgb) in '((-9.4 -6.6 "#67655f") (-6.6 -6.3 "#9a988f") (2.7 3.0 "#9a988f") (3.0 5.8 "#67655f"))
+                do (let ((c (tint rgb)))
+                     (object-call st "add_triangle_fan" (vector (pt s0 (1+ j)) (pt s1 (1+ j)) (pt s1 j) (pt s0 j))
+                                  (vector uv uv uv uv) (vector c c c c)))))
+        (loop for (s0 s1 rgb) in *road-strips*
+              do (let ((c (tint (if (eq rgb :line) (if (evenp (round (+ a (* j step)) 4.0)) "#b9b6ac" "#55524f") rgb))))
+                   (object-call st "add_triangle_fan" (vector (pt s0 (1+ j)) (pt s1 (1+ j)) (pt s1 j) (pt s0 j))
+                                (vector uv uv uv uv) (vector c c c c)))))
+      (object-call st "generate_normals")
+      (object-call st "commit"))))
+
+(defun bake-ribbons ()
+  "Bake the ribbons of all the roads into *RIBBONS-DIR*: a mesh for every *ROAD-PIECE* metres (doroga.lisp)."
+  (let ((saver (gdext:singleton "ResourceSaver")) (count 0) (t0 (get-internal-real-time)))
+    (dolist (e *edges*)
+      (loop for a from (edge-d0 e) below (- (edge-d1 e) .5) by *road-piece*
+            do (let ((mesh (ribbon-mesh e a (min (edge-d1 e) (+ a *road-piece*)))))
+                 (object-call saver "save" mesh (ribbon-path a) 32)              ; FLAG_COMPRESS
+                 (incf count))))
+    (format t "~&BAKE ribbons: ~d of ~d m on ~d roads, ~d s~%" count (round *road-piece*) (length *edges*)
+            (round (- (get-internal-real-time) t0) internal-time-units-per-second))))
+
 (defun bake-regions ()
   "Return the regions to bake, each as (rx rz): those within *BAKE-REACH* of a road, or the ones KIOSK_BAKE_ONLY names."
   (let ((only (ext:getenv "KIOSK_BAKE_ONLY")) (side (region-side)) (seen (make-hash-table)) (out '()))
@@ -223,6 +261,7 @@ makes the game's shader of it."
     (object-call *terrain* "set_save_16_bit" t)                          ; heights to the millimetre in half the bytes
     (object-call *terrain-data* "save_directory" "res://terrain/data")
     (bake-roads)
+    (bake-ribbons)
     (save-editor-resources)
     (format t "~&BAKE done: ~d regions, ~d with water, ~d s~%" (length regions) wet
             (round (- (get-internal-real-time) t0) internal-time-units-per-second))))

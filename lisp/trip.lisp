@@ -160,8 +160,15 @@ That is the body, the truck under it, everything bolted on inside, the things an
   (incf *day-t* (* gap *time-scale*)))
 
 (defvar *bake-wanted* *baking* "True until the map is baked, in a run that is not a game but the baking of the map (bake.lisp).")
+(defvar *ribbons-wanted* (and (ext:getenv "KIOSK_BAKE_ROADS") t) "True until the ribbons of the roads are baked, in a run that
+only does that: from the map as it is baked, not from the formulas (tools/bake-map.sh --roads).")
 
 (defmethod process ((root trip-root) delta)
+  (when *ribbons-wanted*
+    (setf *ribbons-wanted* nil)
+    (bake-ribbons)
+    (object-call (object-call root "get_tree") "quit")
+    (return-from process nil))
   (when *bake-wanted*                                      ; on the first frame, once the scene stands: bake and leave
     (setf *bake-wanted* nil)
     (bake-map root)

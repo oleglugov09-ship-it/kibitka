@@ -11,6 +11,7 @@
 | Высоты, раскладка текстур, цвет мест — по регионам 1024×1024 м, точка каждые 4 м | `project/terrain/data/terrain3d_XX_ZZ.res` | редактор Godot, кисти Terrain3D |
 | Вода: сетка на каждый регион, где она есть | `project/terrain/water/water_X_Z.res` | только перезапеканием |
 | Дороги: линия и высота каждые 2 м, развязка | `project/terrain/roads.bin` | только перезапеканием |
+| Полотно дорог: сетка на каждые 200 м каждой дороги (асфальт, разметка, в городе бордюр и тротуар) | `project/terrain/roads/*.res` | `tools/bake-map.sh --roads` — 3 секунды, из запечённой карты, землю не трогает |
 | Шейдер земли | `project/terrain/terrain.gdshader` | `tools/terrain-shader.py` |
 | Сцена и ресурсы для редактора | `project/terrain/terrain.tscn`, `assets.res`, `material.res` | создаются запеканием |
 

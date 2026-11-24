@@ -82,7 +82,10 @@ Things by the road are built on the go, so new materials keep appearing."
     (setf *styled* (hash-table-count *materials*))
     (apply-style)))
 
-;;; The roadway: a ribbon over the land in every piece, old asphalt with a center line
+;;; The roadway: a ribbon over the land, old asphalt with a center line. The ribbons are baked with the map
+;;; (BAKE-RIBBONS in bake.lisp, tools/bake-map.sh --roads): a mesh for every *ROAD-PIECE* metres of every road in
+;;; project/terrain/roads, which the game only loads. Built on the go, a ribbon cost the browser 20 ms and more
+;;; every 40 m of the way.
 
 (defparameter *road-lift* .07 "The height in meters of the roadway above the land.")
 (defparameter *road-strips*
@@ -92,73 +95,84 @@ Things by the road are built on the go, so new materials keep appearing."
 The :line strip is the marking between our lane (+-2.7 m, the wagon drives along its middle)
 and the oncoming one on the left; it is white in every other piece.")
 
-(defparameter *road-piece* 40.0 "The length of one road ribbon, in meters.")
+(defparameter *road-piece* 200.0 "The length of one road ribbon, in meters.")
 (defparameter *road-range* 900.0 "The distance on the map within which road ribbons are kept.")
-(defvar *road-pieces* (make-hash-table) "A table from a ribbon number (path coordinate / *ROAD-PIECE*) to its node.")
-(defvar *roads-at* nil)
+(defparameter *ribbons-dir* "res://terrain/roads" "Where the baked ribbons lie.")
+(defvar *road-pieces* (make-hash-table) "A table from a ribbon's number (RIBBON-KEY) to its node.")
+(defvar *roads-at* nil "Where the ribbons were last chosen: (x z).")
+(defvar *roads-want* '() "The ribbons still to load around *ROADS-AT*, each as (key . start), the nearest first.")
 
-(defun build-road-piece (k)
-  "Build the road ribbon that starts at path coordinate K times *ROAD-PIECE* and return its node.
-It has the strips across and, in a town, a curb and sidewalks. It lies at road height, the land
-under it is slightly lower (STRIP-HEIGHT); over the chasm the ribbon runs alone as the bridge deck."
-  (let* ((d0 (* k *road-piece*)) (n 10) (step (/ *road-piece* n)) (base (road-pos d0))
-         (snow (if (eq *season* :winter) .6 0.0)) (st (gdext:make-object "SurfaceTool")) (uv (vector2 0 0))
-         (mi (gdext:make-object "MeshInstance3D")))
-    ;; a corner is shared by the strips beside it and by the next row, and a colour by every row: each is worked out
-    ;; once - in the browser a ribbon took 60-130 ms, a jolt every 40 m of the way
-    (let ((points (make-hash-table :test 'equal)) (tints (make-hash-table :test 'equal)))
-     (flet ((pt (s j) (or (gethash (cons s j) points)
-                         (setf (gethash (cons s j) points)
-                               (destructuring-bind (x y z) (road-pos (+ d0 (* j step)) s *road-lift*)
-                                 (v3 (- x (first base)) (- y (second base)) (- z (third base)))))))
-           (tint (rgb) (or (gethash rgb tints) (setf (gethash rgb tints) (mix-color (hex rgb) (hex "#c9ced6") snow)))))
-      (object-call st "begin" 3)
-      (dotimes (j n)
-        (when (town-at (+ d0 (* (+ j .5) step)))                               ; in a town - curb and sidewalks
-          (loop for (s0 s1 rgb) in '((-9.4 -6.6 "#67655f") (-6.6 -6.3 "#9a988f") (2.7 3.0 "#9a988f") (3.0 5.8 "#67655f"))
-                do (let ((c (tint rgb)))
-                     (object-call st "add_triangle_fan" (vector (pt s0 (1+ j)) (pt s1 (1+ j)) (pt s1 j) (pt s0 j))
-                                  (vector uv uv uv uv) (vector c c c c)))))
-        (loop for (s0 s1 rgb) in *road-strips*
-              do (let ((c (tint (if (eq rgb :line) (if (evenp (+ j (* k n))) "#b9b6ac" "#55524f") rgb))))
-                   (object-call st "add_triangle_fan" (vector (pt s0 (1+ j)) (pt s1 (1+ j)) (pt s1 j) (pt s0 j))
-                                (vector uv uv uv uv) (vector c c c c)))))
-      (object-call st "generate_normals")
-      (object-set mi "mesh" (object-call st "commit"))
-      (object-set mi "material_override" (material "#ffffff" :vertex t :rough 1.0))
-      (object-set mi "cast_shadow" 0)
-      (node-add-child *land* mi)
-      (node-3d-set-position mi (v3 (first base) (second base) (third base)))
-      mi))))
+(defun ribbon-start (e d)
+  "Return the path coordinate where the ribbon of road E that holds path coordinate D starts."
+  (+ (edge-d0 e) (* *road-piece* (floor (- d (edge-d0 e)) *road-piece*))))
 
-(defvar *roads-want* '() "The numbers of the ribbons wanted around *ROADS-AT*, the nearest first.")
+(defun ribbon-key (start) "Return the number of the ribbon that starts at path coordinate START: its file is named so." (round start))
+
+(defun ribbon-path (start) (format nil "~a/~d.res" *ribbons-dir* (ribbon-key start)))
+
+(defparameter *ribbon-code* "
+shader_type spatial;
+// The roadway: its colour comes with the mesh, per vertex, as in \"#rrggbb\"; in winter it lies under snow.
+uniform float snow = 0.0;
+void fragment() {
+  // taken as it is, without turning sRGB into linear: so the road was drawn when it was built on the go
+  ALBEDO = mix(COLOR.rgb, vec3(0.788, 0.808, 0.839), snow);
+  ROUGHNESS = 1.0;
+  SPECULAR = 0.15;
+}")
+(defvar *ribbon-mat* nil "The ShaderMaterial of all the ribbons, with the parameter snow.")
+
+(defun ribbon-material ()
+  (or *ribbon-mat*
+      (let ((sh (gdext:make-object "Shader")) (mat (gdext:make-object "ShaderMaterial")))
+        (object-set sh "code" *ribbon-code*)
+        (object-set mat "shader" sh)
+        (gdext:setf-reference *ribbon-mat* mat))))
+
+(defun load-ribbon (start)
+  "Put the baked ribbon that starts at path coordinate START on the map and return its node; NIL (and an error in the
+log) when it is not baked."
+  (let* ((path (ribbon-path start))
+         (mesh (and (object-call (gdext:singleton "ResourceLoader") "exists" path)
+                    (present (object-call (gdext:singleton "ResourceLoader") "load" path)))))
+    (cond ((null mesh) (note-error (format nil "лента дороги ~a не запечена (tools/bake-map.sh --roads)" path) "roads") nil)
+          (t (let ((mi (gdext:make-object "MeshInstance3D")) (base (road-pos start)))
+               (object-set mi "mesh" mesh)
+               (object-set mi "material_override" (ribbon-material))
+               (object-set mi "cast_shadow" 0)
+               (node-add-child *land* mi)
+               (node-3d-set-position mi (v3 (first base) (second base) (third base)))
+               mi)))))
 
 (defun step-roads ()
   "Keep the ribbons of all roads nearby on the map, not only of the one we drive on.
-At a fork one can thus see where the other road goes. At most one new ribbon is built per frame; which ribbons
-are wanted is worked out once per 30 m driven, not every frame (at a fork that alone took a quarter of a second)."
+At a fork one can thus see where the other road goes. At most one ribbon is loaded per frame; which ribbons
+are wanted is worked out once per 30 m driven."
+  (object-call (ribbon-material) "set_shader_parameter" "snow" (if (eq *season* :winter) .6 0.0))
   (multiple-value-bind (x z) (road-point *dist*)
-    (when (and *roads-at* (not (eq (fourth *roads-at*) *season*))) (clear-roads))   ; in winter the road is under snow - repaint
     (when (or (null *roads-at*) (> (max (abs (- x (first *roads-at*))) (abs (- z (second *roads-at*)))) 30.0))
       (let ((want (make-hash-table)) (r (ceiling *road-range* *grid-cell*)))
         (loop for ix from (- (floor x *grid-cell*) r) to (+ (floor x *grid-cell*) r)
               do (loop for iz from (- (floor z *grid-cell*) r) to (+ (floor z *grid-cell*) r)
                        do (dolist (s (gethash (+ (* 100003 ix) iz) *road-grid*))
-                            (setf (gethash (floor (+ (edge-d0 (car s)) (* (cdr s) *map-step*)) *road-piece*) want) t))))
-        (maphash (lambda (k node) (unless (gethash k want) (node-queue-free node) (remhash k *road-pieces*))) *road-pieces*)
+                            (let ((start (ribbon-start (car s) (+ (edge-d0 (car s)) (* (cdr s) *map-step*)))))
+                              (setf (gethash (ribbon-key start) want) (cons start (car s)))))))
+        (maphash (lambda (k node) (unless (gethash k want) (when node (node-queue-free node)) (remhash k *road-pieces*))) *road-pieces*)
         (setf *roads-want*                                                    ; the nearest first: the road under the wheels, then the others
-              (mapcar #'cdr (sort (loop for k being the hash-keys of want
-                                        unless (gethash k *road-pieces*)
-                                          collect (multiple-value-bind (px pz) (road-point (* (+ k .5) *road-piece*))
-                                                    (cons (+ (abs (- px x)) (abs (- pz z))) k)))
+              (mapcar #'cdr (sort (loop for k being the hash-keys of want using (hash-value v)
+                                        unless (nth-value 1 (gethash k *road-pieces*))
+                                          collect (destructuring-bind (start . e) v
+                                                    (multiple-value-bind (px pz) (road-point (min (edge-d1 e) (+ start (/ *road-piece* 2))))
+                                                      (list (+ (abs (- px x)) (abs (- pz z))) k start))))
                                   #'< :key #'car))
-              *roads-at* (list x z 0 *season*))))
+              *roads-at* (list x z))))
     (when *roads-want*
-      (let ((k (pop *roads-want*)))
-        (unless (gethash k *road-pieces*) (setf (gethash k *road-pieces*) (build-road-piece k)))))))
+      (destructuring-bind (k start) (pop *roads-want*)
+        (unless (nth-value 1 (gethash k *road-pieces*))
+          (setf (gethash k *road-pieces*) (load-ribbon start)))))))        ; NIL for one not baked: it is not asked for again
 
 (defun clear-roads ()
-  (maphash (lambda (k node) (declare (ignore k)) (node-queue-free node)) *road-pieces*)
+  (maphash (lambda (k node) (declare (ignore k)) (when node (node-queue-free node))) *road-pieces*)
   (clrhash *road-pieces*)
   (setf *roads-at* nil *roads-want* '()))
 
