@@ -88,9 +88,10 @@ sourceless light in which far things show as dark shapes (marks.lisp sets it by 
   ;; shadows: one cascade and only up close: far shadows are invisible in the haze, and drawing them
   ;; costs three times as many draw calls
   (object-set *sun* "directional_shadow_mode" 0)
-  ;; 50 m on a 4096 map: a point of the shadow is 2-3 cm, smaller than a point of the 640x360 picture. At 70 m on
-  ;; 2048 it was 7 cm, and the shadow of the moving wagon jumped from point to point - it shook all the way
-  (object-set *sun* "directional_shadow_max_distance" 50.0)
+  ;; 110 m on a 4096 map: a point of the shadow is 5 cm (at 70 m on 2048 it was 7, and the shadow of the moving wagon
+  ;; jumped from point to point). At 50 m the shadows of the houses ended in a line across the street right ahead
+  (object-set *sun* "directional_shadow_max_distance" 110.0)
+  (object-set *sun* "directional_shadow_fade_start" .55)                ; shadows thin out from 60 m on, not cut off
   (object-set *sun* "shadow_blur" 1.6)                                  ; with the soft edges of project.godot: the edge of a shadow does not crawl
   (object-set *sun* "shadow_bias" .1)           ; lower and shadow ripple flickers on far slopes;
   (object-set *sun* "shadow_normal_bias" 1.0)   ; the wagon's gaps are closed by geometry, no light leaks

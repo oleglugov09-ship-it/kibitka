@@ -31,8 +31,10 @@ By default it faces the road (towards -x of the lot)."
     (object-set l "pixel_size" (/ h 48.0))
     (object-set l "modulate" (hex rgb))
     (object-set l "outline_size" 0)
-    (object-set l "texture_filter" 0)
-    (object-set l "alpha_cut" 1)
+    ;; smoothed, with smaller copies for the distance, and soft edges: point-sampled and cut out, a sign seen from
+    ;; across the street (letters 8 points high in a 640x360 picture) was a crumble of dots (the author, 24.11)
+    (object-set l "texture_filter" 3)                                ; LINEAR_WITH_MIPMAPS
+    (object-set l "alpha_cut" 2)                                     ; OPAQUE_PREPASS
     (node-add-child parent l)
     (node-3d-set-position l (v3 x y z))
     (node-3d-set-rotation l (v3 pitch yaw 0))
