@@ -14,8 +14,9 @@
 (defvar *slogans* '() "The slogans on the roofs of tall houses, from mods: a list of strings.")
 (defparameter *city-ahead* 430.0 "The distance ahead at which a town is built, far enough for it to rise out of the haze.")
 (defparameter *zones*
-  '((.00 :village) (.13 :garages) (.24 :blocks5) (.43 :centre) (.57 :blocks9) (.76 :garages) (.87 :village))
-  "The kinds of buildings a town has along the road.
+  '((.00 :village) (.10 :garages) (.19 :blocks9) (.31 :old) (.42 :centre) (.58 :old) (.69 :blocks9) (.81 :garages) (.90 :village))
+  "The kinds of buildings a town has along the road: the same from either end, as a town grows - log houses and
+garages at the edge, the tall panel blocks of the newest districts, the older quarters, and the centre in the middle.
 Each entry is (FRACTION KIND): from which fraction of the town's length, and what is built.")
 
 (defvar *stations* '() "The path coordinates at which gas stations stand.")
@@ -117,11 +118,12 @@ The foundation goes 4 m into the ground, so on a slope there is no gap under the
 
 (defparameter *section* 16.0 "The length of one entrance section of a panel block, in metres; it is 12 m deep.")
 
-(defun house-sections (g floors n x z rgb &key (lit 3))
+(defun house-sections (g floors n x z rgb &key (lit 3) file)
   "Set N entrance sections of FLOORS storeys (5, 9 or 12) side by side along z under G: the facade at X, the middle at Z.
-A section is drawn in Blender (models/doma/house-section-FLOORS.blend); RGB paints the walls, the balconies take
-turns in three colours. Up to LIT windows are lit: at the points at_lit_... of the model. Return the length built."
-  (let ((file (format nil "house-section-~d" floors)))
+A section is drawn in Blender (models/doma/house-section-FLOORS.blend, or FILE for a house of another manner); RGB
+paints the walls, the balconies take turns in three colours. Up to LIT windows are lit: at the points at_lit_... of
+the model. Return the length built."
+  (let ((file (or file (format nil "house-section-~d" floors))))
     (dotimes (i n)
       (let ((balcony (nth (mod i 3) '("#9a9488" "#7f8a8c" "#a8a08c"))) (sz (+ z (* (- i (/ (1- n) 2)) *section*))))
         ;; all the sections of a town in one go, each with its balconies' colour: seen once the houses are baked
@@ -134,6 +136,20 @@ turns in three colours. Up to LIT windows are lit: at the points at_lit_... of t
                    (shape g :box '(.14 1.25 1.35) "#e8c070" (+ x px) py (+ z (* (- (random n) (/ (1- n) 2)) *section*) pz)
                           :emit "#ffc060" :energy .9 :shadow nil)))))
     (* n *section*)))
+
+(defun old-style (tw)
+  "Return the manner of the older quarters of town TW, by what the town lives on: :STALIN for a town of offices and
+institutes, :KONSTR for a town built round a works in the twenties, :PLAIN where there was never more than panels."
+  (case (town-theme tw)
+    ((:admin :university :military :resort) :stalin)
+    ((:factory :rail :mine :port :sawmill) :konstr)
+    (t :plain)))
+
+(defun old-house (g file floors d x z)
+  "Add to G a house of the older town along the street, about D metres long: sections of the model FILE, FLOORS
+storeys, in the warm plaster those houses wear. Their ends have windows: no mosaic there."
+  (house-sections g floors (max 2 (round d *section*)) x z (elt '("#b8a888" "#a89c84" "#c0b090" "#9c9484") (random 4))
+                  :lit (+ 2 floors) :file file))
 
 (defun panel-house (g floors w d x z &key slogan)
   "Add to G a panel apartment block of FLOORS storeys standing along the street, about D metres long:
@@ -328,21 +344,34 @@ Return the length of the lot."
          (if (< side 0)
              (progn (factory (at 64.0) 64.0) 64.0)
              (progn (garages (at 30.0) 30.0) 34.0)))
-        (:blocks5
-         (if (zerop (random 2))
-             (progn (end-on-blocks (at 104.0) 5 3) 104.0)
-             (let ((g (at 70.0)))
-               (panel-house g 5 12.0 62.0 12.0 0)
-               (when (zerop (random 2)) (parked-car g 1.6 (- (random 40.0) 20)))
-               (when (zerop (random 4)) (kvas g 3.0 26))
-               70.0)))
+        ;; the older quarters: five-storey panel blocks everywhere, and between them what the town was before
+        ;; them - houses with pilasters and cornices, or the flat-roofed ones with ribbon windows
+        (:old
+         (let ((style (old-style tw)) (n (random 3)))
+           (cond ((and (eq style :stalin) (plusp n))
+                  (let ((g (at 70.0)))
+                    (old-house g "house-stalin-5" 5 62.0 12.0 0)
+                    (when (zerop (random 2)) (parked-car g 1.6 (- (random 40.0) 20)))
+                    70.0))
+                 ((and (eq style :konstr) (plusp n))
+                  (let ((g (at 56.0)))
+                    (old-house g "house-konstr-4" 4 48.0 12.0 0)
+                    (when (zerop (random 4)) (kvas g 3.0 20))
+                    56.0))
+                 ((zerop (random 2)) (end-on-blocks (at 104.0) 5 3) 104.0)
+                 (t (let ((g (at 70.0)))
+                      (panel-house g 5 12.0 62.0 12.0 0)
+                      (when (zerop (random 2)) (parked-car g 1.6 (- (random 40.0) 20)))
+                      (when (zerop (random 4)) (kvas g 3.0 26))
+                      70.0)))))
         (:centre
          (let ((n (random 3)))
            (cond ((and (< side 0) (not (town-plaza tw)))               ; the square with the house of culture: one per town
                   (setf (town-plaza tw) t)
                   (let ((g (at 62.0))) (plaza g) (culture-house g) 62.0))
                  ((= n 0) (let ((g (at 30.0))) (shop g (nth (random (length *shop-names*)) *shop-names*)) (parked-car g 1.6 6) 30.0))
-                 (t (let ((g (at 70.0))) (panel-house g 5 12.0 62.0 12.0 0) (shop-front g) 70.0)))))
+                 ((eq (old-style tw) :plain) (let ((g (at 70.0))) (panel-house g 5 12.0 62.0 12.0 0) (shop-front g) 70.0))
+                 (t (let ((g (at 70.0))) (old-house g "house-stalin-5" 5 62.0 12.0 0) (shop-front g) 70.0)))))   ; the main street: the grand houses, shops below
         (:blocks9
          (case (random 4)
            (0 (tower (at 34.0)) 34.0)

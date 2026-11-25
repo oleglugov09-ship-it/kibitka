@@ -1,7 +1,8 @@
 ;;;; Bus stops. In the Soviet Union everyone built them however they pleased, and each is a small sculpture:
 ;;;; a wave, a mushroom, a tent, a bird, a rainbow, a yurt, a saucer on legs. There are eighteen kinds;
 ;;;; STOP-LOOK decides which one stands at path coordinate D, the same for all players. Sixteen are drawn in
-;;;; Blender (models/stop-1.blend ... stop-17.blend), two are built in code (the box in doroga.lisp, the mural wall here).
+;;;; Blender (models/ostanovki/stop-K.blend, redrawn 25.11.2026 as solid things: tools/draw/make_stops.py); the box takes
+;;;; its tiles' colours from the place (doroga.lisp) and the mural wall the ornament of its town (here).
 ;;;; A bus stop stands in group G: x+ is away from the road (the back wall is there), z runs along the
 ;;;; road, the floor is y 0.
 ;;;; The bench, the slab and the sign are shared (ADD-STOP); the canopy must not come closer to the road
