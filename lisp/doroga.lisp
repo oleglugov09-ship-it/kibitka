@@ -485,12 +485,12 @@ there with the roadside, baked."
       (model g "street-lamp"))))
 
 (defun add-stele (d name &optional back)
-  "Add the stele at a town entrance at path coordinate D: a concrete slab with an emblem and NAME.
+  "Add the stele at a town entrance at path coordinate D: a concrete pylon with a gear and a star, and a wall with NAME in letters.
 BACK is for those entering from the other end: it stands on their right side, facing them."
   (destructuring-bind (x y z) (side-point (if back (- *lane-x* 8.5) 8.5) d -.2)
     (let ((g (keep (group *world* x y z) d)))
       (node-3d-set-rotation g (v3 0 (- (if back pi 0) (road-frame d)) 0))
-      (sign g name -.3 1.6 .9 :h .7 :rgb "#d8d4c4")
+      (destructuring-bind (px py pz) (model-point "stele" "name") (sign g name px py pz :h .8 :rgb "#8a4038"))
       (model g "stele"))))
 
 (defun add-km-sign (d &optional back)

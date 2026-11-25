@@ -222,7 +222,7 @@ FIRST and LAST mark the portals."
 (defun diner-kiosk (g name rgb)
   "Build in group G a round pavilion with a serving window, standing tables and a barrel of kvass."
   (model g "diner-kiosk" 0.0 0.0 0.0 :paint (list rgb))
-  (sign g name 11.55 3.25 0 :h .6 :rgb "#f0ece0")
+  (sign g name 10.3 3.6 0 :h .5 :rgb "#f0ece0")
   (diner-cat g 13.0 0 (- (/ pi 2)) 5)
   (loop for (x z) in '((8.0 -4.0) (7.4 .5) (8.4 4.5)) for i from 0 do (diner-cat g (+ x .8) z (- (/ pi 2)) (+ 9 (* i 7))))
   (kvas g 9.0 9.5))
