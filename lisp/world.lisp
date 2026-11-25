@@ -74,16 +74,27 @@ apart flicker: so the scene never reaches beyond a kilometre from it.")
           (shape g :box (list .06 (* .9 (first dims)) .06) "#4a3424" (* .3 (cos a)) (- y (* .2 (first dims))) (* .3 (sin a))
                  :rot (list (* .5 (sin a)) 0 (* .5 (cos a))))))))
 
+(defun tree (g file rgb)
+  "Stand in G the tree drawn in FILE, its needles or leaves in RGB: each turned its own way, a little taller or
+shorter than the drawing. The trees are of their true height: a pine is twenty metres, not five."
+  (let ((s (+ .85 (random .35))))
+    (model g file 0.0 0.0 0.0 :paint (list rgb) :rot (list 0 (random 6.28) 0) :scale (list s s s))))
+
+(defun leafy (g name rgb)
+  "Stand in G a leafy tree of the kind NAME (\"birch\", \"lime\") with leaves of the season; in winter, bare."
+  (let ((c (if (and (eq *season* :spring) (string= name "birch")) "#7ac050" (season-crown rgb))))   ; a birch does not blossom
+    (tree g (format nil "tree-~a-~d~:[-bare~;~]" name (1+ (random 2)) c) (or c "#4a3424"))))
+
 (defun build-prop (g kind side)
   "Build a thing of kind KIND in the group G (already in place).
 SIDE is ±1, the side of the road. The colours of foliage and flowers follow the season."
   (case kind
-    (:pine (shape g :cyl '(.15 .25 3 5) "#3a2a1e" 0 1.5 0)
-     (loop for j below 3 do (shape g :cone (list (- 1.4 (* j .35)) 1.8) (season-conifer (nth j '("#1e3a24" "#24482c" "#2a5232"))) 0 (+ 2.4 j) 0)))
-    (:round (shape g :cyl '(.18 .25 2.4 5) "#4a3424" 0 1.2 0) (crown g '(1.4) "#3a6a2a" 0 3 0))
-    (:autumn (shape g :cyl '(.16 .24 2.6 5) "#4a3424" 0 1.3 0)
-     (crown g (list (+ 1.3 (random .5))) (nth (random 3) '("#d86a20" "#c84020" "#e0a030")) 0 3.1 0))
-    (:birch (shape g :cyl '(.1 .14 4 6) "#e0dcd0" 0 2 0) (crown g '(1.0) "#8ab040" 0 4 0))
+    (:pine (if (zerop (random 7))                                   ; a bor is pines; now and then a spruce under them
+               (tree g (format nil "tree-spruce-~d" (1+ (random 2))) (season-conifer "#1e3a24"))
+               (tree g (format nil "tree-pine-~d" (1+ (random 3))) (season-conifer (elt '("#24482c" "#2a5232" "#2c4a2a") (random 3))))))
+    (:round (leafy g "lime" "#3a6a2a"))
+    (:autumn (leafy g (if (zerop (random 3)) "birch" "lime") (elt '("#d86a20" "#c84020" "#e0a030") (random 3))))
+    (:birch (leafy g "birch" "#8ab040"))
     (:bush (crown g (list (+ .6 (random .4))) "#4a6a2a" 0 .35 0 :scale '(1.4 .7 1.2)))
     (:snag (model g "prop-snag"))
     (:lantern (shape g :box '(.12 2.2 .12) "#4a3626" 0 1.1 0) (shape g :box '(.6 .06 .06) "#4a3626" (* side -.25) 2.15 0)
@@ -113,23 +124,31 @@ SIDE is ±1, the side of the road. The colours of foliage and flowers follow the
                (loop for child across (node-get-children node) do (far child))))
       (loop for child across (node-get-children g) do (far child)))))
 
+(defparameter *woods* '(:pine 2 :birch 1 :autumn 1)
+  "How many trees stand behind every tree by the road, by the vegetation: a bor is a wall of trunks, not a row.")
+
+(defun place-prop (d side kind x)
+  "Stand a thing of kind KIND at path coordinate D, X metres from the road (signed), unless another road runs there."
+  (let ((h (min (height-at x d) (height-at (- x 1.2) d) (height-at (+ x 1.2) d)))   ; on a slope — by the lower edge, so it does not hang in the air
+        (wet (> (max (weight :water :lake d) (weight :water :river d)) .01)))
+    (when (and wet (< h (- *water-y* .1))) (setf kind :reeds))     ; only reeds grow in water
+    (destructuring-bind (wx wy wz) (road-pos d x)                 ; at a fork this spot may turn out to be another road
+      (declare (ignore wy))
+      (when (on-road-p wx wz) (return-from place-prop nil)))
+    (let ((g (apply #'group *world* (road-pos d x (if wet (max *water-y* h) (- h .3))))))
+      (node-3d-set-rotation g (v3 0 (- (road-frame d)) 0))
+      (build-prop g kind side)
+      (setf *props* (nconc *props* (list (cons g d)))))))
+
 (defun add-prop (d side)
   (when (bare-at d) (return-from add-prop nil))                  ; a bridge, a tunnel
   (when (town-at d) (return-from add-prop (town-prop d side)))   ; a town has its own roadside (doroga.lisp)
   (let* ((veg (pick-weighted (layer-weights :veg d)))
          (kinds (getf *veg-props* veg))
-         (kind (season-prop (nth (random (length kinds)) kinds)))
-         (x (* side (if (eq kind :cliff) (+ 16 (random 8.0)) (+ (if (< side 0) 7.8 4) (random 12.0)))))   ; on the left — beyond the oncoming lane
-         (h (min (height-at x d) (height-at (- x 1.2) d) (height-at (+ x 1.2) d)))   ; on a slope — by the lower edge, so it does not hang in the air
-         (wet (> (max (weight :water :lake d) (weight :water :river d)) .01)))
-    (when (and wet (< h (- *water-y* .1))) (setf kind :reeds))     ; only reeds grow in water
-    (destructuring-bind (wx wy wz) (road-pos d x)                 ; at a fork this spot may turn out to be another road
-      (declare (ignore wy))
-      (when (on-road-p wx wz) (return-from add-prop nil)))
-    (let ((g (apply #'group *world* (road-pos d x (if wet (max *water-y* h) (- h .3))))))
-      (node-3d-set-rotation g (v3 0 (- (road-frame d)) 0))
-      (build-prop g kind side)
-      (setf *props* (nconc *props* (list (cons g d)))))))
+         (kind (season-prop (elt kinds (random (length kinds))))))
+    (place-prop d side kind (* side (if (eq kind :cliff) (+ 16 (random 8.0)) (+ (if (< side 0) 7.8 4) (random 12.0)))))   ; on the left — beyond the oncoming lane
+    (loop repeat (getf *woods* veg 0)                              ; the wood behind the roadside
+          do (place-prop (+ d (random *prop-step*)) side veg (* side (+ 18.0 (random 34.0)))))))
 
 ;;; The window around the wagon. Everything by the roadside is built not 'ahead in ascending path coordinate'
 ;;; but in a window around the wagon: far along its heading (*AHEAD*), a little behind (*BEHIND*). Where it is

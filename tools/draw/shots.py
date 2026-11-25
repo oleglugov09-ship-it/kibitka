@@ -2,7 +2,7 @@
 """Look at the bus stops and the houses in the game itself: the desktop game on a hidden screen (as tools/perf-drive.py
 does), the wagon put by each kind of bus stop and in the quarters of a few towns, a screenshot of each.
 
-    tools/draw/shots.py OUT-DIR [stops|towns]
+    tools/draw/shots.py OUT-DIR [stops|towns|wood]
 
 Needs the desktop build (`make live`) and sway. No window appears on the desktop."""
 import os, subprocess, sys, tempfile, time, shutil
@@ -40,6 +40,7 @@ try:
     time.sleep(3)
     lisp("(progn (setf *story-stage* :done) (when *show* (setf *show* nil) (show-card)) 1)")          # no opening words of the story over the picture
     lisp("(progn (setf *hud-hidden* t *day-t* 400.0 *time-scale* 0.0 *view* :outside *sway* 0.0) (set-weather :clear 6000) 1)")
+    lisp("(progn (set-season :" + os.environ.get("SEASON", "summer") + ") 1)")                       # SEASON=winter to see the snow
     def shot(name, d, yaw, pitch, dist):
         lisp(f"(progn (jump-dist {d}) (halt) (setf *orbit-yaw* {yaw} *orbit-pitch* {pitch} *orbit-dist* {dist}) 1)")
         time.sleep(3.5)
@@ -59,6 +60,17 @@ try:
         d0 = float(lisp("(format nil \"~d\" (round (first (find " + what[1] + " *gimmicks* :key (function second)))))").strip('"'))
         for i, (off, yaw, pitch, dist) in enumerate(((-24, -0.5, 0.25, 22.0), (-10, -1.2, 0.3, 30.0), (14, -2.4, 0.2, 26.0))):
             shot(f"booth-{what[1]}-{i}", d0 + off, yaw, pitch, dist)
+    if "wood" in what:                                          # the woods by their kinds, and the izbas at the edge of a town
+        for veg in ("pine", "birch", "autumn"):
+            d = lisp("(format nil \"~a\" (loop for d from 300 to 60000 by 40 when (and (not (town-at d)) (not (bare-at d)) (eq (dominant :veg d) :" + veg + ") (eq (dominant :veg (+ d 120)) :" + veg + ")) return d))").strip('"')
+            if not d.isdigit(): continue
+            shot(f"wood-{veg}-road", float(d), 0.0, 0.12, 9.0)
+            shot(f"wood-{veg}-side", float(d), -0.9, 0.3, 30.0)
+        towns = lisp("(format nil \"~{~a ~}\" (loop for tw in *towns* append (list (round (town-start tw)) (round (town-end tw)))))").strip('"').split()
+        for i, (a, b) in enumerate(list(zip(towns[0::2], towns[1::2]))[:2]):
+            a, b = float(a), float(b)
+            for k in range(2, 10):                                # along the village end of the town, looking back at either side of the street
+                shot(f"izby-{i}-{k}", a + k * .01 * (b - a), -2.3, 0.22, 15.0); shot(f"izby-{i}-{k}-r", a + k * .01 * (b - a), 2.3, 0.22, 15.0)
     if "towns" in what:
         towns = lisp("(format nil \"~{~a ~}\" (loop for tw in *towns* append (list (string-downcase (town-theme tw)) (round (town-start tw)) (round (town-end tw)))))").strip('"').split()
         done = set()

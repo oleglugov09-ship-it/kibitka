@@ -213,12 +213,16 @@ Between them are courtyards."
         (shape g :box '(3.0 .3 3.0) "#a8843c" 34 .15 (+ z 17))))))
 
 (defun izba (g x z)
-  "Add to G at (X, Z) a private house.
-It is a log house with a gable roof, windows with carved frames, a fence and a shed."
-  (let* ((wall (nth (random 4) '("#6a5038" "#4a6a5a" "#55708a" "#7a6a4a"))) (h (group g x 0 z)))
-    (model h "izba" 0.0 0.0 0.0 :paint (list wall))
-    (when (zerop (random 3)) (shape h :box '(.14 1.1 .9) "#e8c070" -.08 1.8 2 :emit "#ffc060" :energy .9 :shadow nil))
-    (when (zerop (random 3)) (chimney-smoke h 4.5 6.0 -1.5 :size .9))))                            ; the stove is lit
+  "Add to G at (X, Z) a private house: one of the four izbas, its frames and fence in a paint of its own.
+Now and then a window is lit and the stove smokes."
+  (let* ((file (format nil "izba-~d" (1+ (random 4))))
+         (trim (elt '("#5b86a8" "#4f7a5c" "#e6e2d6" "#c79a3e" "#8a4038" "#3f6f73") (random 6))) (h (group g x 0 z)))
+    (model h file 0.0 0.0 0.0 :paint (list trim))
+    (when (zerop (random 3))
+      (destructuring-bind (px py pz) (model-point file "window")
+        (shape h :box '(.06 1.0 .7) "#e8c070" px py pz :emit "#ffc060" :energy .9 :shadow nil)))
+    (when (zerop (random 3))                                                                        ; the stove is lit
+      (destructuring-bind (px py pz) (model-point file "smoke") (chimney-smoke h px py pz :size .9)))))
 
 (defun garages (g len)
   "Add to G a row of garages about LEN metres long, with doors of different colours, rusty here and there.

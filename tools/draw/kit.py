@@ -184,3 +184,20 @@ def _save(self, path):
 
 
 Model.lathe, Model.pyramid, Model.point, Model.save = _lathe, _pyramid, _point, _save
+
+
+import random as _random
+
+
+def _blob(self, mat, centre, radii, seed=0, detail=1, rough=0.18, flags=""):
+    """A lump of foliage or of stone: a faceted ball RADII (x, y, z) big round CENTRE, its points pushed in and out
+    by ROUGH, the same for the same SEED."""
+    bm = self.bm(mat, flags); tmp = bmesh.new(); rnd = _random.Random(seed)
+    bmesh.ops.create_icosphere(tmp, subdivisions=detail, radius=1.0)
+    for v in tmp.verts:
+        k = 1.0 + rnd.uniform(-rough, rough)
+        v.co = Vector((v.co.x * radii[0] * k + centre[0], v.co.y * radii[1] * k + centre[1], v.co.z * radii[2] * k + centre[2]))
+    self._merge(bm, tmp)
+
+
+Model.blob = _blob
