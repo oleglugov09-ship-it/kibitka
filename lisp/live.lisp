@@ -43,7 +43,7 @@ FORM may also be a string with several forms. Return the local result; the guest
 (live-fn host (&optional (name "Водитель")) "Open a lobby as the driver called NAME." (net-host name))
 (live-fn join (address &optional (name "Попутчик")) "Join the driver at ADDRESS as NAME." (net-join address name))
 (live-fn net () "Return the state of the network."
-  (list :role *net-role* :id *net-id* :others *net-others* :wait *net-wait* :departed *departed* :ver *net-ver* :version *net-version* :refused *net-refused*
+  (list :role *net-role* :id *net-id* :others *net-others* :wait *net-wait* :departed *departed* :version *net-version* :refused *net-refused*
         :peers (mapcar (lambda (p) (list (getf p :id) (getf p :name) (getf p :wait))) *net-peers*)))
 
 (live-fn window (&optional (open t)) "Slide the big window open when OPEN is true, or shut it when OPEN is NIL." (setf *window-open* open))

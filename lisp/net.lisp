@@ -63,15 +63,12 @@ Someone who returns after a dropped link is inside again, not at a bus stop.")
 :peer is the ENet connection or NIL, :key its number, :rid the seat in the room (a guest through the
 server), :id the number in the game, :ok true when the version matched, :name :x :z :yaw :inside who
 and where, :placed true once they sent where they stand, :wait the path coordinate of the bus stop
-where they wait, :ver which arrangement of things they know, :node the figure at the bus stop, :told true
-once the driver has been warned, :carry :props :from what is in their paws (as *CARRY*, *CARRY-PROPS* and
+where they wait, :node the figure at the bus stop, :told true once the driver has been warned, :carry :props :from what is in their paws (as *CARRY*, *CARRY-PROPS* and
 *CARRY-FROM* are for our own): the driver keeps it, a guest only shows what the driver says.")
 (defvar *net-peer* nil "The guest's link to the host.")
 (defvar *net-id* 0 "Our number at the host.")
 (defvar *net-next-id* 0)
 (defvar *net-clock* 0.0)
-(defvar *net-ver* 0 "The number of the arrangement of things.")
-(defvar *net-specs* nil "The driver's arrangement of things that *NET-VER* corresponds to; on a guest, as the driver last sent it.")
 (defvar *net-others* '() "The other players in the game, each a list (id name x z yaw inside eye look): see the fields below.")
 (define-fields other id name x z yaw inside eye look)   ; ID 0 is the driver; INSIDE: in the wagon; EYE: eye height; LOOK: see LOOK.LISP
 (defvar *net-avatars* '() "The cats of the other players, each (id :group node :cat cat :head head :x :z :yaw :y :hop).")
@@ -82,8 +79,6 @@ once the driver has been warned, :carry :props :from what is in their paws (as *
 (defvar *net-wait* nil "The guest's path coordinate of the bus stop where we wait for the wagon, or NIL when we are in it.")
 (defvar *net-sig* nil "The guest's record of the switches as the host knows them.")
 (defvar *net-hold* 0.0 "The time until which a guest ignores the driver's switches (we have just flipped one ourselves).")
-(defvar *net-mirror-hold* 0.0 "The time until which a guest's things may differ from the driver's arrangement as last sent:
-the driver has just moved a thing for us, we have shown it, and the new arrangement is on its way.")
 (defvar *wait-stood* 0.0 "The number of seconds the wagon has stood away from our bus stop, for a guest waiting there.")
 (defvar *rejoining* nil "Bound to T while a guest is returning by itself to the same room after a dropped link.")
 (defvar *net-resend* 0 "The guest's marker that there is an edit to send to the host.")
@@ -254,8 +249,7 @@ Type 1 is a connect, 2 a disconnect, 3 an incoming packet."
     (when (and server (not direct)) (gdext:release-reference server))
     (cond ((or direct ws)
            (setf *net-server* (and direct server) *net-ws* ws *net-room* (and ws code)
-                 *net-role* :host *net-name* (clean-name name "Водитель") *net-peers* '() *net-next-id* 0 *net-seated* '()
-                 *net-specs* (mapcar #'car *items*) *net-ver* 1)
+                 *net-role* :host *net-name* (clean-name name "Водитель") *net-peers* '() *net-next-id* 0 *net-seated* '())
            (say "Лобби открыто. Ждём попутчиков")
            t)
           (t (say "Не вышло открыть лобби: порт занят, сервера комнат нет") nil))))
@@ -267,7 +261,6 @@ Type 1 is a connect, 2 a disconnect, 3 an incoming packet."
         ;; On the dev polygon, and in a game started at the tunnel, nobody waits at a bus stop: everyone lands
         ;; straight in the wagon
         (and *departed* (not *dev*) (not (tunnel-mode-p)) (not (member (getf p :name) *net-seated* :test #'equal)))
-        *net-ver*
         (cons (append (list* 0 *net-name* (my-place)) (list (my-look)))
               (loop for q in *net-peers*
                     unless (or (eq q p) (getf q :wait) (not (getf q :placed)))
@@ -278,11 +271,6 @@ Type 1 is a connect, 2 a disconnect, 3 an incoming packet."
 
 (defun small-p (v &optional (limit 100)) (and (realp v) (< (- limit) v limit)))
 (defun far-p (v) (and (realp v) (<= 0 v 1e7)))
-
-(defun note-items ()
-  "Give the arrangement a new number because it has changed."
-  (let ((specs (mapcar #'car *items*)))
-    (unless (equal specs *net-specs*) (setf *net-specs* specs) (incf *net-ver*))))
 
 ;;; What a guest sends, one kind of message at a time. Each takes the guest's record P and returns it: a field set
 ;;; for the first time makes the record a new list, so whoever calls keeps what is returned.
@@ -300,16 +288,14 @@ Type 1 is a connect, 2 a disconnect, 3 an incoming packet."
   p)
 
 (defun host-placed (p fields)
-  "Guest P says where it is and how it looks: FIELDS is (name x z yaw inside wait version [eye look])."
-  (destructuring-bind (name x z yaw inside wait ver &optional (eye *eye*) (look 0)) fields
-    (declare (ignore ver))
+  "Guest P says where it is and how it looks: FIELDS is (name x z yaw inside wait [eye look])."
+  (destructuring-bind (name x z yaw inside wait &optional (eye *eye*) (look 0)) fields
     (when (and (stringp name) (small-p x) (small-p z) (small-p yaw) (or (null wait) (far-p wait)) (small-p eye 3))
       (setf (getf p :eye) eye (getf p :look) (if (look-ok-p look) look 0))
       (let ((new (not (getf p :placed))) (was (getf p :wait)))
         (setf (getf p :name) (clean-name name "Попутчик")
               (getf p :x) x (getf p :z) z (getf p :yaw) yaw (getf p :inside) inside
               (getf p :wait) wait (getf p :placed) t)
-        (when (and new (plusp *net-ver*)) (setf (getf p :ver) 0))
         (when new (log-event :peer-joined :name (getf p :name) :wait (and wait t) :dist (round *dist*) :relay (and (getf p :rid) t)))
         (cond ((and new wait) (say (format nil "~a ждёт на остановке впереди" (getf p :name))))
               (new (say (format nil (if *departed* "~a снова в кибитке" "~a на складе, в кибитке") (getf p :name))))
@@ -370,7 +356,7 @@ for each of those (TAKE-THING, FEED-STOVE and the rest)."
 All fields are present at once: later we edit them in place."
   (first (push (list :peer (and peer (gdext:add-reference peer)) :key (and peer (peer-key peer)) :rid rid
                      :id (incf *net-next-id*) :ok nil :name nil :x 0.0 :z 0.0 :yaw 0.0 :eye 1.55 :inside nil :wait nil
-                     :ver 0 :placed nil :node nil :told nil :look 0 :carry nil :props nil :from nil)
+                     :placed nil :node nil :told nil :look 0 :carry nil :props nil :from nil)
                *net-peers*)))
 
 (defun host-room ()
@@ -423,13 +409,8 @@ All fields are present at once: later we edit them in place."
           ((getf p :wait) (host-waiting p))
           (t (pushnew (getf p :name) *net-seated* :test #'equal))))
   (when tick
-    (note-items)
     (dolist (p *net-peers*)
-      (when (getf p :name)
-        (peer-send p (host-state p))
-        (unless (eql (getf p :ver) *net-ver*)
-          (peer-send p (list :i *net-ver* *net-specs*))
-          (setf (getf p :ver) *net-ver*))))                 ; delivery is reliable, so we do not send twice
+      (when (getf p :name) (peer-send p (host-state p))))
     (setf *net-others* (loop for p in *net-peers*
                              when (and (getf p :placed) (not (getf p :wait)))
                                collect (list (getf p :id) (getf p :name) (getf p :x) (getf p :z) (getf p :yaw) (getf p :inside) (getf p :eye)
@@ -445,7 +426,7 @@ WHERE is a room code (four letters) or an address on your own network."
   (net-stop)
   (flet ((joined (text)
            (setf *net-role* :guest *net-name* (clean-name name "Попутчик") *net-joined* nil *net-wait* nil
-                 *net-host* nil *net-seen* *time* *net-lost* nil *net-ver* 0 *speed* 0.0)
+                 *net-host* nil *net-seen* *time* *net-lost* nil *speed* 0.0)
            (say text) t))
     (if (room-code-p where)
         (let ((ws (ws-open (string-upcase where) "guest")))
@@ -545,18 +526,18 @@ stand on the windowsill, the same as by hand."
     (:play (start-play (second msg)))                         ; the driver let us into the booth game (igry.lisp)
     (:c (guest-run (second msg)))                             ; a live edit from the driver: run it and reply
     (:t (when (stringp (second msg)) (say (second msg))))     ; said to everyone
-    (:s (destructuring-bind (you seed dist speed day-t season weather fuel money planks fire fold departed ver others
+    (:s (destructuring-bind (you seed dist speed day-t season weather fuel money planks fire fold departed others
                              &optional client world)
             (rest msg)
           (unless (and (integerp you) (integerp seed) (far-p dist) (small-p speed) (far-p day-t)
                        (member season *seasons*) (keywordp weather) (small-p fuel) (integerp money) (integerp planks)
-                       (small-p fire 1000) (integerp ver) (listp others) (< (length others) 20)
+                       (small-p fire 1000) (listp others) (< (length others) 20)
                        (every (lambda (o) (and (fits o '(integer string t t t t t t)) (look-ok-p (other-look o))
                                                (small-p (other-x o)) (small-p (other-z o)) (small-p (other-yaw o)) (small-p (other-eye o) 3)))
                               others))
             (return-from guest-take nil))
           (setf *net-id* you *net-seen* *time* *net-lost* nil
-                *net-host* (list :seed seed :dist dist :speed speed :departed departed :ver ver)
+                *net-host* (list :seed seed :dist dist :speed speed :departed departed)
                 *net-others* (remove you others :key #'other-id))
           (unless *net-joined* (guest-first *net-host*))
           ;; the client and the world of this message: only now, when the message has been checked and, for the
@@ -572,16 +553,7 @@ stand on the windowsill, the same as by hand."
           (when (> *time* *net-hold*)
             (set-switches fold)
             (setf *net-sig* (guest-sig)))))
-    (:o (aktor-accept (rest msg)))                                  ; an aktor has changed at the driver's (aktor.lisp)
-    (:i (destructuring-bind (ver specs) (rest msg)                  ; the driver's arrangement of things: ours mirrors it
-          (when (and (integerp ver) (specs-ok-p specs))
-            (setf *net-ver* ver *net-specs* specs *net-mirror-hold* 0.0)
-            (guest-mirror))))))
-
-(defun guest-mirror ()
-  "Bring a guest's things in line with the driver's arrangement as last sent, if they are not."
-  (when (and (plusp *net-ver*) (> *time* *net-mirror-hold*) (not (equal *net-specs* (mapcar #'car *items*))))
-    (set-items *net-specs*)))
+    (:o (aktor-accept (rest msg)))))                                ; an aktor has changed at the driver's (aktor.lisp)
 
 (defun guest-rejoin ()
   "Knock on the same room again after the guest's link dropped."
@@ -601,7 +573,7 @@ record our edit as 'what the driver has'."
 
 (defun guest-follow ()
   "Keep our copy of the wagon where the driver's is: waiting at a bus stop, we stand and watch for it; riding, we
-drive at its speed and close the gap; and the things in the wagon are brought in line."
+drive at its speed and close the gap."
   (let ((h *net-host*))
     (when (and h *net-joined*)
       (cond ((eq *net-wait* :pick) (halt) (guest-pick-stop h))
@@ -622,13 +594,13 @@ drive at its speed and close the gap; and the things in the wagon are brought in
                  (cond ((< diff -60) (relocate (getf h :dist)))          ; the driver 'turned around' to a town behind
                        ((> diff 60) (jump-dist (getf h :dist)))
                        (t (incf *dist* (* .08 diff)))))))
-      (guest-mirror))))
+)))
 
 (defun guest-report ()
   "Tell the driver where we are and how we look, and, while an edit of ours is not yet taken, what we moved."
   (when (and (not *net-lost*) *net-joined* (guest-linked-p))
     (destructuring-bind (x z yaw inside eye) (my-place)
-      (guest-send (list :p *net-name* x z yaw inside (and (realp *net-wait*) *net-wait*) *net-ver* eye (my-look))))
+      (guest-send (list :p *net-name* x z yaw inside (and (realp *net-wait*) *net-wait*) eye (my-look))))
     (when (> *net-resend* 0)
       (decf *net-resend*)
       (guest-send (list :e (switches))))))

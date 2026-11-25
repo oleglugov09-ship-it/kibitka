@@ -16,8 +16,10 @@
     ;; goods: build mode does not offer them (there are not enough keys, nor should there be) - they are carried in the paws, see trade.lisp
     (:milk "молоко" (.12 .22 .12)) (:blin "блины" (.2 .1 .2)))
   "The things that can be placed, each as (kind name (width height depth)).")
-(defvar *items* '() "The things standing in the wagon, each as ((kind x y z spin [town-number]) . node).
-A thing with a town number is a parcel.")
+(defvar *items* '() "The things standing in the wagon as they are shown, each as ((kind x y z spin [town-number]) . node).
+A thing with a town number is a parcel. The records are the aktor :THINGS; this list is kept in line with it by
+SHOW-THINGS and is for reading only.")
+(defvar *lifting* nil "The entry of *ITEMS* being lifted out of the wagon right now: its node is the caller's.")
 (defvar *build* nil "Whether build mode is on.")
 (defvar *pick* 0 "The index in *KINDS* of the chosen thing.")
 (defvar *spin* 0 "The rotation of the blank, in quarter turns.")
@@ -127,12 +129,29 @@ an old save still has them at the old places.")
         (mapcar #'old-cut-spec (sublis-specs *moved-furniture* specs))
         (address-crates *start-interior*))))                          ; the world is permanent: addresses are town numbers, leave them alone
 
+;;; What stands in the wagon is one aktor: its state is the list of records, the newest first. It lives with the
+;;; driver; a guest's own list mirrors it. The nodes follow the records (SHOW-THINGS): a record that has gone
+;;; loses its node, a new one gets a node, the others are left as they are.
+(defaktor :things :state '(:specs ()) :spec '((:member :specs) (:satisfies specs-ok-p))
+  :show (lambda () (show-things)))
+
+(defun show-things ()
+  "Bring the nodes of the things in line with the records. A thing that we asked the driver to take or to put
+down flies to the paws or out of them (THING-GONE, THING-CAME); the rest appear and vanish in place."
+  (when *cart*
+    (let ((have *items*))
+      (setf *items*
+            (loop for spec in (peek :things :specs)
+                  collect (let ((old (find spec have :key #'car :test #'equal)))
+                            (cond (old (setf have (remove old have :count 1)) old)
+                                  (t (let ((node (apply #'build-item *cart* spec))) (thing-came spec node) (cons spec node)))))))
+      (dolist (it have)
+        (unless (eq it *lifting*) (thing-gone it))))
+    (refresh-seats)))
+
 (defun set-items (specs)
-  "Place the things anew from the list SPECS, already checked by SPECS-OK-P."
-  (stop-flying (mapcar #'cdr *items*))               ; things still flying to their place are about to be recreated
-  (dolist (it *items*) (node-queue-free (cdr it)))
-  (setf *items* (loop for spec in specs collect (cons spec (apply #'build-item *cart* spec))))
-  (refresh-seats))
+  "Make SPECS, already checked by SPECS-OK-P, the things in the wagon."
+  (poke :things :specs specs))
 
 (defun bed-seats ()
   "Return the seats on beds and crates, all facing the big window.
@@ -148,19 +167,19 @@ One can sit on a mattress and on a floor-level crate with nothing standing on it
 
 (defvar *seats* '() "The places where one can sit right now: (what x z look-direction eye-height); built by REFRESH-SEATS.")
 
-;;; The list of things changes in three ways only, and only here: a thing is stood in the wagon (STAND-ITEM), a
-;;; thing is lifted out of it (LIFT-ITEM), or the whole arrangement is replaced (SET-ITEMS). After the first two
-;;; the caller says so once it is done with its own business: THINGS-CHANGED.
+;;; The records change in three ways only, and only here: a thing is stood in the wagon (STAND-ITEM), a thing is
+;;; lifted out of it (LIFT-ITEM), or the whole arrangement is replaced (SET-ITEMS). All three are the driver's to
+;;; do. After the first two the caller says so once it is done with its own business: THINGS-CHANGED.
 
 (defun stand-item (spec)
   "Stand the thing recorded as SPEC in the wagon and return its node."
-  (let ((node (apply #'build-item *cart* spec)))
-    (push (cons spec node) *items*)
-    node))
+  (poke :things :specs (cons spec (peek :things :specs)))
+  (cdr (find spec *items* :key #'car :test #'equal)))
 
 (defun lift-item (it)
   "Take IT, an entry of *ITEMS*, out of the wagon. Its node is the caller's: to free, or to fly into someone's paws."
-  (setf *items* (remove it *items*)))
+  (let ((*lifting* it))
+    (poke :things :specs (remove (car it) (peek :things :specs) :test #'equal :count 1))))
 
 (defun things-changed (&optional gone)
   "Things were stood in the wagon or, with GONE, lifted out of it: then whatever stood on them comes down. The
@@ -174,11 +193,11 @@ seats are counted anew and the arrangement is saved."
   (when (and *seat* (not *meta*) (not (member *seat* *seats* :test #'equal))) (stand-up)))
 
 (defun make-interior (cart)
-  "Place the things in the freshly assembled wagon CART."
-  (setf *ghost* nil *ghost-key* nil
-        *items* (loop for spec in (if *items* (mapcar #'car *items*) (load-interior))
-                      collect (cons spec (apply #'build-item cart spec))))
-  (refresh-seats))
+  "Place the things in the freshly assembled wagon CART: the nodes of the old wagon went with it."
+  (declare (ignore cart))
+  (setf *ghost* nil *ghost-key* nil *items* '())
+  (unless (peek :things :specs) (set-items (load-interior)))
+  (show-things))
 
 ;;; Build mode
 

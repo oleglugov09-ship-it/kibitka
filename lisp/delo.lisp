@@ -47,7 +47,8 @@ build, wherever the symbol stands in any list. Things that travel or are saved n
 (defun fits (x spec)
   "Return true if X has the shape SPEC; use it on data from the network and from save files.
 SPEC is T for anything; a type name (INTEGER, REAL, STRING, KEYWORD, LIST, CONS); (:each S) for a
-list whose every element fits S; (:member A B ...) for one of the given values; (:or S ...); or a
+list whose every element fits S; (:member A B ...) for one of the given values; (:or S ...);
+(:satisfies F) for what the function named F says yes to; or a
 list of specs for a list of exactly that many elements, where &OPTIONAL makes the rest optional and
 &REST S lets any number of elements fitting S follow."
   (cond ((eq spec t) t)
@@ -55,6 +56,7 @@ list of specs for a list of exactly that many elements, where &OPTIONAL makes th
         ((eq (first spec) :each) (and (listp x) (ignore-errors (list-length x)) (every (lambda (e) (fits e (second spec))) x)))
         ((eq (first spec) :member) (and (member x (rest spec)) t))
         ((eq (first spec) :or) (some (lambda (s) (fits x s)) (rest spec)))
+        ((eq (first spec) :satisfies) (and (funcall (second spec) x) t))
         (t (and (listp x) (ignore-errors (list-length x))
                 (loop with optional = nil
                       for (s . more) on spec

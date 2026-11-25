@@ -6,8 +6,8 @@
 ;;;;    the guest's paws, which the driver keeps, and with the reply going to the guest), so actions have no
 ;;;;    separate 'guest' code.
 ;;;;    An action is declared with DEFSHARED (delo.lisp); nothing else needs to be registered. The things in
-;;;;    the wagon are moved the same way (TAKE-THING, PUT-THING and the build mode): the arrangement is the
-;;;;    driver's, a guest's own is a mirror of it.
+;;;;    the wagon are moved the same way (TAKE-THING, PUT-THING and the build mode): the arrangement is an aktor,
+;;;;    the driver's, and a guest's own is a mirror of it.
 ;;;;  • WORDS. SAY-ALL is a message to everyone in the wagon. A plain SAY inside an action done for a guest
 ;;;;    goes to that guest.
 ;;;;  • RECONCILIATION. WORLD-DIGEST must match between the driver and a guest; tools/smoke.py pair checks it.
@@ -125,6 +125,13 @@ asking; the others wait their turn (NEXT-ASK)."
   (when (and *asked* (> (- *time* (first *asked*)) 2.0)) (setf *asked* nil))
   (when (and *asks* (null *asked*) (not *remote-wait*)) (send-ask (pop *asks*))))
 
+(defun asked-thing-p (key spec)
+  "Return true if we are a guest who has asked the driver to do KEY (:LIFT or :PUT) with the thing SPEC, and the
+driver has not answered yet: the thing's coming or going is our own doing."
+  (destructuring-bind (&optional time asked-key asked-spec &rest more) *asked*
+    (declare (ignore time more))
+    (and (net-guest-p) (eq asked-key key) (equal asked-spec spec))))
+
 (defun carry-ok-p (kind addr &optional props)
   (and (or (null kind) (good-p kind) (member kind '(:box :crate))) (or (null addr) (integerp addr) (keywordp addr))
        (props-ok-p props)))
@@ -164,14 +171,9 @@ The same thing still in the paws keeps the properties we know: a long job answer
       (when (and (carry-ok-p kind addr props) (listp said) (every #'stringp said))
         (destructuring-bind (&optional key spec &rest more) (rest (shiftf *asked* nil))
           (declare (ignore more))
-          (let ((thing (and (member key '(:lift :put)) spec))        ; we asked to take a thing or to put one down
-                (held (and *carry* t)))
-            (set-carry (and kind (cons kind addr))
-                       (if (and *carry* (eq kind (car *carry*)) (eql addr (cdr *carry*)) (null props)) *carry-props* props)
-                       (and thing (eq key :lift) spec))
-            ;; our things run a moment ahead of the driver's arrangement as last sent: the new one is on its way
-            (when (and thing (mirror-thing key spec held (and kind t)))
-              (setf *net-mirror-hold* (+ *time* 1.0)))))
+          (set-carry (and kind (cons kind addr))
+                     (if (and *carry* (eq kind (car *carry*)) (eql addr (cdr *carry*)) (null props)) *carry-props* props)
+                     (and (eq key :lift) kind spec)))          ; taken from its place: that is where it goes back
         (setf *remote-wait* (and pending t))
         (show-carry)
         (dolist (text said) (say text))))))

@@ -311,21 +311,17 @@ says it through here."
         ((and *carry* (null (cdr *carry*)) (eq kind (jar-of (car *carry*)))) (set-carry (cons kind nil))))
   (show-carry))
 
-(defun mirror-thing (key spec held holds)
-  "Show at once, on a guest, what the driver did with the thing SPEC at our asking: KEY is :LIFT or :PUT, HELD is
-true if our paws held something before the driver answered, HOLDS if they do now. A request the driver refused
-changes nothing in the paws, and nothing is shown. The driver's arrangement arrives a moment later and is the same.
-Return true if something was shown."
-  (let ((it (find spec *items* :key #'car :test #'equal)))
-    (cond ((and (eq key :lift) (not held) holds it)
-           (fly (cdr it) (hand-point) :dur .2 :free t)
-           (lift-item it) (things-changed t)
-           t)
-          ((and (eq key :put) held (not holds) (not it))
-           (let ((node (stand-item spec)))
-             (fly node (node-3d-get-position node) :from (hand-point)))
-           (things-changed)
-           t))))
+(defun thing-came (spec node)
+  "The thing SPEC has appeared in the wagon and NODE was built for it: if it is the one we asked the driver to
+put down, it flies out of our paws."
+  (when (asked-thing-p :put spec)
+    (fly node (node-3d-get-position node) :from (hand-point))))
+
+(defun thing-gone (it)
+  "The thing IT, an entry of *ITEMS*, is in the wagon no more: if it is the one we asked the driver to take, it
+flies into our paws; otherwise its node just goes."
+  (cond ((asked-thing-p :lift (car it)) (fly (cdr it) (hand-point) :dur .2 :free t))
+        (t (stop-flying (list (cdr it))) (node-queue-free (cdr it)))))
 
 (defun carry-use ()
   "Take milk or a parcel, or put down what we carry (left mouse button).

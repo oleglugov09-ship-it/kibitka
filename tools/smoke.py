@@ -282,11 +282,17 @@ def pair():
         if ev(P0, f"{K}*ws-open*") == "T":
             break
         time.sleep(0.5)
+    ev(P0, f"(progn ({K}tell :curtains :flip) ({K}poke :kettle :tea 2) 1)")      # the world is not as new when the guest comes
     start(P1, KIOSK_JOIN=code, KIOSK_NAME="Вася")
     time.sleep(6)
     h, g = P0, P1
     check("гость вошёл и видит тот же мир", ev(g, f"(list {K}*net-role* {K}*net-joined* {K}*trip-seed*)"), "(:GUEST T 1)")
     check("водитель видит гостя", ev(h, f"(mapcar (function second) {K}*net-others*)"), '("Вася")')
+    seen = f"(list ({K}on-p :curtains) ({K}kettle :tea) (length {K}*items*) (equal (mapcar (function car) {K}*items*) ({K}peek :things :specs)))"
+    check("вошедший гость застал мир как есть: шторы задёрнуты, в чайнике два стакана, вещи те же",
+          lambda: (ev(h, seen), ev(g, seen)), lambda v: v[0] == v[1] and v[0].startswith("(T 2 ") and v[0].endswith(" T)"), within=6)
+    ev(h, f"(progn ({K}tell :curtains :flip) ({K}poke :kettle :tea 0) 1)")
+    time.sleep(1.0)
     for _ in range(5):
         ev(g, f"(progn (setf {K}*lights-on* (not {K}*lights-on*)) ({K}apply-lights) 1)")
         time.sleep(1.1)
