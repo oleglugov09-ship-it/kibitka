@@ -1,8 +1,9 @@
-;;;; Files. Game files are read and written through the engine: that works from disk and from the game package,
-;;;; and in the browser it is the only way to what the player keeps between launches. Saves, mods, models,
-;;;; pictures and sounds all go through here.
+;;;; Files of the game, read through the engine: bytes, pictures, saved forms. (The game has no sound: the author
+;;;; asked to take all of it out, 24.11.2026.)
 
 (in-package #:kiosk-trip)
+
+;;; Files
 
 (defun file-bytes (path)
   "Return the bytes of the game file at PATH (res://...).

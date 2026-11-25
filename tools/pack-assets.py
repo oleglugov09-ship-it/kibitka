@@ -1,15 +1,14 @@
 #!/usr/bin/env python3
-"""Smaller copies of the pictures and the music for the browser build. A new player downloads the whole game
-before the first frame, and most of that was pictures kept as PNG and music kept as WAV.
+"""Smaller copies of the pictures for the browser build. A new player downloads the whole game
+before the first frame, and most of that was pictures kept as PNG.
 
     tools/pack-assets.py        make what is missing or older than its source; run from `make web`
 
 For every project/textures/*/*.png a .webp is written next to it (lossy, or lossless where the picture has
-transparency), and for every project/discs/*.wav an .mp3. The game reads the small copy when it is there
-(lisp/files.lisp, PACKED-PATH; the jukebox skips a .wav that has an .mp3), and the browser build packs only the
+transparency). The game reads the small copy when it is there (lisp/files.lisp, PACKED-PATH), and the browser build packs only the
 small copies (project/export_presets.cfg, exclude_filter). The sources stay what they were: the generators in
-tools/ still write PNG and WAV, and a run from the project folder without this script still works.
-Needs Pillow with WebP, and ffmpeg for the music.
+tools/ still write PNG, and a run from the project folder without this script still works.
+Needs Pillow with WebP.
 """
 import glob, io, os, shutil, subprocess, sys
 from PIL import Image
@@ -39,15 +38,5 @@ for png in sorted(glob.glob(os.path.join(root, "textures", "*", "*.png"))):
             open(webp, "wb").write(best.getvalue())
         made += 1
     saved += os.path.getsize(png) - os.path.getsize(webp)
-
-ffmpeg = shutil.which("ffmpeg")
-for wav in sorted(glob.glob(os.path.join(root, "discs", "*.wav"))):
-    mp3 = wav[:-4] + ".mp3"
-    if stale(wav, mp3):
-        if not ffmpeg:
-            sys.exit("pack-assets: ffmpeg is needed to make " + os.path.basename(mp3))
-        subprocess.run([ffmpeg, "-loglevel", "error", "-y", "-i", wav, "-codec:a", "libmp3lame", "-b:a", "112k", mp3], check=True)
-        made += 1
-    saved += os.path.getsize(wav) - os.path.getsize(mp3)
 
 print(f"pack-assets: made {made}, the small copies are {saved / 1e6:.1f} MB lighter than their sources")

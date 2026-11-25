@@ -14,9 +14,12 @@
 
 (defun solid-cell (x z) (+ (* 100003 (floor x *solid-cell*)) (floor z *solid-cell*)))
 
+(defvar *solid-log* nil "While a thing is baked (bake.lisp): a cell whose CDR gathers the solids added, each as (x z hw hd yaw).")
+
 (defun add-solid (owner x z hw hd yaw)
   "Record for OWNER a rectangle centred at (X Z) with half-sizes HW and HD, rotated by YAW.
 YAW is the same angle as the rotation of a Godot node. Return the new solid."
+  (when *solid-log* (push (list x z hw hd yaw) (cdr *solid-log*)))
   (let ((s (make-solid x z hw hd (cos yaw) (sin yaw))) (r (sqrt (+ (* hw hw) (* hd hd)))))
     (loop for cx from (floor (- x r) *solid-cell*) to (floor (+ x r) *solid-cell*)
           do (loop for cz from (floor (- z r) *solid-cell*) to (floor (+ z r) *solid-cell*)

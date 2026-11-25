@@ -111,14 +111,12 @@ the flashers blink and so are made here."
       (case key
         (:fire (flasher -.7 3.0 -2.9 "#3060ff") (flasher .7 3.0 -2.9 "#3060ff"))
         (:ambulance (flasher 0 2.8 -1.6 "#3060ff"))
-        (:police (flasher -.35 1.6 .2 "#ff3020") (flasher .35 1.6 .2 "#3060ff")))
-      (when blink
-        (player g (wav-stream (sound-path "siren") :loop t) :positional t :db 4.0 :bus "Улица")))
+        (:police (flasher -.35 1.6 .2 "#ff3020") (flasher .35 1.6 .2 "#3060ff"))))
     (values g blink)))
 
 (defun army-near-p ()
-  "Return true if the garrison town is within two and a half kilometres along the road."
-  (some (lambda (tw) (and (eq (town-theme tw) :military) (< (abs (- (town-stop-d tw) *dist*)) 2500.0))) *towns*))
+  "Return true if the garrison town is within 1.2 km along the road."
+  (some (lambda (tw) (and (eq (town-theme tw) :military) (< (abs (- (town-stop-d tw) *dist*)) 1200.0))) *towns*))
 
 (defun add-car (d v dir &optional kind)
   (incf *car-n*)
@@ -152,7 +150,8 @@ to its own lane."
            (passing (v gap &optional kind) (add-car (- *dist* (* *dir* (+ 120.0 gap))) v *dir* kind)))
       (when (> *time* *next-car*)                                      ; an oncoming car, sometimes one on business
         (let ((r (vr *car-n* 11)) (v (+ 12.0 (* 5 (vr *car-n* 7)))))
-          (cond ((and (> r .72) (army-near-p))                         ; by the garrison town: a column of three
+          (cond ((and (> r .93) (army-near-p))                         ; by the garrison town: a column of three, now and then -
+                                                                       ; at one in four they never left the street (the author, 24.11)
                  (dotimes (i 3) (oncoming 12.0 (* i 20.0) :army)))
                 (t (oncoming v 0 (cond ((< r .1) :milk) ((< r .2) :bread) ((< r .26) :lavka))))))
         (setf *next-car* (+ *time* (if (town-at *dist*) 9 16) (* 34 (vr *car-n* 3)))))

@@ -115,16 +115,22 @@ That is the body, the truck under it, everything bolted on inside, the things an
   (adopt-goods)                                           ; a mod's goods without a model get a place among the things
   (make-action-names)
   (add-layout-twins)
+  (unless *baking* (load-materials))                      ; the materials the baked things wear: before anything is built (things.lisp)
   (make-pivots root)
   (make-sky root)
+  (make-land root)                                        ; the land: the baked map, drawn by Terrain3D (zemlya.lisp). The world stands on it
   (start-trip)
   (read-mega-paints)
   (read-places)                                           ; where things stand in the wagon: from the Blender files (mesta.lisp)
   (make-kibitka *rig*)
   (make-camera *rig*)
+  (unless *baking*
+    (object-call *terrain* "set_camera" *camera*)
+    (load-water *land*))
   (load-place)
   (load-game)
-  (make-sound root)
+  (load-discs)
+  (make-hint root)
   (make-climate *rig*)
   (make-meta *rig*)
   (make-grade root)
@@ -138,7 +144,6 @@ That is the body, the truck under it, everything bolted on inside, the things an
   (make-docs root)
   (load-world)                                            ; every part of the state comes from the save (delo.lisp)
   (make-map root)
-  (make-bell-sound root)
   ;; a probe of live editing: can this build run code sent to it (in the browser, through the interpreter).
   ;; A line in the log at every launch; it shows whether (live:everyone ...) will work for the player
   (format t "~&Проба живой правки: ~a~%" (run-text "(progn (defun eval-probe (x) (* x 3)) (eval-probe 14))"))
@@ -169,7 +174,28 @@ That is the body, the truck under it, everything bolted on inside, the things an
       (if (> driven 60) (jump-dist (+ *dist* (* *dir* driven))) (incf *dist* (* *dir* driven)))))
   (incf *day-t* (* gap *time-scale*)))
 
+(defvar *bake-wanted* *baking* "True until the map is baked, in a run that is not a game but the baking of the map (bake.lisp).")
+(defvar *things-wanted* (and (ext:getenv "KIOSK_BAKE_THINGS") t) "True until the things of the map are baked, in a run that only
+does that (tools/bake-map.sh --things).")
+(defvar *ribbons-wanted* (and (ext:getenv "KIOSK_BAKE_ROADS") t) "True until the ribbons of the roads are baked, in a run that
+only does that: from the map as it is baked, not from the formulas (tools/bake-map.sh --roads).")
+
 (defmethod process ((root trip-root) delta)
+  (when *things-wanted*
+    (setf *things-wanted* nil)
+    (bake-things)
+    (object-call (object-call root "get_tree") "quit")
+    (return-from process nil))
+  (when *ribbons-wanted*
+    (setf *ribbons-wanted* nil)
+    (bake-ribbons)
+    (object-call (object-call root "get_tree") "quit")
+    (return-from process nil))
+  (when *bake-wanted*                                      ; on the first frame, once the scene stands: bake and leave
+    (setf *bake-wanted* nil)
+    (bake-map root)
+    (object-call (object-call root "get_tree") "quit")
+    (return-from process nil))
   (let ((now (object-call (gdext:singleton "Time") "get_ticks_msec")))
     (when *last-ticks*
       (let ((gap (- (/ (- now *last-ticks*) 1000.0) delta)))
@@ -205,7 +231,7 @@ That is the body, the truck under it, everything bolted on inside, the things an
     (timed :cart (step-cart delta *time*))
     (timed :walk (step-walk delta))
     (timed :style (step-style delta))
-    (timed :sound (step-sound delta))
+    (timed :hint (step-hint delta) (step-notes delta))
     (timed :door (step-door delta))
     (timed :climate (step-climate delta))
     (timed :roadside (step-roadside delta))

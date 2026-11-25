@@ -39,7 +39,9 @@
 (defmacro check (what test)
   `(progn (incf *checks*) (unless (ignore-errors ,test) (push ,what *fails*) (format t "  ПРОВАЛ ~a~%" ,what))))
 
-;;; The world as in the game: seed 1, twelve towns, the plan of places
+;;; The world as in the game: seed 1, twelve towns, the plan of places. The game reads the roads and the land from the
+;;; baked map; here they are drawn from the formulas, as when the map is baked: it is the formulas that are checked.
+(setf *baking* t)
 (setf *trip-seed* 1 *towns* '() *town-upto* 0.0 *town-n* 0)
 (plan-towns 1e9)
 (plan-places)

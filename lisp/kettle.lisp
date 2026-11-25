@@ -233,7 +233,6 @@
         (t (unless (chopping-p) (setf *chop* (cons (car *carry*) 0)))             ; another good, or the first stroke
            (incf (cdr *chop*))
            (setf *chop-dip* .18)
-           (when (audio :steps) (object-call (audio :steps) "play"))            ; a knock on the board
            (cond ((< (cdr *chop*) *chops*) (show-chop))
                  (t (setf *chop* nil (carry-prop :cut) t)
                     (show-chop) (show-carry) (save-interior)

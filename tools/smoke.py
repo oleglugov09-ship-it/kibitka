@@ -171,6 +171,9 @@ def solo():
     p = P0
     check("12 городов", ev(p, f"(length {K}*towns*)"), lambda v: v.startswith("12"))
     check("три посылки в три города", ev(p, f"({K}parcels-left)"), "((0 . 1) (1 . 1) (2 . 1))")
+    check("по кибитке и по крыльцу можно ходить, полки на своей высоте (места читаются из Blender)",
+          ev(p, f"(list (and ({K}walkable-p 0.2 2.0) t) (and ({K}walkable-p 0.2 -2.0) t) (< 5 (- (fourth {K}*bounds*) (third {K}*bounds*)) 5.5)"
+                f" (< 0.7 (- (fourth {K}*porch*) (third {K}*porch*)) 0.8) (mapcar (lambda (v) (round (* 100 v))) {K}*shelf-tops*))"), "(T T T T (55 110 165))")
     check("четыре молока", ev(p, f"(count :milk {K}*items* :key (lambda (it) (first (car it))))"), lambda v: v.startswith("4"))
     check("бензина ровно до первого рынка",
           ev(p, f"(< 0 (- (* {K}*fuel* {K}*tank-km* 1000) ({K}town-stop-d (first {K}*towns*))) 10)"), "T")
@@ -583,7 +586,9 @@ def back():
     # at a fork you also see what stands on the neighboring road: the path coordinate is an address, not space
     ev(p, f"(progn (setf {K}*auto* nil {K}*way* nil {K}*dir* 1 {K}*yaw-now* 0.0) ({K}relocate (- ({K}edge-d1 (cdr (first {K}*exits*))) 70.0)) (setf {K}*speed* 0.0) t)")
     time.sleep(2.0)
-    roads = f"(length (remove-duplicates (mapcar (lambda (r) ({K}edge-d0 ({K}edge-of (second r)))) {K}*roadside*)))"
+    # the roadside is baked by stretches of road and loaded with their ribbons: count the roads whose stretches are on the map
+    roads = (f"(let ((roads (list))) (maphash (lambda (k nodes) (when (second nodes) (pushnew ({K}edge-d0 ({K}edge-of (float k 1.0))) roads)))"
+             f" {K}*road-pieces*) (length roads))")
     check("у Перекрёстка построено и то, что стоит на соседних дорогах", num(ev(p, roads)), lambda v: v >= 3)
     # a lap of the ring road backwards: going back from the start of the ring road, we end up at its end
     ev(p, f"(progn (setf {K}*dir* -1 {K}*yaw-now* pi {K}*auto* (cons ({K}town-stop-d (car (last {K}*towns*))) \"проба\") {K}*way* nil) ({K}relocate (+ ({K}edge-d0 ({K}ring)) 20.0)) (setf {K}*speed* 12.0) t)")

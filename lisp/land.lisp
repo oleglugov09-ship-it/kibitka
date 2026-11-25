@@ -197,6 +197,7 @@ street; at a gas station, a diner or a landmark it runs along the pad.")
   "Return the road height at path coordinate D from the big field, without levelling in towns.
 The value is the mean over 120 m of path: in the mountains the field itself is too rugged, and
 a road laid on it would have grades near 60 %, which is not how roads are built."
+  (formulas-only)
   (let ((rise (relief-sum *rise* d)))
     (* *road-follow* (/ (loop for o in '(-60.0 -30.0 0.0 30.0 60.0)
                               sum (big-height-in (road-x (+ d o)) (%make-row :d (+ d o) :seed *trip-seed* :rise rise)))
@@ -230,7 +231,27 @@ These are the hills and mountains whose slopes the road follows."
   (* (row-rise row) 2
      (- (fbm (+ (* x *big-scale*) 11) (+ (* (row-d row) *big-scale*) (* (row-seed row) 3.1))) .5)))
 
+(defvar *seam-jump* nil "How much higher the ring road starts than it ends, in metres: the formulas of the land do not
+close by themselves. NIL until asked; forgotten when the places are planned anew.")
+(defparameter *seam-run* 230.0 "The length of road before the seam of the ring over which the road is brought to the height of its start.")
+
+(defun seam-lift (d)
+  "Return what is added to the height of the ring road at path coordinate D so that its end meets its start:
+nothing but on the last *SEAM-RUN* metres before the seam, out in the fields beyond the last town."
+  (let ((e (and (fboundp 'ring) (funcall 'ring))))
+    (if (and e (funcall 'ring-d-p d) (> d (- (funcall 'edge-d1 e) *seam-run*)))
+        (let ((d0 (funcall 'edge-d0 e)) (d1 (funcall 'edge-d1 e)))
+          (unless *seam-jump*
+            (setf *seam-jump* (- (level-road-y d0 (raw-road-y d0)) (level-road-y d1 (raw-road-y d1)))))
+          (* *seam-jump* (sstep (- d1 *seam-run*) d1 d)))
+        0.0)))
+
+(defun formulas-only ()
+  "Signal an error unless the map is being baked: the game reads the baked map and never asks the formulas of the land."
+  (unless *baking* (error "A formula of the land was asked outside the baking of the map")))
+
 (defun row-at (d)
+  (formulas-only)
   (let ((r *row*))
     (if (and r (eql (row-d r) d) (eql (row-seed r) *trip-seed*))
         r
@@ -240,12 +261,19 @@ These are the hills and mountains whose slopes the road follows."
                             :lake (weight :water :lake d) :river (weight :water :river d) :river-x (river-x d)
                             :meadow (weight :veg :meadow d)
                             :dry (min 1.0 (+ (weight :veg :autumn d) (* .6 (weight :veg :rocky d)) (weight :veg :steppe d))))))
-          (setf (row-ry r) (level-road-y d (raw-road-y d))
+          (setf (row-ry r) (+ (level-road-y d (raw-road-y d)) (seam-lift d))
                 (row-pads r) (pads-at d)
                 *row* r)))))
 
+(defvar *baking* (and (ext:getenv "KIOSK_BAKE") t) "True while the map is being baked from the formulas (bake.lisp): only then are
+the formulas of the land and of the roads asked; the game itself reads the baked map.")
+
 (defun road-y (d)
-  "Return the road height at path coordinate D, interpolated between rows computed two meters apart."
+  "Return the road height at path coordinate D: from the baked road (zemlya.lisp), two metres between its points."
+  (if *baking* (formula-road-y d) (baked-road-y d)))
+
+(defun formula-road-y (d)
+  "Return the road height at path coordinate D as the formulas make it, interpolated between rows computed two meters apart."
   (let* ((k (floor d 2)) (f (/ (- d (* 2 k)) 2.0)) (a (row-ry (row-near (* 2.0 k)))))
     (+ a (* f (- (row-ry (row-near (* 2.0 (1+ k)))) a)))))
 

@@ -348,7 +348,6 @@ It is (KIND PRICE TOWN DEST LOOK ((Z KIND ADDR) ...))."
 (defun ring-bell ()
   "Ring the bell to call a client; if one is already at the window, dismiss him and call the next.
 A guest asks the driver to do it."
-  (when *bell-sound* (object-call *bell-sound* "play"))
   (when (net-guest-p)
     (guest-send (list :a :bell))
     (return-from ring-bell))

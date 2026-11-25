@@ -6,12 +6,12 @@
                                           # (https://.../play/index.html); OUT-DIR/NN-name.png, was on the left
 
 No window and no sound (tools/web-eyes.py); each build takes about two minutes. The views: the wagon from four
-sides outside and four ways inside. The swaying is switched off, the hour of day is whatever the fresh game starts at.
+sides outside and four ways inside, and more (see VIEWS). The swaying is switched off, the clock is stopped at midday.
 """
 import os, subprocess, sys, tempfile, time
 from PIL import Image
 was, now, out = sys.argv[1:4]; only = sys.argv[4:]; here = os.path.dirname(os.path.abspath(__file__)); os.makedirs(out, exist_ok=True)
-VIEWS = [("outside-back-right", '(setf *view* :outside *orbit-yaw* .6 *orbit-pitch* .25 *sway* 0.0 *sky-hour* 650.0 *orbit-dist* 9.0) (set-season :spring) (set-weather :clear 600)'),
+VIEWS = [("outside-back-right", '(setf *view* :outside *orbit-yaw* .6 *orbit-pitch* .25 *sway* 0.0 *day-t* 400.0 *time-scale* 0.0 *orbit-dist* 9.0) (set-season :spring) (set-weather :clear 600)'),
          ("outside-front-right", '(setf *orbit-yaw* 2.5 *orbit-pitch* .2)'),
          ("outside-front-left", '(setf *orbit-yaw* -2.5 *orbit-pitch* .35)'),
          ("outside-back-left", '(setf *orbit-yaw* -.7 *orbit-pitch* .6)'),
@@ -57,6 +57,34 @@ VIEWS = [("outside-back-right", '(setf *view* :outside *orbit-yaw* .6 *orbit-pit
          ("houses-end", '(setf *orbit-dist* 90.0 *orbit-yaw* 2.3 *orbit-pitch* .3)'),
          ("works", """(progn (setf *view* :outside *orbit-dist* 60.0 *orbit-yaw* 1.2 *orbit-pitch* .3 *seed* (rs-for 5)) (let ((g (group *cart* -22.0 0.0 0.0))) (godot:node-3d-set-rotation g (v3 0 3.1416 0)) (factory (group g 0.0 0.0 -30.0) 64.0) (garages (group g 0.0 0.0 30.0) 30.0)) 1)"""),
          ("works-near", '(setf *orbit-dist* 30.0 *orbit-yaw* 1.5 *orbit-pitch* .15)'),
+         ("ring-00-plain", """(progn (relocate (loop for d from 1500.0 below 24000.0 by 40.0 when (and (> (weight :relief :plain d) .95) (not (town-at d)) (< (weight :water :lake d) .05)) return d)) (setf *speed* 0.0 *view* :outside *orbit-dist* 38.0 *orbit-yaw* .7 *orbit-pitch* .32) (round *dist*))"""),
+         ("ring-00-plain-high", '(setf *orbit-dist* 150.0 *orbit-yaw* 2.4 *orbit-pitch* .7)'),
+         ("ring-01-hills", """(progn (relocate (loop for d from 1500.0 below 24000.0 by 40.0 when (and (> (weight :relief :hills d) .95) (not (town-at d))) return d)) (setf *speed* 0.0 *view* :outside *orbit-dist* 38.0 *orbit-yaw* .7 *orbit-pitch* .32) (round *dist*))"""),
+         ("ring-01-hills-high", '(setf *orbit-dist* 150.0 *orbit-yaw* 2.4 *orbit-pitch* .7)'),
+         ("ring-02-mountains", """(progn (relocate (loop for d from 1500.0 below 24000.0 by 40.0 when (and (> (weight :relief :mountains d) .95) (not (town-at d))) return d)) (setf *speed* 0.0 *view* :outside *orbit-dist* 38.0 *orbit-yaw* .7 *orbit-pitch* .32) (round *dist*))"""),
+         ("ring-02-mountains-high", '(setf *orbit-dist* 150.0 *orbit-yaw* 2.4 *orbit-pitch* .7)'),
+         ("ring-03-canyon", """(progn (relocate (loop for d from 1500.0 below 24000.0 by 40.0 when (> (weight :relief :canyon d) .95) return d)) (setf *speed* 0.0 *view* :outside *orbit-dist* 38.0 *orbit-yaw* .7 *orbit-pitch* .32) (round *dist*))"""),
+         ("ring-03-canyon-high", '(setf *orbit-dist* 150.0 *orbit-yaw* 2.4 *orbit-pitch* .7)'),
+         ("ring-04-serpentine", """(progn (relocate (let ((r (find :serpentine *route* :key (function fourth)))) (/ (+ (first r) (second r)) 2))) (setf *speed* 0.0 *view* :outside *orbit-dist* 38.0 *orbit-yaw* .7 *orbit-pitch* .32) (round *dist*))"""),
+         ("ring-04-serpentine-high", '(setf *orbit-dist* 150.0 *orbit-yaw* 2.4 *orbit-pitch* .7)'),
+         ("ring-05-lake", """(progn (relocate (loop for d from 1500.0 below 24000.0 by 40.0 when (and (> (weight :water :lake d) .95) (not (town-at d))) return d)) (setf *speed* 0.0 *view* :outside *orbit-dist* 38.0 *orbit-yaw* .7 *orbit-pitch* .32) (round *dist*))"""),
+         ("ring-05-lake-high", '(setf *orbit-dist* 150.0 *orbit-yaw* 2.4 *orbit-pitch* .7)'),
+         ("ring-06-town", """(progn (relocate (town-stop-d (third *towns*))) (setf *speed* 0.0 *view* :outside *orbit-dist* 38.0 *orbit-yaw* .7 *orbit-pitch* .32) (round *dist*))"""),
+         ("ring-06-town-high", '(setf *orbit-dist* 150.0 *orbit-yaw* 2.4 *orbit-pitch* .7)'),
+         ("ring-07-bridge", """(progn (relocate (- *chasm* 90.0)) (setf *speed* 0.0 *view* :outside *orbit-dist* 38.0 *orbit-yaw* .7 *orbit-pitch* .32) (round *dist*))"""),
+         ("ring-07-bridge-high", '(setf *orbit-dist* 150.0 *orbit-yaw* 2.4 *orbit-pitch* .7)'),
+         ("ring-08-tunnel", """(progn (relocate (- (first *tunnel*) 70.0)) (setf *speed* 0.0 *view* :outside *orbit-dist* 38.0 *orbit-yaw* .7 *orbit-pitch* .32) (round *dist*))"""),
+         ("ring-08-tunnel-high", '(setf *orbit-dist* 150.0 *orbit-yaw* 2.4 *orbit-pitch* .7)'),
+         ("ring-09-hub", """(progn (relocate (- (edge-d1 (cdr (first *exits*))) 80.0)) (setf *speed* 0.0 *view* :outside *orbit-dist* 38.0 *orbit-yaw* .7 *orbit-pitch* .32) (round *dist*))"""),
+         ("ring-09-hub-high", '(setf *orbit-dist* 150.0 *orbit-yaw* 2.4 *orbit-pitch* .7)'),
+         ("ring-10-station", """(progn (relocate (- (first (sort (copy-list *stations*) (function <))) 30.0)) (setf *speed* 0.0 *view* :outside *orbit-dist* 38.0 *orbit-yaw* .7 *orbit-pitch* .32) (round *dist*))"""),
+         ("ring-10-station-high", '(setf *orbit-dist* 150.0 *orbit-yaw* 2.4 *orbit-pitch* .7)'),
+         ("ring-11-booth", """(progn (relocate (- (first (first (sort (copy-list *gimmicks*) (function <) :key (function first)))) 20.0)) (setf *speed* 0.0 *view* :outside *orbit-dist* 38.0 *orbit-yaw* .7 *orbit-pitch* .32) (round *dist*))"""),
+         ("ring-11-booth-high", '(setf *orbit-dist* 150.0 *orbit-yaw* 2.4 *orbit-pitch* .7)'),
+         ("ring-12-river", """(progn (relocate (loop for d from 1500.0 below 24000.0 by 40.0 when (and (> (weight :water :river d) .95) (not (town-at d))) return d)) (setf *speed* 0.0 *view* :outside *orbit-dist* 38.0 *orbit-yaw* .7 *orbit-pitch* .32) (round *dist*))"""),
+         ("ring-12-river-high", '(setf *orbit-dist* 150.0 *orbit-yaw* 2.4 *orbit-pitch* .7)'),
+         ("ring-13-seam", """(progn (relocate (- (edge-d1 (ring)) 60.0)) (setf *speed* 0.0 *view* :outside *orbit-dist* 38.0 *orbit-yaw* .7 *orbit-pitch* .32) (round *dist*))"""),
+         ("ring-13-seam-high", '(setf *orbit-dist* 150.0 *orbit-yaw* 2.4 *orbit-pitch* .7)'),
          ("meta-room", '(progn (setf *meta* t *view* :inside *seat* nil *pos* (v3 0 0 2.8) *yaw* 0.0 *pitch* 0.0) (apply-meta) 1)'),
          ("meta-room-back", '(setf *pos* (v3 0 0 -2.8) *yaw* 3.1416)'),
          ("meta-room-side", '(setf *pos* (v3 2.4 0 0) *yaw* 1.5708)')]
@@ -72,11 +100,14 @@ def shoot(folder, tag):
     try:
         time.sleep(1)
         if server and server.poll() is not None: sys.exit("was-now: port 8765 is taken - somebody else's server would be filmed instead of " + folder)
-        steps = ["go", "wait:50", "click:350,174", "wait:4"] + ["click:480,200", "wait:1"] * 4 + ["lisp:(when *debug-on* (toggle-debug))", "wait:1"]
-        for name, form in VIEWS: steps += ["lisp:" + form, "wait:2", f"shot:{out}/.{tag}-{name}.png"]
-        r = subprocess.run([os.path.join(here, "web-eyes.py"), (folder if site else "http://127.0.0.1:8765/index.html") + "?dev", tempfile.mkdtemp()] + steps, capture_output=True, text=True, timeout=400)
+        steps = ["go", "ready:400", "wait:3", "click:350,174", "wait:4"] + ["click:480,200", "wait:1"] * 4 + ["lisp:(when *debug-on* (toggle-debug))", "wait:1"]
+        for name, form in VIEWS:                 # after a jump along the ring the land and the roadside need time to be built
+            steps += ["lisp:" + form, "wait:" + ("25" if name.startswith("ring") and not name.endswith("high") else "3" if name.startswith("ring") else "2"), f"shot:{out}/.{tag}-{name}.png"]
+        r = subprocess.run([os.path.join(here, "web-eyes.py"), (folder if site else "http://127.0.0.1:8765/index.html") + "?dev", tempfile.mkdtemp()] + steps, capture_output=True, text=True, timeout=1500)
         bad = [l for l in r.stdout.splitlines() if "Ошибка" in l or "Error" in l or "prompt" in l or "нет ответа" in l]
         if bad: print(tag, "\n".join(bad[:8]))
+        for l in r.stdout.splitlines():
+            if (l.startswith("LISP =>") and only) or "ГОТОВО" in l or "НЕ ДОЖДАЛИСЬ" in l: print(tag, l[:90])
     finally:
         if server: server.terminate(); server.wait()
 

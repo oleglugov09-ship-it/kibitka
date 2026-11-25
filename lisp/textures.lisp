@@ -1,9 +1,7 @@
 ;;;; Textures - a trial of styles (tools/make-textures.py puts the sets into
 ;;;; project/textures/<style>/). All are nearly gray, mean ~0.5: the game supplies the color.
-;;;; Land has its own shader: grass, meadow, dry grass by vegetation (UV2), road and
-;;;; silt by offset from the road and by height (UV), rock by steepness, snow by world height;
-;;;; against repetition - two scales and coarse noise. Wood, fabric, bark, roadside
-;;;; rocks - a StandardMaterial with the same texture in three projections, tinted by the
+;;;; The land takes its pictures from here too, but is drawn by Terrain3D (zemlya.lisp). Wood, fabric, bark,
+;;;; roadside rocks - a StandardMaterial with the same texture in three projections, tinted by the
 ;;;; material color. *STYLE* NIL - no textures, as before. To change it - (live:style :painted).
 
 (in-package #:kiosk-trip)
@@ -33,8 +31,6 @@
 (defparameter *ground-tile* 4.0 "The number of meters per repeat of the land texture.")
 
 (defvar *textures* (make-hash-table :test 'equal) "A table from (style . name) to an ImageTexture.")
-(defvar *ground-mat* nil)
-(defvar *ground-shader-style* :none)
 (defvar *water-t* 0.0)
 
 (defun texture-path (style name)
@@ -50,75 +46,6 @@ Return NIL if there is no such file."
             (setf (gethash key *textures*) nil)
             (let ((tx (picture-texture path :mipmaps t)))
               (when tx (gdext:setf-reference (gethash key *textures*) tx) tx)))))))
-
-;;; Land
-
-(defparameter *ground-names* '(:grass :grass2 :meadow :dry :road :rock :snow :sand :macro))
-
-(defun ground-shader-code (filter)
-  (format nil "shader_type spatial;
-render_mode cull_back, diffuse_burley;
-~{uniform sampler2D t_~(~a~) : source_color, ~a, repeat_enable;~%~}
-uniform float tile = 0.25;
-uniform float amount = 1.0;
-varying vec3 lp;
-varying vec3 ln;
-void vertex() {
-  // битая нормаль (вырожденный треугольник вдали) даёт в освещении бесконечность — свечение
-  // раздувает такой пиксель в белый шар; берём «вверх»
-  if (any(isnan(NORMAL)) || any(isinf(NORMAL)) || length(NORMAL) < 0.5) NORMAL = vec3(0.0, 1.0, 0.0);
-  lp = VERTEX; ln = NORMAL;
-}
-vec3 two(sampler2D t, vec2 p) { return mix(texture(t, p).rgb, texture(t, p * 0.37 + vec2(0.31, 0.57)).rgb, 0.4); }
-vec3 tri(sampler2D t, vec3 p, vec3 w) {
-  return texture(t, p.zy * tile).rgb * w.x + texture(t, p.xz * tile).rgb * w.y + texture(t, p.xy * tile).rgb * w.z;
-}
-void fragment() {
-  vec3 tint = pow(COLOR.rgb, vec3(2.2));
-  vec2 top = lp.xz * tile;
-  vec3 w = pow(abs(ln), vec3(4.0)); w /= max(w.x + w.y + w.z, 1e-4);
-  float m1 = texture(t_macro, lp.xz * 0.006).r;
-  float m2 = texture(t_macro, lp.xz * 0.023 + vec2(0.37)).r;
-  vec3 g = mix(two(t_grass, top), two(t_grass2, top * 0.8), smoothstep(0.35, 0.65, m1));
-  vec4 md = texture(t_meadow, top);
-  g = mix(g, md.rgb, UV2.x);
-  g = mix(g, two(t_dry, top), UV2.y);
-  float own = (1.0 - md.a) * UV2.x;
-  float sand = smoothstep(-0.2, -1.0, UV.y);
-  g = mix(g, two(t_sand, top), sand);
-  float road = smoothstep(2.8, 1.8, abs(UV.x)) * step(-0.3, UV.y);
-  g = mix(g, two(t_road, top), road);
-  float rock = max(smoothstep(0.3, 0.6, 1.0 - ln.y), smoothstep(4.0, 10.0, UV.y)) * (1.0 - road);
-  g = mix(g, tri(t_rock, lp, w), rock);
-  float snow = smoothstep(32.0, 40.0, lp.y);
-  g = mix(g, two(t_snow, top), snow);
-  vec3 detail = mix(vec3(0.5), g, amount) * 2.0 * mix(0.88, 1.12, m2);
-  own *= (1.0 - road) * (1.0 - rock) * (1.0 - snow) * (1.0 - sand) * amount;
-  vec3 albedo = mix(tint * detail, md.rgb, own);
-  ALBEDO = (any(isnan(albedo)) || any(isinf(albedo))) ? tint : clamp(albedo, 0.0, 1.0);
-  ROUGHNESS = 1.0;
-  SPECULAR = 0.0;   // без отблеска: дальние грани под скользящим углом иначе искрят
-}
-" (loop for n in *ground-names* append (list n filter))))
-
-(defun ground-material ()
-  "Return the land ShaderMaterial set up for the current style.
-The shader is rebuilt if the filter has changed."
-  (let ((filter (if (eq *style* :pixel) "filter_nearest_mipmap" "filter_linear_mipmap_anisotropic")))
-    (unless *ground-mat*
-      (gdext:setf-reference *ground-mat* (gdext:make-object "ShaderMaterial")))
-    (unless (equal filter *ground-shader-style*)
-      (let ((sh (gdext:make-object "Shader")))
-        (object-set sh "code" (ground-shader-code filter))
-        (object-set *ground-mat* "shader" sh)
-        (setf *ground-shader-style* filter)))
-    (object-call *ground-mat* "set_shader_parameter" "tile" (/ 1.0 *ground-tile*))
-    (object-call *ground-mat* "set_shader_parameter" "amount" (if *style* 1.0 0.0))
-    (when *style*
-      (dolist (n *ground-names*)
-        (let ((tx (tex *style* n)))
-          (when tx (object-call *ground-mat* "set_shader_parameter" (format nil "t_~(~a~)" n) tx)))))
-    *ground-mat*))
 
 ;;; Things: wood, fabric, bark, rocks, water
 
@@ -155,7 +82,6 @@ KEY is the key of MAT in *MATERIALS*."
 
 (defun apply-style ()
   (maphash #'texture-material *materials*)
-  (ground-material)
   *style*)
 
 (defun step-style (delta)

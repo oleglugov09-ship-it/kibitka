@@ -58,7 +58,10 @@ Things by the road are built on the go, so new materials keep appearing."
     (setf *styled* (hash-table-count *materials*))
     (apply-style)))
 
-;;; The roadway: a ribbon over the land in every piece, old asphalt with a center line
+;;; The roadway: a ribbon over the land, old asphalt with a center line. The ribbons are baked with the map
+;;; (BAKE-RIBBONS in bake.lisp, tools/bake-map.sh --roads): a mesh for every *ROAD-PIECE* metres of every road in
+;;; project/terrain/roads, which the game only loads. Built on the go, a ribbon cost the browser 20 ms and more
+;;; every 40 m of the way.
 
 (defparameter *road-lift* .07 "The height in meters of the roadway above the land.")
 (defparameter *road-strips*
@@ -68,64 +71,137 @@ Things by the road are built on the go, so new materials keep appearing."
 The :line strip is the marking between our lane (+-2.7 m, the wagon drives along its middle)
 and the oncoming one on the left; it is white in every other piece.")
 
-(defparameter *road-piece* 40.0 "The length of one road ribbon, in meters.")
+(defparameter *road-piece* 200.0 "The length of one road ribbon, in meters.")
 (defparameter *road-range* 900.0 "The distance on the map within which road ribbons are kept.")
-(defvar *road-pieces* (make-hash-table) "A table from a ribbon number (path coordinate / *ROAD-PIECE*) to its node.")
-(defvar *roads-at* nil)
+(defparameter *ribbons-dir* "res://terrain/roads" "Where the baked ribbons lie.")
+(defvar *road-pieces* (make-hash-table) "A table from a ribbon's number (RIBBON-KEY) to its nodes: the ribbon and the roadside.")
+(defvar *roads-at* nil "Where the ribbons were last chosen: (x z).")
+(defvar *roads-want* '() "The ribbons still to load around *ROADS-AT*, each as (key . start), the nearest first.")
 
-(defun build-road-piece (k)
-  "Build the road ribbon that starts at path coordinate K times *ROAD-PIECE* and return its node.
-It has the strips across and, in a town, a curb and sidewalks. It lies at road height, the land
-under it is slightly lower (STRIP-HEIGHT); over the chasm the ribbon runs alone as the bridge deck."
-  (let* ((d0 (* k *road-piece*)) (n 10) (step (/ *road-piece* n)) (base (road-pos d0))
-         (snow (if (eq *season* :winter) .6 0.0)) (st (gdext:make-object "SurfaceTool")) (uv (vector2 0 0))
-         (mi (gdext:make-object "MeshInstance3D")))
-    (flet ((pt (s j) (destructuring-bind (x y z) (road-pos (+ d0 (* j step)) s *road-lift*)
-                       (v3 (- x (first base)) (- y (second base)) (- z (third base)))))
-           (tint (rgb) (mix-color (hex rgb) (hex "#c9ced6") snow)))
-      (object-call st "begin" 3)
-      (dotimes (j n)
-        (when (town-at (+ d0 (* (+ j .5) step)))                               ; in a town - curb and sidewalks
-          (loop for (s0 s1 rgb) in '((-9.4 -6.6 "#67655f") (-6.6 -6.3 "#9a988f") (2.7 3.0 "#9a988f") (3.0 5.8 "#67655f"))
-                do (let ((c (tint rgb)))
-                     (object-call st "add_triangle_fan" (vector (pt s0 (1+ j)) (pt s1 (1+ j)) (pt s1 j) (pt s0 j))
-                                  (vector uv uv uv uv) (vector c c c c)))))
-        (loop for (s0 s1 rgb) in *road-strips*
-              do (let ((c (tint (if (eq rgb :line) (if (evenp (+ j (* k n))) "#b9b6ac" "#55524f") rgb))))
-                   (object-call st "add_triangle_fan" (vector (pt s0 (1+ j)) (pt s1 (1+ j)) (pt s1 j) (pt s0 j))
-                                (vector uv uv uv uv) (vector c c c c)))))
-      (object-call st "generate_normals")
-      (object-set mi "mesh" (object-call st "commit"))
-      (object-set mi "material_override" (material "#ffffff" :vertex t :rough 1.0))
-      (object-set mi "cast_shadow" 0)
-      (node-add-child *land* mi)
-      (node-3d-set-position mi (v3 (first base) (second base) (third base)))
-      mi)))
+(defun ribbon-start (e d)
+  "Return the path coordinate where the ribbon of road E that holds path coordinate D starts."
+  (+ (edge-d0 e) (* *road-piece* (floor (- d (edge-d0 e)) *road-piece*))))
+
+(defun ribbon-key (start) "Return the number of the ribbon that starts at path coordinate START: its file is named so." (round start))
+
+(defun ribbon-path (start) (format nil "~a/~d.res" *ribbons-dir* (ribbon-key start)))
+
+(defparameter *ribbon-code* "
+shader_type spatial;
+// The roadway: its colour comes with the mesh, per vertex, as in \"#rrggbb\"; in winter it lies under snow.
+uniform float snow = 0.0;
+void fragment() {
+  // taken as it is, without turning sRGB into linear: so the road was drawn when it was built on the go
+  ALBEDO = mix(COLOR.rgb, vec3(0.788, 0.808, 0.839), snow);
+  ROUGHNESS = 1.0;
+  SPECULAR = 0.15;
+}")
+(defvar *ribbon-mat* nil "The ShaderMaterial of the roadway of all the ribbons, with the parameter snow.")
+(defvar *ribbon-edge-mat* nil "The ShaderMaterial of the soft edges of all the ribbons: the same, and clear where the mesh says so.")
+
+(defun ribbon-material (&optional edge)
+  (or (if edge *ribbon-edge-mat* *ribbon-mat*)
+      (let ((sh (gdext:make-object "Shader")) (mat (gdext:make-object "ShaderMaterial")))
+        (object-set sh "code" (if edge
+                                  (let ((at (search "ROUGHNESS" *ribbon-code*)))
+                                    (concatenate 'string (subseq *ribbon-code* 0 at) "ALPHA = COLOR.a;
+  " (subseq *ribbon-code* at)))
+                                  *ribbon-code*))
+        (object-set mat "shader" sh)
+        (if edge (gdext:setf-reference *ribbon-edge-mat* mat) (gdext:setf-reference *ribbon-mat* mat)))))
+
+(defvar *ribbons-missing* nil "True once a ribbon was asked for and was not among the game's files: told once.")
+
+(defun load-ribbon (start)
+  "Put the baked ribbon that starts at path coordinate START on the map and return its node; NIL (and an error in the
+log) when it is not baked."
+  (let* ((path (ribbon-path start))
+         (mesh (and (object-call (gdext:singleton "ResourceLoader") "exists" path)
+                    (present (object-call (gdext:singleton "ResourceLoader") "load" path)))))
+    (cond ((null mesh)
+           ;; said aloud, once: a road that is not there is seen at once, and why it is not there is not
+           (unless *ribbons-missing*
+             (setf *ribbons-missing* t)
+             (note-error (format nil "лента дороги ~a не запечена (tools/bake-map.sh --roads)" path) "roads")
+             (when (fboundp 'say) (funcall 'say "Полотна дороги нет в файлах игры. Обнови страницу без кеша: Ctrl+Shift+R")))
+           nil)
+          (t (let ((mi (gdext:make-object "MeshInstance3D")) (base (road-pos start)))
+               (object-set mi "mesh" mesh)
+               (object-call mi "set_surface_override_material" 0 (ribbon-material))
+               (when (> (object-call mesh "get_surface_count") 1)
+                 (object-call mi "set_surface_override_material" 1 (ribbon-material t)))
+               (object-set mi "cast_shadow" 0)
+               (node-add-child *land* mi)
+               (node-3d-set-position mi (v3 (first base) (second base) (third base)))
+               mi)))))
 
 (defun step-roads ()
   "Keep the ribbons of all roads nearby on the map, not only of the one we drive on.
-At a fork one can thus see where the other road goes. At most two new ribbons are built per frame."
+At a fork one can thus see where the other road goes. At most one ribbon is loaded per frame; which ribbons
+are wanted is worked out once per 30 m driven."
+  (let ((snow (if (eq *season* :winter) .6 0.0)))
+    (object-call (ribbon-material) "set_shader_parameter" "snow" snow)
+    (object-call (ribbon-material t) "set_shader_parameter" "snow" snow))
   (multiple-value-bind (x z) (road-point *dist*)
-    (when (and *roads-at* (not (eq (fourth *roads-at*) *season*))) (clear-roads))   ; in winter the road is under snow - repaint
-    (when (or (null *roads-at*) (> (max (abs (- x (first *roads-at*))) (abs (- z (second *roads-at*)))) 30.0)
-              (plusp (third *roads-at*)))
-      (let ((want '()) (r (ceiling *road-range* *grid-cell*)) (made 0))
+    (when (or (null *roads-at*) (> (max (abs (- x (first *roads-at*))) (abs (- z (second *roads-at*)))) 30.0))
+      (let ((want (make-hash-table)) (r (ceiling *road-range* *grid-cell*)))
         (loop for ix from (- (floor x *grid-cell*) r) to (+ (floor x *grid-cell*) r)
               do (loop for iz from (- (floor z *grid-cell*) r) to (+ (floor z *grid-cell*) r)
                        do (dolist (s (gethash (+ (* 100003 ix) iz) *road-grid*))
-                            (pushnew (floor (+ (edge-d0 (car s)) (* (cdr s) *map-step*)) *road-piece*) want))))
-        (maphash (lambda (k node) (unless (member k want) (node-queue-free node) (remhash k *road-pieces*))) *road-pieces*)
-        (dolist (k want)
-          (unless (gethash k *road-pieces*)
-            (if (< made 2)
-                (progn (setf (gethash k *road-pieces*) (build-road-piece k)) (incf made))
-                (incf made))))
-        (setf *roads-at* (list x z (max 0 (- made 2)) *season*))))))        ; some are left unbuilt - we will come again
+                            (let ((start (ribbon-start (car s) (+ (edge-d0 (car s)) (* (cdr s) *map-step*)))))
+                              (setf (gethash (ribbon-key start) want) (cons start (car s)))))))
+        (maphash (lambda (k nodes) (unless (gethash k want) (dolist (n nodes) (when n (node-queue-free n))) (remhash k *road-pieces*)))
+                 *road-pieces*)
+        (setf *roads-want*                                                    ; the nearest first: the road under the wheels, then the others
+              (mapcar #'cdr (sort (loop for k being the hash-keys of want using (hash-value v)
+                                        unless (nth-value 1 (gethash k *road-pieces*))
+                                          collect (destructuring-bind (start . e) v
+                                                    (multiple-value-bind (px pz) (road-point (min (edge-d1 e) (+ start (/ *road-piece* 2))))
+                                                      (list (+ (abs (- px x)) (abs (- pz z))) k start))))
+                                  #'< :key #'car))
+              *roads-at* (list x z))))
+    (when *roads-want*
+      (destructuring-bind (k start) (pop *roads-want*)
+        (unless (nth-value 1 (gethash k *road-pieces*))
+          (setf (gethash k *road-pieces*)                                 ; the ribbon and what stands by it; NIL for what is not baked
+                (list (load-ribbon start) (values (load-thing (side-key start) *land*)))))))))
 
 (defun clear-roads ()
-  (maphash (lambda (k node) (declare (ignore k)) (node-queue-free node)) *road-pieces*)
+  (maphash (lambda (k nodes) (declare (ignore k)) (dolist (n nodes) (when n (node-queue-free n)))) *road-pieces*)
   (clrhash *road-pieces*)
-  (setf *roads-at* nil))
+  (setf *roads-at* nil *roads-want* '()))
+
+(defun roadside-builder (e a b)
+  "Return a function that puts up the roadside of road E from path coordinate A to B - poles with their wires, street
+lamps, steles and signs at the towns, zebras, bus stops, the depot - under one root node and returns it, or NIL when
+nothing stands there. It is called when the map is baked (BAKE-ROADSIDE): the game loads the result with the ribbon
+of the same stretch (STEP-ROADS)."
+  (declare (ignore e))
+  (lambda ()
+    (let ((*keep-into* (list nil)))
+      (declare (special *keep-into*))                                        ; its DEFVAR is further down this file
+      (flet ((here (d) (and (<= a d) (< d b))))
+        (loop for i from (ceiling a *pole-step*) while (< (* i *pole-step*) b)
+              do (with-solids (add-pole (* i *pole-step*))))
+        (loop for i from (ceiling a 26.0) while (< (* i 26.0) b)
+              do (when (town-at (* i 26.0)) (with-solids (add-lamp (* i 26.0)))))
+        (dolist (d *stop-ds*) (when (here d) (let ((*seed* (rs-for (+ d 1)))) (with-solids (add-stop-shelters d)))))
+        (when (here 16.0) (let ((*seed* (rs-for 16))) (with-solids (depot (lot 16.0 1)))))          ; the depot we set out from
+        (when (here 60.0) (with-solids (add-km-sign 60.0)))
+        (dolist (z *zebra-ds*) (when (here z) (with-solids (add-zebra z))))
+        (dolist (tw *towns*)                                                  ; stele at the entrance, sign at the exit
+          (let ((in (- (town-start tw) 12)) (out (+ (town-end tw) 12)))
+            (when (here in) (with-solids (add-stele in (town-title tw))))
+            (when (here (+ out 13)) (with-solids (add-km-sign (+ out 13))))
+            (when (here out) (with-solids (add-stele out (town-title tw) t)))
+            (when (here (- in 13)) (with-solids (add-km-sign (- in 13) t))))))
+      (let ((nodes (cdr *keep-into*)))
+        (when nodes
+          (let ((root (group *world*)))
+            (dolist (n nodes) (object-call n "reparent" root t))
+            root))))))
+
+(defun side-key (start) "Return the name the roadside of the stretch that starts at path coordinate START is baked under." (format nil "side-~d" (ribbon-key start)))
 
 ;;; The truck: a house on wheels. The body is a small passenger rail car: rail-car green,
 ;;; a yellow stripe under the windows, a gray iron roof with mushroom vents, ribs along the sides.
@@ -229,7 +305,14 @@ Wires are strung to the neighboring poles.")
 
 (defun wire (a b d)
   "Add a sagging wire between points A and B, kept at path coordinate D."
-  (dolist (piece (beam-between *world* a b :thick .035 :sag .55)) (keep piece d)))
+  (let ((mid (list (/ (+ (first a) (first b)) 2) (- (/ (+ (second a) (second b)) 2) .55) (/ (+ (third a) (third b)) 2))))
+    (loop for (p q) in (list (list a mid) (list mid b))
+          do (let* ((dx (- (first q) (first p))) (dy (- (second q) (second p))) (dz (- (third q) (third p)))
+                    (flat (sqrt (+ (* dx dx) (* dz dz)))) (len (sqrt (+ (* flat flat) (* dy dy)))))
+               (keep (shape *world* :box '(.035 .035 1.0) "#16161a"           ; one mesh stretched: all the wires of a stretch are one draw
+                            (/ (+ (first p) (first q)) 2) (/ (+ (second p) (second q)) 2) (/ (+ (third p) (third q)) 2)
+                            :rot (list (- (atan dy flat)) (atan dx dz) 0) :scale (list 1.0 1.0 len) :shadow nil)
+                     d)))))
 
 (defun add-pole (d)
   (when (bare-at d) (return-from add-pole nil))                         ; no poles on the bridge or in the tunnel
@@ -242,7 +325,12 @@ Wires are strung to the neighboring poles.")
         (setf (gethash (round d) *pole-wires*) tops)                    ; wires go to those neighbors that already stand
         (dolist (n (list (- d *pole-step*) (+ d *pole-step*)))
           (let ((other (gethash (round n) *pole-wires*)))
-            (when other (loop for a in other for b in tops do (wire a b (/ (+ d n) 2))))))))))
+            ;; the neighbour by number may stand on another road, kilometres away (the roads are numbered on end):
+            ;; a wire to it was a black beam across the whole sky
+            (when (and other (< (+ (abs (- (first (first other)) (first (first tops))))
+                                   (abs (- (third (first other)) (third (first tops)))))
+                                (* 3 *pole-step*)))
+              (loop for a in other for b in tops do (wire a b (/ (+ d n) 2))))))))))
 
 ;;; The residents are cats: a big head with ears, a bell-shaped body in a coat, a scarf, a tail. No legs: they
 ;;; stand, and walk by hopping (STEP-AVATARS in net.lisp). Our own, made of boxes and balls - ready-made
@@ -353,16 +441,21 @@ That is in front of its nose when we drive forward."
   (let ((tiles (loop for j below 5 collect (nth (mod (+ j (round d)) 5) *stop-tiles*))))
     (model g "stop-0" 0.0 0.0 0.0 :paint tiles)))
 
-(defun add-stop (d)
-  "Add a bus stop at path coordinate D; each is different, BUILD-STOP (stops.lisp) picks the look.
+(defun add-stop-shelters (d)
+  "Put up the bus stop at path coordinate D; each is different, STOP-LOOK (stops.lisp) picks the look.
 On the highway there is an identical one opposite, across the road, for those driving back.
-Sometimes cats wait at it (STOP-SPOT says where)."
+This is baked with the roadside (BAKE-ROADSIDE in bake.lisp)."
   (dolist (side (if (town-at d) '(1) '(1 -1)))                 ; in a town there are houses on the left - no paired bus stop there
     (destructuring-bind (x y z) (side-point (if (> side 0) *stop-x* (- *lane-x* *stop-x*)) d 0.0)
-      (let ((g (keep (group *world* x y z) d)))
+      (unless (on-road-p x z 2.5)                                                ; at a fork - not on the other road: the wagon drove through it
+       (let ((g (keep (group *world* x y z) d)))
         (node-3d-set-rotation g (v3 0 (- (if (> side 0) 0 pi) (road-frame d)) 0))
         (stop-look g d)                                                        ; eighteen looks - stops.lisp
-        (model g "stop-base"))))
+        (model g "stop-base"))))))
+
+(defun add-stop (d)
+  "Let cats wait at the bus stop at path coordinate D, now and then (STOP-SPOT says where): the stop itself stands
+there with the roadside, baked."
   (let ((people (loop for i below (nth (random 6) '(0 1 1 1 2 2))
                       collect (apply #'add-person (stop-spot d i)))))
     (push (list d people nil) *stops*)))
@@ -427,15 +520,7 @@ BACK is for those driving back."
     (let ((g (keep (turned (group *world* x y z) d) d)))
       (model g "bus"))))
 
-;;; A street you remember: in the middle of such a town a bus stands and music quietly starts
-;;; to play. The file is project/discs/street.mp3 or street.wav; if it is missing - the first disc.
-
-(defvar *street-player* nil)
-(defvar *street-vol* 0.0 "The volume of the street music, 0..1.")
-
-(defun street-file ()
-  (or (find-if #'file-here-p '("res://discs/street.mp3" "res://discs/street.wav"))
-      (second (first *discs*))))
+(defvar *street-told* nil "The start of the town that has already been announced.")
 
 (defun on-memory-street-p ()
   (let ((tw (town-at *dist*)))
@@ -443,17 +528,6 @@ BACK is for those driving back."
          (let ((len (- (town-end tw) (town-start tw))))
            (< (+ (town-start tw) (* .3 len)) *dist* (+ (town-start tw) (* .8 len)))))))
 
-(defun step-street (delta)
-  (let ((on (and (on-memory-street-p) (not *meta*))))
-    (when (and on (null *street-player*))
-      (let ((file (street-file)))
-        (when file
-          (setf *street-player* (player *root* (audio-stream file :loop t) :db -40.0 :bus "Музыка" :play nil)))))
-    (setf *street-vol* (max 0.0 (min 1.0 (+ *street-vol* (* delta (if on .3 -.2))))))
-    (when *street-player*
-      (cond ((and (> *street-vol* 0) (not (object-get *street-player* "playing"))) (object-call *street-player* "play"))
-            ((and (<= *street-vol* 0) (object-get *street-player* "playing")) (object-call *street-player* "stop")))
-      (object-set *street-player* "volume_db" (- (* 34.0 *street-vol*) 40.0)))))
 
 (defun reset-roadside ()
   "Start the roadside from scratch for a new trip.
@@ -499,25 +573,19 @@ When we come back they are built again."
   (maphash (lambda (d tops) (declare (ignore tops)) (when (out-of-window-p d) (remhash d *pole-wires*))) *pole-wires*))
 
 (defun step-roadside (delta)
-  (step-team delta)
-  (step-style-new)
-  (cover :poles *pole-step* (lambda (d i) (declare (ignore i)) (add-pole d)))
+  (timed :rs-team (step-team delta))
+  (timed :rs-style (step-style-new))
+  ;; poles and wires, lamps, steles, signs, zebras, the bus stops themselves and the depot stand with the roadside,
+  ;; baked (ROADSIDE-BUILDER); here is only who waits at the stops
+  (timed :rs-listed
   (dolist (d *stop-ds*)
-    (listed ((list :stop d) d) (let ((*seed* (rs-for (+ d 1)))) (add-stop d))))
-  (listed (:depot 16.0 440.0) (let ((*seed* (rs-for 16))) (depot (lot 16.0 1))))        ; the depot we set out from
-  (listed (:km0 60.0) (add-km-sign 60.0))
-  (dolist (z *zebra-ds*) (listed ((list :zebra z) z) (add-zebra z)))
-  (step-city)
-  (unless (net-guest-p) (step-fuel delta))
-  (step-station)
-  (cover :lamps 26.0 (lambda (d i) (declare (ignore i)) (when (town-at d) (add-lamp d))))
-  (dolist (tw *towns*)                                                    ; stele at the entrance, sign at the exit, market in the middle
-    (let ((i (town-index tw)) (in (- (town-start tw) 12)) (out (+ (town-end tw) 12)) (mid (town-stop-d tw)))
-      (listed ((list :stele i) in) (add-stele in (town-title tw)))
-      (listed ((list :km i) (+ out 13)) (add-km-sign (+ out 13)))
-      (listed ((list :stele-back i) out) (add-stele out (town-title tw) t))
-      (listed ((list :km-back i) (- in 13)) (add-km-sign (- in 13) t))
+    (listed ((list :stop d) d) (let ((*seed* (rs-for (+ d 1)))) (add-stop d)))))
+  (timed :rs-city (step-city))
+  (timed :rs-fuel (unless (net-guest-p) (step-fuel delta))
+  (step-station))
+  (timed :rs-rest
+  (dolist (tw *towns*)                                                    ; the market in the middle
+    (let ((i (town-index tw)) (mid (town-stop-d tw)))
       (listed ((list :market i) mid) (add-market mid) (when (town-memory tw) (add-bus (- mid 15))))))
-  (step-street delta)
   (step-stops)
-  (sweep-roadside))
+  (sweep-roadside)))

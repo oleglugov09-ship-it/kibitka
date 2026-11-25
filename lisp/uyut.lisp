@@ -246,12 +246,9 @@ A window, building mode or the outside view lowers it."
 ;;; ------------------------------------------------------------------ radio and guitar
 
 (defun show-radio ()
-  "Make the radio sound and look as its switch is."
-  (let ((on (on-p :radio)) (p (un :radio-player)))
-    (setf *radio-timer* 6.0)
-    (when p (if on (object-call p "play") (object-call p "stop")))
-    (when *music* (object-set *music* "stream_paused" (and on t)))          ; one cabinet, one loudspeaker: the record waits while the radio talks
-    (when (un :radio-dial) (object-set (un :radio-dial) "visible" on))))
+  "Make the radio look as its switch is."
+  (setf *radio-timer* 6.0)
+  (when (un :radio-dial) (object-set (un :radio-dial) "visible" (on-p :radio))))
 
 (defvar *radio-fillers* '()
   "The radio lines for when there is nothing to report; read in turn.")
@@ -280,8 +277,6 @@ Each time it is about something different."
 (defun toggle-guitar ()
   (setf *guitar-on* (not *guitar-on*))
   (when (un :guitar) (object-set (un :guitar) "visible" (not *guitar-on*)))
-  (let ((p (un :guitar-player)))
-    (when p (if *guitar-on* (object-call p "play") (object-call p "stop"))))
   (say (if *guitar-on* "Играешь на гитаре. На остановке за живую музыку кидают вдвое чаще" "Повесил гитару")))
 
 ;;; ------------------------------------------------------------------ dice
@@ -408,7 +403,6 @@ What stands on the hot stove turns into dishes (STOVE-JOBS); each job has its ow
 (defun end-mosquito (text)
   (setf *mosquito* nil)
   (when (un :mosquito) (object-set (un :mosquito) "visible" nil))
-  (when (un :mosquito-player) (object-call (un :mosquito-player) "stop"))
   (when text (say text)))
 
 (defshared swat :swat ()
@@ -424,7 +418,6 @@ the code, the fly swatter and the sounds stay, so switching it back on is this o
   (unless *mosquito-on* (return-from start-mosquito nil))
   (setf *mosquito* 1.0 *swamp-time* 0.0)
   (when (un :mosquito) (object-set (un :mosquito) "visible" t))
-  (when (un :mosquito-player) (object-call (un :mosquito-player) "play"))
   (say (if *swatter* "В кибитку залетел комар. Мухобойка у окна — E по ней"
            "В кибитку залетел комар. Мухобойки продают на заправке у болота")))
 
@@ -469,7 +462,6 @@ In the swamp a mosquito flies into the wagon: it whines, circles around the head
 
 (defun make-uyut (c)
   (let ((f *floor*) (cards '()) (pennants '()))
-    (dolist (key '(:radio-player :guitar-player)) (when (un key) (node-queue-free (un key))))   ; the old ones are from the previous wagon
     (setf *uyut* nil *guitar-on* nil *sleep* nil *photo-wait* 0 *mosquito* nil *swamp-time* 0.0)
     ;; the photo cards on the string above the rug (left wall); the string itself is in the furniture model
     (dotimes (i *photo-slots*)
@@ -515,8 +507,7 @@ In the swamp a mosquito flies into the wagon: it whines, circles around the head
         (setf (getf *uyut* :swatter) g)))
     (let ((m (shape c :ball '(.018 5 3) "#16161a" 0 (+ f 1.4) 0 :shadow nil)))
       (object-set m "visible" nil)
-      (setf (getf *uyut* :mosquito) m
-            (getf *uyut* :mosquito-player) (player m (wav-stream (sound-path "mosquito") :loop t) :positional t :db -6.0 :bus "Кибитка" :play nil)))
+      (setf (getf *uyut* :mosquito) m))
     ;; dice on the tea table
     (let ((g (group c (+ (first *table-at*) .2) (+ f *table-top*) (- (second *table-at*) .3))))
       (model g "dice")
@@ -530,9 +521,7 @@ In the swamp a mosquito flies into the wagon: it whines, circles around the head
         (node-3d-set-position l (v3 0 .22 .14))
         (setf (getf *uyut* :dice-label) l))
       (setf (getf *uyut* :dice) g))
-    (setf (getf *uyut* :cards) (nreverse cards) (getf *uyut* :pennants) (nreverse pennants)
-          (getf *uyut* :radio-player) (player *root* (wav-stream (sound-path "radio") :loop t) :db -20.0 :bus "Музыка" :play nil)
-          (getf *uyut* :guitar-player) (player *root* (wav-stream (sound-path "guitar") :loop t) :db -9.0 :bus "Музыка" :play nil))
+    (setf (getf *uyut* :cards) (nreverse cards) (getf *uyut* :pennants) (nreverse pennants))
     (unless (net-guest-p) (load-wall))
     (show-pennants) (show-photos) (show-dice) (show-swatter) (show-radio) (show-wall-tools)))
 

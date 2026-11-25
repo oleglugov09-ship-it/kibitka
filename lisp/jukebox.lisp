@@ -1,7 +1,7 @@
 ;;;; The radiogram: one cabinet on the shelf by the window wall that is both the radio (its dial and
 ;;;; knob are on the front, uyut.lisp) and the record player (the turntable under the lid), with a rack
-;;;; of records in sleeves next to it. The discs are every .wav and .mp3 in project/discs/ (your own go there too;
-;;;; reread them with (live:discs)). While it plays, notes rise above the player.
+;;;; of records in sleeves next to it. The game has no sound: a record on the turntable
+;;;; only turns the notes on that rise above the player.
 
 (in-package #:kiosk-trip)
 
@@ -11,8 +11,8 @@
 (defparameter *disc-colors* '("#e05050" "#50b0e0" "#e0c040" "#60c070" "#c070e0" "#e08a40" "#f0f0f0" "#40d0c0"))
 
 (defvar *jukebox* nil "The record player node (a part of the wagon).")
-(defvar *music* nil "The AudioStreamPlayer3D of the record player.")
-(defvar *discs* '() "The discs, each a list (name path colour).")
+(defparameter *disc-names* '("placeholder-1" "placeholder-2" "placeholder-3") "The records in the rack, by the names their sleeves are looked up with.")
+(defvar *discs* '() "The discs, each a list (name nil colour).")
 (defvar *crate* '() "The numbers of the discs in the crate.")
 (defvar *held* nil "The number of the disc in hand.")
 (defvar *playing* nil "The number of the disc in the record player.")
@@ -23,28 +23,17 @@
 (defvar *note-timer* 0.0)
 
 (defun load-discs ()
-  (let* ((all (coerce (dir-access-get-files-at "res://discs") 'list))
-         ;; a .wav that has an .mp3 of the same name is the same disc, kept smaller (tools/pack-assets.py): one of them plays
-         (files (sort (remove-if-not (lambda (f)
-                                       (or (path-type-p f ".mp3")
-                                           (and (path-type-p f ".wav")
-                                                (not (member (concatenate 'string (subseq f 0 (- (length f) 4)) ".mp3") all :test #'string=)))))
-                                     all)
-                      #'string<)))
-    (setf *discs*
-          (loop for file in files
-                for i from 0
-                collect (list (subseq file 0 (- (length file) 4)) (format nil "res://discs/~a" file)
-                              (nth (mod i (length *disc-colors*)) *disc-colors*)))
-          *crate* (loop for i below (length *discs*) collect i)
-          *held* nil *playing* nil)
-    (length *discs*)))
+  (setf *discs* (loop for name in *disc-names*
+                      for i from 0
+                      collect (list name nil (nth (mod i (length *disc-colors*)) *disc-colors*)))
+        *crate* (loop for i below (length *discs*) collect i)
+        *held* nil *playing* nil)
+  (length *discs*))
 
 (defun disc-name (i) (first (nth i *discs*)))
 
 (defvar *disc-titles* '()
-  "What is written on the sleeves of the records that come with the game, from mods: entries of (file-name title).
-A record of your own, dropped into project/discs/, is called by its file name.")
+  "What is written on the sleeves of the records that come with the game, from mods: entries of (name title).")
 
 (defun disc-title (i)
   "Return the title on the sleeve of disc I, in the game language."
@@ -66,8 +55,7 @@ A record of your own, dropped into project/discs/, is called by its file name.")
     ;; the shelf, the radiogram and the crate for the records are drawn in Blender (models/appliances.blend)
     (let ((f *floor*))
       (let ((g (group cart jx (+ f *jukebox-y*) jz)))
-        (setf *slot-node* nil *jukebox* g *notes* '()
-              *music* (player g (wav-stream (sound-path "step-1")) :positional t :y .3 :db -14.0 :bus "Музыка" :play nil))
+        (setf *slot-node* nil *jukebox* g *notes* '())
         (when *playing* (play-disc *playing*)))))
   (destructuring-bind (cx cz) *crate-at*
     (setf *crate-node* (group cart cx (+ *floor* *jukebox-y*) cz))
@@ -93,13 +81,9 @@ A record of your own, dropped into project/discs/, is called by its file name.")
       (setf *slot-node* (disc-mesh jb (third (nth *playing* *discs*)) :rot (list 0 0 0) :x -.02 :y .27 :z -.08)))))   ; on the turntable
 
 (defun play-disc (i)
-  (let ((m *music*))
-    (setf *playing* i)
-    (if i
-        (progn (when (on-p :radio) (tell :radio :set :off))                             ; one cabinet: a record takes the loudspeaker from the radio
-               (object-set m "stream" (audio-stream (second (nth i *discs*)) :loop t)) (object-call m "play"))
-        (object-call m "stop"))
-    (show-discs)))
+  (setf *playing* i)
+  (when (and i (on-p :radio)) (tell :radio :set :off))                       ; one cabinet: a record takes it from the radio
+  (show-discs))
 
 (defun step-notes (delta)
   (let ((jb *jukebox*))

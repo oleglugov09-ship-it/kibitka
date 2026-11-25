@@ -31,8 +31,10 @@ By default it faces the road (towards -x of the lot)."
     (object-set l "pixel_size" (/ h 48.0))
     (object-set l "modulate" (hex rgb))
     (object-set l "outline_size" 0)
-    (object-set l "texture_filter" 0)
-    (object-set l "alpha_cut" 1)
+    ;; smoothed, with smaller copies for the distance, and soft edges: point-sampled and cut out, a sign seen from
+    ;; across the street (letters 8 points high in a 640x360 picture) was a crumble of dots (the author, 24.11)
+    (object-set l "texture_filter" 3)                                ; LINEAR_WITH_MIPMAPS
+    (object-set l "alpha_cut" 2)                                     ; OPAQUE_PREPASS
     (node-add-child parent l)
     (node-3d-set-position l (v3 x y z))
     (node-3d-set-rotation l (v3 pitch yaw 0))
@@ -121,7 +123,10 @@ A section is drawn in Blender (models/doma/house-section-FLOORS.blend); RGB pain
 turns in three colours. Up to LIT windows are lit: at the points at_lit_... of the model. Return the length built."
   (let ((file (format nil "house-section-~d" floors)))
     (dotimes (i n)
-      (model g file x 0.0 (+ z (* (- i (/ (1- n) 2)) *section*)) :paint (list rgb (nth (mod i 3) '("#9a9488" "#7f8a8c" "#a8a08c")))))
+      (let ((balcony (nth (mod i 3) '("#9a9488" "#7f8a8c" "#a8a08c"))) (sz (+ z (* (- i (/ (1- n) 2)) *section*))))
+        ;; all the sections of a town in one go, each with its balconies' colour: seen once the houses are baked
+        ;; (BAKE-WELD) - a section by itself has white balconies
+        (model g file x 0.0 sz :paint (list rgb :tint) :own t :tint balcony)))
     (let ((points (model-points file "lit_")))
       (when points
         (loop repeat (random (1+ lit))
@@ -151,6 +156,7 @@ Between them are courtyards."
            (block (group g 33.0 0 (+ z 6.0))))                                  ; turned: the sections run away from the street
       (node-3d-set-rotation block (v3 0 (/ pi 2) 0))
       (house-sections block floors 3 0.0 0.0 rgb)
+      (weld block)                                                              ; turned, so melted on its own
       (end-mosaic g 8.9 z (- (/ pi 2)) 12.0 h)
       (when (< i (1- n))                                                        ; courtyard: swings and a sandbox
         (shape g :box '(.1 2.2 .1) "#3f6f73" 24 1.1 (+ z 15)) (shape g :box '(.1 2.2 .1) "#3f6f73" 24 1.1 (+ z 19))
@@ -309,10 +315,15 @@ Its x+ points away from the road."
 (defun build-lot (tw d side)
   "Build up the lot of town TW that starts at path coordinate D on side SIDE, according to the town zone.
 Return the length of the lot."
-  (let ((zone (zone-at tw d)))
-    (flet ((at (len) (lot (+ d (/ len 2)) side)))
+  (let ((zone (zone-at tw d)) (g nil))
+    (flet ((at (len) (setf g (lot (+ d (/ len 2)) side))))
+     (prog1
       (ecase zone
-        (:village (izba (at 17.0) 6.0 0) 17.0)
+        ;; not a wall of houses shoulder to shoulder: one lot in three is a yard left empty, and the houses stand
+        ;; at different depths from the road (the author, 24.11: "абсурдно стоят здания просто рядом")
+        (:village (if (zerop (random 3))
+                      (+ 14.0 (random 12.0))
+                      (progn (izba (at 17.0) (+ 6.0 (random 9.0)) 0) (+ 17.0 (random 10.0)))))
         (:garages
          (if (< side 0)
              (progn (factory (at 64.0) 64.0) 64.0)
@@ -339,50 +350,92 @@ Return the length of the lot."
            (t (let ((g (at 76.0)))
                 (panel-house g 9 12.0 66.0 16.0 0 :slogan (when (zerop (random 3)) (nth (random (length *slogans*)) *slogans*)))
                 (when (zerop (random 2)) (parked-car g 1.6 (- (random 40.0) 20)))
-                76.0))))))))
+                76.0)))))
+      (when g (weld g))))))                                              ; a lot stands still: one draw for a paint
 
 (defun shop-front (g)
   "Add to G a shop on the ground floor of an apartment block."
-  (shape g :box '(.16 2.0 24.0) "#d8c890" 11.9 1.4 0 :emit "#ffd890" :energy .6 :shadow nil)
+  ;; not one glowing band 24 m long: shop windows between piers, a plinth under them, a door in the middle
+  ;; (the author, 24.11: "всё из стекла")
+  (shape g :box '(.12 .5 24.0) "#55524f" 11.92 .25 0 :shadow nil)                       ; the plinth
+  (shape g :box '(.14 .22 24.0) "#3a3d40" 11.92 2.42 0 :shadow nil)                     ; the lintel over the windows
+  (loop for i from 0 below 8
+        for z = (- (* (+ i .5) 3.0) 12.0)
+        do (shape g :box '(.2 2.5 .45) "#6f6c66" 11.9 1.25 (- z 1.5) :shadow nil)       ; a pier
+           (if (= i 4)
+               (progn (shape g :box '(.1 1.95 1.1) "#4a3020" 11.9 .98 z :shadow nil)    ; the door, a lamp over it
+                      (shape g :box '(.1 .3 1.1) "#d8c890" 11.9 2.12 z :emit "#ffd890" :energy .7 :shadow nil))
+               (progn (shape g :box '(.08 1.8 2.5) "#d8c890" 11.9 1.4 z :emit "#ffd890" :energy .45 :shadow nil)
+                      (shape g :box '(.1 1.8 .06) "#3a3d40" 11.89 1.4 z :shadow nil))))  ; the bar across a window
+  (shape g :box '(.2 2.5 .45) "#6f6c66" 11.9 1.25 12.0 :shadow nil)
   (shape g :box '(.2 .8 12.0) "#3f6f73" 11.85 2.9 0 :shadow nil)
   (sign g (nth (random (length *shop-names*)) *shop-names*) 11.7 2.9 0 :h .7))
 
-(defvar *built-towns* (make-hash-table) "The map from a town index to the town's nodes.
-A town is built as a whole and removed as a whole.")
+(defvar *built-towns* (make-hash-table) "The map from a town index to the town's nodes, once the whole town stands.
+A town is removed as a whole.")
 
-(defun build-town (tw)
-  "Build up the town TW on both sides of the road, from its start to its end, and return its nodes.
-Gas stations are on the right, as planned: a house that would overlap a gas station is not built.
-In towns with a character of their own a gap is left on the right (CITY-GAP)."
-  (setf (town-plaza tw) nil)
-  (with-solids
-   (let ((*keep-into* (list nil)) (*mosaic-town* (town-index tw)) (*mosaic-count* 0))
-    (dotimes (i 2)
-      (let ((side (if (zerop i) -1 1)) (d (+ (town-start tw) 4.0)))
-        (loop while (< (+ d 20) (town-end tw))
-              do (let* ((*seed* (rs-for (+ (* 2 d) i)))
-                        (station (and (> side 0) (let ((s (next-station (- d 18)))) (and s (< s (+ (town-end tw) 40)) s))))
-                        (gap (and (> side 0) (city-gap tw d))))
-                   (setf d (cond ((and station (<= (- station 17.5) d)) (+ station 23))         ; the gas station lot is 34 m
-                                 (gap gap)                                                      ; shows what makes the town special
-                                 ((and station (< (- station 17 d) 110)) (- station 17))        ; the longest lot is 104 m
-                                 (t (+ d (build-lot tw d side) 6 (random 8.0)))))))))
-    (or (cdr *keep-into*) (list nil)))))
+(defun build-town-step (tw job)
+  "Build the next lot of the town TW, on from where JOB stopped, and return true when the whole town stands.
+Lots go on both sides of the road, from the town's start to its end. Gas stations are on the right, as planned: a house
+that would overlap a gas station is not built. In towns with a character of their own a gap is left on the right (CITY-GAP)."
+  (destructuring-bind (i d mosaics &rest nodes) job
+    (declare (ignore nodes))
+    (loop while (and (< i 2) (>= (+ d 20) (town-end tw)))                ; this side is done: the other one, from the start
+          do (setf i (1+ i) d (+ (town-start tw) 4.0)))
+    (when (< i 2)
+      (with-solids
+        (let* ((*keep-into* (list nil)) (*mosaic-town* (town-index tw)) (*mosaic-count* mosaics)
+               (side (if (zerop i) -1 1))
+               (*seed* (rs-for (+ (* 2 d) i)))
+               (station (and (> side 0) (let ((s (next-station (- d 18)))) (and s (< s (+ (town-end tw) 40)) s))))
+               (gap (and (> side 0) (city-gap tw d))))
+          (setf d (cond ((and station (<= (- station 17.5) d)) (+ station 23))         ; the gas station lot is 34 m
+                        (gap gap)                                                      ; shows what makes the town special
+                        ((and station (< (- station 17 d) 110)) (- station 17))        ; the longest lot is 104 m
+                        (t (+ d (build-lot tw d side) 6 (random 8.0)))))
+          (setf (third job) *mosaic-count*
+                (cdddr job) (append (cdr *keep-into*) (cdddr job))))))
+    (setf (first job) i (second job) d)
+    (>= i 2)))
+
+(defun town-key (tw) "Return the name the houses of the town TW are baked under." (format nil "town-~d" (town-index tw)))
+
+(defun town-builder (tw)
+  "Return a function that builds up the whole town TW - every lot on both sides of the road - under one root node and
+returns it. It is called when the map is baked (BAKE-TOWNS in bake.lisp); the game loads the result (STEP-CITY)."
+  (lambda ()
+    (setf (town-plaza tw) nil)
+    (let ((job (list 0 (+ (town-start tw) 4.0) 0)))
+      (loop until (build-town-step tw job))
+      (let ((nodes (remove nil (cdddr job))))
+        (when nodes
+          (let ((root (group *world*)))
+            (dolist (n nodes) (object-call n "reparent" root t))
+            root))))))
+
+(defun town-built-p (tw)
+  "Return true once the town TW stands."
+  (and (gethash (town-index tw) *built-towns*) t))
 
 (defun step-city ()
-  "Build and remove gas stations and towns as the wagon moves.
-Gas stations are built from the list as soon as they come into view; towns are built as a whole
-when they are *CITY-AHEAD* away and removed as a whole."
+  "Put up and remove gas stations and towns as the wagon moves.
+Gas stations are built from the list as soon as they come into view; a town is loaded as a whole, baked with the map
+(things.lisp), when it is *CITY-AHEAD* away - one town a frame - and removed as a whole."
   (dolist (s *stations*)
     (listed ((list :station s) s *city-ahead*) (gas-station (lot s 1) s)))
-  (dolist (tw *towns*)
-    (let* ((i (town-index tw)) (built (gethash i *built-towns*))
-           (near (span-in-window-p (town-start tw) (town-end tw) *city-ahead*)))
-      (cond ((and near (null built)) (setf (gethash i *built-towns*) (build-town tw)))
-            ((and built (not near) (out-of-window-p (/ (+ (town-start tw) (town-end tw)) 2)
-                                                    (+ *city-ahead* (/ (- (town-end tw) (town-start tw)) 2) 30)))
-             (dolist (n built) (when n (node-queue-free n)))
-             (remhash i *built-towns*))))))
+  (let ((busy nil))
+    (dolist (tw *towns*)
+      (let* ((i (town-index tw)) (built (gethash i *built-towns*))
+             (near (span-in-window-p (town-start tw) (town-end tw) *city-ahead*)))
+        (cond ((and near (null built) (not busy))
+               (setf busy t)
+               (let ((node (load-thing (town-key tw))))
+                 (unless node (note-error (format nil "город ~a не запечён (tools/bake-map.sh --things)" (town-key tw)) "city"))
+                 (setf (gethash i *built-towns*) (list node))))
+              ((and built (not near) (out-of-window-p (/ (+ (town-start tw) (town-end tw)) 2)
+                                                      (+ *city-ahead* (/ (- (town-end tw) (town-start tw)) 2) 30)))
+               (dolist (n built) (when n (node-queue-free n)))
+               (remhash i *built-towns*)))))))
 
 (defun reset-city ()
   "Forget the gas stations laid out along the road: a new trip lays them out again."

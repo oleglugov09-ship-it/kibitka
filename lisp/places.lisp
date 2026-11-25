@@ -65,6 +65,10 @@ Return NIL unless such a gap starts or runs on the right at D."
   at)                          ; (x z) on the map, if the scene is not tied to a single road (the Crossroads)
 
 (defvar *scenes* '() "All the scenes of the world, as SCENE structures.")
+
+(defun scene-key (s)
+  "Return the name the scene S is baked under: where on the road it stands."
+  (format nil "scene-~d-~d" (round (scene-d0 s)) (round (scene-d1 s))))
 (defvar *tracks* '() "The railways, each as (from to).")
 (defvar *moves* '() "The things that spin and swing, each as (node kind . numbers), collected while a scene is built.")
 
@@ -82,11 +86,16 @@ At the ends they veer away, in the middle they run alongside."
 ;;; The plan is laid out a part at a time; each part adds its pads (where the land is made flat for something to
 ;;; stand on), its level stretches of road and its scenes. PLAN-PLACES below calls them in the one order that works.
 
-(defun add-pad (&rest keys) "Add a pad to the plan: a piece of land made flat; KEYS are those of MAKE-PAD." (push (apply #'make-pad keys) *pads*))
+;;; Pads and level stretches shape the land and the road: they matter while the map is baked (bake.lisp). In the
+;;; game the map is read from files, and nothing here is computed.
+
+(defun add-pad (&rest keys)
+  "Add a pad to the plan: a piece of land made flat; KEYS are those of MAKE-PAD. Only while the map is baked."
+  (when *baking* (push (apply #'make-pad keys) *pads*)))
 
 (defun level-road (d0 d1 &optional (ramp 90.0))
   "Make the road level from D0 to D1, at the height of the middle of that stretch: the road along a pad is level."
-  (push (list d0 d1 (raw-road-y (/ (+ d0 d1) 2)) ramp) *levels*))
+  (when *baking* (push (list d0 d1 (raw-road-y (/ (+ d0 d1) 2)) ramp) *levels*)))
 
 (defun plan-town-pads ()
   "Towns: the street is level, with a terrace for buildings on both sides; gas stations outside the towns."
@@ -98,7 +107,7 @@ At the ends they veer away, in the middle they run alongside."
              (add-pad :d0 d0 :d1 d1 :ramp 60.0 :x0 4.0 :x1 128.0 :m0 4.0 :m1 14.0 :y -.37)
              (add-pad :d0 d0 :d1 d1 :ramp 80.0 :x0 150.0 :x1 1100.0 :m0 8.0 :m1 200.0 :y -5.0)
              (let ((c (road-pos (/ (+ d0 d1) 2) 900.0)))     ; and farther out, where the land is already shared by the map, sea too
-               (push (list (first c) (third c) 1300.0 (- (road-y (/ (+ d0 d1) 2)) 6.0)) *basins*)))
+               (when *baking* (push (list (first c) (third c) 1300.0 (- (road-y (/ (+ d0 d1) 2)) 6.0)) *basins*))))
             ((eq (town-theme tw) :river)                   ; river town: beyond the embankment - a river along the whole town
              (add-pad :d0 d0 :d1 d1 :ramp 60.0 :x0 4.0 :x1 58.0 :m0 4.0 :m1 8.0 :y -.37)
              (add-pad :d0 d0 :d1 d1 :ramp 70.0 :x0 74.0 :x1 150.0 :m0 8.0 :m1 40.0 :y -3.4))
@@ -227,7 +236,7 @@ It is called before the land is built."
   ;; exits, entries and the Crossroads go last: they take the height of the ring road, and every level section above changes it
   (plan-junctions)
   (clrhash *rows*)
-  (setf *row* nil))
+  (setf *row* nil *seam-jump* nil))
 
 ;;; ------------------------------------------------------------------ helpers
 
@@ -347,8 +356,11 @@ TILT is the tilt up from the horizon; SPIN is the speed in radians per second of
                     (< (sqrt (+ (expt (- x (first at)) 2) (expt (- z (second at)) 2)))
                        (+ *far-range* (/ (- (scene-d1 s) (scene-d0 s)) 2)))))))
       (cond ((and near (null (scene-node s)))
-             (let ((*moves* '()))
-               (setf (scene-node s) (with-solids (funcall (scene-build s))) (scene-moves s) *moves*))
+             (multiple-value-bind (node moves) (load-thing (scene-key s))        ; baked with the map (things.lisp)
+               (if node
+                   (setf (scene-node s) node (scene-moves s) moves)
+                   (let ((*moves* '()))                                         ; not baked: built here, as it used to be
+                     (setf (scene-node s) (with-solids (funcall (scene-build s))) (scene-moves s) *moves*))))
              (return))                                                  ; one scene per frame
             ((and (not near) (scene-node s))
              (node-queue-free (scene-node s))

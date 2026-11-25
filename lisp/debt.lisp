@@ -33,8 +33,7 @@
            (when (and (boundp '*ending*) *ending*)                         ; a new game in the middle of the credits: roll them up
              (setf *ending* nil)
              (when *ending-ui*
-               (object-set (getf *ending-ui* :root) "visible" nil)
-               (when (getf *ending-ui* :music) (object-call (getf *ending-ui* :music) "stop"))))
+               (object-set (getf *ending-ui* :root) "visible" nil)))
            (setf *debt* *debt-total* *story-stage* :intro *show* nil)
            (when (and (boundp '*show-ui*) *show-ui*) (show-card)))
   :load #'load-debt :save #'save-debt)
@@ -255,10 +254,10 @@ The driver reads a card, everyone gets a line; the percent and his patience coun
 
 (defparameter *ending-time* 92.0 "The length of the closing credits, in seconds.")
 (defvar *ending* nil "The number of seconds since the ending started, or NIL.")
-(defvar *ending-ui* nil "The parts of the credits screen: a plist of :root :text :music.")
+(defvar *ending-ui* nil "The parts of the credits screen: a plist of :root :text.")
 
 (defun make-ending ()
-  (let ((layer (gdext:make-object "CanvasLayer")) (root (gdext:make-object "Control")) (path (sound-path "finale")))
+  (let ((layer (gdext:make-object "CanvasLayer")) (root (gdext:make-object "Control")))
     (object-set layer "layer" 6)
     (node-add-child *root* layer) (node-add-child layer root)
     (object-set root "position" (vector2 0 0)) (object-set root "mouse_filter" 2)
@@ -268,8 +267,7 @@ The driver reads a card, everyone gets a line; the percent and his patience coun
       (object-call text "add_theme_constant_override" "outline_size" 4)
       (object-call text "add_theme_color_override" "font_outline_color" (color 0 0 0 .85))
       (hud-rect root 0 0 640 34 '(0 0 0)) (hud-rect root 0 326 640 34 '(0 0 0))       ; the bars of a wide film
-      (setf *ending-ui* (list :root root :text text
-                              :music (and (file-here-p path) (player *root* (wav-stream path) :db -6.0 :bus "Музыка" :play nil)))))))
+      (setf *ending-ui* (list :root root :text text)))))
 
 (defun credit-lines ()
   "Return the lines of the credits: the mod's own, with where the people of the road ended up put in before the last block."
@@ -277,12 +275,11 @@ The driver reads a card, everyone gets a line; the percent and his patience coun
     (append (subseq lines 0 cut) (if (fboundp 'people-epilogue) (funcall 'people-epilogue) '()) (subseq lines cut))))
 
 (defun start-ending ()
-  "Leave for the country father went to: drive into the sunset under the credits and the final tune."
+  "Leave for the country father went to: drive into the sunset under the credits."
   (unless *ending-ui* (make-ending))
-  (destructuring-bind (&key root text music) *ending-ui*
+  (destructuring-bind (&key root text) *ending-ui*
     (object-set text "text" (format nil "~{~a~^~%~}" (credit-lines)))
-    (object-set root "visible" t)
-    (when music (object-call music "play")))
+    (object-set root "visible" t))
   (setf *ending* 0.0)
   (set-weather :clear 5)
   (let ((far (nth (mod (+ (or (trade-town) 0) 6) (max 1 (length *towns*))) *towns*)))  ; the far side of the ring: the road will not end
@@ -291,10 +288,7 @@ The driver reads a card, everyone gets a line; the percent and his patience coun
   (say-all "Билет в кармане. Кибитка сама выруливает на дорогу — на запад, к отцу"))
 
 (defun stop-ending ()
-  (destructuring-bind (&key root text music) *ending-ui*
-    (declare (ignore text))
-    (object-set root "visible" nil)
-    (when music (object-call music "stop")))
+  (object-set (getf *ending-ui* :root) "visible" nil)
   (setf *ending* nil *story-stage* :done)
   (cancel-course)
   (save-debt)

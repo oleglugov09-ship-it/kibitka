@@ -23,7 +23,8 @@ Between *ROAD-NEAR* and this the two blend smoothly.")
   "A road on the map.
 It covers path coordinates D0 to D1, holds points every *MAP-STEP* (x, z, heading) and records
 in NEXT where its end leads."
-  d0 d1 xs zs ths next)
+  d0 d1 xs zs ths next
+  ys)                          ; the road's height at every point: baked with the map (bake.lisp), read from roads.bin
 
 (defvar *edges* '() "All the roads of the map; the first one is the ring road.")
 (defvar *road-grid* (make-hash-table) "The map from a map cell to the road points in it, each as (ROAD . POINT-INDEX).")
@@ -108,8 +109,10 @@ neither the map nor the land already laid out is touched (turning around, a new 
   (clrhash *rows*)
   (unless (and *edges* (eql *map-seed* *trip-seed*))
     (clrhash *road-grid*)
-    (setf *edges* (list (make-ring)) *map-seed* *trip-seed*)
-    (make-spokes)
+    (setf *map-seed* *trip-seed*)
+    (cond (*baking* (setf *edges* (list (make-ring))) (make-spokes))   ; the roads are being drawn from the formulas (bake.lisp)
+          ((load-roads))                                                ; the game: they are data, baked with the map (zemlya.lisp)
+          (t (error "The map is not baked: there is no ~a. Run tools/bake-map.sh" *roads-path*)))
     (mapc #'index-edge *edges*)
     (when *land* (clear-land) (clear-roads))))
 
@@ -177,11 +180,19 @@ into the ground (except on a bridge over a chasm, where the land has dropped awa
     (+ (road-y d) h)))
 
 (defun land-height (x z)
-  "Return the land height at the map point (X, Z).
+  "Return the land height at the map point (X, Z): what the baked map has there (zemlya.lisp), and beyond the
+map the flat land around it."
+  (if *baking*
+      (formula-land-height x z)
+      (or (terrain-height x z) *terrain-ground*)))
+
+(defun formula-land-height (x z)
+  "Return the land height at the map point (X, Z) as the formulas of the land make it: this is what is baked.
 The second value is the nearest road as (PATH-COORDINATE SIDEWAYS DISTANCE ROAD), or NIL.
 Several roads or sections may be nearby: their strips are blended by proximity, and the one
 right underfoot (closer than about 12 m) outweighs all the others, so that a neighbouring
 road's land never creeps onto the roadway."
+  (formulas-only)
   (let ((near (roads-near x z)) (wild (wild-height x z)))
     (if (null near)
         (values (float wild 1.0) nil)
@@ -421,9 +432,9 @@ path coordinate jumps)."
 Gas stations before the Crossroads are planned too. Called from PLAN-PLACES."
   (setf *spoke-stations* '())
   (when *exits*
-    (let ((hub-y (raw-road-y (- (edge-d1 (cdr (first *exits*))) 60))))
-      (flet ((flat (d0 d1 y ramp) (push (list d0 d1 y ramp) *levels*))
-             (apron (d0 d1) (push (make-pad :d0 d0 :d1 d1 :ramp 30.0 :x0 -70.0 :x1 70.0 :m0 60.0 :m1 60.0 :y -.14) *pads*)))
+    (let ((hub-y (and *baking* (raw-road-y (- (edge-d1 (cdr (first *exits*))) 60)))))      ; the land is shaped only while the map is baked
+      (flet ((flat (d0 d1 y ramp) (when *baking* (push (list d0 d1 y ramp) *levels*)))
+             (apron (d0 d1) (when *baking* (push (make-pad :d0 d0 :d1 d1 :ramp 30.0 :x0 -70.0 :x1 70.0 :m0 60.0 :m1 60.0 :y -.14) *pads*))))
         (loop for (da . e) in *exits*
               do (let ((da da) (d0 (edge-d0 e)))                                 ; exit: at ring road height while the roads are close
                    (flat d0 (+ d0 320) (lambda (d) (road-y (+ da (- d d0)))) 200.0))
@@ -431,7 +442,7 @@ Gas stations before the Crossroads are planned too. Called from PLAN-PLACES."
                  (apron (- (edge-d1 e) 60) (edge-d1 e))
                  (let ((s (- (edge-d1 e) 150.0)))                                ; gas station before the Crossroads
                    (push s *spoke-stations*)
-                   (push (make-pad :d0 (- s 20) :d1 (+ s 20) :ramp 14.0 :x0 4.0 :x1 27.0 :m0 4.0 :m1 14.0 :y -.37) *pads*)))
+                   (when *baking* (push (make-pad :d0 (- s 20) :d1 (+ s 20) :ramp 14.0 :x0 4.0 :x1 27.0 :m0 4.0 :m1 14.0 :y -.37) *pads*))))
         (dolist (o *outs*)
           (flat (edge-d0 o) (+ (edge-d0 o) 160) hub-y 240.0)
           (apron (edge-d0 o) (+ (edge-d0 o) 60))

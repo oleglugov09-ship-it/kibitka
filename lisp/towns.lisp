@@ -53,6 +53,7 @@ MURAL is (town . variant) of a mural. Return the house group."
       (dotimes (i (if mural 0 (+ 2 (floor (* 4 (vr x d))))))
         (shape b :box '(.18 1.2 1.4) "#e8c070" (* face 1.01) (+ 1.6 (* 2.8 (floor (* (vr d i) (/ h 2.8)))))
                (* len .85 (- (vr i d) .5)) :emit "#ffc060" :energy 1.2 :shadow nil))
+      (weld b)                                                              ; a far house stands still: a draw for a paint
       b)))
 
 (defun build-skyline (tw)
