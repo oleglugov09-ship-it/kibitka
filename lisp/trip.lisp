@@ -32,6 +32,8 @@ the wagon. The tank, the money and the things are left alone."
 ;;; things in the wagon are saved, and without the rest a restart became a gift: the same crates, 10 roubles again.
 
 (defvar *game-saved* nil)
+
+(defun save-game-now () "Save the game at once, if something has changed: we are leaving the trip." (setf *game-timer* 0.0) (save-game 1.0))
 (defvar *game-timer* 3.0)
 
 (defun game-now () (list (round *dist*) *money* (float *fuel* 1.0) *planks* *onboard* *dir* (round *day-t* 10)))
@@ -137,6 +139,7 @@ That is the body, the truck under it, everything bolted on inside, the things an
   (make-hud root)
   (make-log root)
   (make-lobby root)
+  (make-menu root)
   (make-look root)
   (make-stars root)
   (make-aurora root)
@@ -148,7 +151,7 @@ That is the body, the truck under it, everything bolted on inside, the things an
   ;; A line in the log at every launch; it shows whether (live:everyone ...) will work for the player
   (format t "~&Проба живой правки: ~a~%" (run-text "(progn (defun eval-probe (x) (* x 3)) (eval-probe 14))"))
   (when (member "torture" *dev-flags* :test #'string=) (gc-torture))   ; the browser build's memory under load: dev.lisp
-  (unless (net-from-env) (open-lobby))))
+  (unless (net-from-env) (open-menu))))
 
 (defvar *paused* nil "True while the pause menu (Esc) is open: the world stands still, the REPL works.")
 
@@ -212,7 +215,7 @@ only does that: from the map as it is baked, not from the formulas (tools/bake-m
         (progn
           (if paused
               (progn (incf *time* delta)                       ; network timers run on pause too
-                     (timed :net (step-net delta)) (timed :lobby (step-lobby)))
+                     (timed :net (step-net delta)) (timed :lobby (step-lobby)) (timed :menu (step-menu)))
               (step-trip delta))
           ;; each on its own, as in STEP-TRIP: a save that fails must not take the log with it
           (timed :save-game (save-game delta))
@@ -260,6 +263,7 @@ only does that: from the map as it is baked, not from the formulas (tools/bake-m
     (timed :auto (step-auto delta))
     (timed :net (step-net delta))
     (timed :lobby (step-lobby))
+    (timed :menu (step-menu))
     (timed :lang (step-lang))
     (timed :debug (step-debug))
     (timed :cheats (step-cheats))
@@ -268,4 +272,4 @@ only does that: from the map as it is baked, not from the formulas (tools/bake-m
     (timed :meta (step-meta delta))))
 
 (defmethod unhandled-input ((root trip-root) event)
-  (unless (or *paused* *lobby-open* *map-open* *show*) (noting "key" (handle-input event))))
+  (unless (or *paused* (front-screen-p) *map-open* *show*) (noting "key" (handle-input event))))

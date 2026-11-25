@@ -4,6 +4,18 @@
 (in-package #:kiosk-trip)
 
 (loop for (ru en) on '(
+"КИБИТКА"
+  "KIBITKA"
+"автобаза № 3 · выпуск ~a"
+  "depot No. 3 · issue ~a"
+"Ехать"
+  "Ride"
+"Продолжить поездку"
+  "Go on with the trip"
+"Играть вместе"
+  "Play together"
+"Выйти из игры"
+  "Quit the game"
 "Авиапочта: ~a получил посылку"
   "Airmail: ~a got the parcel"
 "обсерватория"

@@ -66,7 +66,7 @@
     (load-look)))
 
 (defun open-look ()
-  (unless (or *lobby-open* *map-open* *meta*)
+  (unless (or (front-screen-p) *map-open* *meta*)
     (setf *look-open* t)
     (object-set *look-panel* "visible" t)
     (mark-look) (show-doll)

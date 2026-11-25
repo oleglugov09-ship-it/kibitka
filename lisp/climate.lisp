@@ -198,7 +198,7 @@ Start with a random season and clear weather."
         (object-call box "add_theme_font_size_override" "font_size" 9)
         (setf *gfx-ui* (list :layer layer :rain box)))))
   (when *gfx-ui*
-    (let ((open (and *paused* (not *lobby-open*))) (box (getf *gfx-ui* :rain)))
+    (let ((open (and *paused* (not (front-screen-p)))) (box (getf *gfx-ui* :rain)))
       (unless (eq open (object-get (getf *gfx-ui* :layer) "visible"))
         (object-set (getf *gfx-ui* :layer) "visible" open)
         (when open (object-set box "button_pressed" (and *precip-on* t))))

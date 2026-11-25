@@ -636,7 +636,7 @@ the map."
 
 (defun update-dash ()
   (destructuring-bind (&key needle money cross) *dash-parts*
-    (dolist (c cross) (object-set c "visible" (and (not (outside-p)) (not *lobby-open*) (not *map-open*))))
+    (dolist (c cross) (object-set c "visible" (and (not (outside-p)) (not (front-screen-p)) (not *map-open*))))
     (object-set needle "rotation" (* 1.05 (- (* 2 *fuel*) 1)))
     (godot:object-set money "text" (multiple-value-bind (rub kop) (floor (* *money* *kopecks*) 100) (cl:format nil "~d,~2,'0d" rub kop)))))
 

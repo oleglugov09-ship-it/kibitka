@@ -132,7 +132,7 @@ a copy of the world is being restored."
 
 (defun step-saves-lost ()
   "Tell the player, once the game is on, that a save was there and could not be read."
-  (when (and *saves-lost* (> *time* 8.0) (not *lobby-open*))
+  (when (and *saves-lost* (> *time* 8.0) (not (front-screen-p)))
     (setf *saves-lost* '())
     (say "Сохранение не прочиталось — игра началась заново. Напиши автору: такого быть не должно")))
 

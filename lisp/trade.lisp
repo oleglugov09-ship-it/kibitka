@@ -366,7 +366,7 @@ Return T if something was done."
 ;;; Intro hints: one step at a time, once the previous message has faded
 
 (defun step-onboard ()
-  (unless (or (net-guest-p) *lobby-open* (>= *onboard* 9) (and *toast* (> (cdr *toast*) 0))
+  (unless (or (net-guest-p) (front-screen-p) (>= *onboard* 9) (and *toast* (> (cdr *toast*) 0))
               *show*)                 ; a card is on the screen: a hint under it would be lost
     (let ((market (let ((p (place-here))) (and p (market-p p) (zerop (place-town p))))))
       (case *onboard*

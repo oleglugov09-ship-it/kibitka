@@ -272,6 +272,14 @@ def solo():
                  (let (({K}*dev* t)) ({K}take-planks)) (setf free (- {K}*planks* was) was {K}*planks*)
                  (let (({K}*dev* nil)) ({K}take-planks)) (setf paid (- {K}*planks* was))
                  ({K}put-money m) (list (plusp free) paid))"""), "(T 0)")
+    # the main menu: the pause menu's "Main Menu" leaves a note on the scene root, the game stops and shows the menu
+    ev(p, f"(progn ({K}set-speed 8.0) ({K}object-call {K}*root* \"set_meta\" \"to_main_menu\" t) 1)")
+    check("«Главное меню» из паузы: меню открыто, кибитка стоит, клавиши игры молчат",
+          lambda: ev(p, f"(list {K}*menu-open* (< {K}*speed* 0.01) ({K}front-screen-p) (godot:object-get {K}*menu* \"visible\"))"), "(T T T T)", within=4)
+    ev(p, f"(progn (godot:object-set (getf {K}*menu-parts* :friends) \"button_pressed\" t) 1)")
+    check("«Играть вместе» открывает лобби вместо меню", lambda: ev(p, f"(list {K}*menu-open* {K}*lobby-open*)"), "(NIL T)", within=4)
+    ev(p, f"(progn ({K}close-lobby) ({K}to-main-menu) (godot:object-set (getf {K}*menu-parts* :ride) \"button_pressed\" t) 1)")
+    check("«Ехать» закрывает меню: мы снова в игре", lambda: ev(p, f"(list {K}*menu-open* ({K}front-screen-p))"), "(NIL NIL)", within=4)
     check("ошибок в журнале игры нет", log_errors(p), 0)
     stop_all()
 

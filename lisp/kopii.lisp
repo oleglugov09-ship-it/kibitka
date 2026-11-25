@@ -95,7 +95,7 @@ With AUTO it goes to the slots of automatic copies, and the hand-made ones are l
 
 (defun step-auto-copy ()
   "Copy the world by itself once a game day, and once soon after launch, for whoever owns it."
-  (when (and (not (net-guest-p)) *cart* (> *time* 20.0) (not *lobby-open*)
+  (when (and (not (net-guest-p)) *cart* (> *time* 20.0) (not (front-screen-p))
              (not (eql *auto-copy-day* (today))))
     (setf *auto-copy-day* (today))
     (make-copy t)))
@@ -105,7 +105,7 @@ With AUTO it goes to the slots of automatic copies, and the hand-made ones are l
   "Show the panel while the pause menu is open, for whoever owns the world, and answer its buttons."
   (noting :gfx (step-gfx))
   (noting :auto-copy (step-auto-copy))
-  (let ((open (and *paused* (not (net-guest-p)) (not *lobby-open*))))
+  (let ((open (and *paused* (not (net-guest-p)) (not (front-screen-p)))))
     (when (and open (null *copy-ui*)) (make-copy-panel))
     (when *copy-ui*
       (unless (eq open (object-get (getf *copy-ui* :layer) "visible"))

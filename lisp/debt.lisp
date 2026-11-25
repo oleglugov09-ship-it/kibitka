@@ -309,7 +309,7 @@ The driver reads a card, everyone gets a line; the percent and his patience coun
 (defun step-story (delta)
   "Advance the story by DELTA seconds: open the intro once the lobby is closed, turn the cards, roll the credits."
   (unless (net-guest-p)
-    (when (and (eq *story-stage* :intro) (not *show*) (not *lobby-open*))
+    (when (and (eq *story-stage* :intro) (not *show*) (not (front-screen-p)))
       (if (or *dev* (null *intro-cards*))
           (setf *story-stage* :owing)                                        ; nothing to show: straight to the debt
           (open-show *intro-cards* #'end-intro))))

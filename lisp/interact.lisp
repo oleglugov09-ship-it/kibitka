@@ -92,7 +92,7 @@ Discs are handled by hand too."
 
 (defun hint-text ()
   (let ((u (and (in-cart-p) (or (usable-here :hand) (usable-here)))))
-    (cond ((and (/= (input-get-mouse-mode) 2) (not *lobby-open*) (not *map-open*) (not *look-open*) (not *docs-open*)
+    (cond ((and (/= (input-get-mouse-mode) 2) (not (front-screen-p)) (not *map-open*) (not *look-open*) (not *docs-open*)
                 (not *cheats-open*) (not *paused*))
            "Щёлкни мышью по игре, чтобы снова оглядываться")              ; the browser let the mouse go (Esc, another window)
           (u (if (usable-label u) (funcall (usable-label u)) ""))

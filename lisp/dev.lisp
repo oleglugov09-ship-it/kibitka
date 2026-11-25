@@ -126,7 +126,7 @@ Return T when the key was ours."
 
 (defun step-debug ()
   ;; the dev polygon greets you where the booths are: the debug screen is open and the wagon stands at the first one
-  (when (and *dev* (not *dev-started*) (> *time* 1.0) (not *lobby-open*) (not (member "nostart" *dev-flags* :test #'string=)))
+  (when (and *dev* (not *dev-started*) (> *time* 1.0) (not (front-screen-p)) (not (member "nostart" *dev-flags* :test #'string=)))
     (setf *dev-started* t)
     (unless *debug-on* (toggle-debug))
     (unless (net-guest-p) (setf *poi* -1) (jump-place 1)))

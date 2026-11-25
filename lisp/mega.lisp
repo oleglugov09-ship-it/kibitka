@@ -378,8 +378,8 @@ its air."
            (world (flagged-world (cond ((and env (plusp (length env))) (if (flagged-world env) env "tunnel")) ((stringp query) query) (t "")))))
       (when world (setf *mega-world* world))
       (setf *tunnel-spawn* (and world t))))
-  (when (and (eq *tunnel-spawn* t) *lobby-open*) (setf *tunnel-spawn* :lobby))        ; wait for the lobby to be answered
-  (when (and (eq *tunnel-spawn* :lobby) *tunnel* *cart* (not *lobby-open*)
+  (when (and (eq *tunnel-spawn* t) (front-screen-p)) (setf *tunnel-spawn* :lobby))   ; wait for the menu and the lobby to be answered
+  (when (and (eq *tunnel-spawn* :lobby) *tunnel* *cart* (not (front-screen-p))
              (or (not *dev*) *dev-started*))     ; on the polygon: after its own start
     (setf *tunnel-spawn* :done)
     (unless (net-guest-p)

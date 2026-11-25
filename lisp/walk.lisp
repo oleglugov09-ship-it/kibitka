@@ -147,7 +147,7 @@ the gas station).")
       (loop for (nil name label) in *actions*
             do (object-call tr "add_message" (string-capitalize (substitute #\Space #\_ name))
                             (if (string= locale "ru") label (or (gethash label *en*) label)) ""))
-      (loop for (en ru) in '(("Primary" "Основная") ("Secondary" "Запасная") ("Tertiary" "Третья") ("Pause" "Пауза")
+      (loop for (en ru) in '(("Primary" "Основная") ("Secondary" "Запасная") ("Tertiary" "Третья") ("Pause" "Пауза") ("Exit to the main menu?" "Выйти в главное меню?") ("Confirm Exit" "Выход")
                              ("Other language" "English"))
             do (object-call tr "add_message" en (cond ((string= locale "ru") ru)
                                                       ((string= en "Other language") "Русский")
@@ -185,7 +185,7 @@ the gas station).")
 (defun action-down (name)
   "Return true if the action NAME is held down.
 While the lobby is open, keys go to its fields, not to the game."
-  (and (not *lobby-open*) (not *map-open*) (not *look-open*) (not *show*)
+  (and (not (front-screen-p)) (not *map-open*) (not *look-open*) (not *show*)
        (object-call (gdext:singleton "Input") "is_action_pressed" (action-name name) nil)))
 
 (defun action-p (event name)
