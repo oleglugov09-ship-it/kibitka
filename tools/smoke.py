@@ -341,6 +341,13 @@ def pair():
     ev(g, f"(progn ({K}unbuild-thing (list :pillow 0.0 0.0 0.5 0)) 1)")
     check("подушку поставил и убрал, а товар стройкой не появляется",
           lambda: (ev(h, things), ev(g, things)), lambda v: v[0] == v[1] == f"({n} {planks})", within=6)
+    # the pocket is an aktor with a mirror variable: an old-style SETF by the driver still reaches everyone, a guest's is undone
+    was = ev(h, f"{K}*money*")
+    ev(h, f"(progn (setf {K}*money* 77) 1)")
+    check("водитель по старинке написал (setf *money* 77) — это дошло до гостя", lambda: (ev(h, f"({K}peek :kassa :money)"), ev(g, f"{K}*money*")), lambda v: v[0].startswith("77") and v[1].startswith("77"), within=4)
+    ev(g, f"(progn (setf {K}*money* 1) 1)")
+    check("гость написал себе (setf *money* 1) — не прошло, деньги водительские", lambda: (ev(g, f"{K}*money*"), ev(h, f"{K}*money*")), lambda v: v[0].startswith("77") and v[1].startswith("77"), within=4)
+    ev(h, f"(progn ({K}put-money {was.split()[0]}) 1)")
     # the kettle is an aktor: one state, the driver's; a guest tells it what to do and sees what it has become
     kettle = f"({K}peek :kettle)"
     ev(g, f"(progn ({K}tell :kettle :take) 1)")

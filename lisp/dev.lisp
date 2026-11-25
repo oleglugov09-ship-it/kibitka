@@ -186,7 +186,7 @@ Return T when the key was ours."
        (:paws (setf *walk-speed* (* *walk-speed-0* (if (cheat-p :paws) 6 1))))
        (:truck (setf *max-speed* (* *max-speed-0* (if (cheat-p :truck) 6 1))))))
     (:money (cheat-money)) (:tank (cheat-fuel))
-    (:planks (incf *planks* 10) (say (cl:format nil "Planks: ~d" *planks*)))
+    (:planks (add-planks 10) (say (cl:format nil "Planks: ~d" *planks*)))
     (:debt (pay-debt *debt*) (say "The debt is paid off: the ticket is sold at the savings bank"))
     (:ending (toggle-cheats) (if *ending* (stop-ending) (start-ending)))
     (:daily (setf *gimmick-spent* '()) (say "Once-a-day limits are reset"))

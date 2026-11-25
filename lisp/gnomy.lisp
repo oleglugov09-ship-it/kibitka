@@ -11,7 +11,9 @@
 Numbers 0-11 are towns, 12-17 are special places.")
 
 
-(defvar *gnomes* 0 "The found gnomes, one bit per gnome.")
+(defvar *gnomes* 0 "The found gnomes, one bit per gnome: the mirror of the collection's state, for reading.")
+(defaktor :gnomes :state '(:found 0) :spec '((:member :found) integer) :vars '(:found *gnomes*)
+  :show (lambda () (show-trophies)))                        ; one collection for the wagon, the driver's
 (defvar *gnome-nodes* '() "The gnomes by the road that are currently built: entries (number node path-coordinate).")
 (defun forget-gnome-nodes () "Forget the nodes of the gnomes by the road: they are gone with the World they stood in." (setf *gnome-nodes* '()))
 (defvar *trophies* '() "The figures on the wagon's shelves, keyed by number.")
@@ -25,9 +27,9 @@ Numbers 0-11 are towns, 12-17 are special places.")
 (defun gnome-count () (logcount *gnomes*))
 
 (defun save-gnomes () (put-save :gnomes *gnomes*))
-(defun load-gnomes () (let ((f (get-save :gnomes))) (setf *gnomes* (if (and (integerp f) (<= 0 f (1- (ash 1 18)))) f 0))))
+(defun load-gnomes () (let ((f (get-save :gnomes))) (poke :gnomes :found (if (and (integerp f) (<= 0 f (1- (ash 1 18)))) f 0))))
 (defstate :gnomes                                            ; a collection: a new game does not reset it
-  :clear (lambda () (setf *gnomes* 0)) :load #'load-gnomes :save #'save-gnomes :show (lambda () (show-trophies)) :keep t)
+  :clear (lambda () (aktor-reset :gnomes)) :load #'load-gnomes :save #'save-gnomes :show (lambda () (show-trophies)) :keep t)
 
 ;;; ------------------------------------------------------------------ where they hide
 
@@ -97,7 +99,7 @@ Figures not yet found are hidden."
 
 (defshared pick-gnome :gnome (i)
   (cond ((or (not (assoc i *gnome-plan*)) (gnome-found-p i)) (say "Этот гномик уже на полке"))
-        (t (setf *gnomes* (logior *gnomes* (ash 1 i)))
+        (t (poke :gnomes :found (logior *gnomes* (ash 1 i)))
            (save-gnomes)
            (show-trophies)
            (log-event :gnome :n i :found (gnome-count))

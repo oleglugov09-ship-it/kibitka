@@ -56,7 +56,8 @@ Return NIL if there is no save."
         (when (and (integerp day) (<= 0 day 100000000)) (set-day-time (* 10.0 day)))  ; the day cycle goes on, not restarts
         (when (eql dir -1) (head-back))       ; stood nose backwards: still do
         (put-money (round money))
-        (setf *fuel* (float fuel 1.0) *planks* (max 0 (round planks)) *onboard* onboard
+        (put-planks (round planks))
+        (setf *fuel* (float fuel 1.0) *onboard* onboard
               *game-saved* g)
         (when (> dist 20) (relocate dist))
         t))))
@@ -76,7 +77,8 @@ The order matters. START-TRIP lays the road out anew and with it puts the money 
   "Start from the depot: the starting things, money and tank."
   (cancel-course)
   (empty-paws)
-  (setf *onboard* 0 *planks* *start-planks*)
+  (setf *onboard* 0)
+  (put-planks *start-planks*)
   (reset-world)                                           ; every part of the state goes back to the start (delo.lisp)
   (show-carry)
   (start-trip)

@@ -35,17 +35,14 @@
                               (f1 (flock-vx f)) (f1 (flock-vz f)))))
         (and *mosquito* t)
         (and *sleep* t)
-        *dir*
-        *gnomes*))
+        *dir*))
 
 (defvar *sleep-seen* nil "True once the guest already knows that the night is being fast-forwarded.")
 
 (defun apply-events (ev)
   "Bring the guest's own events in line with EV, the events sent by the driver."
-  (when (and (listp ev) (= (length ev) 8))                    ; EV is the first part of the world block
-    (destructuring-bind (cars trains plane flocks mosquito sleeping dir gnomes) ev
-      (when (and (integerp gnomes) (<= 0 gnomes (1- (ash 1 18))) (/= gnomes *gnomes*))       ; the driver found a gnome
-        (setf *gnomes* gnomes) (show-trophies))
+  (when (and (listp ev) (= (length ev) 7))                    ; EV is the first part of the world block
+    (destructuring-bind (cars trains plane flocks mosquito sleeping dir) ev
       (when (and (member dir '(1 -1)) (/= dir *dir*)) (setf *dir* dir) (swap-sides))      ; the driver turned around
       (when (listp cars)
         (setf *cars* (remove-if (lambda (c) (unless (find (getf c :n) cars :key (lambda (e) (and (listp e) (first e))))
@@ -124,6 +121,25 @@ asking; the others wait their turn (NEXT-ASK)."
   "Send the next waiting request, if the driver has answered the last one - or has kept silent for two seconds."
   (when (and *asked* (> (- *time* (first *asked*)) 2.0)) (setf *asked* nil))
   (when (and *asks* (null *asked*) (not *remote-wait*)) (send-ask (pop *asks*))))
+
+(defun aktor-mirror-only-p ()
+  "Return true if the aktors here only mirror somebody else's: we are a guest in the driver's wagon."
+  (net-guest-p))
+
+(defvar *setf-told* '() "The mirror variables whose writing past their aktor has already been reported in this run.")
+
+(defun aktors-guard ()
+  "Look, once a frame, for mirror variables written past their aktor. The driver's write is taken into the state
+(and so reaches the guests and the save); one that does not fit, or a guest's, is undone."
+  (dolist (a *aktors*)
+    (loop for (key var) on (aktor-vars a) by #'cddr
+          do (unless (equal (symbol-value var) (getf (aktor-state a) key))
+               (unless (member var *setf-told*)
+                 (push var *setf-told*)
+                 (format t "~&~a изменили мимо актора ~s: надёжнее (poke ~s ~s ...)~%" var (aktor-name a) (aktor-name a) key))
+               (unless (net-guest-p)
+                 (noting :aktors-guard (poke (aktor-name a) key (symbol-value var))))
+               (aktor-mirror a)))))
 
 (defun asked-thing-p (key spec)
   "Return true if we are a guest who has asked the driver to do KEY (:LIFT or :PUT) with the thing SPEC, and the

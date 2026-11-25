@@ -256,9 +256,11 @@ is always there; the lower one when it is folded down, otherwise there are the s
 ;;; The stove, planks, warmth
 
 (defparameter *stove-at* '(-1.18 2.35) "The x and z of the stove: in the corner to the right of the door.")
-(defvar *planks* *start-planks* "The number of planks in stock.")
+(defvar *planks* *start-planks* "The number of planks in stock: the mirror of the stock's state, for reading.")
+(defaktor :planks :state (list :n *start-planks*) :spec '((:member :n) integer) :vars '(:n *planks*))   ; one stock for the wagon, the driver's
 (defvar *lights-on* t "True while the lamp and the fairy lights of the wagon are on.")
-(defun add-planks (n) "Put N planks into stock; with N negative, take them out." (incf *planks* n))
+(defun add-planks (n) "Put N planks into stock; with N negative, take them out." (put-planks (+ (peek :planks :n) n)))
+(defun put-planks (n) "Set the stock to N planks: a save being read, a new game." (poke :planks :n (max 0 (min 999 n))))
 (defvar *fire* 0.0 "The number of seconds the fire will still burn.")
 (defvar *warm* .7 "The warmth in the wagon, 0..1.")
 (defvar *stove-glow* nil)
@@ -347,11 +349,12 @@ nothing but hides what is behind it). With HAND it is taken by hand (LMB), other
 interaction (E)."
   x y z label action hand reach radius)
 
-(defun ladder-usable (i)
-  "Return the I-th of the three places to press along the ladder, or NIL while it is out of reach behind the door."
+(defun ladder-usable (up down down-z)
+  "Return a place to press on the ladder, or NIL while it is out of reach behind the door: at height UP by the
+railing while the ladder is raised, at height DOWN and DOWN-Z out from the wagon while it hangs below the porch."
   (when (or (> *door-k* .6) (> (vector3-z *pos*) 2.95))
-    (destructuring-bind (y z) (nth i (if *ladder-down* '((.1 3.95) (-.3 4.15) (-.7 4.3)) '((.1 3.95) (.5 3.95) (.9 3.95))))
-      (usable 0.0 y z (lambda () (if *ladder-down* "E — поднять лесенку" "E — опустить лесенку")) #'toggle-ladder :radius .3))))
+    (usable 0.0 (if *ladder-down* down up) (if *ladder-down* down-z 3.95)
+            (lambda () (if *ladder-down* "E — поднять лесенку" "E — опустить лесенку")) #'toggle-ladder :radius .3)))
 
 (defun fixture-usables ()
   "Return the usables for what is bolted to the wagon.
@@ -371,7 +374,7 @@ These are the map, the stove, the light switch, the ladder, the window and the b
                    (lambda () (setf *lights-on* (not *lights-on*)) (apply-lights)))
            ;; the ladder: anywhere along it, where it is now - standing up in the gap of the railing when raised,
            ;; hanging below the porch when let down. It is beyond the vestibule: not through a closed door
-           (ladder-usable 0) (ladder-usable 1) (ladder-usable 2)
+           (ladder-usable .1 .1 3.95) (ladder-usable .5 -.3 4.15) (ladder-usable .9 -.7 4.3)
            ;; the window: anywhere on the glass, wherever you look
            (unless (on-p :curtains) (usable 1.5 1.5 -.9 #'window-label #'toggle-window :radius .5))     ; drawn curtains are in the way
            (unless (on-p :curtains) (usable 1.5 1.5 0.0 #'window-label #'toggle-window :radius .5))

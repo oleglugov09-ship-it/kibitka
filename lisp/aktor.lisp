@@ -17,28 +17,39 @@
 ;;;;  • A HANDLER MAY TELL ANOTHER AKTOR (the crate of jars takes boiling water from the kettle): it runs at
 ;;;;    once, at the driver's, inside the same turn.
 ;;;;  • FROM THE REPL: (peek :kettle) reads the state, (poke :kettle :tea 4) sets a field as the driver - through
-;;;;    the same one place, so everyone sees it. A plain SETF has nothing to reach.
+;;;;    the same one place, so everyone sees it.
+;;;;  • MIRROR VARIABLES. An aktor may keep variables in line with its state (:VARS), for the many places that only
+;;;;    read: *MONEY* is the pocket's :MONEY. They are not for writing. A write past the aktor is noticed within a
+;;;;    frame (AKTORS-GUARD, sync.lisp): the driver's is taken into the state, so a SETF from the REPL still reaches
+;;;;    everyone; a guest's is undone.
 ;;;;
 ;;;; What is counted every frame (the path, the speed, how long the kettle has been heating) is not an aktor's
 ;;;; business: an aktor is for what changes when somebody does something.
 
 (in-package #:kiosk-trip)
 
-(defvar *aktors* '() "The aktors, in the order they were declared: entries of (name state version spec show handlers start).")
-(define-fields aktor name state ver spec show handlers start)
+(defvar *aktors* '() "The aktors, in the order they were declared: entries of (name state version spec show handlers start vars).")
+(define-fields aktor name state ver spec show handlers start vars)
 
 (defun aktor (name) "Return the aktor called NAME." (or (assoc name *aktors*) (error "Нет актора ~s" name)))
 
-(defmacro defaktor (name &key state spec show)
+(defmacro defaktor (name &key state spec show vars)
   "Declare the aktor NAME. STATE is its state at the start of a new game: a plist, whose keys are all the keys it
 will ever have. SPEC is the shape of the state for FITS: a state of another shape is not taken, neither from a
-handler nor from the network. SHOW is called after every change, to show the thing anew. Declared again while the
-game runs, an aktor keeps the state it has."
+handler nor from the network. SHOW is called after every change, to show the thing anew. VARS is a plist from
+keys of the state to variables that mirror them, for the code that only reads: (:money *money*). Declared again
+while the game runs, an aktor keeps the state it has."
   `(let ((old (assoc ,name *aktors*)))
      (if old
-         (setf (aktor-spec old) ,spec (aktor-show old) ,show (aktor-start old) ,state)
-         (setf *aktors* (append *aktors* (list (list ,name (copy-list ,state) 0 ,spec ,show '() ,state)))))
+         (setf (aktor-spec old) ,spec (aktor-show old) ,show (aktor-start old) ,state (aktor-vars old) ,vars)
+         (setf *aktors* (append *aktors* (list (list ,name (copy-list ,state) 0 ,spec ,show '() ,state ,vars)))))
+     (aktor-mirror (assoc ,name *aktors*))
      ,name))
+
+(defun aktor-mirror (a)
+  "Set the variables that mirror the state of the aktor A."
+  (loop for (key var) on (aktor-vars a) by #'cddr
+        do (setf (symbol-value var) (getf (aktor-state a) key))))
 
 (defun state-with (state changes)
   "Return STATE, a plist, with CHANGES (key value ...) made in it. Only keys the state has can be changed."
@@ -73,11 +84,13 @@ when nothing changes. What BODY says (SAY) goes to whoever told."
   (dolist (a *aktors*) (aktor-announce a (list p))))
 
 (defun aktor-become (a new)
-  "Make NEW the state of the aktor A, if it differs: check its shape, show the thing anew, tell the guests."
-  (unless (equal new (aktor-state a))
+  "Make NEW the state of the aktor A, if it differs: check its shape, show the thing anew, tell the guests.
+A guest changes nothing this way: there the state is whatever the driver says (AKTOR-ACCEPT)."
+  (unless (or (equal new (aktor-state a)) (aktor-mirror-only-p))
     (unless (fits new (aktor-spec a)) (error "Актор ~s: состояние не той формы: ~s" (aktor-name a) new))
     (setf (aktor-state a) new)
     (incf (aktor-ver a))
+    (aktor-mirror a)
     (when (aktor-show a) (funcall (aktor-show a)))
     (aktor-announce a *net-peers*)))
 
@@ -99,6 +112,7 @@ when nothing changes. What BODY says (SAY) goes to whoever told."
       (let ((a (assoc name *aktors*)))
         (when (and a (fits state (aktor-spec a)))
           (setf (aktor-state a) state (aktor-ver a) ver)
+          (aktor-mirror a)
           (when (aktor-show a) (funcall (aktor-show a))))))))
 
 (defun peek (name &optional key)

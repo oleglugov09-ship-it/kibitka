@@ -255,7 +255,7 @@ Type 1 is a connect, 2 a disconnect, 3 an incoming packet."
           (t (say "Не вышло открыть лобби: порт занят, сервера комнат нет") nil))))
 
 (defun host-state (p)
-  (list :s (getf p :id) *trip-seed* *dist* *speed* *day-t* *season* *weather* *fuel* *money* *planks* *fire*
+  (list :s (getf p :id) *trip-seed* *dist* *speed* *day-t* *season* *weather* *fuel* *fire*
         (switches)
         ;; 'already left' applies only to newcomers: whoever rode with us and dropped off returns into the wagon.
         ;; On the dev polygon, and in a game started at the tunnel, nobody waits at a bus stop: everyone lands
@@ -526,11 +526,11 @@ stand on the windowsill, the same as by hand."
     (:play (start-play (second msg)))                         ; the driver let us into the booth game (igry.lisp)
     (:c (guest-run (second msg)))                             ; a live edit from the driver: run it and reply
     (:t (when (stringp (second msg)) (say (second msg))))     ; said to everyone
-    (:s (destructuring-bind (you seed dist speed day-t season weather fuel money planks fire fold departed others
+    (:s (destructuring-bind (you seed dist speed day-t season weather fuel fire fold departed others
                              &optional client world)
             (rest msg)
           (unless (and (integerp you) (integerp seed) (far-p dist) (small-p speed) (far-p day-t)
-                       (member season *seasons*) (keywordp weather) (small-p fuel) (integerp money) (integerp planks)
+                       (member season *seasons*) (keywordp weather) (small-p fuel)
                        (small-p fire 1000) (listp others) (< (length others) 20)
                        (every (lambda (o) (and (fits o '(integer string t t t t t t)) (look-ok-p (other-look o))
                                                (small-p (other-x o)) (small-p (other-z o)) (small-p (other-yaw o)) (small-p (other-eye o) 3)))
@@ -545,10 +545,8 @@ stand on the windowsill, the same as by hand."
           (when (listp client) (noting :guest-client (guest-client client)))
           (when world (noting :apply-world (apply-world world)))
           (setf *day-t* day-t *fuel* fuel *departed* departed)
-          (put-money money)
           (unless (eq season *season*) (set-season season))
           (unless (eq weather *weather*) (set-weather weather))
-          (setf *planks* planks)
           (when (> (abs (- fire *fire*)) 3) (setf *fire* fire))       ; between messages the fire burns down by itself
           (when (> *time* *net-hold*)
             (set-switches fold)
@@ -770,6 +768,7 @@ trouble and waiting at a bus stop."
         *net-joined* nil *net-host* nil *net-retry* nil *net-retries* 0))
 
 (defun step-net (delta)
+  (aktors-guard)
   (when *net-role*
     (let ((tick (>= (incf *net-clock* delta) (if *net-ws* *relay-rate* *net-rate*))))
       (when tick (setf *net-clock* 0.0))
