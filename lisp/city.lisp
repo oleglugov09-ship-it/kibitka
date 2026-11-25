@@ -212,17 +212,36 @@ Between them are courtyards."
         (shape g :box '(.1 .1 4.2) "#3f6f73" 24 2.2 (+ z 17))
         (shape g :box '(3.0 .3 3.0) "#a8843c" 34 .15 (+ z 17))))))
 
+(defparameter *izba-paints*
+  '(("#5b86a8" "#4f7a5c" "#e6e2d6" "#c79a3e" "#8a4038" "#3f6f73")       ; the frames, the bargeboards, the pickets
+    ("#6a5038" "#8a6a44" "#6e665a" "#54402e" "#7a5a3c")                 ; the logs: brown, new and yellow, grey with years, tarred
+    ("#7a7c78" "#7a4a3a" "#4e463c" "#5a6258" "#6a7480"))                ; the roof: slate, red iron, old boards, green and blue iron
+  "The colours an izba is painted in, a list for each of paint0, paint1 and paint2 of its drawings.")
+(defparameter *izba-yard* '(nil "izba-shed" "izba-shed" "izba-banya" "izba-woodpile" "izba-stog" "izba-outhouse")
+  "What may stand in either back corner of an izba's yard; NIL is an empty corner.")
+(defparameter *izba-fences* '(nil "izba-fence-1" "izba-fence-1" "izba-fence-2" "izba-fence-3")
+  "The fences an izba's lot may have; NIL is none.")
+
 (defun izba (g x z)
-  "Add to G at (X, Z) a private house: one of the four izbas, its frames and fence in a paint of its own.
-Now and then a window is lit and the stove smokes."
-  (let* ((file (format nil "izba-~d" (1+ (random 4))))
-         (trim (elt '("#5b86a8" "#4f7a5c" "#e6e2d6" "#c79a3e" "#8a4038" "#3f6f73") (random 6))) (h (group g x 0 z)))
-    (model h file 0.0 0.0 0.0 :paint (list trim))
-    (when (zerop (random 3))
-      (destructuring-bind (px py pz) (model-point file "window")
-        (shape h :box '(.06 1.0 .7) "#e8c070" px py pz :emit "#ffc060" :energy .9 :shadow nil)))
-    (when (zerop (random 3))                                                                        ; the stove is lit
-      (destructuring-bind (px py pz) (model-point file "smoke") (chimney-smoke h px py pz :size .9)))))
+  "Add to G at (X, Z) a private house, put together for this yard alone: one of the five log houses, in paints of
+its own; a porch, a veranda or a boarded entry at its door; a fence or none; in the back corners a shed, a bath-house,
+a woodpile, a haystack; now and then a well. Now and then a window is lit and the stove smokes.
+The parts are drawn by tools/draw/make_izba.py, which says where each of them has its middle."
+  (flet ((any (list) (elt list (random (length list)))))
+    (let* ((file (format nil "izba-srub-~d" (1+ (random 5)))) (paint (mapcar #'any *izba-paints*)) (h (group g x 0 z)))
+      (flet ((part (name px pz) (when name (model h name px 0.0 pz :paint paint)))
+             (at (point) (or (model-point file point) '(0.0 0.0 0.0))))
+        (part file 0.0 0.0)
+        (destructuring-bind (px py pz) (at "porch") (declare (ignore py)) (part (format nil "izba-porch-~d" (1+ (random 3))) px pz))
+        (destructuring-bind (px py pz) (at "back") (declare (ignore py pz))
+          (dolist (side '(-5.0 5.0)) (part (any *izba-yard*) (+ px 3.0) side)))
+        (when (zerop (random 3)) (destructuring-bind (px py pz) (at "side") (declare (ignore py)) (part "izba-well" px pz)))
+        (part (any *izba-fences*) 0.0 0.0)
+        (when (zerop (random 3))
+          (destructuring-bind (px py pz) (at "window")
+            (shape h :box '(.06 1.0 .7) "#e8c070" px py pz :emit "#ffc060" :energy .9 :shadow nil)))
+        (when (zerop (random 3))                                                                      ; the stove is lit
+          (destructuring-bind (px py pz) (at "smoke") (chimney-smoke h px py pz :size .9)))))))
 
 (defun garages (g len)
   "Add to G a row of garages about LEN metres long, with doors of different colours, rusty here and there.

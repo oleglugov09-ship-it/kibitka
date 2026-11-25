@@ -2,7 +2,7 @@
 """Look at the bus stops and the houses in the game itself: the desktop game on a hidden screen (as tools/perf-drive.py
 does), the wagon put by each kind of bus stop and in the quarters of a few towns, a screenshot of each.
 
-    tools/draw/shots.py OUT-DIR [stops|towns|wood]
+    tools/draw/shots.py OUT-DIR [stops|towns|wood|izby]
 
 Needs the desktop build (`make live`) and sway. No window appears on the desktop."""
 import os, subprocess, sys, tempfile, time, shutil
@@ -71,6 +71,12 @@ try:
             a, b = float(a), float(b)
             for k in range(2, 10):                                # along the village end of the town, looking back at either side of the street
                 shot(f"izby-{i}-{k}", a + k * .01 * (b - a), -2.3, 0.22, 15.0); shot(f"izby-{i}-{k}-r", a + k * .01 * (b - a), 2.3, 0.22, 15.0)
+    if "izby" in what:                                          # a row of izbas built on the spot, to see how they differ
+        lisp("(progn (setf *prop-step* 4000.0) (jump-dist (loop for d from 300 to 60000 by 40 when (and (not (town-at d)) (not (bare-at d)) (eq (dominant :veg d) :meadow)) return d)) (halt) (let ((g (group *world* 0 0 0))) (destructuring-bind (x y z) (road-pos *dist* 0.0) (godot:node-3d-set-position g (v3 x y z))) (node-3d-set-rotation g (v3 0 (- (road-frame *dist*)) 0)) (dotimes (i 6) (izba g 12.0 (- (* i 17.0) 42.0)))) 1)")
+        lisp("(setf *orbit-yaw* -1.25 *orbit-pitch* 0.3 *orbit-dist* 34.0)"); time.sleep(3)
+        for name, yaw, dist in (("izby-row-a", -1.0, 24.0), ("izby-row-b", -2.1, 24.0), ("izby-row-c", -1.57, 40.0)):
+            lisp(f"(setf *orbit-yaw* {yaw} *orbit-pitch* 0.3 *orbit-dist* {dist})"); time.sleep(2)
+            shutil.copy(lisp(f'(live:screenshot "user://{name}.png")').strip('"'), os.path.join(out, name + ".png")); print("shots:", name, flush=True)
     if "towns" in what:
         towns = lisp("(format nil \"~{~a ~}\" (loop for tw in *towns* append (list (string-downcase (town-theme tw)) (round (town-start tw)) (round (town-end tw)))))").strip('"').split()
         done = set()
