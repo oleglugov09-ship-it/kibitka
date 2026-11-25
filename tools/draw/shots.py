@@ -2,7 +2,7 @@
 """Look at the bus stops and the houses in the game itself: the desktop game on a hidden screen (as tools/perf-drive.py
 does), the wagon put by each kind of bus stop and in the quarters of a few towns, a screenshot of each.
 
-    tools/draw/shots.py OUT-DIR [stops|towns|wood|izby|stations]
+    tools/draw/shots.py OUT-DIR [stops|towns|wood|izby|stations|grass]
 
 Needs the desktop build (`make live`) and sway. No window appears on the desktop."""
 import os, subprocess, sys, tempfile, time, shutil
@@ -76,6 +76,15 @@ try:
             d = lisp("(format nil \"~a\" (let ((d (find :" + kind + " *stations* :key (function station-kind)))) (and d (round d))))").strip('"')
             if not d.lstrip("-").isdigit(): continue
             shot(f"station-{kind}-a", float(d) - 16, -0.55, 0.28, 20.0); shot(f"station-{kind}-b", float(d) + 4, -1.3, 0.3, 26.0)
+    if "grass" in what:                                         # the grass of a meadow and of a bor, from the road and from above
+        for veg in ("meadow", "pine", "birch"):
+            d = lisp("(format nil \"~a\" (loop for d from 300 to 60000 by 40 when (and (not (town-at d)) (not (bare-at d)) (eq (dominant :veg d) :" + veg + ") (eq (dominant :veg (+ d 120)) :" + veg + ")) return d))").strip('"')
+            if not d.isdigit(): continue
+            shot(f"grass-{veg}-a", float(d), 0.5, 0.1, 7.0); shot(f"grass-{veg}-b", float(d), -1.0, 0.35, 16.0)
+        fps = lambda: lisp("(round (object-call (gdext:singleton \"Engine\") \"get_frames_per_second\"))")
+        time.sleep(4); with_grass = fps()                          # the same place with the grass and without it
+        lisp("(progn (setf *grass* nil) (jump-dist (+ *dist* 2000)) (jump-dist (- *dist* 2000)) (halt) 1)"); time.sleep(6)
+        print("shots: frames a second with grass", with_grass, "without", fps(), "(software drawing on a hidden screen)", flush=True)
     if "izby" in what:                                          # a row of izbas built on the spot, to see how they differ
         lisp("(progn (setf *prop-step* 4000.0) (jump-dist (loop for d from 300 to 60000 by 40 when (and (not (town-at d)) (not (bare-at d)) (eq (dominant :veg d) :meadow)) return d)) (halt) (let ((g (group *world* 0 0 0))) (destructuring-bind (x y z) (road-pos *dist* 0.0) (godot:node-3d-set-position g (v3 x y z))) (node-3d-set-rotation g (v3 0 (- (road-frame *dist*)) 0)) (dotimes (i 6) (izba g 12.0 (- (* i 17.0) 42.0)))) 1)")
         lisp("(setf *orbit-yaw* -1.25 *orbit-pitch* 0.3 *orbit-dist* 34.0)"); time.sleep(3)

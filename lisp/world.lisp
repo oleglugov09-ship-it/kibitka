@@ -150,6 +150,90 @@ SIDE is ±1, the side of the road. The colours of foliage and flowers follow the
     (loop repeat (getf *woods* veg 0)                              ; the wood behind the roadside
           do (place-prop (+ d (random *prop-step*)) side veg (* side (+ 18.0 (random 34.0)))))))
 
+;;; Grass. A tuft is twelve triangles (tools/draw/make_grass.py); a patch of the roadside is one MultiMesh of some
+;;; dozens of tufts, one draw. The shader sways the blades and lets them sink into the ground as they near *GRASS-FAR*
+;;; from the camera, beyond which a patch is not drawn at all: the cost is what stands within fifty metres.
+
+(defparameter *grass* t "Whether grass grows by the road: NIL for a machine that cannot bear it.")
+(defparameter *grass-step* 6.0 "The length of a patch of grass along the road, in metres: patches of the two sides take turns.")
+(defparameter *grass-far* 55.0 "The distance from the camera at which the grass has sunk into the ground, in metres.")
+(defparameter *grass-thick* '(:meadow 150 :steppe 100 :birch 100 :autumn 90 :marsh 120 :pine 45 :rocky 30)
+  "How many tufts stand in a patch, by the vegetation of the place.")
+(defparameter *grass-code* "shader_type spatial;
+render_mode cull_disabled;
+uniform vec3 tint : source_color;
+uniform float far = 55.0;
+varying float up;
+void vertex() {
+  vec3 w = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
+  float near = clamp((far - distance(w, CAMERA_POSITION_WORLD)) / 14.0, 0.0, 1.0);
+  up = clamp(VERTEX.y * 2.0, 0.0, 1.0);
+  VERTEX.y *= near;
+  VERTEX.x += sin(TIME * 1.6 + w.x * 0.6 + w.z * 0.45) * 0.07 * up * near;
+  NORMAL = vec3(0.0, 1.0, 0.0);
+}
+void fragment() {
+  ALBEDO = tint * COLOR.rgb * mix(0.5, 0.95, up);
+  ROUGHNESS = 1.0;
+  SPECULAR = 0.0;
+}" "The shader of the grass.")
+(defvar *grass-mats* '() "The materials of the grass by season: a list of (season . ShaderMaterial).")
+
+(defun grass-material ()
+  "Return the material of the grass for the current season: green, yellowed in autumn, dry stalks in winter."
+  (or (cdr (assoc *season* *grass-mats*))
+      (let ((sh (gdext:make-object "Shader")) (mat (gdext:make-object "ShaderMaterial")))
+        (object-set sh "code" *grass-code*)
+        (object-set mat "shader" sh)
+        (object-call mat "set_shader_parameter" "tint"
+                     (hex (case *season* (:spring "#5a8a3a") (:autumn "#8a7a3c") (:winter "#a09468") (t "#456e30"))))
+        (object-call mat "set_shader_parameter" "far" *grass-far*)
+        (push (cons *season* mat) *grass-mats*)
+        mat)))
+
+(defun grass-mesh ()
+  "Return the mesh of a tuft: the one mesh of the model grass-tuft."
+  (labels ((find-mesh (node)
+             (if (object-call node "is_class" "MeshInstance3D")
+                 (object-get node "mesh")
+                 (loop for child across (node-get-children node) thereis (find-mesh child)))))
+    (let ((entry (model-entry "grass-tuft"))) (and entry (find-mesh (first entry))))))
+
+(defun add-grass (d side)
+  "Grow a patch of grass at path coordinate D on side SIDE (±1): tufts strewn from the verge to thirty metres out,
+thicker by the road, each on the land where it stands. None in a town, on a bridge, on a road or under water; in
+winter one tuft in five shows through the snow."
+  (when (or (not *grass*) (bare-at d) (town-at d)) (return-from add-grass nil))
+  (let* ((n (floor (getf *grass-thick* (dominant :veg d) 60) (if (eq *season* :winter) 5 1)))
+         (mesh (grass-mesh)) (origin (road-pos d (* side 6.0) (height-at (* side 6.0) d))) (places '()))
+    (unless mesh (return-from add-grass nil))
+    (destructuring-bind (ox oy oz) origin
+      (loop repeat n
+            do (let* ((r (random 1.0)) (x (* side (+ (if (< side 0) 7.6 3.8) (* 28.0 r r)))) (dd (+ d (random (* 2 *grass-step*))))
+                      (h (height-at x dd)))
+                 (destructuring-bind (wx wy wz) (road-pos dd x (- h .02))
+                   (unless (or (< h (+ *water-y* .05)) (on-road-p wx wz))
+                     (let ((s (+ .6 (random .7))))
+                       (push (cons (place-transform (- wx ox) (- wy oy) (- wz oz) (list 0 (random 6.28) 0) (list s (* s (+ .8 (random .6))) s))
+                                   (+ .75 (random .5)))
+                             places)))))))
+    (when places
+      (let ((g (apply #'group *world* origin))                        ; unturned: the tufts are placed by the map
+            (mm (gdext:make-object "MultiMesh")) (mmi (gdext:make-object "MultiMeshInstance3D")))
+        (object-set mm "transform_format" 1)                          ; TRANSFORM_3D
+        (object-set mm "use_colors" t)
+        (object-set mm "mesh" mesh)
+        (object-set mm "instance_count" (length places))
+        (loop for (at . shade) in places for i from 0
+              do (object-call mm "set_instance_transform" i at)
+                 (object-call mm "set_instance_color" i (color shade shade (* shade .9) 1.0)))
+        (object-set mmi "multimesh" mm)
+        (object-set mmi "material_override" (grass-material))
+        (object-set mmi "cast_shadow" 0)
+        (object-set mmi "visibility_range_end" (+ *grass-far* 40.0))
+        (node-add-child g mmi)
+        (setf *props* (nconc *props* (list (cons g d))))))))
+
 ;;; The window around the wagon. Everything by the roadside is built not 'ahead in ascending path coordinate'
 ;;; but in a window around the wagon: far along its heading (*AHEAD*), a little behind (*BEHIND*). Where it is
 ;;; heading is *DIR*: +1 along the path, −1 against it. COVER builds up the things standing on a grid (poles,
@@ -296,6 +380,7 @@ window check comes first, and the key and the building itself are evaluated only
 
 (defun step-props ()
   (cover :props *prop-step* (lambda (d i) (add-prop d (if (evenp i) 1 -1))))
+  (cover :grass *grass-step* (lambda (d i) (add-grass d (if (evenp i) 1 -1))))
   (setf *props* (remove-if (lambda (p) (when (out-of-window-p (cdr p)) (node-queue-free (car p)) t)) *props*)))
 
 ;;; Bridges — where the river ahead crosses the road
