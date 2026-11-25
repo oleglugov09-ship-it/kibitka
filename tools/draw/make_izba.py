@@ -256,5 +256,6 @@ KINDS = (("izba-srub-1", lambda m: srub(m, 6.0, 7.0, 9, 3)), ("izba-srub-2", lam
          ("izba-porch-1", porch_open), ("izba-porch-2", porch_veranda), ("izba-porch-3", porch_seni),
          ("izba-shed", shed), ("izba-banya", banya), ("izba-woodpile", woodpile), ("izba-stog", stog), ("izba-outhouse", outhouse), ("izba-well", well),
          ("izba-fence-1", fence_pickets), ("izba-fence-2", fence_boards), ("izba-fence-3", fence_poles))
-for name, build in KINDS:
-    m = Model(); build(m); m.save(os.path.join(out, name + ".blend"))
+if os.path.basename(sys.argv[sys.argv.index("--python") + 1]) == "make_izba.py":      # make_azs.py borrows the logs and the frames
+    for name, build in KINDS:
+        m = Model(); build(m); m.save(os.path.join(out, name + ".blend"))

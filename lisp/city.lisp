@@ -302,11 +302,11 @@ It is :SWAMP (a hut on stilts) by a swamp, :TAVERN in a pine forest outside town
     (:swamp (swamp-station g))))
 
 (defun tavern-station (g)
-  "Add to G a tavern in the deep forest.
-It is a log house with a porch, a lantern and smoke from the chimney, with an old pump in the yard."
-  (model g "station-tavern")
-  (chimney-smoke g 18.0 8.4 -3.0 :size 1.4)
-  (sign g "ТРАКТИР · БЕНЗИН" 8.18 4.3 0 :h .5 :rgb "#e8c070"))
+  "Add to G the tea-house in the deep forest (the kind is still called :TAVERN).
+It is a long log house with a porch, a lantern and smoke from the chimney, with an old pump in the yard."
+  (model g "station-tavern" 0.0 0.0 0.0 :paint '("#3f6f73" "#6a5038" "#4e463c"))
+  (destructuring-bind (x y z) (model-point "station-tavern" "smoke") (chimney-smoke g x y z :size 1.4))
+  (destructuring-bind (x y z) (model-point "station-tavern" "letters") (sign g "ЧАЙНАЯ · БЕНЗИН" x y z :h .5 :rgb "#e8e0c8")))
 
 (defun swamp-station (g)
   "Add to G the gas station by the swamp: a hut on stilts, a boardwalk and barrels.
@@ -316,11 +316,13 @@ Fly swatters are sold only here."
   (sign g "МУХОБОЙКИ" 4.3 2.6 9.0 :h .42 :rgb "#e8e060"))
 
 (defun plain-station (g)
-  "Add to G an ordinary gas station.
-It has a canopy with a red stripe, three pumps, a booth and a price stele."
+  "Add to G an ordinary petrol station, as they were built in the seventies.
+It is the operator's house under a flat roof thrown out over three pumps, the word in letters on the roof, a price
+board on posts by the road."
   (model g "station-plain")
-  (sign g "АЗС" 4.3 6.6 12 :h .9 :rgb "#d8d4c4") (sign g "76   0.40" 4.3 5.6 12 :h .5 :rgb "#c9a13a")
-  (sign g "АЗС" 5.0 5.06 0 :h .8 :rgb "#d8d4c4"))
+  (destructuring-bind (x y z) (model-point "station-plain" "letters") (sign g "БЕНЗИН" x y z :h 1.1 :rgb "#a3262c"))
+  (destructuring-bind (x y z) (model-point "station-plain" "price")
+    (sign g "АИ-76   0.40" x y z :h .42 :rgb "#2a2c30") (sign g "ДТ   0.30" x (- y .5) z :h .42 :rgb "#2a2c30")))
 
 (defun add-market (d)
   "Build the market by the bus stop in the middle of the town at path coordinate D and return its group.
