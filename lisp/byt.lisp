@@ -524,6 +524,9 @@ stacks are furniture, they are not delivered). The first three towns are used in
     (node-add-child parent r)
     (object-set r "position" (vector2 x y)) (object-set r "size" (vector2 w h))
     (object-set r "color" (color (first rgb) (second rgb) (third rgb) a))
+    ;; a gauge is looked at, not pressed: left to stop the mouse, the dot of the crosshair - right under a captured
+    ;; pointer in the desktop game - took every movement and click, and the gaze did not turn
+    (object-set r "mouse_filter" 2)
     r))
 
 (defun hud-label (parent text x y &optional (size 8) (rgb '(.85 .82 .72)))
