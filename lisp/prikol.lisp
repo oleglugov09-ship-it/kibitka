@@ -221,8 +221,9 @@ Return T if a train ride was pending (GO-TO-TOWN then does nothing itself)."
   :label "E — подняться на маяк: что почём в ближайших городах"
   :use (lambda () (say (format nil "С маяка видно далеко. ~{~a~^ · ~}"       ; the two nearest towns by road, in either direction
                                (mapcar #'market-note (rest (sheet-towns))))))
-  :build (lambda (g) (dotimes (k 6) (shape g :cyl '(.8 .9 1.0 12) (if (evenp k) "#e8e4d8" "#a3262c") 7.0 (+ .5 k) -3.2))   ; a small lighthouse
-         (model g "booth-5-extra")))
+  ;; a lighthouse of its true size, twenty-two metres, beside the booth (models/budki/booth-lighthouse.blend). It was six
+  ;; metres of stacked cylinders with a lamp on top: the author, 25.11: "маяк был очень маленьким"
+  :build (lambda (g) (model g "booth-lighthouse" 10.0 0.0 -7.5)))
 
 ;; window no. 3: the stamp
 (defbooth 6

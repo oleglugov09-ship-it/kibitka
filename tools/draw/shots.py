@@ -55,6 +55,10 @@ try:
         for i, (off, yaw, pitch, dist) in enumerate(((-13, -0.45, 0.32, 12.0), (-9, -1.3, 0.5, 14.0), (9, 2.6, 0.3, 12.0), (9, -2.6, 0.3, 12.0), (0, 1.57, 0.25, 16.0), (0, -1.57, 0.6, 18.0))):
             shot(f"probe-{i}", d0 + off, yaw, pitch, dist)
         print(lisp("(list *dir* (round *dist*) (length *stops*))"))
+    if what and what[0] == "booth":                             # a booth by its number: shots.py OUT booth 5
+        d0 = float(lisp("(format nil \"~d\" (round (first (find " + what[1] + " *gimmicks* :key (function second)))))").strip('"'))
+        for i, (off, yaw, pitch, dist) in enumerate(((-24, -0.5, 0.25, 22.0), (-10, -1.2, 0.3, 30.0), (14, -2.4, 0.2, 26.0))):
+            shot(f"booth-{what[1]}-{i}", d0 + off, yaw, pitch, dist)
     if "towns" in what:
         towns = lisp("(format nil \"~{~a ~}\" (loop for tw in *towns* append (list (string-downcase (town-theme tw)) (round (town-start tw)) (round (town-end tw)))))").strip('"').split()
         done = set()

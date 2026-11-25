@@ -145,18 +145,51 @@ institutes, :KONSTR for a town built round a works in the twenties, :PLAIN where
     ((:factory :rail :mine :port :sawmill) :konstr)
     (t :plain)))
 
-(defun old-house (g file floors d x z)
-  "Add to G a house of the older town along the street, about D metres long: sections of the model FILE, FLOORS
-storeys, in the warm plaster those houses wear. Their ends have windows: no mosaic there."
-  (house-sections g floors (max 2 (round d *section*)) x z (elt '("#b8a888" "#a89c84" "#c0b090" "#9c9484") (random 4))
+(defparameter *plaster* '("#b8a888" "#a89c84" "#c0b090" "#9c9484") "The warm plasters of the houses built before the panels.")
+(defparameter *bricks* '("#8a5a44" "#96684c" "#7c5040" "#a07858") "The bricks of the five-storey houses that are not of panels.")
+
+(defun old-house (g file floors d x z &key rgb)
+  "Add to G a house along the street, about D metres long, that is not a panel block: sections of the model FILE,
+FLOORS storeys, in the warm plaster those houses wear (or in RGB). Their ends have windows: no mosaic there."
+  (house-sections g floors (max 2 (round d *section*)) x z (or rgb (elt *plaster* (random 4)))
                   :lit (+ 2 floors) :file file))
 
-(defun panel-house (g floors w d x z &key slogan)
+(defun grand-house (g x z)
+  "Add to G the one tall house of the main street: a tower with a spire between two wings."
+  (let ((rgb (elt *plaster* (random 4))))
+    (house-sections g 5 1 x (- z 16.0) rgb :lit 6 :file "house-stalin-5")
+    (house-sections g 8 1 x z rgb :lit 9 :file "house-stalin-8")
+    (house-sections g 5 1 x (+ z 16.0) rgb :lit 6 :file "house-stalin-5")))
+
+(defun point-tower (g)
+  "Add to G a tower of sixteen storeys standing alone: windows on all four sides."
+  (house-sections g 16 1 18.0 0.0 (elt '("#7b7d82" "#84807a" "#8a8478") (random 3)) :lit 10 :file "house-tower-16"))
+
+(defun plain-old-lot (at)
+  "Build up a lot of the older quarters as every town has them: five-storey panel blocks along the street or end-on to
+it, five storeys of brick, or the two-storey plaster houses from just after the war. AT makes the lot's group, given
+its length. Return the length."
+  (case (random 5)
+    (0 (end-on-blocks (funcall at 104.0) 5 3) 104.0)
+    (1 (let ((g (funcall at 70.0)))
+         (old-house g "house-brick-5" 5 62.0 12.0 0 :rgb (elt *bricks* (random 4)))
+         (when (zerop (random 2)) (parked-car g 1.6 (- (random 40.0) 20)))
+         70.0))
+    (2 (let ((g (funcall at 56.0)))
+         (old-house g "house-low-2" 2 48.0 12.0 0)
+         56.0))
+    (t (let ((g (funcall at 70.0)))
+         (panel-house g 5 12.0 62.0 12.0 0)
+         (when (zerop (random 2)) (parked-car g 1.6 (- (random 40.0) 20)))
+         (when (zerop (random 4)) (kvas g 3.0 26))
+         70.0))))
+
+(defun panel-house (g floors w d x z &key slogan file)
   "Add to G a panel apartment block of FLOORS storeys standing along the street, about D metres long:
-entrance sections set side by side (HOUSE-SECTIONS), a mosaic on each end wall."
+entrance sections set side by side (HOUSE-SECTIONS; of the model FILE, if not the usual one), a mosaic on each end wall."
   (declare (ignore w))
   (let* ((h (* floors 2.8)) (rgb (nth (random 4) '("#7b7d82" "#84807a" "#6f757c" "#8a7d6e")))
-         (len (house-sections g floors (max 2 (round d *section*)) x z rgb :lit (+ 2 floors))))
+         (len (house-sections g floors (max 2 (round d *section*)) x z rgb :lit (+ 2 floors) :file file)))
     (end-mosaic g (+ x 6.0) (+ z (/ len 2) .1) 0 12.0 h)
     (end-mosaic g (+ x 6.0) (- z (/ len 2) .1) pi 12.0 h)
     (when slogan
@@ -337,45 +370,45 @@ Return the length of the lot."
       (ecase zone
         ;; not a wall of houses shoulder to shoulder: one lot in three is a yard left empty, and the houses stand
         ;; at different depths from the road (the author, 24.11: "абсурдно стоят здания просто рядом")
-        (:village (if (zerop (random 3))
-                      (+ 14.0 (random 12.0))
-                      (progn (izba (at 17.0) (+ 6.0 (random 9.0)) 0) (+ 17.0 (random 10.0)))))
+        (:village (cond ((zerop (random 3)) (+ 14.0 (random 12.0)))
+                        ((and (not (eq (town-theme tw) :village)) (zerop (random 4)))      ; a town's edge: now and then two storeys of timber
+                         (old-house (at 40.0) "house-wood-2" 2 32.0 14.0 0) 40.0)
+                        (t (izba (at 17.0) (+ 6.0 (random 9.0)) 0) (+ 17.0 (random 10.0)))))
         (:garages
          (if (< side 0)
              (progn (factory (at 64.0) 64.0) 64.0)
              (progn (garages (at 30.0) 30.0) 34.0)))
-        ;; the older quarters: five-storey panel blocks everywhere, and between them what the town was before
-        ;; them - houses with pilasters and cornices, or the flat-roofed ones with ribbon windows
+        ;; the older quarters: what every town has (PLAIN-OLD-LOT), and between that what this town was before
+        ;; the panels - houses with pilasters, bays and cornices, or the flat-roofed ones of the twenties
         (:old
-         (let ((style (old-style tw)) (n (random 3)))
-           (cond ((and (eq style :stalin) (plusp n))
+         (let ((style (old-style tw)) (n (random 5)))
+           (cond ((or (eq style :plain) (zerop n)) (plain-old-lot #'at))
+                 ((eq style :stalin)
                   (let ((g (at 70.0)))
-                    (old-house g "house-stalin-5" 5 62.0 12.0 0)
+                    (if (< n 3) (old-house g "house-stalin-5" 5 62.0 12.0 0) (old-house g "house-stalin-4" 4 62.0 12.0 0))
                     (when (zerop (random 2)) (parked-car g 1.6 (- (random 40.0) 20)))
                     70.0))
-                 ((and (eq style :konstr) (plusp n))
-                  (let ((g (at 56.0)))
-                    (old-house g "house-konstr-4" 4 48.0 12.0 0)
-                    (when (zerop (random 4)) (kvas g 3.0 20))
-                    56.0))
-                 ((zerop (random 2)) (end-on-blocks (at 104.0) 5 3) 104.0)
-                 (t (let ((g (at 70.0)))
-                      (panel-house g 5 12.0 62.0 12.0 0)
-                      (when (zerop (random 2)) (parked-car g 1.6 (- (random 40.0) 20)))
-                      (when (zerop (random 4)) (kvas g 3.0 26))
-                      70.0)))))
+                 (t (let ((g (at 56.0)))
+                      (if (< n 3) (old-house g "house-konstr-4" 4 48.0 12.0 0) (old-house g "house-konstr-5" 5 48.0 12.0 0))
+                      (when (zerop (random 4)) (kvas g 3.0 20))
+                      56.0)))))
         (:centre
          (let ((n (random 3)))
-           (cond ((and (< side 0) (not (town-plaza tw)))               ; the square with the house of culture: one per town
-                  (setf (town-plaza tw) t)
+           (cond ((and (< side 0) (not (member :square (town-plaza tw))))   ; the square with the house of culture: one per town
+                  (push :square (town-plaza tw))
                   (let ((g (at 62.0))) (plaza g) (culture-house g) 62.0))
+                 ((and (> side 0) (not (eq (old-style tw) :plain)) (not (member :tower (town-plaza tw))))   ; and one tall house
+                  (push :tower (town-plaza tw))
+                  (grand-house (at 54.0) 12.0 0) 54.0)
                  ((= n 0) (let ((g (at 30.0))) (shop g (nth (random (length *shop-names*)) *shop-names*)) (parked-car g 1.6 6) 30.0))
                  ((eq (old-style tw) :plain) (let ((g (at 70.0))) (panel-house g 5 12.0 62.0 12.0 0) (shop-front g) 70.0))
                  (t (let ((g (at 70.0))) (old-house g "house-stalin-5" 5 62.0 12.0 0) (shop-front g) 70.0)))))   ; the main street: the grand houses, shops below
         (:blocks9
-         (case (random 4)
+         (case (random 7)
            (0 (tower (at 34.0)) 34.0)
            (1 (end-on-blocks (at 104.0) 9 3) 104.0)
+           (2 (point-tower (at 38.0)) 38.0)
+           (3 (let ((g (at 76.0))) (panel-house g 9 12.0 66.0 16.0 0 :file "house-ribbon-9") 76.0))
            (t (let ((g (at 76.0)))
                 (panel-house g 9 12.0 66.0 16.0 0 :slogan (when (zerop (random 3)) (nth (random (length *slogans*)) *slogans*)))
                 (when (zerop (random 2)) (parked-car g 1.6 (- (random 40.0) 20)))
