@@ -37,8 +37,10 @@
   "Declare the aktor NAME. STATE is its state at the start of a new game: a plist, whose keys are all the keys it
 will ever have. SPEC is the shape of the state for FITS: a state of another shape is not taken, neither from a
 handler nor from the network. SHOW is called after every change, to show the thing anew. VARS is a plist from
-keys of the state to variables that mirror them, for the code that only reads: (:money *money*). Declared again
-while the game runs, an aktor keeps the state it has."
+keys of the state to variables that mirror them, for the code that only reads: (:money *money*). Where the
+variable holds the field in another form, the entry is (variable to-variable to-state), two function names:
+a state travels over the network and so has no dotted pairs. Declared again while the game runs, an aktor keeps
+the state it has."
   `(let ((old (assoc ,name *aktors*)))
      (if old
          (setf (aktor-spec old) ,spec (aktor-show old) ,show (aktor-start old) ,state (aktor-vars old) ,vars)
@@ -46,10 +48,20 @@ while the game runs, an aktor keeps the state it has."
      (aktor-mirror (assoc ,name *aktors*))
      ,name))
 
+(defun mirror-var (entry) "Return the variable of the mirror ENTRY." (if (consp entry) (first entry) entry))
+
+(defun mirror-shown (entry field)
+  "Return what the variable of the mirror ENTRY holds when the state's field is FIELD."
+  (if (consp entry) (destructuring-bind (var to-var to-state) entry (declare (ignore var to-state)) (funcall to-var field)) field))
+
+(defun mirror-field (entry value)
+  "Return the state's field for which the variable of the mirror ENTRY holds VALUE."
+  (if (consp entry) (destructuring-bind (var to-var to-state) entry (declare (ignore var to-var)) (funcall to-state value)) value))
+
 (defun aktor-mirror (a)
   "Set the variables that mirror the state of the aktor A."
-  (loop for (key var) on (aktor-vars a) by #'cddr
-        do (setf (symbol-value var) (getf (aktor-state a) key))))
+  (loop for (key entry) on (aktor-vars a) by #'cddr
+        do (setf (symbol-value (mirror-var entry)) (mirror-shown entry (getf (aktor-state a) key)))))
 
 (defun state-with (state changes)
   "Return STATE, a plist, with CHANGES (key value ...) made in it. Only keys the state has can be changed."
@@ -86,13 +98,15 @@ when nothing changes. What BODY says (SAY) goes to whoever told."
 (defun aktor-become (a new)
   "Make NEW the state of the aktor A, if it differs: check its shape, show the thing anew, tell the guests.
 A guest changes nothing this way: there the state is whatever the driver says (AKTOR-ACCEPT)."
-  (unless (or (equal new (aktor-state a)) (aktor-mirror-only-p))
-    (unless (fits new (aktor-spec a)) (error "Актор ~s: состояние не той формы: ~s" (aktor-name a) new))
-    (setf (aktor-state a) new)
-    (incf (aktor-ver a))
-    (aktor-mirror a)
-    (when (aktor-show a) (funcall (aktor-show a)))
-    (aktor-announce a *net-peers*)))
+  (cond ((aktor-mirror-only-p))
+        ((equal new (aktor-state a))
+         (aktor-mirror a))                                  ; said aloud what the state already is: a variable written past the aktor gives way
+        (t (unless (fits new (aktor-spec a)) (error "Актор ~s: состояние не той формы: ~s" (aktor-name a) new))
+           (setf (aktor-state a) new)
+           (incf (aktor-ver a))
+           (aktor-mirror a)
+           (when (aktor-show a) (funcall (aktor-show a)))
+           (aktor-announce a *net-peers*))))
 
 (defshared deliver :tell (name message arg)
   "Tell the aktor NAME the MESSAGE with ARG, as the driver does it: for ourselves, or for the guest who asked."

@@ -22,7 +22,7 @@
   (when (and (integerp score) (<= 0 score 9))
     (log-event :played :kind kind :score score)
     (case kind
-      (:tir (cond ((>= score 5) (setf *badge* t) (save-prikol)
+      (:tir (cond ((>= score 5) (poke :booths :badge t) (save-prikol)
                    (or (give-good :cans "Пять из пяти! Значок «Меткий стрелок» и банка тушёнки — приз")
                        (say "Пять из пяти! Значок «Меткий стрелок» твой. Приз не взять — руки заняты"))
                    (say-all "Пять из пяти в тире!"))

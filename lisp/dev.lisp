@@ -189,7 +189,7 @@ Return T when the key was ours."
     (:planks (add-planks 10) (say (cl:format nil "Planks: ~d" *planks*)))
     (:debt (pay-debt *debt*) (say "The debt is paid off: the ticket is sold at the savings bank"))
     (:ending (toggle-cheats) (if *ending* (stop-ending) (start-ending)))
-    (:daily (setf *gimmick-spent* '()) (say "Once-a-day limits are reset"))
+    (:daily (poke :booths :spent '()) (say "Once-a-day limits are reset"))
     (:next (jump-place 1)) (:prev (jump-place -1))
     (:weather (set-weather (let ((all '(:clear :cloudy :rain :fog :snow))) (nth (mod (1+ (or (position *weather* all) 0)) 5) all)) 5))
     (:season (set-season (nth (mod (1+ (position *season* *seasons*)) 4) *seasons*)))

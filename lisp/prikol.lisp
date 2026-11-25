@@ -26,10 +26,12 @@ in their paws.")
 (defun load-prikol ()
   (let ((f (get-save :prikol)))
     (when (fits f '(t t &optional t t))
-      (setf *stamp* (and (first f) t) *badge* (and (second f) t) *lid* (and (fourth f) t)
-            *gimmick-spent* (and (fits (third f) '(:each cons)) (third f))))))
+      (destructuring-bind (stamp badge &optional spent lid) f
+        (poke :booths :stamp (and stamp t) :badge (and badge t) :lid (and lid t)
+                      :spent (and (fits spent '(:each cons)) (every (lambda (e) (and (integerp (car e)) (integerp (cdr e)))) spent)
+                                  (spent-lists spent)))))))
 (defstate :prikol
-  :clear (lambda () (setf *stamp* nil *badge* nil *lid* nil *boost-until* 0.0 *gimmick-spent* '() *wait* nil *rail-ticket* nil))
+  :clear (lambda () (aktor-reset :booths) (setf *boost-until* 0.0 *wait* nil *rail-ticket* nil))
   :load #'load-prikol :save #'save-prikol :show (lambda () (show-lid)))
 
 (defun boost-factor () (if (< *time* *boost-until*) *water-boost* 1.0))
@@ -82,7 +84,9 @@ The goat, the fishing and the mine each give theirs once per day cycle."
     (say "Здесь на сегодня всё. Приходи завтра")
     t))
 
-(defun spend (i) (setf *gimmick-spent* (cons (cons i (today)) (remove i *gimmick-spent* :key #'car))) (save-prikol))
+(defun spend (i)
+  (poke :booths :spent (cons (list i (today)) (remove i (peek :booths :spent) :key #'first)))
+  (save-prikol))
 
 (defun rail-fare (tw)
   "Return the price of carrying the wagon by train to town TW, by the length of the way."
@@ -129,6 +133,17 @@ Return T if a train ride was pending (GO-TO-TOWN then does nothing itself)."
 (defvar *goat* nil "Manka the goat by her booth: the node, as built with the booth.")
 (defvar *goat-milk* nil "The milk in Manka's pail: a node that grows as the pail fills.")
 (defvar *lid* nil "True once the lid for the frying pan is bought (hardware store, Krasny Kut): under it things fry twice as fast.")
+
+(defun spent-pairs (list) "Return the free takings as the game keeps them, (booth . day) pairs, from the state's (booth day)." (loop for (i day) in list collect (cons i day)))
+(defun spent-lists (pairs) "Return the free takings as the state keeps them, (booth day), from (booth . day) pairs." (loop for (i . day) in pairs collect (list i day)))
+
+;;; What the booths have given for good is an aktor, the driver's: the stamp, the badge, the lid, and on which
+;;; day each free thing was last taken.
+(defaktor :booths :state '(:stamp nil :badge nil :spent () :lid nil)
+  :spec '((:member :stamp) (:member t nil) (:member :badge) (:member t nil) (:member :spent) (:each (integer integer))
+          (:member :lid) (:member t nil))
+  :vars '(:stamp *stamp* :badge *badge* :lid *lid* :spent (*gimmick-spent* spent-pairs spent-lists))
+  :show (lambda () (show-lid)))
 (define-fields plate node x y z swing speed alive)
 (define-fields block node x y coal broken)
 (defvar *rock* '() "The rock face of the mine, as built with its booth: entries of (node x y coal broken).")
@@ -171,7 +186,7 @@ Return T if a train ride was pending (GO-TO-TOWN then does nothing itself)."
            (format nil "E — купить чугунную крышку для сковородки за ~/kiosk-trip::rub/: под ней жарится вдвое быстрее" *lid-price*)))
   :use (lambda () (cond (*lid* (when (pay (second *jar-deal*)) (poke :jars :n (min 99 (+ (peek :jars :n) (first *jar-deal*))))
                                         (say (format nil "Купили банки. Пустых теперь ~d: закатывают у ящика под умывальником" (peek :jars :n)))))
-             ((pay *lid-price*) (setf *lid* t) (save-prikol) (show-lid) (log-event :lid :money *money*)
+             ((pay *lid-price*) (poke :booths :lid t) (save-prikol) (log-event :lid :money *money*)
               (say-all "Купили крышку! Висит над сковородкой: теперь на сковородке жарится вдвое быстрее")))))
 
 ;; the library: waste paper for books
@@ -214,7 +229,7 @@ Return T if a train ride was pending (GO-TO-TOWN then does nothing itself)."
   :shelf '("#e8e0d0" "#8a8070" "#6a3a2e")
   :label (lambda () (if *stamp* "Печать уже стоит: за посылки платят вдвое" (format nil "E — получить печать за ~/kiosk-trip::rub/: посылки вдвое дороже" *stamp-price*)))
   :use (lambda () (cond (*stamp* (say "Печать уже стоит"))
-             ((pay *stamp-price*) (setf *stamp* t) (save-prikol) (log-event :stamp)
+             ((pay *stamp-price*) (poke :booths :stamp t) (save-prikol) (log-event :stamp)
               (say "Справка с круглой печатью! Теперь за посылки платят вдвое")))))
 
 ;; the mine
@@ -350,10 +365,3 @@ booth to booth, and a gas station next door does not switch them off."
             (t (setf *rush-told* nil))))))
 
 ;;; A guest holds the driver's stamp, badge, lid and the day's takings: taken in here (APPLY-WORLD, sync.lisp).
-(defun accept-prikol (prikol)
-  "Take in, as a guest, the driver's booth things PRIKOL: (stamp badge spent lid)."
-  (when (fits prikol '(t t list t))
-    (unless (eq (and (fourth prikol) t) (and *lid* t)) (setf *lid* (and (fourth prikol) t)) (show-lid))
-    (setf *stamp* (and (first prikol) t) *badge* (and (second prikol) t)
-          *gimmick-spent* (loop for e in (third prikol)
-                                when (fits e '(integer integer)) collect (cons (first e) (second e))))))

@@ -1,6 +1,8 @@
 ;;;; One wavelength: everything that concerns the world and the wagon is the same for all players.
-;;;;  • WORLD. Several times a second the driver sends the guests a block of the world (WORLD-FOR): road events, papers,
-;;;;    booths, finds, gnomes, the route. A guest computes none of this itself: APPLY-WORLD.
+;;;;  • WORLD. Several times a second the driver sends the guests a block of the world (WORLD-FOR): road events,
+;;;;    the finds picked up nearby, the route. A guest computes none of this itself: APPLY-WORLD. What has an owner
+;;;;    of its own - the pocket, the papers, the booths, the things in the wagon - is an aktor (aktor.lisp) and
+;;;;    travels when it changes.
 ;;;;  • ACTIONS. A guest asks the driver for any shared action (pick up a bottle, take a gnome, milk the goat,
 ;;;;    pay a fine): ASK-HOST. The driver runs the very same function 'on the guest's behalf' (RUN-AS: with
 ;;;;    the guest's paws, which the driver keeps, and with the reply going to the guest), so actions have no
@@ -132,14 +134,15 @@ asking; the others wait their turn (NEXT-ASK)."
   "Look, once a frame, for mirror variables written past their aktor. The driver's write is taken into the state
 (and so reaches the guests and the save); one that does not fit, or a guest's, is undone."
   (dolist (a *aktors*)
-    (loop for (key var) on (aktor-vars a) by #'cddr
-          do (unless (equal (symbol-value var) (getf (aktor-state a) key))
-               (unless (member var *setf-told*)
-                 (push var *setf-told*)
-                 (format t "~&~a изменили мимо актора ~s: надёжнее (poke ~s ~s ...)~%" var (aktor-name a) (aktor-name a) key))
-               (unless (net-guest-p)
-                 (noting :aktors-guard (poke (aktor-name a) key (symbol-value var))))
-               (aktor-mirror a)))))
+    (loop for (key entry) on (aktor-vars a) by #'cddr
+          do (let ((var (mirror-var entry)))
+               (unless (equal (symbol-value var) (mirror-shown entry (getf (aktor-state a) key)))
+                 (unless (member var *setf-told*)
+                   (push var *setf-told*)
+                   (format t "~&~a изменили мимо актора ~s: надёжнее (poke ~s ~s ...)~%" var (aktor-name a) (aktor-name a) key))
+                 (unless (net-guest-p)
+                   (noting :aktors-guard (poke (aktor-name a) key (mirror-field entry (symbol-value var)))))
+                 (aktor-mirror a))))))
 
 (defun asked-thing-p (key spec)
   "Return true if we are a guest who has asked the driver to do KEY (:LIFT or :PUT) with the thing SPEC, and the
@@ -197,11 +200,8 @@ The same thing still in the paws keeps the properties we know: a long job answer
 ;;; ------------------------------------------------------------------ world
 
 (defun world-slow ()
-  "Return the part of the world that changes rarely: papers, booths, finds, the route."
-  (list (list *licenses* *fines* (and *quest* (list (car *quest*) (cdr *quest*))) (first *check*))
-        (list (and *stamp* t) (and *badge* t) (loop for (i . day) in *gimmick-spent* collect (list i day)) (and *lid* t))
-        (list *bottles* *papers* (and *spyglass* t)
-              (remove-if (lambda (id) (> (abs (- (first id) *dist*)) 200.0)) *picked*))      ; picked-up things: only the nearby ones
+  "Return the part of the world that changes rarely and is not an aktor's: the finds picked up nearby, the route."
+  (list (remove-if (lambda (id) (> (abs (- (first id) *dist*)) 200.0)) *picked*)      ; picked-up things: only the nearby ones
         (and *auto* (list (f1 (car *auto*)) (cdr *auto*) *way*))))
 
 (defvar *world-sent* (make-hash-table) "The table from a guest id to (rare world part . time sent): it is not resent until it changes.")
@@ -219,11 +219,10 @@ seconds (a message may have been lost); otherwise :SAME stands in for it."
   "Bring the guest's own state in line with the driver's world block W."
   (when (and (listp w) (= (length w) 2) (eq (second w) :same))       ; the rare part did not change
     (apply-events (first w)))
-  (when (and (listp w) (= (length w) 5))
-    (destructuring-bind (events papers prikol finds auto) w
+  (when (and (listp w) (= (length w) 3) (not (eq (second w) :same)))
+    (destructuring-bind (events picked auto) w
       (apply-events events)
-      ;; each part is taken in by whoever owns that state: the checks of what came, and the writing
-      (accept-papers papers) (accept-prikol prikol) (accept-finds finds) (accept-course auto))))
+      (accept-picked picked) (accept-course auto))))
 
 (defun world-digest ()
   "Return the shared state as one list.

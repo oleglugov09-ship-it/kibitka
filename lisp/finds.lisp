@@ -11,8 +11,14 @@
 (defvar *papers* 0 "The number of waste paper bundles being carried.")
 (defvar *spyglass* nil "True when the spyglass has been found.")
 (defvar *picked* '() "The finds already picked up: entries (place kind number).")
+
+;;; What we carry of the finds is an aktor, the driver's: the bottles, the bundles of waste paper, the spyglass.
+(defaktor :finds :state '(:bottles 0 :papers 0 :spyglass nil)
+  :spec '((:member :bottles) integer (:member :papers) integer (:member :spyglass) (:member t nil))
+  :vars '(:bottles *bottles* :papers *papers* :spyglass *spyglass*)
+  :show (lambda () (show-spyglass)))
 (defvar *find-nodes* '() "The finds nearby: entries ((place kind number) node x path-coordinate).")
-(defun use-waste-paper (n) "Spend N bundles of waste paper and save what is left." (decf *papers* n) (save-finds))
+(defun use-waste-paper (n) "Spend N bundles of waste paper and save what is left." (poke :finds :papers (- *papers* n)) (save-finds))
 (defun forget-find-nodes () "Forget the nodes of the finds: they are gone with the World they stood in." (setf *find-nodes* '()))
 (defun find-d (f) "Return the path coordinate of the place where the find F was laid out." (first (first f)))
 (defun find-kind (f) "Return what the find F is; :NONE marks a place already laid out." (second (first f)))
@@ -33,10 +39,12 @@ Such places are a gas station, a bus stop, the observatory and the recycling dep
 (defun load-finds ()
   (let ((f (get-save :finds)))
     (when (fits f '(integer integer t list))
-      (setf *bottles* (first f) *papers* (second f) *spyglass* (and (third f) t) *picked* (fourth f)))))
+      (destructuring-bind (bottles papers spyglass picked) f
+        (poke :finds :bottles bottles :papers papers :spyglass (and spyglass t))
+        (setf *picked* picked)))))
 
 (defstate :finds
-  :clear (lambda () (setf *bottles* 0 *papers* 0 *spyglass* nil *picked* '()))
+  :clear (lambda () (aktor-reset :finds) (setf *picked* '()))
   :load #'load-finds :save #'save-finds :show (lambda () (show-spyglass)))
 
 (defun road-usable (x d up label action &optional (reach 2.6) (radius .35))
@@ -126,14 +134,14 @@ The action is shared: once one player picks it up, it is gone for everyone."
              (log-event :foraged :kind kind :dist (round *dist*))))
           ((not (member kind '(:bottle :paper))) (say "Это уже подобрали"))
           (t (push id *picked*)
-             (if (eq kind :bottle) (incf *bottles*) (incf *papers*))
+             (if (eq kind :bottle) (poke :finds :bottles (1+ *bottles*)) (poke :finds :papers (1+ *papers*)))
              (save-finds)
              (say (format nil "~a. Несём: бутылок ~d, макулатуры ~d — сдать можно в Красном Куте"
                           (if (eq kind :bottle) "Подобрал бутылку" "Подобрал связку макулатуры") *bottles* *papers*))))))
 
 (defshared take-spyglass :spyglass ()
   (cond (*spyglass* (say "Столик астронома"))
-        (t (setf *spyglass* t) (save-finds) (show-spyglass)
+        (t (poke :finds :spyglass t) (save-finds)
            (say-all "Подзорная труба! Висит в кибитке у двери, над выключателем — E по ней, и смотри на звёзды"))))
 
 (defshared sell-finds :sell ()
@@ -143,7 +151,7 @@ The action is shared: once one player picks it up, it is gone for everyone."
              (log-event :recycled :bottles *bottles* :papers *papers* :money *money*)
              (say-all (format nil "Сдали ~d бутылок и ~d связок: +~/kiosk-trip::rub/" *bottles* *papers* sum))
              (note-quest :clean (+ *bottles* *papers*))
-             (setf *bottles* 0 *papers* 0)
+             (poke :finds :bottles 0 :papers 0)
              (save-finds)))))
 
 ;;; ------------------------------------------------------------------ observatory and recycling depot
@@ -199,11 +207,9 @@ It has a booth with a window, crates of bottles, bales of paper and scales. Retu
                           #'sell-finds 3.2 .7))))))
 
 ;;; A guest holds the driver's finds: taken in here (APPLY-WORLD, sync.lisp).
-(defun accept-finds (finds)
-  "Take in, as a guest, the driver's FINDS: (bottles papers spyglass picked-nearby)."
-  (when (fits finds '(integer integer t list))
-    (setf *bottles* (first finds) *papers* (second finds))
-    (unless (eq (and (third finds) t) (and *spyglass* t)) (setf *spyglass* (and (third finds) t)) (show-spyglass))
-    (dolist (id (fourth finds))
+(defun accept-picked (picked)
+  "Take in, as a guest, the finds PICKED up near the driver: they are gone for us too."
+  (when (listp picked)
+    (dolist (id picked)
       (when (fits id '(integer keyword integer))
         (pushnew id *picked* :test #'equal)))))

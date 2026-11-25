@@ -24,6 +24,21 @@
 (defvar *quest* nil "The quest taken: (KEY . DONE).")
 (defvar *check* nil "The police check: (:stopping AUTOPILOT TURNS), then (:waiting ... SECONDS-LEFT).")
 (defvar *check-in* 420.0 "The seconds of driving left until the next check.")
+
+(defun quest-pair (q) "Return the quest as the game keeps it, (KEY . DONE), from the state's (key done)." (and q (cons (first q) (second q))))
+(defun quest-list (q) "Return the quest as the state keeps it, (key done), from (KEY . DONE)." (and q (list (car q) (cdr q))))
+
+;;; The folder of papers is an aktor, the driver's: the licences, the unpaid fines, the quest taken and whether
+;;; the police are stopping us (:CHECK is the phase alone; the rest of *CHECK* is the driver's own business).
+(defaktor :papers :state '(:licenses () :fines () :quest nil :check nil)
+  :spec '((:member :licenses) (:each keyword) (:member :fines) (:each integer)
+          (:member :quest) (:or null (keyword integer)) (:member :check) (:member nil :stopping :waiting))
+  :vars '(:licenses *licenses* :fines *fines* :quest (*quest* quest-pair quest-list))
+  :show (lambda ()
+          (let ((phase (peek :papers :check)))
+            (unless (eq phase (first *check*))                 ; a guest: the policeman at the window is there for everyone
+              (setf *check* (and phase (list phase nil nil 0.0)))
+              (show-officer (eq phase :waiting))))))
 (defvar *docs-open* nil)
 (defvar *docs-panel* nil)
 (defvar *officer* nil "The police officer at the window.")
@@ -53,7 +68,7 @@
   "Hand the co-operative the paper KEY, once: the driver reads CARD over the screen, everyone on board hears LINE.
 Return true if the paper is new."
   (unless (or (net-guest-p) (member key *licenses*))
-    (push key *licenses*) (save-papers)
+    (poke :papers :licenses (cons key *licenses*)) (save-papers)
     (pushnew key *papers-new*) (show-folder-corner)
     (funcall 'note-paper key)                              ; a bookmark in the corner of the screen: where to look
     (log-event :paper :key key)
@@ -67,16 +82,16 @@ Return true if the paper is new."
   (let ((f (get-save :papers)) (old t))                          ; OLD: the save knows nothing of the co-operative's papers
     (when (fits f '(list list t))
       (setf old (not (member :waybill (first f))))
-      (setf *licenses* (remove-if-not #'keywordp (first f)) *fines* (remove-if-not #'integerp (second f))
-            *quest* (and (consp (third f)) (keywordp (car (third f))) (integerp (cdr (third f))) (third f))))
+      (poke :papers :licenses (remove-if-not #'keywordp (first f)) :fines (remove-if-not #'integerp (second f))
+                    :quest (and (consp (third f)) (keywordp (car (third f))) (integerp (cdr (third f))) (quest-list (third f)))))
     ;; A world from before the papers has no waybill in its save, or no papers saved at all. If the man's clock
     ;; already runs there (it used to start on the first day), that world has seen everything and holds every
     ;; paper. A world begun with the papers saves them, the waybill among them, the day it meets the man.
     (when old
-      (setf *licenses* (union *licenses* (if *shark-day* *folder-papers* '(:waybill :loan)))))))
+      (poke :papers :licenses (union *licenses* (if *shark-day* *folder-papers* '(:waybill :loan)))))))
 (defstate :papers
-  :clear (lambda () (setf *licenses* (list :waybill :loan) *papers-new* '() *first-crate* nil       ; a new trip starts with two papers
-                          *fines* '() *quest* nil *check* nil *check-in* 420.0)
+  :clear (lambda () (setf *papers-new* '() *first-crate* nil *check* nil *check-in* 420.0)
+           (poke :papers :licenses (list :waybill :loan) :fines '() :quest nil :check nil)       ; a new trip starts with two papers
            (show-folder-corner))
   :load #'load-papers :save #'save-papers :show (lambda () (show-officer nil)))
 
@@ -211,7 +226,7 @@ The result is (NAME . AMOUNT) for each kind of goods carried in bulk without a l
 If all is clean he wishes a good trip; if we carry restricted goods he writes a fine."
   (unless (and *check* (eq (first *check*) :waiting)) (return-from show-papers nil))
   (let ((bad (violations)) (owed (length *fines*)))
-    (dolist (b bad) (push (cdr b) *fines*))
+    (poke :papers :fines (append (reverse (mapcar #'cdr bad)) *fines*))
     (when (plusp *heat*) (setf *heat* 0) (add-deeds 6 -2) (save-plan))      ; fined for speculation: the count is cleared, the town council remembers
     (log-event :check :bad (length bad) :fines (length *fines*))
     (end-check (cond (bad (format nil "Проверка: ~{~a~^, ~}. Штраф ~/kiosk-trip::rub/ — оплатить в участке, Октябрьский"
@@ -227,6 +242,7 @@ If all is clean he wishes a good trip; if we carry restricted goods he writes a 
 When we carry coal or air cargo in bulk, once in a while on the road, outside towns, the police stop us
 and ask for a licence. Travelling light, we are never stopped."
   (unless (net-guest-p)
+    (unless (eq (peek :papers :check) (first *check*)) (poke :papers :check (first *check*)))   ; the guests see the policeman too
     (cond ((null *check*)
            (when (and *auto* (not *dev*) (> *speed* 4.0) (not (town-at *dist*)) (not (bare-at *dist*)) (not *meta*)
                       (or (bulk-cargo) (>= *heat* *heat-limit*))           ; those loaded with coal or air cargo, and those the inspectors have counted
@@ -240,7 +256,7 @@ and ask for a licence. Travelling light, we are never stopped."
              (say-all (tr (line :sergeant-stop)))))
           ((eq (first *check*) :waiting)
            (when (< (decf (fourth *check*) delta) 0)
-             (push *fine-ignore* *fines*)
+             (poke :papers :fines (cons *fine-ignore* *fines*))
              (end-check (format nil "Милиция не дождалась документов: штраф ~/kiosk-trip::rub/ за неподчинение" *fine-ignore*)))))))
 
 ;;; ------------------------------------------------------------------ the police station and the town council quests
@@ -249,7 +265,7 @@ and ask for a licence. Travelling light, we are never stopped."
   (cond ((null *fines*) (say "Участок: штрафов за вами нет"))
         (t (let ((sum (reduce #'+ *fines*)))
              (when (pay sum)
-               (setf *fines* '()) (save-papers) (log-event :fines-paid :sum sum :money *money*)
+               (poke :papers :fines '()) (save-papers) (log-event :fines-paid :sum sum :money *money*)
                (say-all (format nil "Штрафы оплачены: −~/kiosk-trip::rub/ Квитанция — в папке" sum)))))))
 
 (defun quest-label ()
@@ -266,13 +282,13 @@ and ask for a licence. Travelling light, we are never stopped."
   (cond ((and *quest* (>= (cdr *quest*) (quest-need (quest-now))))
          (cond (*fines* (say "Горсовет: сначала оплатите штрафы в участке — он рядом"))
                (t (let ((q (quest-now)))
-                    (push (quest-grants q) *licenses*) (setf *quest* nil)
+                    (poke :papers :licenses (cons (quest-grants q) *licenses*) :quest nil)
                     (add-money (or (cdr (assoc (quest-grants q) *quest-money*)) 0))
                     (save-papers) (log-event :license :kind (quest-grants q))
                     (say-all (format nil (line :chairman-gives) (quest-reward q)))))))
         (*quest* (say (quest-label)))
         (t (let ((next (find-if-not (lambda (q) (member (quest-grants q) *licenses*)) *quests*)))
-             (cond (next (setf *quest* (cons (quest-key next) 0)) (save-papers)
+             (cond (next (poke :papers :quest (list (quest-key next) 0)) (save-papers)
                          (say-all (format nil (line :chairman-asks) (quest-title next) (quest-task next))))
                    (t (say "Заданий больше нет")))))))
 
@@ -280,7 +296,7 @@ and ask for a licence. Travelling light, we are never stopped."
   "Count N units done towards the quest taken; KEY is :post, :clean or :album."
   (when (and *quest* (eq (car *quest*) key) (not (net-guest-p)))
     (let ((need (quest-need (assoc key *quests*))) (was (cdr *quest*)))
-      (incf (cdr *quest*) n)
+      (poke :papers :quest (list key (+ was n)))
       (save-papers)
       (when (and (< was need) (>= (cdr *quest*) need))
         (say "Задание горсовета выполнено! Возвращайся в Октябрьский за бумагой")))))
@@ -301,16 +317,3 @@ and ask for a licence. Travelling light, we are never stopped."
   :label (lambda () (if *fines* (format nil "E — оплатить штрафы: ~/kiosk-trip::rub/" (reduce #'+ *fines*)) "Участок: штрафов за вами нет"))
   :use #'pay-fines)
 
-;;; A guest holds the driver's papers: the driver's word about them is taken in here (APPLY-WORLD, sync.lisp).
-(defun accept-papers (papers)
-  "Take in, as a guest, the driver's PAPERS: (licences fines quest check-phase)."
-  (when (fits papers '(t t t t))
-    (destructuring-bind (licenses fines quest check) papers
-      (when (and (fits licenses '(:each keyword)) (fits fines '(:each integer)))
-        (setf *licenses* licenses *fines* fines
-              *quest* (and (fits quest '(keyword integer))
-                           (cons (first quest) (second quest))))
-        (let ((phase (and (member check '(:stopping :waiting)) check)))
-          (unless (eq phase (first *check*))                       ; the policeman at the window is there for everyone
-            (setf *check* (and phase (list phase nil nil 0.0)))
-            (show-officer (eq phase :waiting))))))))

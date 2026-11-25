@@ -425,6 +425,11 @@ def pair():
     ev(h, f"(progn ({K}say-all (string #\\A)) 1)")
     check("сказанное всем дошло до гостя", lambda: ev(g, f"(car {K}*toast*)"), '"A"', within=4)
     same("после дел гостя состояние мира снова совпадает", digest)
+    ev(h, f"(progn ({K}poke :booths :lid t :stamp t) ({K}spend 3) (setf {K}*check* (list :waiting nil nil 60.0)) 1)")
+    seen = f"(list {K}*lid* {K}*stamp* (car (first {K}*gimmick-spent*)) (first {K}*check*))"
+    check("крышка, печать, взятое в будке и милиция у окна — у гостя те же", lambda: ev(g, seen), "(T T 3 :WAITING)", within=4)
+    ev(h, f"(progn ({K}poke :booths :lid nil :stamp nil :spent nil) (setf {K}*check* nil) ({K}show-officer nil) 1)")
+    check("…и убраны у обоих", lambda: ev(g, seen), "(NIL NIL NIL NIL)", within=4)
     ev(h, f"(progn ({K}go-to-town (second {K}*towns*)) 1)")
     time.sleep(1.5)
     same("куда едем — знают оба", f"(cdr {K}*auto*)")
