@@ -233,60 +233,38 @@ launch down, in the browser too."
                (loop for (name . ms) in (sort (remove-if (lambda (e) (< (cdr e) 30)) ,log) #'> :key #'cdr)
                      collect (format nil "~a ~d" name ms))))))
 
-;;; Common things of the wagon. Whatever several cats share inside it (the radio, the dice, the kettle, the
-;;; frying pan, the fridge door) is declared once with DEFCOMMON: how to read its value, what shape the value
-;;; has and what to do when another player's value arrives. The values travel together with the switches
-;;; (net.lisp), in the order of declaration.
-;;;
-;;; Every thing has a clock: a number that grows by one each time its value changes here. A value that arrives
-;;; is taken only if its clock is ahead of ours; with equal clocks the driver's value stands. So a message that
-;;; was already on its way when somebody else changed the thing (a guest's whole state is sent on any edit of
-;;; theirs) cannot put the old value back: its clock is behind.
+;;; Common things of the wagon that the driver alone decides: the season, the insulation, the plan, the pennants.
+;;; Each is declared once with DEFCOMMON: how to read its value, what shape the value has and what a guest does
+;;; with the driver's value when it arrives. The values travel with the switches (net.lisp), in the order of
+;;; declaration. What any cat in the wagon may change is not here: that is an aktor (aktor.lisp).
 
-(defvar *commons* '() "The common things, in the order they were declared: entries of (name spec driver-owned value-function accept-function).")
-(defvar *common-clocks* (make-hash-table) "The table from the name of a common thing to (clock . value as last seen here).")
+(defvar *commons* '() "The common things, in the order they were declared: entries of (name spec value-function accept-function).")
+(defvar *commons-seen* (make-hash-table) "On a guest, the table from the name of a common thing to the driver's value as last taken.")
 
-(defmacro defcommon (name &key value (spec t) accept driver)
-  "Declare the common thing NAME.
-VALUE is a form giving what we send: something made of numbers, keywords, strings and lists of them.
-SPEC is its shape for FITS; a value of another shape is dropped. ACCEPT is a function of one argument,
-called with a value that arrived: it compares, stores, shows and, where the thing is saved, saves. With
-DRIVER the thing is the driver's to decide: what a guest sends is ignored, what the driver sends is taken."
-  `(let ((entry (list ,name ,spec ,driver (lambda () ,value) ,accept)) (old (assoc ,name *commons*)))
+(defmacro defcommon (name &key value (spec t) accept)
+  "Declare the common thing NAME, the driver's to decide.
+VALUE is a form giving what the driver sends: something made of numbers, keywords, strings and lists of them.
+SPEC is its shape for FITS; a value of another shape is dropped. ACCEPT is a function of one argument, called
+on a guest with a value that arrived: it compares, stores and shows."
+  `(let ((entry (list ,name ,spec (lambda () ,value) ,accept)) (old (assoc ,name *commons*)))
      (if old (setf (cdr old) (cdr entry)) (setf *commons* (append *commons* (list entry))))
      ,name))
 
 (defun reset-commons ()
-  "Forget the clocks: called when we join somebody's wagon or come back to our own, so that what is there is taken as it is."
-  (clrhash *common-clocks*))
-
-(defun common-clock (name value)
-  "Return the clock cell of the common thing NAME, first noticing whether its VALUE has changed here."
-  (let ((cell (gethash name *common-clocks*)))
-    (cond ((null cell) (setf (gethash name *common-clocks*) (cons 0 value)))
-          ((equal value (cdr cell)) cell)
-          (t (incf (car cell)) (setf (cdr cell) value) cell))))
+  "Forget what was taken: called when we join somebody's wagon or come back to our own, so that what is there is taken anew."
+  (clrhash *commons-seen*))
 
 (defun common-state ()
-  "Return the common things as (clock value) entries, in the order of declaration."
-  (loop for (name nil driver value) in *commons*
-        collect (let ((cell (gethash name *common-clocks*)))
-                  (if (and driver cell (net-guest-p))
-                      (list (car cell) (cdr cell))                            ; the driver's thing: a guest sends back what it was given
-                      (let ((now (funcall value))) (list (car (common-clock name now)) now))))))
+  "Return, as the driver, the values of the common things in the order of declaration; a guest has nothing to say here."
+  (unless (net-guest-p)
+    (loop for (nil nil value) in *commons* collect (funcall value))))
 
-(defun accept-common (entries &optional driver-side)
-  "Take in the common things ENTRIES sent by another player: (clock value) each.
-DRIVER-SIDE is true when we are the driver receiving from a guest."
-  (when (and (listp entries) (ignore-errors (list-length entries)) (= (length entries) (length *commons*)))
-    (loop for (name spec driver value accept) in *commons*
-          for entry in entries
-          do (when (fits entry (list 'integer spec))
-               (destructuring-bind (clock v) entry
-                 (let ((cell (common-clock name (funcall value))))
-                   (when (cond (driver (not driver-side))                                  ; the driver's thing: guests take it as it is
-                               ((> clock (car cell)) t)
-                               ((= clock (car cell)) (and (not driver-side) (not (equal v (cdr cell)))))
-                               (t nil))                                                    ; behind ours: an old message
-                     (noting name (funcall accept v))
-                     (setf (car cell) (max clock (car cell)) (cdr cell) (funcall value)))))))))
+(defun accept-common (values)
+  "Take in, as a guest, the driver's VALUES of the common things: each one that has changed since it was last taken."
+  (when (and (listp values) (ignore-errors (list-length values)) (= (length values) (length *commons*)))
+    (loop for (name spec nil accept) in *commons*
+          for v in values
+          do (multiple-value-bind (seen had) (gethash name *commons-seen*)
+               (when (and (fits v spec) (not (and had (equal v seen))))
+                 (setf (gethash name *commons-seen*) v)
+                 (noting name (funcall accept v)))))))

@@ -269,7 +269,7 @@ group. The cells themselves are built by STEP-MEGA-CELLS as the wagon goes."
   (setf *place* (if *mega-in* *mega-world* :ring)))
 
 (defcommon :place :value (list (or *mega-in* :ring) *mega-world* (* 10 (round *mega-s* 10)))
-  :spec '(keyword keyword integer) :driver t
+  :spec '(keyword keyword integer)
   :accept (lambda (v)
             (destructuring-bind (door world s) v
               (when (getf *worlds* world) (setf *mega-world* world))

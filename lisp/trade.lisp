@@ -120,7 +120,7 @@ came from change together, and only here. SHOW-CARRY afterwards shows it."
 (defun item-in-sight ()
   "Return the milk or parcel we are looking at, or NIL."
   (find-if (lambda (it) (and (portable-p it)
-                             (or *fridge-open* (not (in-fridge-p (car it))))       ; not through the shut fridge door
+                             (or (on-p :fridge) (not (in-fridge-p (car it))))       ; not through the shut fridge door
                              (multiple-value-bind (w h) (item-size (spec-kind (car it)) (spec-spin (car it)))
                                (looking-at (spec-x (car it)) (+ (spec-y (car it)) (/ h 2)) (spec-z (car it)) 2.3 (min .3 (+ .08 (* .25 w)))))))
            *items*))
@@ -261,7 +261,7 @@ Return NIL for the floor or the top of an item."
     (cond ((null raw) nil)
           ((fridge-shelf (first raw) (second raw) (third raw))        ; the fridge: the nearest free place of the shelf
            (let ((level (fridge-shelf (first raw) (second raw) (third raw))))
-             (cond ((not *fridge-open*) (append raw (list :fridge-shut)))
+             (cond ((not (on-p :fridge)) (append raw (list :fridge-shut)))
                    ((not (good-p (car *carry*))) (append raw (list :fridge-big)))
                    (t (let ((place (fridge-slot (first raw) (second raw) level (car *carry*))))
                         (if place

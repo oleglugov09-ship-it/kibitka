@@ -96,7 +96,7 @@ A record of your own, dropped into project/discs/, is called by its file name.")
   (let ((m *music*))
     (setf *playing* i)
     (if i
-        (progn (when *radio-on* (set-radio nil))                             ; one cabinet: a record takes the loudspeaker from the radio
+        (progn (when (on-p :radio) (tell :radio :set :off))                             ; one cabinet: a record takes the loudspeaker from the radio
                (object-set m "stream" (audio-stream (second (nth i *discs*)) :loop t)) (object-call m "play"))
         (object-call m "stop"))
     (show-discs)))

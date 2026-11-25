@@ -57,7 +57,7 @@ void fragment() {
 ;;; The curtains of the big window. Drawn, they shut the street out: no lamps, no headlights, no eyes from
 ;;; the road. They are a common thing: whoever draws them, they are drawn for everyone.
 
-(defvar *curtains-shut* nil "True when the curtains of the big window are drawn.")
+(defswitch :curtains)                                     ; on when the curtains of the big window are drawn; they slide by themselves (STEP-MOOD)
 (defvar *curtain-k* 0.0 "The position of the curtains: 0 is gathered at the sides, 1 is drawn.")
 (defvar *curtains* '() "The two curtains, each as (node . side).")
 
@@ -76,20 +76,16 @@ void fragment() {
                         (cons g side))))
   (apply-curtains))
 
-(defun toggle-curtains ()
-  (setf *curtains-shut* (not *curtains-shut*)))
+(defun toggle-curtains () (tell :curtains :flip))
 
 (defun curtain-usables ()
   "Return the things to press for the curtains: the gathered cloth at the sides, or the drawn cloth anywhere."
   (let ((x (- *half-width* .2)))
-    (if *curtains-shut*
+    (if (on-p :curtains)
         (loop for z in '(-.9 0.0 .9) collect (usable x 1.45 z (lambda () "E — раздвинуть шторы") #'toggle-curtains :radius .5))
         (loop for z in '(-1.3 1.3) collect (usable x 1.45 z (lambda () "E — задёрнуть шторы") #'toggle-curtains :radius .2)))))
 
-(defcommon :curtains :value (and *curtains-shut* t) :spec '(:member t nil)
-  :accept (lambda (shut) (setf *curtains-shut* shut)))
-
-(defstate :curtains :clear (lambda () (setf *curtains-shut* nil)))
+(defstate :curtains :clear (lambda () (aktor-reset :curtains)))
 
 (defun make-mood (c)
   "Build for the wagon C the smoke over the pipe, the glow of the window, the lights that pass and the rain on the roof."
@@ -117,7 +113,7 @@ void fragment() {
 
 (defun step-mood (delta)
   "Show by DELTA seconds what the fire, the night, the road and the weather do to the wagon."
-  (let ((want (if *curtains-shut* 1.0 0.0)))                                    ; the curtains slide in a third of a second
+  (let ((want (if (on-p :curtains) 1.0 0.0)))                                    ; the curtains slide in a third of a second
     (unless (= want *curtain-k*)
       (setf *curtain-k* (if (< (abs (- want *curtain-k*)) (* 3.0 delta)) want (+ *curtain-k* (* 3.0 delta (signum (- want *curtain-k*))))))
       (apply-curtains)))

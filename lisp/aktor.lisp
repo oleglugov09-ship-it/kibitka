@@ -14,6 +14,8 @@
 ;;;;  • NO POLLING. Every change passes through one place (AKTOR-BECOME): there the aktor is shown anew and its
 ;;;;    new state is sent to the guests, once. Nothing is compared every frame, and no clocks are needed to tell
 ;;;;    whose value is newer: there is one value, the driver's.
+;;;;  • A HANDLER MAY TELL ANOTHER AKTOR (the crate of jars takes boiling water from the kettle): it runs at
+;;;;    once, at the driver's, inside the same turn.
 ;;;;  • FROM THE REPL: (peek :kettle) reads the state, (poke :kettle :tea 4) sets a field as the driver - through
 ;;;;    the same one place, so everyone sees it. A plain SETF has nothing to reach.
 ;;;;
@@ -108,6 +110,16 @@ when nothing changes. What BODY says (SAY) goes to whoever told."
   (let ((a (aktor name)))
     (aktor-become a (state-with (aktor-state a) changes))
     (aktor-state a)))
+
+(defmacro defswitch (name &body show)
+  "Declare the aktor NAME that is a switch: its state is (:on T-or-NIL). Told :FLIP it turns over; told :SET with
+:ON or :OFF it is set. The SHOW forms run after every change."
+  `(progn (defaktor ,name :state '(:on nil) :spec '((:member :on) (:member t nil)) :show (lambda () ,@show))
+          (deftell ,name :flip () (become :on (not (st :on))))
+          (deftell ,name :set (to) (become :on (eq to :on)))
+          ,name))
+
+(defun on-p (name) "Return true if the switch NAME is on." (peek name :on))
 
 (defun aktor-reset (name)
   "Put the aktor NAME back into the state it has at the start of a new game."

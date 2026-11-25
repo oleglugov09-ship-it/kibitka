@@ -474,8 +474,8 @@ built at once if it is not there yet."
 ;;; the same message field that used to hold the table alone.
 
 (defun switches ()
-  "Return the switches as they are now for us: (shelf lights window shared door ladder)."
-  (list (and *fold-down* t) (and *lights-on* t) (and *window-open* t) (common-state)   ; fourth: the common things (DEFCOMMON, delo.lisp)
+  "Return the switches as they are now for us: (shelf lights window common door ladder)."
+  (list (and *fold-down* t) (and *lights-on* t) (and *window-open* t) (common-state)   ; fourth: the driver's common things (DEFCOMMON, delo.lisp)
         (and *door-open* t) (and *ladder-down* t)))
 
 (defun set-switches (list &key guarded)
@@ -484,7 +484,7 @@ With GUARDED (on the driver's side) the window cannot be closed while a customer
 stand on the windowsill, the same as by hand."
   (when (and (listp list) (= (length list) 6))
     (destructuring-bind (fold lights window spare door ladder) list
-      (accept-common spare guarded)
+      (unless guarded (accept-common spare))            ; the common things are the driver's: a guest takes them, the driver does not
       (when (and guarded *window-open* (not window) (window-busy-p)) (setf window t))
       (unless (eq (and fold t) (and *fold-down* t)) (toggle-fold))
       (unless (eq (and lights t) (and *lights-on* t)) (setf *lights-on* (and lights t)) (apply-lights))
@@ -636,6 +636,7 @@ drive at its speed and close the gap; and the things in the wagon are brought in
 (defun step-guest (tick)
   (guest-rejoin)
   (note-own-edit)
+  (next-ask)
   (when (and *net-joined* (not *net-lost*)) (setf *net-retries* 0))
   (flet ((linked () (setf *net-seen* *time*)
                    (empty-paws) (show-carry)                 ; what a guest carries the driver keeps, and to the driver we are new
@@ -793,7 +794,7 @@ trouble and waiting at a bus stop."
     (setf *view* :inside *seat* nil *pos* (v3 0 0 1.2))
     (when *cart* (node-3d-set-position *cart* (v3 0 0 0)) (node-3d-set-rotation *cart* (v3 0 0 0))))
   (setf *net-server* nil *net-conn* nil *net-peer* nil *net-peers* '() *net-avatars* '() *net-others* '() *net-role* nil
-        *net-wait* nil *net-sig* nil *net-lost* nil *net-refused* nil *net-resend* 0
+        *net-wait* nil *net-sig* nil *net-lost* nil *net-refused* nil *net-resend* 0 *asked* nil *asks* '()
         *net-joined* nil *net-host* nil *net-retry* nil *net-retries* 0))
 
 (defun step-net (delta)

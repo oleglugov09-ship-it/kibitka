@@ -387,7 +387,7 @@ On the dev polygon he is known from the start."
   :value (let ((towns (sheet-towns)))
            (list *credit* *shark* *heat* *talons* (loop for town below (plan-size) collect (deeds town)) towns
                  (loop for town in towns append (mapcar (lambda (g) (round (stock town g))) (plan-goods)))))
-  :spec '(integer integer integer integer (:each integer) (:each integer) (:each integer)) :driver t
+  :spec '(integer integer integer integer (:each integer) (:each integer) (:each integer))
   :accept (lambda (v)
             (destructuring-bind (credit shark heat talons deeds towns stocks) v
               (setf *credit* (max 0 credit) *shark* (max 0 shark) *heat* (max 0 heat) *talons* (max 0 talons))

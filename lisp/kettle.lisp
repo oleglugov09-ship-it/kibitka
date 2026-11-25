@@ -11,8 +11,8 @@
 ;;;; Both are common to everyone in the wagon: one kettle, one pan. The kettle is an aktor (aktor.lisp): where
 ;;;; it is, who carries it and what is in it is one state, kept by the driver and changed only by telling the
 ;;;; kettle something (DEFTELL below). While someone carries it, the others see it gone (:AWAY); when that cat
-;;;; leaves, the kettle is back on the table. The driver decides when it has boiled. The pan is a common thing
-;;;; of the older kind (DEFCOMMON at the end of the file).
+;;;; leaves, the kettle is back on the table. The driver decides when it has boiled. The pan is an aktor too: a
+;;;; switch, on the stove or on its nail.
 ;;;; Both are saved with the world (DEFSTATE :KITCHEN below): where the kettle stands, the water or the tea in
 ;;;; it, whether the pan is on the stove. A kettle that was in a paw is back on the table, and water that was
 ;;;; heating starts from cold. A new game empties the kettle and hangs the pan on its nail.
@@ -39,7 +39,6 @@
 
 (defun kettle (key) "Return the field KEY of the kettle's state." (peek :kettle key))
 (defvar *kettle-nodes* nil "The kettle's nodes, a plist: :table :stove :paw :steam.")
-(defvar *pan-on* nil "True when the frying pan is on the stove.")
 (defvar *pan-nodes* nil "The frying pan's nodes, a plist: :wall :stove :lid.")
 
 (defun kettle-model (parent x y z)
@@ -64,8 +63,8 @@
   (let ((steam (getf *kettle-nodes* :steam)))
     (when steam (object-set steam "visible" (and (eq (kettle-at) :stove) (plusp (kettle :tea))))))
   (when *pan-nodes*
-    (object-set (getf *pan-nodes* :wall) "visible" (not *pan-on*))
-    (object-set (getf *pan-nodes* :stove) "visible" (and *pan-on* t))
+    (object-set (getf *pan-nodes* :wall) "visible" (not (on-p :pan)))
+    (object-set (getf *pan-nodes* :stove) "visible" (and (on-p :pan) t))
     (object-set (getf *pan-nodes* :lid) "visible" (and *lid* t))))
 
 (defun show-lid () "Show the lid above the frying pan once it is bought." (show-kettle))
@@ -188,12 +187,15 @@
                          (and (< (abs (- x cx)) (+ (/ w 2) .03)) (< (abs (- z cz)) (+ (/ d 2) .03)) (< (abs (- y top)) .08))))
           *items*)))
 
-(defun toggle-pan ()
-  (cond ((and *pan-on* (food-on-stove-p)) (say "Сначала сними еду со сковородки"))
-        (t (setf *pan-on* (not *pan-on*))
-           (show-kettle)
-           (say (if *pan-on* "Сковородка на печке: клади на неё рыбу, хлеб, клюкву или тушёнку — пожарится"
-                    "Сковородка висит на гвозде")))))
+(defaktor :pan :state '(:on nil) :spec '((:member :on) (:member t nil)) :show (lambda () (show-kettle)))   ; on the stove, or on its nail
+
+(deftell :pan :flip ()
+  (cond ((and (st :on) (food-on-stove-p)) (say "Сначала сними еду со сковородки") nil)
+        (t (say (if (st :on) "Сковородка висит на гвозде"
+                    "Сковородка на печке: клади на неё рыбу, хлеб, клюкву или тушёнку — пожарится"))
+           (become :on (not (st :on))))))
+
+(defun toggle-pan () (tell :pan :flip))
 
 ;;; The cutting board. Cutting is done by paw: with a good in the paws every E on the board is one stroke of
 ;;; the knife and one more slice, and after *CHOPS* strokes the good in the paws is cut. The good never leaves
@@ -295,7 +297,7 @@
              (destructuring-bind (rx ry rz) *kettle-ring*
                (usable (+ sx rx) (+ ry .1) (+ sz rz) #'ring-label #'use-ring :radius .2))
              (destructuring-bind (x y z) (board-point) (usable x (+ y .02) z #'board-label #'use-board :radius .24))
-             (if *pan-on*
+             (if (on-p :pan)
                  (usable (+ sx .3) (+ *stove-top* .05) sz (lambda () "E — повесить сковородку на гвоздь") #'toggle-pan :radius .1)
                  (destructuring-bind (nx ny nz) *pan-nail*
                    (usable (+ sx nx) ny (+ sz nz) (lambda () "E — поставить сковородку на печку") #'toggle-pan :radius .2)))))))
@@ -316,13 +318,10 @@ Everyone counts the heat for their own hint; the driver alone decides that it ha
 
 ;;; ------------------------------------------------------------------ shared over the network
 
-(defcommon :pan :value (and *pan-on* t) :spec '(:member t nil)
-  :accept (lambda (on) (unless (eq on (and *pan-on* t)) (setf *pan-on* on) (show-kettle))))
-
 (defun save-kitchen ()
   "Write the kettle and the pan into the save. PUT-SAVE leaves the file alone while nothing has changed."
   (put-save :kitchen (list (if (eq (kettle :at) :paw) :table (kettle :at))                  ; carried: it will be found on the table
-                             (and (kettle :water) t) (kettle :tea) (kettle :brew) (and *pan-on* t))))
+                             (and (kettle :water) t) (kettle :tea) (kettle :brew) (and (on-p :pan) t))))
 
 (defun load-kitchen ()
   (let ((f (get-save :kitchen)))
@@ -330,11 +329,11 @@ Everyone counts the heat for their own hint; the driver alone decides that it ha
       (destructuring-bind (at water tea brew pan) f
         (poke :kettle :at at :holder nil :water water :tea (max 0 (min *kettle-cups* tea))
                       :brew (and (find brew *brews* :key #'second) brew))
-        (setf *pan-on* pan)))))
+        (poke :pan :on pan)))))
 
 (defstate :kitchen
   :clear (lambda ()
-           (aktor-reset :kettle)
-           (setf *kettle-heat* 0.0 *pan-on* nil *chop* nil *chop-dip* 0.0 *trip-until* 0.0))
+           (aktor-reset :kettle) (aktor-reset :pan)
+           (setf *kettle-heat* 0.0 *chop* nil *chop-dip* 0.0 *trip-until* 0.0))
   :load #'load-kitchen :save #'save-kitchen
   :show (lambda () (show-kettle) (when *chop-nodes* (show-chop))))

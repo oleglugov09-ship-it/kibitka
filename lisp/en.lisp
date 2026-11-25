@@ -316,8 +316,6 @@
   "Wagon"
 "Погаси свет, закрой окно и дверь — тогда Q"
   "Lights off, window and door shut — then Q"
-"Хлоп! Кто-то прихлопнул комара"
-  "Whap! Someone swatted the mosquito"
 "~a бросает кости: ~d и ~d"
   "~a rolls the dice: ~d and ~d"
 "Фонарик включён"

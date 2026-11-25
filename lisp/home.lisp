@@ -21,7 +21,8 @@
 (defvar *weather-day* nil "The day for which the foretold weather has already been made.")
 (defvar *diary* '() "The trip diary: entries of (day . plist of what happened), the newest first.")
 (defvar *insulation* '() "What is done for the winter: a list that may hold :WINDOW and :DOOR.")
-(defvar *jars* 4 "The number of empty jars in the crate.")
+(defaktor :jars :state '(:n 4) :spec '((:member :n) integer)        ; the empty jars in the crate, one crate for everyone
+  :show (lambda () (save-home) (show-home)))
 (defvar *home* nil "The nodes of this file, a plist: :leaf :strips :quilt :jars :can.")
 
 (defparameter *diary-counts* '(:sold :income :picked :gnomes :debt :fuel :spoiled :papers :recycled) "The diary keys that hold a number.")
@@ -30,7 +31,7 @@
 (defun save-home ()
   "Write the home state. The diary is copied: its pages are changed in place, and a save that shares them
 with the last one written would look unchanged."
-  (put-save :home (list *calendar-day* (copy-tree (subseq *diary* 0 (min 14 (length *diary*)))) *insulation* *jars* *trip-day0*
+  (put-save :home (list *calendar-day* (copy-tree (subseq *diary* 0 (min 14 (length *diary*)))) *insulation* (peek :jars :n) *trip-day0*
                           (loop for (day . text) in *said-log* collect (list day text)))))        ; what we were told: the diary's other half
 
 (defun clean-page (page)
@@ -53,14 +54,15 @@ with the last one written would look unchanged."
         (setf *calendar-day* day
               *diary* (remove nil (mapcar #'clean-page diary))
               *insulation* (intersection '(:window :door) insulation)
-              *jars* (max 0 (min 99 jars))
-              *trip-day0* day0)))))
+              *trip-day0* day0)
+        (poke :jars :n (max 0 (min 99 jars)))))))               ; last: it writes the save, and by now everything else is read
 
 (defstate :home
   :clear (lambda ()
            (setf *said-log* '() *said-n* 0 *said-seen* 0)                      ; a new trip: an empty notebook
-           (setf *calendar-day* nil *weather-day* nil *diary* '() *insulation* '() *jars* *start-jars* *can* nil
-                 *trip-day0* (today)))                                     ; a new trip starts its count of days today
+           (setf *calendar-day* nil *weather-day* nil *diary* '() *insulation* '() *can* nil
+                 *trip-day0* (today))
+           (poke :jars :n *start-jars*))                                     ; a new trip starts its count of days today
   :load #'load-home :save #'save-home :show (lambda () (show-home)))
 
 (defun trip-day (&optional (day (today)))
@@ -121,7 +123,7 @@ with the last one written would look unchanged."
              (set-weather (day-weather day) 7)))))
 
 ;; the season's clock is the driver's: a guest's calendar then counts the same days to the turn of the season
-(defcommon :season :value (list *season* (round *season-clock* 60)) :spec '(keyword integer) :driver t
+(defcommon :season :value (list *season* (round *season-clock* 60)) :spec '(keyword integer)
   :accept (lambda (v) (when (member (first v) *seasons*)
                         (unless (eq (first v) *season*) (set-season (first v)))
                         (setf *season-clock* (* 60.0 (second v))))))
@@ -202,7 +204,7 @@ The driver does it, on a guest's behalf too: the waste paper is the driver's, an
   (save-home) (show-home))
 
 (defcommon :insulation :value (list (and (member :window *insulation*) t) (and (member :door *insulation*) t))
-  :spec '((:member t nil) (:member t nil)) :driver t                       ; only the driver changes it: TOGGLE-INSULATION runs there
+  :spec '((:member t nil) (:member t nil))                       ; only the driver changes it: TOGGLE-INSULATION runs there
   :accept (lambda (v)
             (let ((now (remove nil (list (and (first v) :window) (and (second v) :door)))))
               (unless (equal (sort (copy-list now) #'string<) (sort (copy-list *insulation*) #'string<))
@@ -210,8 +212,11 @@ The driver does it, on a guest's behalf too: the waste paper is the driver's, an
 
 ;;; ------------------------------------------------------------------ jars
 
-(defcommon :jars :value *jars* :spec 'integer                              ; the crate of empty jars is one for everyone
-  :accept (lambda (n) (setf *jars* (max 0 (min 99 n))) (save-home) (show-home)))
+(deftell :jars :open ()
+  ;; a jar is opened with boiling water from the kettle: both at once, here, so neither can be spent alone
+  (when (and (plusp (st :n)) (plusp (kettle :tea)) (null (kettle :brew)))
+    (tell :kettle :pour)
+    (become :n (1- (st :n)))))
 
 (defvar *can* nil "The jar being closed: (good . turns of the key done), or NIL.")
 (defvar *can-dip* 0.0 "The seconds left of the key's turn.")
@@ -236,8 +241,8 @@ The driver does it, on a guest's behalf too: the waste paper is the driver's, an
   (cond ((canning-p) (format nil "E — крутить закаточный ключ: ~d из ~d" (cdr *can*) *can-turns*))
         (*can* (format nil "Банка залита кипятком и ждёт: ~a" (good-name (car *can*))))
         ((and *carry* (null (cdr *carry*)) (jar-of (car *carry*)))
-         (format nil "E — закатать в банку: ~a · пустых банок ~d" (good-name (jar-of (car *carry*))) *jars*))
-        (t (format nil "Пустые банки: ~d. С грибами, яблоками или рыбой в лапах — закатать" *jars*))))
+         (format nil "E — закатать в банку: ~a · пустых банок ~d" (good-name (jar-of (car *carry*))) (peek :jars :n)))
+        (t (format nil "Пустые банки: ~d. С грибами, яблоками или рыбой в лапах — закатать" (peek :jars :n)))))
 
 (defun use-jars ()
   "Answer E on the crate of jars: open a jar for what we carry, then a turn of the key per press.
@@ -257,11 +262,11 @@ that could be lost. A jar opened and left waits for the same good."
         (*can* (say (format nil "Банка ждёт: нужно ~a в лапах" (good-name (car *can*)))))
         ((not (and *carry* (null (cdr *carry*)) (jar-of (car *carry*))))
          (say "В банки закатывают грибы, яблоки и рыбу: принеси в лапах"))
-        ((<= *jars* 0) (say "Пустых банок нет: их продают в хозтоварах в Красном Куте"))
+        ((<= (peek :jars :n) 0) (say "Пустых банок нет: их продают в хозтоварах в Красном Куте"))
         ((or (<= (kettle :tea) 0) (kettle :brew)) (say "Нужен кипяток: вскипяти чайник с чистой водой"))
-        (t (decf *jars*) (tell :kettle :pour)
+        (t (tell :jars :open)
            (setf *can* (cons (car *carry*) 0))
-           (show-kettle) (save-home) (show-home)
+           (show-home)
            (say (format nil "Банка залита кипятком. Крути ключ: E, всего ~d оборотов" *can-turns*)))))
 
 ;;; ------------------------------------------------------------------ what is seen and pressed
@@ -278,7 +283,7 @@ that could be lost. A jar opened and left waits for the same good."
     (when leaf (godot:object-set leaf "text" (cl:format nil "~d" (trip-day (or *calendar-day* (today))))))
     (dolist (s strips) (object-set s "visible" (and (member :window *insulation*) t)))
     (when quilt (object-set quilt "visible" (and (member :door *insulation*) t)))
-    (loop for jar in jars for i from 0 do (object-set jar "visible" (< i *jars*)))
+    (loop for jar in jars for i from 0 do (object-set jar "visible" (< i (peek :jars :n))))
     (when can (object-set can "visible" (and *can* t)))))
 
 (defun jar-model (parent x y z &optional (rgb "#8a6a4a"))

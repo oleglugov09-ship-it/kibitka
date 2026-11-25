@@ -356,6 +356,28 @@ def pair():
     ev(h, f"(progn ({K}poke :kettle :tea 1) 1)")
     check("водитель поправил чайник из REPL — гость видит сразу", lambda: ev(g, f"({K}kettle :tea)"), lambda v: v.startswith("1"), within=4)
     ev(h, f"(progn (setf {K}*fire* 0.0) 1)")
+    # the other things any cat may change are aktors too; several requests in a row wait their turn, none is lost
+    lamps = f"(list ({K}on-p :fridge) ({K}on-p :curtains) ({K}on-p :radio) ({K}on-p :pan))"
+    ev(g, f"(progn ({K}tell :fridge :flip) ({K}tell :curtains :flip) ({K}tell :radio :flip) ({K}tell :pan :flip) 1)")
+    check("гость разом открыл холодильник, задёрнул шторы, включил радио и поставил сковородку — дошло всё, у обоих",
+          lambda: (ev(h, lamps), ev(g, lamps)), ("(T T T T)", "(T T T T)"), within=8)
+    ev(h, f"(progn ({K}tell :radio :flip) ({K}tell :fridge :flip) 1)")
+    check("водитель выключил радио и закрыл холодильник — гость видит", lambda: ev(g, lamps), "(NIL T NIL T)", within=4)
+    ev(g, f"(progn ({K}roll-dice) 1)")
+    check("гость бросил кости — бросок один на всех и подписан его именем",
+          lambda: (ev(h, f"({K}peek :dice)"), ev(g, f"({K}peek :dice)")), lambda v: v[0] == v[1] and v[0].startswith("(:SEQ 1 ") and v[0].endswith(':WHO "Вася")'), within=6)
+    ev(h, f"(progn ({K}poke :kettle :tea 2) 1)")
+    jars = f"(list ({K}peek :jars :n) ({K}kettle :tea))"
+    n_jars = int(ev(h, f"({K}peek :jars :n)").split()[0])
+    ev(g, f"(progn ({K}tell :jars :open) 1)")
+    check("гость открыл банку — банкой и стаканом кипятка меньше, у обоих",
+          lambda: (ev(h, jars), ev(g, jars)), lambda v: v[0] == v[1] == f"({n_jars - 1} 1)", within=6)
+    ev(h, f"(progn ({K}poke :kettle :tea 0) 1)")
+    ev(g, f"(progn ({K}tell :jars :open) 1)")
+    time.sleep(1.5)
+    check("без кипятка банку не открыть: банок столько же", (ev(h, jars), ev(g, jars)), (f"({n_jars - 1} 0)", f"({n_jars - 1} 0)"))
+    ev(g, f"(progn ({K}tell :curtains :flip) ({K}tell :pan :flip) 1)")
+    time.sleep(1.0)
     # the customer is shared
     arrive_first_market(h)
     ev(h, f"(setf {K}*window-open* t)")

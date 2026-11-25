@@ -12,9 +12,13 @@
 (in-package #:kiosk-trip)
 
 (defvar *pennants* 0 "The town pennants as a bit mask: one bit per town index.")
-(defvar *radio-on* nil)
-(defvar *dice* (list 0 1 1 "") "The last dice roll as (sequence-number first second who).")
-(define-fields roll seq a b who)
+(defswitch :radio (show-radio))                           ; one radio for everyone in the wagon
+
+;;; The dice on the table: the last roll is :A and :B, thrown by the cat called :WHO; :SEQ counts the rolls.
+(defaktor :dice :state '(:seq 0 :a 1 :b 1 :who "")
+  :spec '((:member :seq) integer (:member :a) (:member 1 2 3 4 5 6) (:member :b) (:member 1 2 3 4 5 6) (:member :who) string)
+  :show (lambda () (show-roll)))
+(defvar *roll-seen* nil "The number of the last dice roll we have been shown, or NIL before the first look.")
 (defvar *guitar-on* nil "True while we are playing the guitar.")
 (defvar *swatter* nil "True once the fly swatter is bought (it is sold only at the gas station by the swamp).")
 (defvar *mosquito* nil "The mosquito in the wagon: how many seconds it has been here, or NIL.")
@@ -98,7 +102,8 @@ Pressing the same key again switches it off."
             *swatter* (and (fourth form) t)))))
 
 (defstate :wall
-  :clear (lambda () (setf *pennants* 0 *photos* '() *snapped* '() *dice* (list (roll-seq *dice*) 1 1 "") *cook* nil *swatter* nil))
+  :clear (lambda () (setf *pennants* 0 *photos* '() *snapped* '() *cook* nil *swatter* nil)
+           (poke :dice :a 1 :b 1 :who ""))
   :load #'load-wall :save #'save-wall
   :show (lambda () (when *uyut* (show-pennants) (show-photos) (show-swatter))))
 
@@ -240,12 +245,13 @@ A window, building mode or the outside view lowers it."
 
 ;;; ------------------------------------------------------------------ radio and guitar
 
-(defun set-radio (on)
-  (setf *radio-on* (and on t) *radio-timer* 6.0)
-  (let ((p (un :radio-player)))
-    (when p (if on (object-call p "play") (object-call p "stop"))))
-  (when *music* (object-set *music* "stream_paused" (and on t)))            ; one cabinet, one loudspeaker: the record waits while the radio talks
-  (when (un :radio-dial) (object-set (un :radio-dial) "visible" *radio-on*)))
+(defun show-radio ()
+  "Make the radio sound and look as its switch is."
+  (let ((on (on-p :radio)) (p (un :radio-player)))
+    (setf *radio-timer* 6.0)
+    (when p (if on (object-call p "play") (object-call p "stop")))
+    (when *music* (object-set *music* "stream_paused" (and on t)))          ; one cabinet, one loudspeaker: the record waits while the radio talks
+    (when (un :radio-dial) (object-set (un :radio-dial) "visible" on))))
 
 (defvar *radio-fillers* '()
   "The radio lines for when there is nothing to report; read in turn.")
@@ -283,12 +289,22 @@ Each time it is about something different."
 (defun show-dice ()
   (let ((label (un :dice-label)))
     (when label
-      (object-set label "text" (if (plusp (roll-seq *dice*)) (format nil "~d + ~d" (roll-a *dice*) (roll-b *dice*)) "")))))
+      (object-set label "text" (if (plusp (peek :dice :seq)) (format nil "~d + ~d" (peek :dice :a) (peek :dice :b)) "")))))
 
-(defun roll-dice ()
-  (setf *dice* (list (1+ (roll-seq *dice*)) (1+ (random 6)) (1+ (random 6)) *net-name*))
-  (show-dice)
-  (say (format nil "Кости: ~d и ~d" (roll-a *dice*) (roll-b *dice*))))
+(deftell :dice :roll ()
+  (let ((a (1+ (random 6))) (b (1+ (random 6))))
+    (say (format nil "Кости: ~d и ~d" a b))
+    (become :seq (1+ (st :seq)) :a a :b b :who (if *actor* (getf *actor* :name) *net-name*))))
+
+(defun roll-dice () (tell :dice :roll))
+
+(defun show-roll ()
+  "Show the dice as they lie; a roll that has just been made by another cat is said aloud."
+  (let ((seq (peek :dice :seq)))
+    (when (and *roll-seen* (= seq (1+ *roll-seen*)) (not (equal (peek :dice :who) *net-name*)))
+      (say (format nil "~a бросает кости: ~d и ~d" (peek :dice :who) (peek :dice :a) (peek :dice :b))))
+    (setf *roll-seen* seq)
+    (show-dice)))
 
 ;;; ------------------------------------------------------------------ pancakes
 
@@ -314,7 +330,7 @@ Each time it is about something different."
 Without the frying pan on the stove (kettle.lisp) that is only milk. A toadstool counts: it ruins the lot."
   (destructuring-bind (cx cz w d top) (stove-surface)
     (remove-if-not (lambda (spec) (and (or (stove-recipe-p (spec-kind spec)) (eq (spec-kind spec) :toadstool)) (null (spec-addr spec))
-                                       (or *pan-on* (eq (spec-kind spec) :milk))
+                                       (or (on-p :pan) (eq (spec-kind spec) :milk))
                                        (< (abs (- (spec-x spec) cx)) (+ (/ w 2) .03)) (< (abs (- (spec-z spec) cz)) (+ (/ d 2) .03))
                                        (< (abs (- (spec-y spec) top)) .08)))
                    (mapcar #'car *items*))))
@@ -395,10 +411,9 @@ What stands on the hot stove turns into dishes (STOVE-JOBS); each job has its ow
   (when (un :mosquito-player) (object-call (un :mosquito-player) "stop"))
   (when text (say text)))
 
-(defvar *swat-seq* 0 "The counter of fly swatter hits: it grows for whoever hit and spreads over the network.")
-
-(defun swat ()
-  (cond (*mosquito* (incf *swat-seq*) (end-mosquito "Хлоп! Тишина"))
+(defshared swat :swat ()
+  "Swat the mosquito. It is the driver's mosquito: once it is gone there, it is gone for everyone (APPLY-EVENTS)."
+  (cond (*mosquito* (end-mosquito nil) (say-all "Хлоп! Тишина"))
         (t (say "Мухобойка. Комаров пока нет"))))
 
 (defparameter *mosquito-on* nil
@@ -519,7 +534,7 @@ In the swamp a mosquito flies into the wagon: it whines, circles around the head
           (getf *uyut* :radio-player) (player *root* (wav-stream (sound-path "radio") :loop t) :db -20.0 :bus "Музыка" :play nil)
           (getf *uyut* :guitar-player) (player *root* (wav-stream (sound-path "guitar") :loop t) :db -9.0 :bus "Музыка" :play nil))
     (unless (net-guest-p) (load-wall))
-    (show-pennants) (show-photos) (show-dice) (show-swatter) (set-radio *radio-on*) (show-wall-tools)))
+    (show-pennants) (show-photos) (show-dice) (show-swatter) (show-radio) (show-wall-tools)))
 
 (defun uyut-usables ()
   (append
@@ -529,8 +544,8 @@ In the swamp a mosquito flies into the wagon: it whines, circles around the head
                                         (length *photos*) (length *snapped*) (1+ (length *landmark-plan*)))))
                  (lambda () (take-tool :camera)))
          (usable (first *radio-at*) (second *radio-at*) (third *radio-at*)
-                 (lambda () (if *radio-on* "E — выключить радио" "E — включить радио"))
-                 (lambda () (set-radio (not *radio-on*))))
+                 (lambda () (if (on-p :radio) "E — выключить радио" "E — включить радио"))
+                 (lambda () (tell :radio :flip)))
          (usable (first *guitar-at*) (second *guitar-at*) (third *guitar-at*)
                  (lambda () (if *guitar-on* "E — повесить гитару" "E — играть на гитаре")) #'toggle-guitar))
    (when *swatter*
@@ -552,7 +567,7 @@ In the swamp a mosquito flies into the wagon: it whines, circles around the head
     (when (zerop (decf *photo-wait*))
       (handler-case (take-photo) (error (e) (note-error e "фото")))
       (setf *hud-hidden* *photo-hud*)))
-  (when (and *radio-on* (not *meta*) (<= (decf *radio-timer* delta) 0))
+  (when (and (on-p :radio) (not *meta*) (<= (decf *radio-timer* delta) 0))
     (setf *radio-timer* 48.0)
     (unless (and *toast* (> (cdr *toast*) 0)) (say (radio-line))))
   (step-sleep delta)
@@ -561,25 +576,8 @@ In the swamp a mosquito flies into the wagon: it whines, circles around the head
 
 ;;; ------------------------------------------------------------------ shared over the network
 
-(defcommon :pennants :value *pennants* :spec 'integer :driver t          ; the driver counts the pennants
+(defcommon :pennants :value *pennants* :spec 'integer          ; the driver counts the pennants
   :accept (lambda (mask) (unless (= mask *pennants*) (setf *pennants* mask) (show-pennants))))
 
-(defcommon :radio :value (and *radio-on* t) :spec '(:member t nil)
-  :accept (lambda (on) (unless (eq on (and *radio-on* t)) (set-radio on))))
-
-(defcommon :dice :value (copy-list *dice*) :spec '(integer integer integer string)
-  :accept (lambda (roll)
-            (destructuring-bind (seq a b name) roll
-              (when (and (> seq (roll-seq *dice*)) (<= 1 a 6) (<= 1 b 6))
-                (setf *dice* (list seq a b (subseq name 0 (min 24 (length name)))))
-                (show-dice)
-                (say (format nil "~a бросает кости: ~d и ~d" (roll-who *dice*) a b))))))
-
-(defcommon :swatter :value (and *swatter* t) :spec '(:member t nil) :driver t
+(defcommon :swatter :value (and *swatter* t) :spec '(:member t nil)
   :accept (lambda (bought) (setf *swatter* bought) (show-swatter)))
-
-(defcommon :swat :value *swat-seq* :spec 'integer                        ; someone swatted the mosquito, and it is shared
-  :accept (lambda (seq)
-            (when (> seq *swat-seq*)
-              (setf *swat-seq* seq)
-              (when *mosquito* (end-mosquito "Хлоп! Кто-то прихлопнул комара")))))

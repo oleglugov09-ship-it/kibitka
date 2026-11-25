@@ -10,7 +10,7 @@
 (defparameter *fridge-size* '(.56 1.1) "The width (and depth) and the height of the fridge.")
 (defparameter *fridge-shelves* '(.06 .57) "The heights of the two shelves inside, above the floor.")
 
-(defvar *fridge-open* nil "True while the fridge door is open.")
+(defswitch :fridge (apply-fridge))                        ; on while the door is open: one fridge for everyone in the wagon
 (defvar *fridge-door* nil "The hinge node of the fridge door.")
 (defvar *spoil-day* nil "The game day up to which spoiling has been counted, or NIL before the first check.")
 
@@ -21,7 +21,7 @@
 
 (defun step-fridge (delta)
   "Swing the fridge door towards where it should be, like the wagon door (STEP-DOOR)."
-  (let ((target (if *fridge-open* 1.0 0.0)))
+  (let ((target (if (on-p :fridge) 1.0 0.0)))
     (unless (< (abs (- target *fridge-k*)) .001)
       (incf *fridge-k* (* (- target *fridge-k*) (min 1 (* delta 6))))
       (when (< (abs (- target *fridge-k*)) .002) (setf *fridge-k* target))
@@ -97,15 +97,13 @@ A shelf has four places, two by two, like a section of the rack in small; things
   (destructuring-bind (cx cz w d top) (dryer-surface)
     (and (< (abs (- (spec-x spec) cx)) (/ w 2)) (< (abs (- (spec-z spec) cz)) (/ d 2)) (< (abs (- (spec-y spec) top)) .1))))
 
-(defun toggle-fridge ()
-  (setf *fridge-open* (not *fridge-open*))
-  (apply-fridge))
+(defun toggle-fridge () (tell :fridge :flip))
 
 (defun fridge-usables ()
   "Return the thing to press on the fridge: its door, wherever it is now."
   (destructuring-bind (fx fz) *fridge-at*
     (let ((half (/ (first *fridge-size*) 2)) (y (* (second *fridge-size*) .62)))
-      (list (if *fridge-open*
+      (list (if (on-p :fridge)
                 (usable (+ fx half .26) y (- fz half .05) (lambda () "E — закрыть холодильник") #'toggle-fridge :radius .28)
                 (usable (+ fx half .04) y fz (lambda () "E — открыть холодильник") #'toggle-fridge :radius .3))))))
 
@@ -134,7 +132,5 @@ Mushrooms on the dryer are dried instead."
                  (say-all (format nil "За ночь испортилось: ~d шт. Молоко, рыбу и грибы на ночь убирай в холодильник — он у стены с ковром"
                                   (length bad)))))))))
 
-(defstate :fridge :clear (lambda () (setf *fridge-open* nil *spoil-day* nil)) :show (lambda () (apply-fridge)))
+(defstate :fridge :clear (lambda () (aktor-reset :fridge) (setf *spoil-day* nil)) :show (lambda () (apply-fridge)))
 
-(defcommon :fridge :value (and *fridge-open* t) :spec '(:member t nil)
-  :accept (lambda (open) (unless (eq open (and *fridge-open* t)) (setf *fridge-open* open) (apply-fridge))))

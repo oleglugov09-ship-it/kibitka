@@ -167,10 +167,10 @@ Return T if a train ride was pending (GO-TO-TOWN then does nothing itself)."
 ;; the hardware shop: the lid for the frying pan
 (defbooth 2
   :shelf '("#1e1e22" "#8a8e92" "#a3262c")
-  :label (lambda () (if *lid* (format nil "E — ~d банки с крышками за ~/kiosk-trip::rub/ · у вас пустых: ~d" (first *jar-deal*) (second *jar-deal*) *jars*)
+  :label (lambda () (if *lid* (format nil "E — ~d банки с крышками за ~/kiosk-trip::rub/ · у вас пустых: ~d" (first *jar-deal*) (second *jar-deal*) (peek :jars :n))
            (format nil "E — купить чугунную крышку для сковородки за ~/kiosk-trip::rub/: под ней жарится вдвое быстрее" *lid-price*)))
-  :use (lambda () (cond (*lid* (when (pay (second *jar-deal*)) (incf *jars* (first *jar-deal*)) (save-home) (show-home)
-                                        (say (format nil "Купили банки. Пустых теперь ~d: закатывают у ящика под умывальником" *jars*))))
+  :use (lambda () (cond (*lid* (when (pay (second *jar-deal*)) (poke :jars :n (min 99 (+ (peek :jars :n) (first *jar-deal*))))
+                                        (say (format nil "Купили банки. Пустых теперь ~d: закатывают у ящика под умывальником" (peek :jars :n)))))
              ((pay *lid-price*) (setf *lid* t) (save-prikol) (show-lid) (log-event :lid :money *money*)
               (say-all "Купили крышку! Висит над сковородкой: теперь на сковородке жарится вдвое быстрее")))))
 

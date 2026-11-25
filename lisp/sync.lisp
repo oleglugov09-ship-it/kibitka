@@ -104,17 +104,26 @@ The driver calls it; if a guest was performing the action, the guest's name is p
 (defvar *pending* nil "True when the action done for a guest is not finished: we wait (START-WAIT) and the reply will come again.")
 
 (defvar *asked* nil "On a guest, the request the driver has not answered yet: (time key . args).")
+(defvar *asks* '() "On a guest, the requests waiting their turn: (key . args) each, the oldest first.")
+
+(defun send-ask (ask)
+  (setf *asked* (cons *time* ask))
+  (guest-send (list :a :do (car ask) (cdr ask))))
 
 (defun ask-host (key &rest args)
   "Ask the driver, as a guest, to perform the shared action KEY with ARGS.
 What we hold in our paws the driver knows: the action may take it or hand something over, and the answer says
-what the paws hold now. Return T. One request at a time, so that the answers come in the order of the clicks; a
-request left without an answer stops counting in two seconds."
+what the paws hold now. Return T. One request travels at a time, so that the answers come in the order of the
+asking; the others wait their turn (NEXT-ASK)."
   (cond (*remote-wait* (say "Погоди, ещё не закончил"))
-        ((and *asked* (< (- *time* (first *asked*)) 2.0)))
-        (t (setf *asked* (list* *time* key args))
-           (guest-send (list :a :do key args))))
+        (*asked* (when (< (length *asks*) 8) (setf *asks* (append *asks* (list (cons key args))))))
+        (t (send-ask (cons key args))))
   t)
+
+(defun next-ask ()
+  "Send the next waiting request, if the driver has answered the last one - or has kept silent for two seconds."
+  (when (and *asked* (> (- *time* (first *asked*)) 2.0)) (setf *asked* nil))
+  (when (and *asks* (null *asked*) (not *remote-wait*)) (send-ask (pop *asks*))))
 
 (defun carry-ok-p (kind addr &optional props)
   (and (or (null kind) (good-p kind) (member kind '(:box :crate))) (or (null addr) (integerp addr) (keywordp addr))

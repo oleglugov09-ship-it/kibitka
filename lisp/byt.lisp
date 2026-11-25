@@ -367,9 +367,9 @@ These are the map, the stove, the light switch, the ladder, the window and the b
            (when (or (> *door-k* .6) (> (vector3-z *pos*) 2.95))
              (usable 0.0 .1 3.95 (lambda () (if *ladder-down* "E — поднять лесенку" "E — опустить лесенку")) #'toggle-ladder))
            ;; the window: anywhere on the glass, wherever you look
-           (unless *curtains-shut* (usable 1.5 1.5 -.9 #'window-label #'toggle-window :radius .5))     ; drawn curtains are in the way
-           (unless *curtains-shut* (usable 1.5 1.5 0.0 #'window-label #'toggle-window :radius .5))
-           (unless *curtains-shut* (usable 1.5 1.5 .9 #'window-label #'toggle-window :radius .5))
+           (unless (on-p :curtains) (usable 1.5 1.5 -.9 #'window-label #'toggle-window :radius .5))     ; drawn curtains are in the way
+           (unless (on-p :curtains) (usable 1.5 1.5 0.0 #'window-label #'toggle-window :radius .5))
+           (unless (on-p :curtains) (usable 1.5 1.5 .9 #'window-label #'toggle-window :radius .5))
            ;; the bunk shelf: raised, E on it folds it down; folded down, E on it seats you,
            ;; E on the yellow handles on the edge or on the wall above it raises it
            (when *fold-down* (usable (- .85 *half-width*) .5 (- *bunk-z* .7) (lambda () "E — поднять полку") #'toggle-fold))
