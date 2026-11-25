@@ -271,10 +271,13 @@ the fence slab by slab and the hall bay by bay."
   (sign g name 7.75 4.4 0 :h .8))
 
 (defun culture-house (g)
-  "Add to G the house of culture, with a columned portico, a pediment and steps."
+  "Add to G the house of culture: a portico of six columns under a pediment, steps, tall windows, some of them lit."
   (model g "culture-house")
-  (window-rows g 3 16.0 0 38.0 :first 2.6 :step 3.2)
-  (sign g "ДОМ КУЛЬТУРЫ" 10.7 9.4 0 :h 1.2 :rgb "#6a3a2e"))
+  (let ((points (model-points "culture-house" "lit_")))
+    (loop repeat (random 4)
+          do (destructuring-bind (x y z) (elt points (random (length points)))
+               (shape g :box '(.1 2.6 1.3) "#e8c070" x y z :emit "#ffc060" :energy .9 :shadow nil))))
+  (sign g "ДОМ КУЛЬТУРЫ" 11.8 9.25 0 :h .8 :rgb "#6a3a2e"))
 
 (defun plaza (g)
   "Add to G the square: paving slabs, a monument on a pedestal, a flower bed, benches and a flagpole."
@@ -354,9 +357,9 @@ buyers and sellers come up at the sound of the bell (trade.lisp)."
     g))
 
 (defun depot (g)
-  "Add to G the depot we set out from, a long warehouse with a loading ramp and gates."
+  "Add to G the depot we set out from: a long brick warehouse, a loading ramp under a canopy, three gates."
   (model g "depot")
-  (sign g "СКЛАД № 3" 8.85 5.6 0 :h 1.2 :rgb "#d8d4c4"))
+  (sign g "СКЛАД № 3" 8.8 5.95 0 :h .5 :rgb "#d8d4c4"))
 
 (defun parked-car (g x z)
   "Add to G at (X, Z) a car parked at the kerb."

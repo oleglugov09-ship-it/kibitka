@@ -19,7 +19,7 @@
           g))))
 
 (defun mark-windmill (g)
-  "Build in group G a wooden windmill whose sails turn."
+  "Build in group G a wooden tower mill of eight sides, with a gallery; its sails turn."
   (model g "mark-windmill")
   (let ((hub (group g -3.4 9.0 0)))
     (dotimes (i 4)
