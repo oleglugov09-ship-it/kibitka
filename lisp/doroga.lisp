@@ -515,10 +515,10 @@ BACK is for those driving back."
             (sign g (format nil "АЗС  ~,1f" (/ (abs (- station d)) 1000)) 0 2.68 .06 :h .3 :rgb "#c9a13a" :yaw 0.0)))))))
 
 (defun add-bus (d)
-  "Add a city bus at the bus stop at path coordinate D: yellow, with a white roof."
+  "Add a bus at the bus stop at path coordinate D: a LAZ, white over a skirt of red, blue or green."
   (destructuring-bind (x y z) (side-point 4.4 d 0.0)
     (let ((g (keep (turned (group *world* x y z) d) d)))
-      (model g "bus"))))
+      (model g "bus" 0.0 0.0 0.0 :paint (list (elt '("#a3262c" "#2c5a8a" "#3f6f5a") (mod (floor d 100) 3)))))))
 
 (defvar *street-told* nil "The start of the town that has already been announced.")
 

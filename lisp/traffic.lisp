@@ -90,9 +90,13 @@ or a chase is a rare sight, once in a quarter of an hour at the most.")
   (dolist (sx (list (- half) half))
     (dolist (sz zs) (shape g :cyl (list r r .22 8) "#141416" sx r sz :rot (list 0 0 (/ pi 2))))))
 
-(defun car-model (key)
-  "Return the name of the model of a vehicle of kind KEY (models/car-KEY.blend); a runaway is a passenger car in black."
-  (format nil "car-~(~a~)" (if (eq key :runaway) :car key)))
+(defun car-model (key n)
+  "Return the name of the model of vehicle number N of kind KEY (models/car-KEY.blend). A passenger car is one of
+four makes, a Zhiguli oftenest; a runaway is a Volga in black."
+  (case key
+    (:car (elt '("car-car" "car-moskvich" "car-car" "car-zaz" "car-volga" "car-car" "car-moskvich") (mod n 7)))
+    (:runaway "car-volga")
+    (t (format nil "car-~(~a~)" key))))
 
 (defun make-car (n &optional kind)
   "Build car number N (its nose points to -z).
@@ -103,15 +107,15 @@ the flashers blink and so are made here."
   (let* ((g (group *world*)) (key (or kind (if (zerop (mod n 5)) :truck :car)))
          (rgb (case key
                 (:runaway "#22222a")
-                (:police "#e0dcd0")
+                (:police "#d8b040")                             ; the yellow of the road militia, a blue band on it
                 (t (nth (mod n 6) '("#8a4038" "#3f6f73" "#b0aa98" "#55708a" "#a8843c" "#e0dcd0")))))
          (blink '()))
     (flet ((flasher (x y z rgb) (push (shape g :box '(.3 .2 .3) rgb x y z :emit rgb :energy 5 :shadow nil) blink)))
-      (model g (car-model key) 0.0 0.0 0.0 :paint (list rgb))
+      (model g (car-model key n) 0.0 0.0 0.0 :paint (list rgb))
       (case key
-        (:fire (flasher -.7 3.0 -2.9 "#3060ff") (flasher .7 3.0 -2.9 "#3060ff"))
-        (:ambulance (flasher 0 2.8 -1.6 "#3060ff"))
-        (:police (flasher -.35 1.6 .2 "#ff3020") (flasher .35 1.6 .2 "#3060ff"))))
+        (:fire (flasher -.7 2.85 -1.2 "#3060ff") (flasher .7 2.85 -1.2 "#3060ff"))
+        (:ambulance (flasher 0 2.15 -1.2 "#3060ff"))
+        (:police (flasher -.35 1.58 .1 "#3060ff") (flasher .35 1.58 .1 "#3060ff"))))
     (values g blink)))
 
 (defun army-near-p ()
