@@ -154,7 +154,7 @@ SIDE is ±1, the side of the road. The colours of foliage and flowers follow the
 ;;; dozens of tufts, one draw. The shader sways the blades and lets them sink into the ground as they near *GRASS-FAR*
 ;;; from the camera, beyond which a patch is not drawn at all: the cost is what stands within fifty metres.
 
-(defparameter *grass* t "Whether grass grows by the road: NIL for a machine that cannot bear it.")
+(defparameter *grass-grows* t "Whether grass grows by the road: NIL for a machine that cannot bear it.")
 (defparameter *grass-step* 6.0 "The length of a patch of grass along the road, in metres: patches of the two sides take turns.")
 (defparameter *grass-far* 55.0 "The distance from the camera at which the grass has sunk into the ground, in metres.")
 (defparameter *grass-thick* '(:meadow 150 :steppe 100 :birch 100 :autumn 90 :marsh 120 :pine 45 :rocky 30)
@@ -177,18 +177,18 @@ void fragment() {
   ROUGHNESS = 1.0;
   SPECULAR = 0.0;
 }" "The shader of the grass.")
-(defvar *grass-mats* '() "The materials of the grass by season: a list of (season . ShaderMaterial).")
+(defvar *grass-mats* (make-hash-table) "The materials of the grass: a table from the season to its ShaderMaterial.")
 
 (defun grass-material ()
   "Return the material of the grass for the current season: green, yellowed in autumn, dry stalks in winter."
-  (or (cdr (assoc *season* *grass-mats*))
+  (or (gethash *season* *grass-mats*)
       (let ((sh (gdext:make-object "Shader")) (mat (gdext:make-object "ShaderMaterial")))
         (object-set sh "code" *grass-code*)
         (object-set mat "shader" sh)
         (object-call mat "set_shader_parameter" "tint"
                      (hex (case *season* (:spring "#5a8a3a") (:autumn "#8a7a3c") (:winter "#a09468") (t "#456e30"))))
         (object-call mat "set_shader_parameter" "far" *grass-far*)
-        (push (cons *season* mat) *grass-mats*)
+        (gdext:setf-reference (gethash *season* *grass-mats*) mat)   ; held, or Godot frees it with the last patch
         mat)))
 
 (defun grass-mesh ()
@@ -203,7 +203,7 @@ void fragment() {
   "Grow a patch of grass at path coordinate D on side SIDE (±1): tufts strewn from the verge to thirty metres out,
 thicker by the road, each on the land where it stands. None in a town, on a bridge, on a road or under water; in
 winter one tuft in five shows through the snow."
-  (when (or (not *grass*) (bare-at d) (town-at d)) (return-from add-grass nil))
+  (when (or (not *grass-grows*) (bare-at d) (town-at d)) (return-from add-grass nil))
   (let* ((n (floor (getf *grass-thick* (dominant :veg d) 60) (if (eq *season* :winter) 5 1)))
          (mesh (grass-mesh)) (origin (road-pos d (* side 6.0) (height-at (* side 6.0) d))) (places '()))
     (unless mesh (return-from add-grass nil))

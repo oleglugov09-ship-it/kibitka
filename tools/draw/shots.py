@@ -83,7 +83,7 @@ try:
             shot(f"grass-{veg}-a", float(d), 0.5, 0.1, 7.0); shot(f"grass-{veg}-b", float(d), -1.0, 0.35, 16.0)
         fps = lambda: lisp("(round (object-call (gdext:singleton \"Engine\") \"get_frames_per_second\"))")
         time.sleep(4); with_grass = fps()                          # the same place with the grass and without it
-        lisp("(progn (setf *grass* nil) (jump-dist (+ *dist* 2000)) (jump-dist (- *dist* 2000)) (halt) 1)"); time.sleep(6)
+        lisp("(progn (setf *grass-grows* nil) (jump-dist (+ *dist* 2000)) (jump-dist (- *dist* 2000)) (halt) 1)"); time.sleep(6)
         print("shots: frames a second with grass", with_grass, "without", fps(), "(software drawing on a hidden screen)", flush=True)
     if "izby" in what:                                          # a row of izbas built on the spot, to see how they differ
         lisp("(progn (setf *prop-step* 4000.0) (jump-dist (loop for d from 300 to 60000 by 40 when (and (not (town-at d)) (not (bare-at d)) (eq (dominant :veg d) :meadow)) return d)) (halt) (let ((g (group *world* 0 0 0))) (destructuring-bind (x y z) (road-pos *dist* 0.0) (godot:node-3d-set-position g (v3 x y z))) (node-3d-set-rotation g (v3 0 (- (road-frame *dist*)) 0)) (dotimes (i 6) (izba g 12.0 (- (* i 17.0) 42.0)))) 1)")
