@@ -347,6 +347,12 @@ nothing but hides what is behind it). With HAND it is taken by hand (LMB), other
 interaction (E)."
   x y z label action hand reach radius)
 
+(defun ladder-usable (i)
+  "Return the I-th of the three places to press along the ladder, or NIL while it is out of reach behind the door."
+  (when (or (> *door-k* .6) (> (vector3-z *pos*) 2.95))
+    (destructuring-bind (y z) (nth i (if *ladder-down* '((.1 3.95) (-.3 4.15) (-.7 4.3)) '((.1 3.95) (.5 3.95) (.9 3.95))))
+      (usable 0.0 y z (lambda () (if *ladder-down* "E — поднять лесенку" "E — опустить лесенку")) #'toggle-ladder :radius .3))))
+
 (defun fixture-usables ()
   "Return the usables for what is bolted to the wagon.
 These are the map, the stove, the light switch, the ladder, the window and the bunk shelf."
@@ -363,9 +369,9 @@ These are the map, the stove, the light switch, the ladder, the window and the b
            (usable (first *switch-at*) (second *switch-at*) (third *switch-at*)
                    (lambda () (if *lights-on* "E — выключить свет" "E — включить свет"))
                    (lambda () (setf *lights-on* (not *lights-on*)) (apply-lights)))
-           ;; the ladder is beyond the vestibule: you cannot reach it through a closed door
-           (when (or (> *door-k* .6) (> (vector3-z *pos*) 2.95))
-             (usable 0.0 .1 3.95 (lambda () (if *ladder-down* "E — поднять лесенку" "E — опустить лесенку")) #'toggle-ladder))
+           ;; the ladder: anywhere along it, where it is now - standing up in the gap of the railing when raised,
+           ;; hanging below the porch when let down. It is beyond the vestibule: not through a closed door
+           (ladder-usable 0) (ladder-usable 1) (ladder-usable 2)
            ;; the window: anywhere on the glass, wherever you look
            (unless (on-p :curtains) (usable 1.5 1.5 -.9 #'window-label #'toggle-window :radius .5))     ; drawn curtains are in the way
            (unless (on-p :curtains) (usable 1.5 1.5 0.0 #'window-label #'toggle-window :radius .5))
